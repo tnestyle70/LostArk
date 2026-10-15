@@ -1,9 +1,8 @@
 #include "MapStaticBatchObject.h"
+#include "MapGpuScene.h"
 #include "MapStaticChunkObject.h"
-#pragma push_macro("new")
-#undef new
+#include "MapStaticProxyBaker.h"
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
 #include "Engine_VertexTypes.h"
 
 #include "GameInstance.h"
@@ -61,55 +60,9 @@ namespace
     }
     float StaticPropDistanceLimit(float radius, float scale)
     {
-        if (!std::isfinite(radius) || !(radius > 0.f) || radius > 3.f ||
+        if (!std::isfinite(radius) || !(radius > 0.f) ||
             !std::isfinite(scale) || scale < .25f || scale > 4.f) return 0.f;
-        return (radius <= .5f ? 35.f : radius <= 1.5f ? 45.f : 60.f) * scale;
-    }
-
-    bool BeyondStaticPropDistance(const FMapStaticInstance& instance, const float4_t& camera,
-        float limit, float margin)
-    {
-        if (!(limit > 0.f) || !std::isfinite(margin) || margin < 0.f ||
-            !std::isfinite(camera.x) || !std::isfinite(camera.y) || !std::isfinite(camera.z)) return false;
-        const double x = double(instance.WorldBoundsCenter.x) - camera.x;
-        const double y = double(instance.WorldBoundsCenter.y) - camera.y;
-        const double z = double(instance.WorldBoundsCenter.z) - camera.z;
-        const double distanceSquared = x * x + y * y + z * z;
-        const double threshold = double(limit) + instance.WorldBoundsRadius + margin;
-        return std::isfinite(distanceSquared) && std::isfinite(threshold) && distanceSquared > threshold * threshold;
-    }
-
-    bool StaticPropFitsPixelLimit(const FMapStaticInstance& instance, const MAP_CAMERA_CULL_SNAPSHOT& camera,
-        const float2_t& viewport, float maximumPixels, float margin)
-    {
-        const auto& p = camera.projection;
-        if (!(camera.lodViewScale > 0.f) || !std::isfinite(maximumPixels) || !(maximumPixels > 0.f) || maximumPixels > 128.f ||
-            !(viewport.x > 0.f) || !(viewport.y > 0.f) || p._14 != 0.f || p._24 != 0.f || p._34 != 1.f || p._44 != 0.f ||
-            p._12 != 0.f || p._21 != 0.f || p._13 != 0.f || p._23 != 0.f || p._41 != 0.f || p._42 != 0.f ||
-            !(p._11 > 0.f) || !(p._22 > 0.f) || !(p._33 > 1.f) || !(p._43 < 0.f)) return false;
-        float3_t center{};
-        XMStoreFloat3(&center, XMVector3TransformCoord(XMLoadFloat3(&instance.WorldBoundsCenter), XMLoadFloat4x4(&camera.lodView)));
-        if (!std::isfinite(center.x) || !std::isfinite(center.y) || !std::isfinite(center.z)) return false;
-        const double radius = (double(instance.WorldBoundsRadius) + margin) * camera.lodViewScale;
-        const double depth = center.z;
-        if (!(radius > 0.) || !(depth - radius > -double(p._43) / p._33)) return false;
-        // Project all eight corners of the enclosing view-space cube. A sphere
-        // cannot exceed this rectangle; off-axis depth expansion is retained.
-        double maximumDiameter = 0.;
-        for (size_t axis = 0u; axis < 2u; ++axis)
-        {
-            double minimum = DBL_MAX, maximum = -DBL_MAX;
-            for (int sign = -1; sign <= 1; sign += 2)
-                for (int side = -1; side <= 1; side += 2)
-                {
-                    const double projected = (double((&center.x)[axis]) + sign * radius) / (depth + side * radius);
-                    minimum = (std::min)(minimum, projected); maximum = (std::max)(maximum, projected);
-                }
-            const double pixels = (axis == 0u ? double(p._11) * viewport.x : double(p._22) * viewport.y) * .5;
-            maximumDiameter = (std::max)(maximumDiameter, (maximum - minimum) * pixels);
-        }
-        return std::isfinite(maximumDiameter) && maximumDiameter > 0. &&
-            maximumDiameter * (1. + 32. * FLT_EPSILON) <= maximumPixels;
+        return (radius <= .5f ? 35.f : radius <= 1.5f ? 45.f : radius <= 3.f ? 60.f : 120.f) * scale;
     }
 
     bool StaticPropDistanceHidden(const FMapStaticInstance& instance, const float4_t& position,
@@ -117,8 +70,8 @@ namespace
         float maximumPixels, uint64_t settingsRevision, float margin)
     {
         const bool wasHidden = instance.DistanceHidden && instance.DistanceSettingsRevision == settingsRevision;
-        return BeyondStaticPropDistance(instance, position, wasHidden ? limit : limit * 1.1f, margin) &&
-            StaticPropFitsPixelLimit(instance, camera, viewport, wasHidden ? maximumPixels : maximumPixels * .9f, margin);
+        return CMapAssetRenderUtils::Is_SceneDistanceHidden(instance.WorldBoundsCenter,
+            instance.WorldBoundsRadius, position, camera, viewport, limit, maximumPixels, margin, wasHidden);
     }
 
     bool StaticOcclusionBoundsMesh(const Engine::CModel& model, uint32_t mesh)
@@ -286,6 +239,54 @@ struct CMapStaticBatchObject::CPU_VISIBILITY_PREPARATION final
     uint64_t CullingCandidates = 0u, DistanceTested = 0u, DistanceRejected = 0u;
 };
 
+// 같은 프레임의 GPU/HLOD/CPU 재조회가 카운터를 중복 합산하지 않도록 batch의
+// 이전 기여만 Level 합계에서 빼고 마지막 판정을 넣는다. 배열은 고정 크기이며 main thread 전용이다.
+struct ColorProxyDiagnosticScope final
+{
+    using COUNTERS = MAP_STATIC_BATCH_FRAME_STATE::COLOR_PROXY_SELECTION_COUNTERS;
+    COUNTERS current{};
+    COUNTERS& previous;
+    COUNTERS& total;
+    uint64_t& previousEpoch;
+    const uint64_t epoch;
+    Engine::CProfiler* const profiler;
+    bool keepPrevious = false;
+
+    void Add(Engine::EProfilerCounter counter, uint64_t value = 1u) noexcept
+    {
+        current[static_cast<size_t>(counter) - MAP_STATIC_BATCH_FRAME_STATE::ColorProxySelectionFirst] += value;
+    }
+    ~ColorProxyDiagnosticScope() noexcept
+    {
+        if (keepPrevious) return;
+        if (previousEpoch != epoch) previous.fill(0u);
+        for (size_t i = 0u; i < current.size(); ++i)
+        {
+            total[i] = total[i] - previous[i] + current[i];
+            if (profiler)
+                profiler->Set_Counter(static_cast<Engine::EProfilerCounter>(MAP_STATIC_BATCH_FRAME_STATE::ColorProxySelectionFirst + i), total[i]);
+        }
+        previous = current;
+        previousEpoch = epoch;
+    }
+};
+
+// GPU 자원은 batch와 같은 수명을 갖는다. atlas SRV는 다른 batch와 공유하지만
+// 선택 IB와 아래 placement slot 목록은 이 batch만 변경한다.
+struct CMapStaticBatchObject::COLOR_PROXY_STATE final
+{
+    std::shared_ptr<Engine::CModel> Model;
+    std::shared_ptr<Engine::CShader> Shader;
+    CMapStaticProxyBaker::REPLACEMENT_LIMITS Limits{};
+    Microsoft::WRL::ComPtr<ID3D11Buffer> OriginalInstances;
+    bool BindingFailed = false;
+    std::vector<uint32_t> Selected, Candidate;
+    std::vector<MAP_FRUSTUM_RUNTIME_STATE> CandidateFrusta;
+    uint64_t Frame = UINT64_MAX, CameraRevision = UINT64_MAX;
+    uint64_t DiagnosticEpoch = UINT64_MAX, SelectedIndexCount = 0u;
+    MAP_STATIC_BATCH_FRAME_STATE::COLOR_PROXY_SELECTION_COUNTERS DiagnosticCounters{};
+};
+
 CMapStaticBatchObject::CMapStaticBatchObject(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext)
@@ -331,6 +332,7 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 	m_FrustumCulling = desc.FrustumCulling;
 	m_bMirrored = desc.Mirrored;
 	m_Instances = desc.Instances;
+    for (auto& instance : m_Instances) instance.ColorProxySuppressed = false;
 	// Initialize before Layer captures the immutable update phase mask.
 	m_FrameState = desc.FrameState;
 
@@ -350,6 +352,345 @@ HRESULT CMapStaticBatchObject::Initialize(void* pArg)
 	}
 
 	return S_OK;
+}
+
+HRESULT CMapStaticBatchObject::Prepare_ColorProxy(CMapStaticProxyBaker& baker, const MAP_ASSET_ENTRY& asset, std::string& error)
+{
+    // Load_Area의 아직 공개하지 않은 batch에만 호출한다. 일부 mesh만 대체하거나
+    // 현재 그림자를 버리는 대신, 전체 placement의 색상 geometry를 한 단위로 준비한다.
+    error.clear();
+    const auto fail = [&](const char* reason, HRESULT result)
+    {
+        error = reason;
+        return result;
+    };
+    if (!m_FrameState || !m_pModelCom || m_Instances.empty()) return fail("replacement.batch_source_missing", S_FALSE);
+    // 반사된 winding은 기존 Select_Pass와 SharedFront가 처리한다. World/역전치는
+    // source record가 그대로 소유하며 baker가 균일 직교 affine 변환만 허용한다.
+    if (m_RenderProfile.opacity != 1.f) return fail("replacement.batch_opacity", S_FALSE);
+    if (!baker.Has_Replacement(m_AssetId, &error))
+        return error.empty() ? fail("replacement.asset_unsupported", S_FALSE) : S_FALSE;
+    try
+    {
+        std::vector<uint32_t> peers(m_pModelCom->Get_NumMeshes());
+        for (uint32_t i = 0u; i < peers.size(); ++i) peers[i] = i;
+        std::vector<Engine::CModel::STATIC_PROXY_PLACEMENT_SOURCE> sources;
+        sources.reserve(m_Instances.size());
+        for (const auto& instance : m_Instances)
+        {
+            Engine::CModel::STATIC_PROXY_PLACEMENT_SOURCE source;
+            source.model = m_pModelCom.get(); source.sourceId = instance.PlacementId;
+            source.sourceMeshIndices = peers;
+            source.instance.World = instance.World;
+            source.instance.WorldInvTranspose = instance.WorldInvTranspose;
+            source.instance.vLightmapScaleBias = instance.BakedLighting.scaleBias;
+            source.instance.vLightmapAverageScale = instance.BakedLighting.averageScale;
+            source.instance.vLightmapDirectionalScale = instance.BakedLighting.directionalScale;
+            source.instance.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
+            source.instance.vSourceWindOwnerPosition = instance.SourceWind.actorPositionSourceCm;
+            source.instance.vSourceWindDimensionsAndRadius = instance.SourceWind.objectDimensionsAndRadiusSourceCm;
+            sources.push_back(source);
+        }
+        auto staged = std::make_unique<COLOR_PROXY_STATE>();
+        const HRESULT prepared = baker.Prepare_Replacement(m_pModelCom, asset, sources,
+            staged->Model, staged->Shader, staged->Limits, error);
+        if (prepared != S_OK) return prepared;
+        if (!staged->Model || !staged->Shader ||
+            staged->Model->Get_StaticProxySourceRanges().size() != m_Instances.size()) return fail("replacement.source_ranges_mismatch", E_UNEXPECTED);
+        // 선택 확정 뒤 shader binding이 실패해도 선택된 원본만 같은 프레임에 그릴 수
+        // 있도록 준비 시점의 payload를 소유한다. 프레임 중 할당/Map 실패를 추가하지 않는다.
+        std::vector<VTXMESHINSTANCE> originalPayload;
+        originalPayload.reserve(sources.size());
+        for (const auto& source : sources) originalPayload.push_back(source.instance);
+        if (originalPayload.size() > UINT32_MAX / sizeof(VTXMESHINSTANCE)) return fail("replacement.original_instance_bytes", E_INVALIDARG);
+        D3D11_BUFFER_DESC originalDesc{};
+        originalDesc.ByteWidth = static_cast<UINT>(originalPayload.size() * sizeof(VTXMESHINSTANCE));
+        originalDesc.Usage = D3D11_USAGE_IMMUTABLE;
+        originalDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA originalData{}; originalData.pSysMem = originalPayload.data();
+        const HRESULT originalBuffer = m_pDevice->CreateBuffer(&originalDesc, &originalData, &staged->OriginalInstances);
+        if (FAILED(originalBuffer)) return fail("replacement.original_instance_buffer", originalBuffer);
+        staged->Selected.reserve(m_Instances.size()); staged->Candidate.reserve(m_Instances.size());
+        staged->CandidateFrusta.resize(m_Instances.size());
+        if (staged->Model->Prepare_StaticProxyVisibleSources({}) != S_OK) return fail("replacement.empty_selection_preflight", E_FAIL);
+        m_ColorProxy = std::move(staged);
+        return S_OK;
+    }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const std::exception& exception) { error = exception.what(); return E_FAIL; }
+}
+
+bool CMapStaticBatchObject::Has_ColorProxySelection() const
+{
+    return m_ColorProxy && !m_ColorProxy->Selected.empty();
+}
+
+void CMapStaticBatchObject::Reset_ColorProxySelection()
+{
+    if (!m_ColorProxy) return;
+    auto& proxy = *m_ColorProxy;
+    proxy.Frame = proxy.CameraRevision = UINT64_MAX;
+    proxy.SelectedIndexCount = 0u;
+    if (proxy.Selected.empty()) return;
+    for (uint32_t slot : proxy.Selected)
+        if (slot < m_Instances.size()) m_Instances[slot].ColorProxySuppressed = false;
+    proxy.Selected.clear();
+    (void)proxy.Model->Prepare_StaticProxyVisibleSources({});
+    m_bVisibleInstancesDirty = true; m_bFinalCameraPrepared = false;
+    Invalidate_VisibilityCpu();
+    Invalidate_ChunkSelection();
+    // 원본 그림자·피킹 geometry는 계속 사용했으므로 shadow revision을 바꾸지 않는다.
+}
+
+void CMapStaticBatchObject::Prepare_ColorProxySelection(const MAP_CAMERA_CULL_SNAPSHOT* camera)
+{
+    // 기본 카메라에는 instance 순회·할당·GPU upload가 없다.
+    if (!m_ColorProxy) return;
+    auto& game = CGameInstance::Get();
+    if (!m_FrameState || !m_FrameState->colorProxyEnabled)
+    {
+        Reset_ColorProxySelection();
+        return;
+    }
+    auto& proxy = *m_ColorProxy;
+    ColorProxyDiagnosticScope counters{ {}, proxy.DiagnosticCounters,
+        m_FrameState->colorProxySelectionCounters, proxy.DiagnosticEpoch,
+        m_FrameState->colorProxyDiagnosticEpoch, game.Get_Profiler() };
+    counters.Add(Engine::EProfilerCounter::MapLowGeometryVisitedBatches);
+    // 실패 프레임에는 GPU/HLOD가 이미 확정한 소유권을 보존하고 원본 subset으로
+    // 그린다. 다음 프레임부터는 이 optional 대체를 해제해 원본 제출로 복귀한다.
+    if (m_ColorProxy->BindingFailed)
+    {
+        counters.Add(Engine::EProfilerCounter::MapLowGeometryBindingDisabledBatches);
+        if (!m_FrameState || m_ColorProxy->Frame != m_FrameState->frameNumber)
+            Reset_ColorProxySelection();
+        return;
+    }
+    const auto& settings = game.Get_MaterialRenderSettings();
+    // 정책 거절은 서로 겹칠 수 있다. instance 단계의 탈락은 아래에서 첫 실패 하나만 센다.
+    bool allowed = true;
+    const auto rejectGate = [&](bool rejected, Engine::EProfilerCounter reason)
+    {
+        if (rejected) { counters.Add(reason); allowed = false; }
+    };
+    rejectGate(!camera, Engine::EProfilerCounter::MapLowGeometryNoCameraBatches);
+    rejectGate(!game.Get_RenderOptimizationSettings().MeshLodEnabled, Engine::EProfilerCounter::MapLowGeometryMeshLodDisabledBatches);
+    rejectGate(game.Is_SceneEnvironmentReplaced(), Engine::EProfilerCounter::MapLowGeometryEnvironmentReplacedBatches);
+    rejectGate(!settings.bUseSourceMaterials, Engine::EProfilerCounter::MapLowGeometrySourceMaterialsDisabledBatches);
+    rejectGate(settings.eDebugView != Engine::MATERIAL_DEBUG_VIEW::FINAL, Engine::EProfilerCounter::MapLowGeometryDebugViewBatches);
+    rejectGate(settings.MapPBR.Is_Active(game.Get_CurrentLevelID()), Engine::EProfilerCounter::MapLowGeometryMapPbrBatches);
+    rejectGate(CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive(), Engine::EProfilerCounter::MapLowGeometryBindingCollectionBatches);
+    rejectGate(m_FrustumCulling.bypass || m_FrustumCulling.diagnostics, Engine::EProfilerCounter::MapLowGeometryFrustumOverrideBatches);
+    if (!allowed) { Reset_ColorProxySelection(); return; }
+    if (proxy.Frame == m_FrameState->frameNumber && proxy.CameraRevision == camera->revision)
+    {
+        counters.keepPrevious = true;
+        return;
+    }
+    const auto viewport = game.Get_ViewportSize();
+    const auto* eye = game.Get_CamPosition();
+    const auto& projection = camera->projection;
+    if (!eye || !std::isfinite(viewport.x) || !std::isfinite(viewport.y) ||
+        !(viewport.x > 0.f) || !(viewport.y > 0.f) || !(camera->lodViewScale > 0.f) ||
+        projection._14 != 0.f || projection._24 != 0.f || projection._34 != 1.f || projection._44 != 0.f ||
+        projection._12 != 0.f || projection._21 != 0.f || projection._13 != 0.f || projection._23 != 0.f ||
+        projection._41 != 0.f || projection._42 != 0.f || !(projection._11 > 0.f) ||
+        !(projection._22 > 0.f) || !(projection._33 > 1.f) || !(projection._43 < 0.f))
+    {
+        counters.Add(Engine::EProfilerCounter::MapLowGeometryInvalidCameraBatches);
+        Reset_ColorProxySelection();
+        return;
+    }
+
+    counters.Add(Engine::EProfilerCounter::MapLowGeometryTestedInstances, m_Instances.size());
+    proxy.Candidate.clear();
+    const double focal = .5 * (std::max)(double(projection._11) * viewport.x, double(projection._22) * viewport.y);
+    for (uint32_t slot = 0u; slot < m_Instances.size(); ++slot)
+    {
+        const auto& instance = m_Instances[slot];
+        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed)
+        {
+            counters.Add(Engine::EProfilerCounter::MapLowGeometryVisibilityRejectedInstances);
+            continue;
+        }
+        const auto& center = instance.WorldBoundsCenter;
+        const double dx = double(center.x) - eye->x, dy = double(center.y) - eye->y, dz = double(center.z) - eye->z;
+        const double surfaceDistance = std::sqrt(dx * dx + dy * dy + dz * dz) - instance.WorldBoundsRadius;
+        if (!std::isfinite(surfaceDistance) || surfaceDistance < proxy.Limits.minimumSurfaceDistanceMetres)
+        {
+            counters.Add(Engine::EProfilerCounter::MapLowGeometryDistanceRejectedInstances);
+            continue;
+        }
+        float3_t view{};
+        XMStoreFloat3(&view, XMVector3TransformCoord(XMLoadFloat3(&center), XMLoadFloat4x4(&camera->lodView)));
+        const double radius = double(instance.WorldBoundsRadius) * camera->lodViewScale;
+        const double depth = double(view.z) - radius;
+        const double lateral = (std::max)(std::abs(double(view.x)), std::abs(double(view.y))) + radius;
+        if (!(radius > 0.) || !(depth > -double(projection._43) / projection._33))
+        {
+            counters.Add(Engine::EProfilerCounter::MapLowGeometryDepthRejectedInstances);
+            continue;
+        }
+        // 구면 전체의 투영 도함수를 상한으로 잡는다. 같은 식으로 실측한 package
+        // 허용 직경보다 커지면 근거리 원본을 유지한다. m와 output pixel 단위다.
+        const double diameter = 2. * radius * focal * (depth + lateral) / (depth * depth);
+        if (!std::isfinite(diameter) || diameter > proxy.Limits.maximumProjectedDiameterPixels)
+        {
+            counters.Add(Engine::EProfilerCounter::MapLowGeometryPixelRejectedInstances);
+            continue;
+        }
+        auto frustum = instance.FrustumState;
+        MAP_FRUSTUM_CULL_DECISION decision{};
+        if (CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, *camera, m_AssetId,
+            m_AssetGroupId, instance.PlacementId, center, instance.WorldBoundsRadius, frustum,
+            decision, nullptr, MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY) && !decision.shouldRender)
+        {
+            counters.Add(Engine::EProfilerCounter::MapLowGeometryFrustumRejectedInstances);
+            continue;
+        }
+        proxy.Candidate.push_back(slot);
+        proxy.CandidateFrusta[slot] = frustum;
+    }
+    counters.Add(Engine::EProfilerCounter::MapLowGeometryCandidateInstances, proxy.Candidate.size());
+    // 원본 active mask를 내리기 전에 IB와 모든 shader binding을 준비한다.
+    // 실패하면 이전 저폴리 선택도 해제하여 기존 CPU/GPU 원본 경로로 복귀한다.
+    if (proxy.Model->Prepare_StaticProxyVisibleSources(proxy.Candidate) != S_OK ||
+        (!proxy.Candidate.empty() &&
+            (FAILED(CMapAssetRenderUtils::Bind_CameraCullSnapshot(proxy.Shader, *camera)) ||
+             FAILED(game.Bind_CamPosition(proxy.Shader, "g_vCamPosition")) ||
+             FAILED(CMapStaticProxyBaker::Bind_Replacement(proxy.Shader, proxy.Model, m_pModelCom)) ||
+             FAILED(proxy.Shader->Begin(4u + CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored))))))
+    {
+        counters.Add(Engine::EProfilerCounter::MapLowGeometryPreflightFailedBatches);
+        Reset_ColorProxySelection();
+        proxy.Frame = m_FrameState->frameNumber; proxy.CameraRevision = camera->revision;
+        return;
+    }
+    const bool changed = proxy.Candidate != proxy.Selected;
+    if (changed)
+    {
+        for (uint32_t slot : proxy.Selected) m_Instances[slot].ColorProxySuppressed = false;
+        for (uint32_t slot : proxy.Candidate) m_Instances[slot].ColorProxySuppressed = true;
+        proxy.Selected.swap(proxy.Candidate);
+        m_bVisibleInstancesDirty = true; m_bFinalCameraPrepared = false;
+        Invalidate_VisibilityCpu();
+    }
+    proxy.SelectedIndexCount = 0u;
+    const auto ranges = proxy.Model->Get_StaticProxySourceRanges();
+    for (uint32_t slot : proxy.Selected)
+    {
+        m_Instances[slot].FrustumState = proxy.CandidateFrusta[slot];
+        proxy.SelectedIndexCount += ranges[slot].indexCount;
+    }
+    counters.Add(Engine::EProfilerCounter::MapLowGeometrySelectedInstances, proxy.Selected.size());
+    // lazy HLOD가 같은 batch로 다시 들어와도 이번 선택을 반복하지 않는다.
+    proxy.Frame = m_FrameState->frameNumber; proxy.CameraRevision = camera->revision;
+    if (changed) Invalidate_ChunkSelection();
+}
+
+HRESULT CMapStaticBatchObject::Render_ColorProxy()
+{
+    if (!Has_ColorProxySelection() || CGameInstance::Get().Is_SceneEnvironmentReplaced()) return S_OK;
+    auto& proxy = *m_ColorProxy;
+    auto& game = CGameInstance::Get();
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    if (!camera || FAILED(CMapAssetRenderUtils::Bind_CameraCullSnapshot(proxy.Shader, *camera)) ||
+        FAILED(game.Bind_CamPosition(proxy.Shader, "g_vCamPosition")) ||
+        FAILED(CMapStaticProxyBaker::Bind_Replacement(proxy.Shader, proxy.Model, m_pModelCom)) ||
+        FAILED(proxy.Shader->Begin(4u + CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored))))
+        return Render_ColorProxyFallback(camera);
+    const HRESULT result = proxy.Model->Render_StaticProxy();
+    // 현재 CModel API는 DrawIndexed 이전의 검증 실패만 HRESULT로 반환한다.
+    // 따라서 이 분기는 이미 성공한 저폴리 draw를 원본과 중복 제출하지 않는다.
+    if (FAILED(result)) return Render_ColorProxyFallback(camera);
+    if (result == S_OK)
+    {
+        if (auto* profiler = game.Get_Profiler())
+        {
+            profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometryDrawCalls);
+            profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometrySubmittedIndices, proxy.SelectedIndexCount);
+        }
+    }
+    if (result == S_OK && m_FrameState && m_FrameState->geometryDiagnostics)
+    {
+        auto& diagnostics = *m_FrameState->geometryDiagnostics;
+        try
+        {
+            MAP_GEOMETRY_DIAGNOSTIC_DRAW draw;
+            draw.path = "low_geometry_placement"; draw.assetId = m_AssetId;
+            draw.meshIndex = UINT32_MAX; // 전체 source mesh를 합친 하나의 placement 범위다.
+            draw.instanceCount = 1u; draw.vertexBufferCount = proxy.Model->Get_StaticProxyStats()->vertexCount;
+            const auto ranges = proxy.Model->Get_StaticProxySourceRanges();
+            for (uint32_t slot : proxy.Selected)
+            {
+                draw.indexCount += ranges[slot].indexCount;
+                draw.sourcePlacementIds.push_back(ranges[slot].sourceId);
+            }
+            draw.sourceIdsKnown = true;
+            diagnostics.Record(std::move(draw));
+        }
+        catch (...) { ++diagnostics.droppedDraws; }
+    }
+    return result;
+}
+
+HRESULT CMapStaticBatchObject::Render_ColorProxyFallback(const MAP_CAMERA_CULL_SNAPSHOT* camera)
+{
+    if (!Has_ColorProxySelection()) return S_OK;
+    auto& proxy = *m_ColorProxy;
+    proxy.BindingFailed = true;
+    auto& game = CGameInstance::Get();
+    if (auto* profiler = game.Get_Profiler())
+        profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometryLateFailures);
+    if (!proxy.OriginalInstances || !m_pModelCom || !m_pShaderCom) return E_FAIL;
+    const HRESULT cameraBind = camera ? CMapAssetRenderUtils::Bind_CameraCullSnapshot(m_pShaderCom, *camera) :
+        (FAILED(game.Bind_Transform(m_pShaderCom, "g_ViewMatrix", D3DTS::VIEW)) ||
+         FAILED(game.Bind_Transform(m_pShaderCom, "g_ProjMatrix", D3DTS::PROJ)) ? E_FAIL : S_OK);
+    if (FAILED(cameraBind)) return cameraBind;
+    const uint32_t cull = CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored);
+    if (cull > 2u) return E_UNEXPECTED;
+    // 현재 visible LOD bounds는 대체하지 않은 slot의 범위다. 실패한 Selected에
+    // 그 범위를 재사용하지 않고 한 프레임만 원본 LOD0으로 복구한다.
+    for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+    {
+        // HLOD claim은 이 프레임의 나머지 원본 slot만 소유한다. Selected는 claim을
+        // 건너뛰지 않고 전체 원본 mesh를 그려야 구멍과 중복 제출을 함께 피할 수 있다.
+        const auto* surface = m_pModelCom->Get_MaterialSurface(mesh);
+        const uint32_t pass = game.Get_MaterialRenderSettings().bUseSourceMaterials && surface &&
+            surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ? 24u + cull : cull;
+        if (FAILED(CMapAssetRenderUtils::Bind_Material(m_pModelCom, m_pShaderCom, mesh,
+            m_RenderProfile, Get_RenderElapsedTime(), nullptr, m_AssetId, nullptr, nullptr,
+            MAP_MATERIAL_BINDING_MODE::INSTANCED)) || FAILED(m_pShaderCom->Begin(pass))) return E_FAIL;
+        for (uint32_t slot : proxy.Selected)
+        {
+            const HRESULT draw = m_pModelCom->Render_Instanced(mesh, proxy.OriginalInstances.Get(),
+                sizeof(VTXMESHINSTANCE), 1u, slot * sizeof(VTXMESHINSTANCE), nullptr);
+            if (FAILED(draw)) return draw;
+            if (draw == S_OK)
+            {
+                if (auto* profiler = game.Get_Profiler())
+                {
+                    profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometryFallbackDrawCalls);
+                    profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometryFallbackIndices,
+                        m_pModelCom->Get_StaticMeshSelectedIndexCount(mesh, nullptr));
+                }
+            }
+            if (!m_FrameState || !m_FrameState->geometryDiagnostics) continue;
+            auto& diagnostics = *m_FrameState->geometryDiagnostics;
+            try
+            {
+                MAP_GEOMETRY_DIAGNOSTIC_DRAW row;
+                row.path = "low_geometry_source_fallback"; row.assetId = m_AssetId;
+                row.meshIndex = mesh; row.instanceCount = 1u;
+                row.vertexBufferCount = m_pModelCom->Get_MeshVertexCount(mesh);
+                row.indexCount = m_pModelCom->Get_StaticMeshSelectedIndexCount(mesh, nullptr);
+                row.sourcePlacementIds.push_back(m_Instances[slot].PlacementId); row.sourceIdsKnown = true;
+                diagnostics.Record(std::move(row));
+            }
+            catch (...) { ++diagnostics.droppedDraws; }
+        }
+    }
+    return S_OK;
 }
 
 void CMapStaticBatchObject::Update(
@@ -395,6 +736,18 @@ bool CMapStaticBatchObject::Are_AllChunkMeshesClaimed() const
     return true;
 }
 
+bool CMapStaticBatchObject::Is_GpuVisibilityActive() const
+{
+    const auto scene = m_GpuScene.lock();
+    return scene && scene->Can_Use(*this);
+}
+
+bool CMapStaticBatchObject::Is_GpuVisibilityReady() const
+{
+    const auto scene = m_GpuScene.lock();
+    return scene && scene->Is_Ready(*this);
+}
+
 void CMapStaticBatchObject::Invalidate_ChunkClaims()
 {
     for (const auto& claim : m_ChunkClaims)
@@ -403,6 +756,19 @@ void CMapStaticBatchObject::Invalidate_ChunkClaims()
         claim->valid = false;
         if (auto* profiler = CGameInstance::Get().Get_Profiler())
             profiler->Add_Counter(Engine::EProfilerCounter::MapChunkInvalidations);
+    }
+}
+
+void CMapStaticBatchObject::Invalidate_ChunkSelection()
+{
+    // 같은 claim을 쓰는 원본 mesh와 대체 chunk가 다음 조회에서 함께 재판정된다.
+    // 이미 TRS 변경으로 무효화된 claim은 표시 복귀만으로 되살리지 않는다.
+    for (const auto& claim : m_ChunkClaims)
+    {
+        if (claim && claim->valid)
+        {
+            claim->Invalidate_FrameSelection();
+        }
     }
 }
 
@@ -434,8 +800,12 @@ bool_t CMapStaticBatchObject::Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATI
 bool_t CMapStaticBatchObject::Try_GetStaticOcclusionDesc(STATIC_OCCLUSION_DESC& output) const
 {
     output = {};
+    if (Has_ColorProxySelection()) return false;
     auto& game = CGameInstance::Get();
-    if (!m_FrameState || !m_pModelCom || !Is_FinalCameraPrepared() || m_VisibleInstances.empty() ||
+    // GPU cohort의 callback은 다른 cell까지 대표한다. 이 cell의 CPU bounds로
+    // callback을 제거하면 전체 cohort가 사라질 수 있어 GPU 준비 완료분은 제외한다.
+    // 이번 프레임에 CPU fallback한 batch는 기존 가림/인접 병합을 그대로 소비한다.
+    if (Is_GpuVisibilityReady() || !m_FrameState || !m_pModelCom || !Is_FinalCameraPrepared() || m_VisibleInstances.empty() ||
         m_iVisibilitySettingsRevision != game.Get_MapVisibilitySettings().Revision ||
         game.Is_SceneEnvironmentReplaced() || !game.Get_MaterialRenderSettings().bUseSourceMaterials ||
         CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive() || m_FrustumCulling.bypass || m_FrustumCulling.diagnostics ||
@@ -467,6 +837,153 @@ bool_t CMapStaticBatchObject::Try_GetStaticOcclusionDesc(STATIC_OCCLUSION_DESC& 
     staged.OccluderTriangles = static_cast<uint32_t>((std::min)(occluderTriangles, uint64_t(UINT32_MAX)));
     output = staged;
     return true;
+}
+
+// Header additions beside Try_GetStaticOcclusionDesc:
+// bool_t Try_GetVisibilityDepthDesc(STATIC_OCCLUSION_DESC& output) const override;
+// HRESULT Render_VisibilityDepth(uint32_t triangleBudget, uint32_t& drawnTriangles) override;
+// These are candidate methods only; coordinator owner integrates them into the full-file plan.
+
+bool_t CMapStaticBatchObject::Try_GetVisibilityDepthDesc(STATIC_OCCLUSION_DESC& output) const
+{
+    output = {};
+    // 일부 slot만 저폴리여도 남은 원본의 가림자 역할은 유지한다.
+    // descriptor와 실제 depth draw가 같은 suppression 조건을 사용해야 한다.
+    auto& game = CGameInstance::Get();
+    if (!m_FrameState || !m_pModelCom || !m_pShaderCom || m_Instances.empty() ||
+        game.Is_SceneEnvironmentReplaced() || !game.Get_MaterialRenderSettings().bUseSourceMaterials ||
+        CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive() || m_FrustumCulling.bypass ||
+        m_FrustumCulling.diagnostics || m_RenderProfile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED ||
+        m_RenderProfile.opacity != 1.f || !m_iStaticShadowRevision) return false;
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const auto* cameraPosition = game.Get_CamPosition();
+    if (!camera || !cameraPosition) return false;
+    const auto& settings = game.Get_MapVisibilitySettings();
+    // GPU는 CPU visible payload를 만들지 않을 수 있다. 저작 visible/suppress와 현재
+    // HLOD claim만 읽고, 거리 제거 자체가 불가능한 근거리 원본만 depth 제공자로 삼는다.
+    // 화면 크기 문턱이나 GPU hysteresis와 무관하게 반드시 색상 draw에 남는 범위다.
+    const auto accepts = [&](const FMapStaticInstance& instance)
+    {
+        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed ||
+            instance.ColorProxySuppressed ||
+            !(instance.WorldBoundsRadius > 0.f) || !std::isfinite(instance.WorldBoundsRadius)) return false;
+        const float values[] = { instance.WorldBoundsCenter.x, instance.WorldBoundsCenter.y,
+            instance.WorldBoundsCenter.z, cameraPosition->x, cameraPosition->y, cameraPosition->z };
+        for (float value : values) if (!std::isfinite(value)) return false;
+        float limit = 0.f, pixels = 0.f;
+        if (CMapAssetRenderUtils::Get_SceneDistancePolicy(m_SceneVisibilityKind,
+            instance.WorldBoundsRadius, settings, limit, pixels))
+        {
+            const double x = double(instance.WorldBoundsCenter.x) - cameraPosition->x;
+            const double y = double(instance.WorldBoundsCenter.y) - cameraPosition->y;
+            const double z = double(instance.WorldBoundsCenter.z) - cameraPosition->z;
+            // GPU 후보의 distance는 공통 base policy에 1.1 margin을 추가한다.
+            // 여기서는 margin 없는 더 짧은 거리 안에만 원본을 채운다.
+            if (std::sqrt(x*x + y*y + z*z) > double(limit) + instance.WorldBoundsRadius) return false;
+        }
+        return true;
+    };
+    STATIC_OCCLUSION_DESC staged{};
+    staged.BoundsMin = { FLT_MAX, FLT_MAX, FLT_MAX };
+    staged.BoundsMax = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
+    uint64_t instanceCount = 0u;
+    for (const auto& instance : m_Instances)
+    {
+        if (!accepts(instance)) continue;
+        for (size_t axis = 0u; axis < 3u; ++axis)
+        {
+            const float lo = (&instance.WorldBoundsCenter.x)[axis] - instance.WorldBoundsRadius;
+            const float hi = (&instance.WorldBoundsCenter.x)[axis] + instance.WorldBoundsRadius;
+            if (!std::isfinite(lo) || !std::isfinite(hi)) return false;
+            (&staged.BoundsMin.x)[axis] = (std::min)((&staged.BoundsMin.x)[axis], lo);
+            (&staged.BoundsMax.x)[axis] = (std::max)((&staged.BoundsMax.x)[axis], hi);
+        }
+        ++instanceCount;
+    }
+    if (!instanceCount) return false;
+    for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+    {
+        // 원본으로 depth를 만든 뒤 축약 색상 geometry의 구멍을 가리는 오류를 피한다.
+        // 현재 CPU/GPU 어느 쪽으로도 축약할 수 없는 불투명 원본만 opt-in한다.
+        if (Is_ChunkMeshClaimed(mesh) || !StaticOpaqueOcclusionMesh(*m_pModelCom, mesh) ||
+            m_pModelCom->Has_MaterialTextureOverrides(mesh) || m_pModelCom->Can_UseStaticMeshLod(mesh)) continue;
+        const uint32_t indices = m_pModelCom->Get_MeshIndexCount(mesh);
+        if (!indices || indices % 3u) continue;
+        ++staged.Draws;
+        staged.Indices += uint64_t(indices) * instanceCount;
+    }
+    if (!staged.Draws || !staged.Indices) return false;
+    staged.OccluderTriangles = static_cast<uint32_t>((std::min)(staged.Indices / 3u, uint64_t(UINT32_MAX)));
+    staged.Revision = m_iStaticShadowRevision;
+    output = staged;
+    return true;
+}
+
+HRESULT CMapStaticBatchObject::Render_VisibilityDepth(uint32_t triangleBudget, uint32_t& drawnTriangles)
+{
+    drawnTriangles = 0u;
+    STATIC_OCCLUSION_DESC descriptor{};
+    if (!triangleBudget || !Try_GetVisibilityDepthDesc(descriptor)) return S_FALSE;
+    auto& game = CGameInstance::Get();
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const auto* cameraPosition = game.Get_CamPosition();
+    if (!camera || !cameraPosition) return S_FALSE;
+    const auto& settings = game.Get_MapVisibilitySettings();
+    const auto accepts = [&](const FMapStaticInstance& instance)
+    {
+        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed ||
+            instance.ColorProxySuppressed ||
+            !(instance.WorldBoundsRadius > 0.f) || !std::isfinite(instance.WorldBoundsRadius)) return false;
+        const float values[] = { instance.WorldBoundsCenter.x, instance.WorldBoundsCenter.y,
+            instance.WorldBoundsCenter.z, cameraPosition->x, cameraPosition->y, cameraPosition->z };
+        for (float value : values) if (!std::isfinite(value)) return false;
+        float limit = 0.f, pixels = 0.f;
+        if (CMapAssetRenderUtils::Get_SceneDistancePolicy(m_SceneVisibilityKind,
+            instance.WorldBoundsRadius, settings, limit, pixels))
+        {
+            const double x = double(instance.WorldBoundsCenter.x) - cameraPosition->x;
+            const double y = double(instance.WorldBoundsCenter.y) - cameraPosition->y;
+            const double z = double(instance.WorldBoundsCenter.z) - cameraPosition->z;
+            if (std::sqrt(x*x + y*y + z*z) > double(limit) + instance.WorldBoundsRadius) return false;
+        }
+        return true;
+    };
+    const uint32_t cull = CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored);
+    if (cull > 2u || FAILED(CMapAssetRenderUtils::Bind_CameraCullSnapshot(m_pShaderCom, *camera))) return E_FAIL;
+    try
+    {
+        for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
+        {
+            if (Is_ChunkMeshClaimed(mesh) || !StaticOpaqueOcclusionMesh(*m_pModelCom, mesh) ||
+                m_pModelCom->Has_MaterialTextureOverrides(mesh) || m_pModelCom->Can_UseStaticMeshLod(mesh)) continue;
+            const uint32_t triangles = m_pModelCom->Get_MeshIndexCount(mesh) / 3u;
+            if (!triangles || triangles > triangleBudget - drawnTriangles) continue;
+            const size_t capacity = (triangleBudget - drawnTriangles) / triangles;
+            m_CandidateLightingBankInstances.clear();
+            m_CandidateLightingBankInstances.reserve((std::min)(capacity, m_Instances.size()));
+            for (const auto& instance : m_Instances)
+            {
+                if (!accepts(instance)) continue;
+                VTXMESHINSTANCE payload{};
+                payload.World = instance.World;
+                payload.WorldInvTranspose = instance.WorldInvTranspose;
+                m_CandidateLightingBankInstances.push_back(payload);
+                if (m_CandidateLightingBankInstances.size() == capacity) break;
+            }
+            if (m_CandidateLightingBankInstances.empty()) continue;
+            const uint32_t count = static_cast<uint32_t>(m_CandidateLightingBankInstances.size());
+            // 임시 bank VB만 사용한다. GPU resident payload와 CPU fallback visible VB는
+            // 바꾸지 않는다. 이 pass의 VS는 World만 읽고 PS는 null인 기존 opaque depth다.
+            if (FAILED(Upload_LightingBankInstances()) || FAILED(m_pShaderCom->Begin(21u + cull)) ||
+                FAILED(m_pModelCom->Render_Instanced(mesh, m_pLightingBankInstanceBuffer.Get(),
+                    sizeof(VTXMESHINSTANCE), count))) return E_FAIL;
+            drawnTriangles += triangles * count;
+            if (drawnTriangles == triangleBudget) break;
+        }
+    }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const std::length_error&) { return E_OUTOFMEMORY; }
+    return drawnTriangles ? S_OK : S_FALSE;
 }
 
 uint32_t CMapStaticBatchObject::Rasterize_StaticOccluder(Engine::COcclusionCuller& culler, uint32_t triangleBudget) const
@@ -521,6 +1038,7 @@ void CMapStaticBatchObject::Commit_DistanceSelection(uint64_t revision)
 HRESULT CMapStaticBatchObject::Prepare_FinalCameraVisibility(
 	const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
 {
+    Prepare_ColorProxySelection(cameraSnapshot);
     const bool hasCamera = cameraSnapshot != nullptr;
     if (Is_FinalCameraPrepared() && m_bVisibleInstancesUsedCamera == hasCamera &&
         m_iVisibleCameraRevision == (hasCamera ? cameraSnapshot->revision : 0u))
@@ -542,18 +1060,48 @@ HRESULT CMapStaticBatchObject::Prepare_FinalCameraVisibility(
 	return visibility;
 }
 
+bool CMapStaticBatchObject::Is_FinalCameraColorCandidate(const MAP_CAMERA_CULL_SNAPSHOT* camera)
+{
+    if (m_iAuthoredVisibleInstanceCount == 0u) return false;
+    if (m_bBatchBoundsDirty) Rebuild_BatchCullBounds();
+    if (camera && m_bHasBatchBounds && !m_FrustumCulling.bypass && !m_FrustumCulling.diagnostics)
+    {
+        auto state = m_BatchFrustumState;
+        MAP_FRUSTUM_CULL_DECISION decision{};
+        const float3_t center(m_BatchBounds.x, m_BatchBounds.y, m_BatchBounds.z);
+        if (CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, *camera,
+            m_AssetId, m_AssetGroupId, 0u, center, m_BatchBounds.w, state,
+            decision, nullptr, MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY))
+            return decision.wouldBeVisible;
+    }
+    // 비유한 bounds/카메라 등 검사 실패는 원본 제출을 보존한다. 이 조회는
+    // Layer의 그림자 후보를 색상에서 걸러내지만 그림자 제출 자체는 막지 않는다.
+    return true;
+}
+
 void CMapStaticBatchObject::Submit_FinalCamera()
 {
+    Prepare_ColorProxySelection(CMapAssetRenderUtils::Capture_CameraCullSnapshotView());
     auto& game = CGameInstance::Get();
     if (game.Is_SceneEnvironmentReplaced() || m_iAuthoredVisibleInstanceCount == 0u)
         return;
 
-    if (!Are_AllChunkMeshesClaimed())
+    const auto gpuScene = m_GpuScene.lock();
+    if (gpuScene && gpuScene->Can_Use(*this))
+    {
+        const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+        if (Is_FinalCameraColorCandidate(camera))
+        {
+            gpuScene->Mark_Submitted(*this);
+            game.Add_RenderObject(RENDERGROUP::NONBLEND, static_pointer_cast<CGameObject>(shared_from_this()));
+        }
+    }
+    else if (Has_ColorProxySelection() || !Are_AllChunkMeshesClaimed())
     {
         const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
         const HRESULT visibility = Prepare_FinalCameraVisibility(camera);
         // A failed preparation keeps the original draw callback as the error/retry path.
-        if (FAILED(visibility) || !m_VisibleInstances.empty())
+        if (FAILED(visibility) || !m_VisibleInstances.empty() || Has_ColorProxySelection())
             game.Add_RenderObject(RENDERGROUP::NONBLEND,
                 static_pointer_cast<CGameObject>(shared_from_this()));
     }
@@ -572,6 +1120,13 @@ void CMapStaticBatchObject::Submit_FinalCamera()
 HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed)
 {
+    if (Has_ColorProxySelection()) { consumed = 1u; return Render(); }
+    // GPU에서 이미 모은 cohort는 인접 CPU 병합이 중복 소비하지 않도록 한 번만 그린다.
+    if (auto scene = m_GpuScene.lock())
+    {
+        const HRESULT gpu = scene->Try_Render(*this);
+        if (gpu != S_FALSE) { consumed = 1u; return gpu; }
+    }
     // Shader capacity limits distinct lighting bundles, not adjacent batches.
     // One bundle uses the ordinary pass; two/three use the small bank.
     constexpr size_t MINIMUM_LIGHTING_BANK_BATCHES = 2u;
@@ -598,7 +1153,7 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
     const uint64_t cameraRevision = camera ? camera->revision : 0u;
     const auto ready = [&](const CMapStaticBatchObject& batch)
     {
-        if (!batch.Is_FinalCameraPrepared() || !batch.m_pModelCom || !batch.m_pShaderCom ||
+        if (batch.Has_ColorProxySelection() || batch.Is_GpuVisibilityReady() || !batch.Is_FinalCameraPrepared() || !batch.m_pModelCom || !batch.m_pShaderCom ||
             batch.m_pModelCom->Get_NumMeshes() == 0u ||
             batch.m_bVisibleInstancesUsedCamera != hasCamera ||
             batch.m_iVisibleCameraRevision != cameraRevision || batch.m_VisibleInstances.empty() ||
@@ -745,6 +1300,9 @@ HRESULT CMapStaticBatchObject::Render_AdjacentNonBlend(
             (void)m_pShaderCom->Bind_RawValue("g_MapLightingBankSize", &noBank, sizeof(noBank));
             return result;
         }
+        Record_GeometryDiagnosticDraw("cpu_lighting_bank", mesh,
+            static_cast<uint32_t>(instanceCount), Uses_MeshScreenLod(mesh, hasScreenLod) ? &screenLod : nullptr,
+            objects.first(count));
         ++submittedMeshes;
     }
     const HRESULT reset = m_pShaderCom->Bind_RawValue("g_MapLightingBankSize", &noBank, sizeof(noBank));
@@ -764,7 +1322,7 @@ HRESULT CMapStaticBatchObject::Try_RenderIdenticalInstances(
     const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
     const auto ready = [&](const CMapStaticBatchObject& batch)
     {
-        return batch.Is_FinalCameraPrepared() && batch.m_pModelCom && batch.m_pShaderCom &&
+        return !batch.Has_ColorProxySelection() && !batch.Is_GpuVisibilityReady() && batch.Is_FinalCameraPrepared() && batch.m_pModelCom && batch.m_pShaderCom &&
             batch.m_bVisibleInstancesUsedCamera == (camera != nullptr) &&
             batch.m_iVisibleCameraRevision == (camera ? camera->revision : 0u) &&
             !batch.m_VisibleInstances.empty() &&
@@ -851,7 +1409,7 @@ HRESULT CMapStaticBatchObject::Try_RenderIdenticalInstances(
     auto* profiler = CGameInstance::Get().Get_Profiler();
     Engine::CProfilerWorkScope renderWork(profiler, Engine::EProfilerWork::MapBatchRender);
     const HRESULT result = Render_VisibleInstances(m_pLightingBankInstanceBuffer.Get(),
-        static_cast<uint32_t>(instanceCount), camera);
+        static_cast<uint32_t>(instanceCount), camera, "cpu_identical_merge", objects.first(count));
     // Once submission starts, a failure must not draw a successful prefix twice.
     if (FAILED(result)) return result;
     consumed = count;
@@ -907,6 +1465,14 @@ HRESULT CMapStaticBatchObject::Upload_LightingBankInstances()
 
 HRESULT CMapStaticBatchObject::Render()
 {
+    if (auto scene = m_GpuScene.lock())
+    {
+        const HRESULT gpu = scene->Try_Render(*this);
+        if (gpu != S_FALSE) return FAILED(gpu) ? gpu : Render_ColorProxy();
+    }
+    // 전 mesh의 HLOD 소유권이 확정되면 CPU VB 준비도 필요 없다. 위 GPU
+    // callback은 먼저 실행해 같은 cohort의 다른 원본 member 제출을 보존한다.
+    if (Are_AllChunkMeshesClaimed()) return Render_ColorProxy();
 	Engine::CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
 	Engine::CProfilerWorkScope renderWork(profiler, Engine::EProfilerWork::MapBatchRender);
 	const uint32_t noBank = 0u;
@@ -924,27 +1490,71 @@ HRESULT CMapStaticBatchObject::Render()
 	if (m_VisibleInstances.empty())
 	{
 		if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::MapBatchEmptyRenders);
-		return S_OK;
+		return Render_ColorProxy();
 	}
 	if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::MapBatchVisibleRenders);
 
-    return Render_VisibleInstances(m_pInstanceBuffer.Get(),
+    const HRESULT sourceResult = Render_VisibleInstances(m_pInstanceBuffer.Get(),
         static_cast<uint32_t>(m_VisibleInstances.size()), cameraSnapshot);
+    return FAILED(sourceResult) ? sourceResult : Render_ColorProxy();
+}
+
+// CMesh가 실제 제출한 직후만 호출한다. 전달된 LOD view는 draw와 동일하며
+// 기본 프레임에는 null 포인터 확인만 수행한다. 값 복사/할당 실패는 진단 손실로 남긴다.
+void CMapStaticBatchObject::Record_GeometryDiagnosticDraw(const char* path, uint32_t mesh,
+    uint32_t instances, const Engine::MESH_SCREEN_LOD_DESC* lod,
+    std::span<const std::shared_ptr<CGameObject>> sources, uint32_t firstVisibleInstance) const noexcept
+{
+    if (!m_FrameState || !m_FrameState->geometryDiagnostics) return;
+    auto& diagnostics = *m_FrameState->geometryDiagnostics;
+    try
+    {
+        MAP_GEOMETRY_DIAGNOSTIC_DRAW draw;
+        draw.path = path; draw.assetId = m_AssetId; draw.meshIndex = mesh;
+        draw.lod = m_pModelCom->Get_StaticMeshLodLevel(mesh, lod);
+        draw.indexCount = m_pModelCom->Get_StaticMeshSelectedIndexCount(mesh, lod);
+        draw.instanceCount = instances;
+        draw.vertexBufferCount = m_pModelCom->Get_MeshVertexCount(mesh);
+        // 기존 visible index가 보존된 draw만 거리 source와 연결한다. 추적하지 않은
+        // 배치에서 전체 authored placement를 채우면 실제 생존 ID로 오해되므로 unknown이다.
+        const auto append = [&](const CMapStaticBatchObject& batch, size_t first, size_t count)
+        {
+            if (batch.m_VisibleInstanceIndices.size() != batch.m_VisibleInstances.size() ||
+                first > batch.m_VisibleInstanceIndices.size() ||
+                count > batch.m_VisibleInstanceIndices.size() - first) return false;
+            for (size_t i = first; i < first + count; ++i)
+            {
+                const uint32_t index = batch.m_VisibleInstanceIndices[i];
+                if (index >= batch.m_Instances.size()) return false;
+                draw.sourcePlacementIds.push_back(batch.m_Instances[index].PlacementId);
+            }
+            return true;
+        };
+        bool known = true;
+        if (sources.empty())
+            known = append(*this, firstVisibleInstance == UINT32_MAX ? 0u : firstVisibleInstance, instances);
+        else
+            for (const auto& source : sources)
+            {
+                const auto* batch = dynamic_cast<const CMapStaticBatchObject*>(source.get());
+                if (!batch || !append(*batch, 0u, batch->m_VisibleInstances.size())) { known = false; break; }
+            }
+        draw.sourceIdsKnown = known && draw.sourcePlacementIds.size() == instances;
+        if (!draw.sourceIdsKnown) draw.sourcePlacementIds.clear();
+        diagnostics.Record(std::move(draw));
+    }
+    catch (...) { ++diagnostics.droppedDraws; }
 }
 
 bool_t CMapStaticBatchObject::Uses_MeshScreenLod(uint32_t meshIndex, bool_t hasScreenLod) const
 {
-    const auto* surface = m_pModelCom->Get_MaterialSurface(meshIndex);
-    return hasScreenLod && CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials && surface &&
-        surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
-        !surface->sourceFoliageWind && (surface->sourceBgFlags & 64u) == 0u &&
-        (surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::INHERIT ||
-         surface->renderMode == Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED) &&
-        !m_pModelCom->Has_MaterialTexture(meshIndex, aiTextureType_OPACITY);
+    return hasScreenLod && CGameInstance::Get().Get_MaterialRenderSettings().bUseSourceMaterials &&
+        m_pModelCom->Can_UseStaticMeshLod(meshIndex);
 }
 
 HRESULT CMapStaticBatchObject::Render_VisibleInstances(ID3D11Buffer* buffer, uint32_t instanceCount,
-    const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot)
+    const MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot, const char* diagnosticPath,
+    std::span<const std::shared_ptr<CGameObject>> diagnosticSources)
 {
     Engine::CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     const bool instancing = CGameInstance::Get().Get_RenderOptimizationSettings().MapInstancingEnabled;
@@ -1011,6 +1621,9 @@ HRESULT CMapStaticBatchObject::Render_VisibleInstances(ID3D11Buffer* buffer, uin
                 sizeof(VTXMESHINSTANCE), instancing ? instanceCount : 1u,
                 instancing ? 0u : instance * sizeof(VTXMESHINSTANCE),
                 useMeshLod ? &screenLod : nullptr))) return E_FAIL;
+            Record_GeometryDiagnosticDraw(diagnosticPath, meshIndex,
+                instancing ? instanceCount : 1u, useMeshLod ? &screenLod : nullptr,
+                diagnosticSources, instancing ? UINT32_MAX : instance);
         }
 	}
 	}
@@ -1251,8 +1864,26 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 		return E_INVALIDARG;
 	}
 
+    Reset_ColorProxySelection();
+    m_ColorProxy.reset();
     Invalidate_ChunkClaims();
 	FMapStaticInstance& current = m_Instances[iter->second];
+    // active bit만 바뀌는 visible/suppress는 resident 자료를 재생성하지 않는다.
+    // TRS가 움직이는 cohort는 CPU로 복귀하여 매프레임 전 장면 업로드를 피한다.
+    const bool transformChanged = 0 != std::memcmp(&current.World, &instance.World, sizeof(current.World));
+    const bool payloadChanged = transformChanged ||
+        0 != std::memcmp(&current.WorldInvTranspose, &instance.WorldInvTranspose, sizeof(current.WorldInvTranspose)) ||
+        0 != std::memcmp(&current.WorldBoundsCenter, &instance.WorldBoundsCenter, sizeof(current.WorldBoundsCenter)) ||
+        current.WorldBoundsRadius != instance.WorldBoundsRadius ||
+        0 != std::memcmp(&current.BakedLighting.scaleBias, &instance.BakedLighting.scaleBias, sizeof(float4_t)) ||
+        0 != std::memcmp(&current.BakedLighting.averageScale, &instance.BakedLighting.averageScale, sizeof(float4_t)) ||
+        0 != std::memcmp(&current.BakedLighting.directionalScale, &instance.BakedLighting.directionalScale, sizeof(float4_t)) ||
+        0 != std::memcmp(&current.BakedLighting.shadowScaleBias, &instance.BakedLighting.shadowScaleBias, sizeof(float4_t)) ||
+        0 != std::memcmp(&current.SourceWind.actorPositionSourceCm, &instance.SourceWind.actorPositionSourceCm, sizeof(float4_t)) ||
+        0 != std::memcmp(&current.SourceWind.objectDimensionsAndRadiusSourceCm, &instance.SourceWind.objectDimensionsAndRadiusSourceCm, sizeof(float4_t));
+    if (transformChanged) m_bGpuMutableTransform = true;
+    if (payloadChanged && m_bGpuMergedVisibility)
+        if (auto scene = m_GpuScene.lock()) scene->Invalidate();
 	// Bounds participate in light-volume culling even when the world is unchanged.
 	const bool_t shadowChanged = current.Visible != instance.Visible ||
 		0 != std::memcmp(&current.World, &instance.World, sizeof(current.World)) ||
@@ -1273,6 +1904,7 @@ HRESULT CMapStaticBatchObject::Update_Instance(
 	const bool_t suppressed = current.Suppressed;
 	const bool_t cameraPreviewSuppressed = current.CameraPreviewSuppressed;
 	current = instance;
+    current.ColorProxySuppressed = false;
 	current.Suppressed = suppressed;
 	current.CameraPreviewSuppressed = cameraPreviewSuppressed;
     m_InstanceLinearScaleBounds[iter->second] = LinearScaleBound(current.World);
@@ -1301,7 +1933,8 @@ HRESULT CMapStaticBatchObject::Set_InstanceVisible(
 	FMapStaticInstance& instance = m_Instances[iter->second];
 	if (instance.Visible != visible)
 	{
-        Invalidate_ChunkClaims();
+        Reset_ColorProxySelection();
+        Invalidate_ChunkSelection();
         Invalidate_FinalCameraSpatialBounds();
 		if (visible)
 			++m_iAuthoredVisibleInstanceCount;
@@ -1342,7 +1975,8 @@ HRESULT CMapStaticBatchObject::Set_InstanceSuppressed(
 	FMapStaticInstance& instance = m_Instances[iter->second];
 	if (instance.Suppressed != suppressed)
 	{
-        Invalidate_ChunkClaims();
+        Reset_ColorProxySelection();
+        Invalidate_ChunkSelection();
         Invalidate_FinalCameraSpatialBounds();
 		instance.Suppressed = suppressed;
         instance.DistanceHidden = false; instance.DistanceSettingsRevision = 0u;
@@ -1369,7 +2003,8 @@ HRESULT CMapStaticBatchObject::Set_InstanceCameraPreviewSuppressed(
 	FMapStaticInstance& instance = m_Instances[iter->second];
 	if (instance.CameraPreviewSuppressed != suppressed)
 	{
-        Invalidate_ChunkClaims();
+        Reset_ColorProxySelection();
+        Invalidate_ChunkSelection();
         Invalidate_FinalCameraSpatialBounds();
 		instance.CameraPreviewSuppressed = suppressed;
         instance.DistanceHidden = false; instance.DistanceSettingsRevision = 0u;
@@ -1405,7 +2040,9 @@ HRESULT CMapStaticBatchObject::Ready_Components(
 
     // Distance is a separate presentation policy: static masked foliage/grass
     // remain eligible. Semantic landscape/background and gameplay models do not.
-    m_bDistanceEligible = m_FrameState && m_AssetGroupId != "landscape" && m_RenderProfile.opacity == 1.f;
+    m_SceneVisibilityKind = CMapAssetRenderUtils::Classify_SceneVisibility(*m_pModelCom, m_RenderProfile, m_AssetGroupId);
+    m_bDistanceEligible = m_FrameState && (m_SceneVisibilityKind == MAP_SCENE_VISIBILITY_KIND::STATIC_SURFACE ||
+        m_SceneVisibilityKind == MAP_SCENE_VISIBILITY_KIND::VEGETATION);
     m_DistanceSourceIndices = 0u;
     m_bOcclusionGeometryEligible = m_FrameState && m_pModelCom->Has_LocalBounds();
     for (uint32_t mesh = 0u; mesh < m_pModelCom->Get_NumMeshes(); ++mesh)
@@ -1671,6 +2308,8 @@ HRESULT CMapStaticBatchObject::Stage_VisibilityCpu(const MAP_CAMERA_CULL_SNAPSHO
 bool_t CMapStaticBatchObject::Try_PrepareFinalCameraCpuJob(FINAL_CAMERA_CPU_JOB& output)
 {
     output = {};
+    Prepare_ColorProxySelection(CMapAssetRenderUtils::Capture_CameraCullSnapshotView());
+    if (Is_GpuVisibilityActive()) return false;
     auto& game = CGameInstance::Get();
     if (!m_FrameState || !game.Get_MapVisibilitySettings().ParallelPreparationEnabled ||
         game.Is_SceneEnvironmentReplaced() || m_iAuthoredVisibleInstanceCount == 0u ||
@@ -1731,7 +2370,7 @@ void CMapStaticBatchObject::Compute_VisibilityCpu()
 	{
         const FMapStaticInstance& instance = m_Instances[index];
 		if (!instance.Visible || instance.Suppressed ||
-			instance.CameraPreviewSuppressed)
+			instance.CameraPreviewSuppressed || instance.ColorProxySuppressed)
 			continue;
 
         ++cullingCandidates;
@@ -1760,16 +2399,18 @@ void CMapStaticBatchObject::Compute_VisibilityCpu()
         bool distanceHidden = false;
         if (distanceEnabled)
         {
-            const float limit = StaticPropDistanceLimit(instance.WorldBoundsRadius, visibilitySettings.DistanceScale);
-            if (limit > 0.f)
+            float limit = 0.f, maximumPixels = 0.f;
+            if (CMapAssetRenderUtils::Get_SceneDistancePolicy(m_SceneVisibilityKind, instance.WorldBoundsRadius,
+                visibilitySettings, limit, maximumPixels))
             {
                 ++distanceTested;
                 float margin = (std::max)(0.f, m_FrustumCulling.baseMargin);
                 if (instance.WorldBoundsRadius >= m_FrustumCulling.largeObjectRadiusThreshold)
                     margin += (std::max)(m_FrustumCulling.largeObjectAbsoluteMargin,
                         instance.WorldBoundsRadius * m_FrustumCulling.largeObjectRelativeMargin);
+                // 큰 건물도 공통 정책으로 판정하되 2px보다 큰 외곽은 남긴다.
                 distanceHidden = StaticPropDistanceHidden(instance, *distanceCamera, *cameraSnapshot, distanceViewport,
-                    limit, visibilitySettings.DistanceMaxPixels, visibilitySettings.Revision, margin);
+                    limit, maximumPixels, visibilitySettings.Revision, margin);
             }
         }
         if (distanceHidden != instance.DistanceHidden || (distanceHidden && instance.DistanceSettingsRevision != visibilitySettings.Revision))
@@ -2059,6 +2700,9 @@ bool_t CMapStaticBatchObject::Build_ScreenLodView(const MAP_CAMERA_CULL_SNAPSHOT
     if (viewport.x <= 0.f || viewport.y <= 0.f) return false;
     const vector_t center = XMVectorSet(m_VisibleLodBounds.x, m_VisibleLodBounds.y, m_VisibleLodBounds.z, 1.f);
     Engine::MESH_SCREEN_LOD_DESC candidate{};
+    // Bern의 입장 컷신과 일반 이동에 1pixel 예산을 준다. 선택기는 여기에
+    // 10% 여유를 적용하며 다른 맵은 기존0.25pixel 한계로 생성된 단계들을 선택한다.
+    if (m_FrameState) candidate.maximumPixelError = 1.f;
     XMStoreFloat4(&candidate.viewBounds, XMVector3TransformCoord(center, XMLoadFloat4x4(&v)));
     candidate.viewBounds.w = m_VisibleLodBounds.w * viewScale;
     candidate.projectionPixels = { p._11 * viewport.x * .5f, p._22 * viewport.y * .5f };

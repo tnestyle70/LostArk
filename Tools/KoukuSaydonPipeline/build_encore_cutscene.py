@@ -112,7 +112,7 @@ def add_to_composition(document, shots, leaf):
     duration = CONFIG['duration'] - CONFIG['start']
     assert not any(p['displayName'] == CONFIG['name'] for p in document['patterns']), 'already present'
     template = find_template(document)
-    pattern_id = 'KAKULSAYDON_G1_PATTERN_' + str(document['nextPatternOrdinal'])
+    pattern_id = 'KOUKUSAYDON_G1_PATTERN_' + str(document['nextPatternOrdinal'])
     assert not any(p['patternId'] == pattern_id for p in document['patterns']), pattern_id
     resources = [bss.resource('presentation.' + s['shotId'], s['displayName'], 'CAMERA', s['shotId'], e - b)
                  for b, e, s in shots]
@@ -154,7 +154,7 @@ ACTOR = dict(group=51, source='Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel
              material_source='Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel')
 WORLDS_PATH = bss.AREA / (base.AREA + '.worldsequences.json')
 ACTOR_WMODEL = ACTOR['source']
-ACTOR_DONOR = 'Map/KakulSaydon/SourceSequences/%s/%s/%s.wmodel' % (CONFIG['prefix'], ACTOR['label'], ACTOR['label'])
+ACTOR_DONOR = 'Map/KoukuSaydon/SourceSequences/%s/%s/%s.wmodel' % (CONFIG['prefix'], ACTOR['label'], ACTOR['label'])
 
 
 def find_array(text, key):
@@ -305,10 +305,10 @@ def add_actor_to_composition(document, world):
     pattern = matches[0]
     assert not pattern['worldOccurrences'] and pattern['nextWorldOccurrenceOrdinal'] == 1, 'actor already present'
     assert not any(w['sequenceInstanceId'] == world['sequenceInstanceId'] for w in document['worlds']), 'world present'
-    # project_kouku_saydon_composition._validate_catalog only accepts kakulsaydon.g1.world.<N> below nextWorldOrdinal
+    # project_kouku_saydon_composition._validate_catalog only accepts koukusaydon.g1.world.<N> below nextWorldOrdinal
     # (plus the gate2 intro source prefix), so this Boss/Sequence row uses the Workbench form, not world.<prefix>.<label>.
     row = dict(world)
-    row['worldId'] = 'kakulsaydon.g1.world.' + str(document['nextWorldOrdinal'])
+    row['worldId'] = 'koukusaydon.g1.world.' + str(document['nextWorldOrdinal'])
     assert not any(w['worldId'] == row['worldId'] for w in document['worlds']), row['worldId']
     document['worlds'].append(row)
     document['nextWorldOrdinal'] += 1

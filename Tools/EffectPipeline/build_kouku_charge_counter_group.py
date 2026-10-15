@@ -8,7 +8,7 @@ from build_kouku_dove_pizza_candidates import native_references, registration, s
 
 ASSET = 'effect.kouku.gate1.charge_counter.group'
 FX_ASSET = 'effect.kouku.gate1.charge_counter.fx'
-FX_RESOURCE = 'kakulsaydon.effect.charge.counter.fx'
+FX_RESOURCE = 'koukusaydon.effect.charge.counter.fx'
 OUTPUT = ROOT / 'out/EffectV1ChargeCounter20260917/candidate'
 COMPOSITION = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
 ACTION = Path('C:/LostArkExtract/LV_LUT_MIDNIGHTC_ED_20260829/RemainingCharacterExtraction-20260829/ActionNameSources/MN_RPCT_05.action-effects.json')
@@ -62,7 +62,7 @@ def build():
     fx['modelCues'] = []
     write(OUTPUT / (FX_ASSET + '.effect.json'), fx)
     composition = read(COMPOSITION)
-    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_80')
+    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_80')
     pattern_duration = sum(s['durationMs'] for s in pattern['stages'])
     resource = dict(resourceId=FX_RESOURCE, displayName=fx['displayName'], defaultAnchorKind='BOSS',
         kind='EFFECT', assetId=FX_ASSET, resourceKind='V1_EFFECT', elementId='', durationMs=5199,

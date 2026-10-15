@@ -1,3 +1,5 @@
+﻿// 게시된 worldbootstrap의 배치·트리거·NPC 논리와 쿠크 미니게임 투영 데이터를 Server 값 타입으로 읽는다.
+// 실제 entity 생성/트리거 실행/충돌 판정은 CGameRoom이 이 결과를 소비하는 단계에서 수행한다.
 #include "WorldBootstrap.h"
 
 #include <Windows.h>
@@ -17,23 +19,32 @@ namespace
 	using namespace LostArk::Server;
 	using LostArk::Shared::WORLD_ID;
 
+	// 파일 이름과 header의 world 이름에 쓰는 정적 literal view다. 미지원 ID는 빈 view로 반환한다.
 	std::string_view World_ToString(const WORLD_ID worldId)
 	{
 		switch (worldId)
 		{
-		case WORLD_ID::BERN: return "BERN";
-		case WORLD_ID::VALTAN_ARENA: return "VALTAN_ARENA";
-		case WORLD_ID::TRAINING_GROUND: return "TRAINING_GROUND";
+		case WORLD_ID::BERN:
+			return "BERN";
+		case WORLD_ID::VALTAN_ARENA:
+			return "VALTAN_ARENA";
+		case WORLD_ID::TRAINING_GROUND:
+			return "TRAINING_GROUND";
 		case WORLD_ID::CHARACTER_SELECT_ARENA:
 			return "CHARACTER_SELECT_ARENA";
-		case WORLD_ID::KAKULSAYDON_ARENA:
-			return "KAKULSAYDON_ARENA";
-		case WORLD_ID::MAHARAKA: return "MAHARAKA";
-		case WORLD_ID::COLOSSEUM: return "COLOSSEUM";
-		default: return {};
+		case WORLD_ID::KOUKUSAYDON_ARENA:
+			return "KOUKUSAYDON_ARENA";
+		case WORLD_ID::MAHARAKA:
+			return "MAHARAKA";
+		case WORLD_ID::COLOSSEUM:
+			return "COLOSSEUM";
+		default:
+			return {};
 		}
 	}
 
+	// 명시한 Server data root를 먼저 사용하고, 없으면 EXE 상위 두 단계 아래 DataFiles를 찾는다.
+	// 경로를 조합할 뿐 존재 여부는 여기서 검사하지 않는다. 이 계층은 저작 Data JSON을 직접 읽지 않는다.
 	std::filesystem::path Resolve_DataRoot()
 	{
 		wchar_t configured[32768]{};
@@ -52,6 +63,8 @@ namespace
 			L"DataFiles";
 	}
 
+	// 탭으로 나눈 view는 line의 문자 메모리를 차용한다. 빈 필드와 끝의 빈 필드도 남긴다.
+	// 다음 getline/문자열 변경 전에 모두 소비하거나 소유 string으로 복사해야 한다.
 	std::vector<std::string_view> SplitTabs(const std::string& line)
 	{
 		std::vector<std::string_view> values;
@@ -69,12 +82,15 @@ namespace
 		return values;
 	}
 
+	// binary stream의 getline이 남긴 마지막 CR 한 개만 제거한다. 필드 안 공백/CR은 정규화하지 않는다.
 	void StripCarriageReturn(std::string& line)
 	{
 		if (!line.empty() && '\r' == line.back())
 			line.pop_back();
 	}
 
+	// from_chars가 전체 필드를 소비했을 때만 성공이다. 숫자 뒤 잘못된 접미사가 있으면 outValue는 바뀌어도 false일 수 있다.
+	// 호출자는 지역 후보 필드에 읽고 행 전체 실패 시 버린다. 실수의 finite 여부와 도메인 범위는 각 행에서 추가 검사한다.
 	template<typename T>
 	bool ParseNumber(const std::string_view value, T& outValue)
 	{
@@ -84,6 +100,7 @@ namespace
 			result.ptr == value.data() + value.size();
 	}
 
+	// 저장 행으로 받을 다섯 종류만 연결한다. enum에 있는 MONSTER/WORLD_OBJECT는 이 parser에서 받아들이지 않는다.
 	bool ParseKind(
 		const std::string_view value,
 		WORLD_BOOTSTRAP_KIND& outKind)
@@ -103,6 +120,7 @@ namespace
 		return true;
 	}
 
+	// NPC 이동 정책 이름만 enum으로 변환한다. 잘못된 이름이면 출력 enum은 그대로 두고 실패한다.
 	bool ParseNpcBehaviorMode(
 		const std::string_view value,
 		NPC_BEHAVIOR_MODE& outMode)
@@ -118,6 +136,7 @@ namespace
 		return true;
 	}
 
+	// waypoint 경로의 반복 정책을 읽는다. 실제 다음 waypoint 선택은 NPC runtime의 책임이다.
 	bool ParseNpcRouteMode(
 		const std::string_view value,
 		NPC_ROUTE_MODE& outMode)
@@ -133,6 +152,7 @@ namespace
 		return true;
 	}
 
+	// 논리 action을 순차/가중 선택할지를 읽는다. clip 이름이나 Client 재생 설정을 이 데이터에 포함하지 않는다.
 	bool ParseNpcActionSelection(
 		const std::string_view value,
 		NPC_ACTION_SELECTION& outSelection)
@@ -146,6 +166,7 @@ namespace
 		return true;
 	}
 
+	// changeLevel이 가리킬 수 있는 목적지만 받는다. 현재 world와 같은지 여부는 action 행에서 별도로 거부한다.
 	bool ParseTriggerTargetWorld(
 		const std::string_view value,
 		WORLD_ID& outWorldId)
@@ -154,8 +175,8 @@ namespace
 			outWorldId = WORLD_ID::BERN;
 		else if ("VALTAN_ARENA" == value)
 			outWorldId = WORLD_ID::VALTAN_ARENA;
-		else if ("KAKULSAYDON_ARENA" == value)
-			outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		else if ("KOUKUSAYDON_ARENA" == value)
+			outWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		else if ("MAHARAKA" == value)
 			outWorldId = WORLD_ID::MAHARAKA;
 		else if ("COLOSSEUM" == value)
@@ -165,6 +186,7 @@ namespace
 		return true;
 	}
 
+	// 최대 128-byte ID를 현재 C 문자 locale의 영숫자 및 _.-로 제한한다. catalog에 실제 존재하는지는 검사하지 않는다.
 	bool IsStableId(const std::string_view value)
 	{
 		return !value.empty() && value.size() <= 128u &&
@@ -176,9 +198,12 @@ namespace
 	}
 }
 
+// CGameRoom 생성 시 world별 게시 파일을 한 번 해석한다. 명시적인 false 경로는 기존 collection/area/revision을 유지하고 상태 문자열만 바꾼다.
+// 파일·경로·메모리 할당 예외를 catch하지 않으며 마지막 멤버 교체 전체에 대한 예외 rollback/동시 접근 잠금은 제공하지 않는다.
 bool LostArk::Server::CWorldBootstrap::Load(
 	const LostArk::Shared::WORLD_ID worldId)
 {
+	// 1. world와 게시 경로를 결정하고 header를 읽는다. 버전 8~12에 따라 뒤에 이어질 table의 개수가 달라진다.
 	const std::string_view worldName = World_ToString(worldId);
 	if (worldName.empty())
 	{
@@ -215,6 +240,8 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	std::uint32_t laneCount = 0;
 	std::uint32_t ballCount = 0;
 	std::uint32_t bouncingBallCount = 0;
+	// v8 배치, v9 sequence, v10 0/36개 lane, v11 source ball, v12 bouncing ball의 선언 개수를 검사한다.
+	// 각 버전의 정확한 필드 수를 먼저 확인하는 단락 평가 순서를 유지해 header 인덱스 접근을 보호한다.
 	if ((6u != header.size() && 7u != header.size() && 8u != header.size() && 9u != header.size() && 10u != header.size()) ||
 		"LOSTARK_WORLD_BOOTSTRAP" != header[0] ||
 		!ParseNumber(header[1], version) || (8u != version && 9u != version && 10u != version && 11u != version && 12u != version) ||
@@ -236,10 +263,10 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		m_strStatus = "World bootstrap header is invalid";
 		return false;
 	}
-	// Header fields are string_views into `line`. Preserve the area ID before
-	// subsequent getline calls reuse that string buffer for placement rows.
+	// header view는 line을 차용한다. 이후 getline이 같은 버퍼를 재사용하기 전에 area ID만 소유 string으로 복사한다.
 	const std::string stagedAreaId{ header[3] };
 
+	// 2. 배치 행을 지역 후보에 누적한다. row의 view는 이 반복 안에서만 읽고 저장 ID는 string으로 복사한다.
 	std::vector<WORLD_BOOTSTRAP_PLACEMENT> staged;
 	std::unordered_set<std::string> placementIds;
 	staged.reserve(count);
@@ -274,6 +301,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		placement.strPlacementId = fields[0];
 		placement.isEnabled = 1 == enabled;
+		// 공통 위치는 world 좌표, yaw는 degree다. 종류별 추가 필드 수와 반쪽 크기/실행 payload를 여기서 분기한다.
 		if (WORLD_BOOTSTRAP_KIND::COLLISION_BOX == placement.eKind)
 		{
 			if (12u != fields.size() || "-" != fields[2] || "-" != fields[3] ||
@@ -294,6 +322,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		else if (WORLD_BOOTSTRAP_KIND::TRIGGER_BOX == placement.eKind)
 		{
+			// enabled trigger는 action 정확히 한 개, disabled trigger는 0~1개다. 상호작용 여부는 독립 bool 필드로 보관한다.
 			int triggerOnce = 0;
 			int requiresInteract = 0;
 			std::uint32_t actionCount = 0;
@@ -332,9 +361,11 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						std::to_string(index);
 					return false;
 				}
+				// kind 뒤의 payloadCount가 지정한 필드 범위 안에서 action을 읽고, 끝에서 cursor가 행 끝과 같은지 확인한다.
 				WORLD_TRIGGER_ACTION action{};
 				if ("movePlayer" == fields[actionCursor])
 				{
+					// 기본 이동은 목적지/지속 시간(초)/arc 높이다. 6필드는 쿠크 도착 HUD mode, WALL_CLIMB는 발탄의 시간 표본을 추가한다.
 					const bool wallClimbPayload = payloadCount >= 16u &&
 						"WALL_CLIMB" == fields[actionCursor + 7u];
 					if ((5u != payloadCount && 6u != payloadCount && !wallClimbPayload) ||
@@ -372,6 +403,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 							m_strStatus = "World movePlayer wall climb header is invalid";
 							return false;
 						}
+						// 2~181개 표본은 0ms부터 엄격히 증가해야 한다. 위치는 유한성만 보고 각 표본의 절댓값 상한은 별도 검사하지 않는다.
 						action.eMoveStyle = WORLD_TRIGGER_MOVE_STYLE::WALL_CLIMB;
 						action.TrackSamples.reserve(sampleCount);
 						std::uint32_t previousTimeMs = 0u;
@@ -393,6 +425,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 							previousTimeMs = sample.iTimeMs;
 							action.TrackSamples.push_back(sample);
 						}
+						// 마지막 ms를 초로 바꿔 duration과 0.001초 이내인지, 마지막 위치가 목표와 각 축 0.001 이내인지 대조한다.
 						if (std::abs(action.fDurationSeconds - static_cast<float>(previousTimeMs) / 1000.f) > .001f)
 						{
 							m_strStatus = "World movePlayer wall climb duration is invalid";
@@ -410,7 +443,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 					else if (6u == payloadCount)
 					{
 						const auto mode = fields[actionCursor + 7u];
-						if (worldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ||
+						if (worldId != LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA ||
 							(mode != "MARIO" && mode != "MAZE" && mode != "NONE"))
 						{
 							m_strStatus = "World movePlayer Kouku mode is invalid";
@@ -423,9 +456,8 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				}
 				else if ("changeLevel" == fields[actionCursor])
 				{
-					/* Payload 1 is the target world alone. Payload 2 adds the placement id of
-					   the target world's own bootstrap the player lands on (the ship dock and
-					   its return use it); the room re-validates that id on entry. */
+					// 1필드는 목적 world, 2필드는 그 world에서 착지할 placement ID까지 저장한다. 여기서는 ID 형식만 확인한다.
+					// 목적지 bootstrap의 실제 placement 존재/입장 가능 여부는 world 이동을 처리하는 room이 확인한다.
 					if ((1u != payloadCount && 2u != payloadCount) ||
 						!ParseTriggerTargetWorld(
 							fields[actionCursor + 2u], action.eTargetWorldId) ||
@@ -440,6 +472,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						action.strTargetId = fields[actionCursor + 3u];
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::CHANGE_LEVEL;
 				}
+				// 아래 target은 stable ID 형식만 읽는다. 실제 spawn group/encounter/sequence의 존재와 실행은 소비자 경계다.
 				else if ("activateSpawnGroup" == fields[actionCursor])
 				{
 					if (1u != payloadCount ||
@@ -476,11 +509,12 @@ bool LostArk::Server::CWorldBootstrap::Load(
 					action.eKind = WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE;
 					action.strTargetId = fields[actionCursor + 2u];
 				}
+				// 쿠크 world 전용 kind/target을 저장한다. 이 분기 자체는 requiresInteract와 target의 구체 역할을 검사하지 않는다.
 				else if ("claimCardMazeTelescope" == fields[actionCursor])
 				{
 					if (1u != payloadCount ||
 						!IsStableId(fields[actionCursor + 2u]) ||
-						worldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA)
+						worldId != LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA)
 					{
 						m_strStatus = "World claimCardMazeTelescope action is invalid at row " +
 							std::to_string(index);
@@ -539,6 +573,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				}
 				else
 				{
+					// NPC 논리 설정: 이동 속도/반경, ms 단위 시작·대기 시간, waypoint와 action 목록을 한 행에서 읽는다.
 					WORLD_NPC_BEHAVIOR_DESCRIPTOR& behavior =
 						placement.NpcBehavior;
 					std::uint32_t waypointCount = 0u;
@@ -574,6 +609,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 					}
 					behavior.strLookTargetPlacementId =
 						"-" == fields[19] ? "" : std::string(fields[19]);
+					// waypoint는 ID·XYZ·wait(ms)·yaw 존재·yaw(degree)의 7필드다. 개수와 ID 중복을 검사하며 순서는 그대로 보존한다.
 					std::size_t cursor = 21u;
 					std::unordered_set<std::string> waypointIds;
 					behavior.Waypoints.reserve(waypointCount);
@@ -630,6 +666,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						behavior.Waypoints.push_back(std::move(waypoint));
 						cursor += 7u;
 					}
+					// waypoint 뒤 action 수를 읽고 ID·duration(ms)·waitAfter(ms)·weight 4필드씩 소비한다.
 					std::uint32_t actionCount = 0u;
 					if (cursor >= fields.size() ||
 						!ParseNumber(fields[cursor], actionCount) ||
@@ -683,6 +720,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 						behavior.Actions.push_back(std::move(action));
 						cursor += 4u;
 					}
+					// 모든 필드를 소비했는지와 stationary/patrol/wander별 waypoint·반경 조합을 확인한다. 실행 경로 탐색은 하지 않는다.
 					if (cursor != fields.size() ||
 						(NPC_BEHAVIOR_MODE::STATIONARY == behavior.eMode &&
 							(!behavior.Waypoints.empty() ||
@@ -704,6 +742,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				"-" == fields[2] ? "" : std::string(fields[2]);
 			placement.strEncounterId = "-" == fields[3] ? "" : std::string(fields[3]);
 		}
+		// kind별 archetype/encounter 필수·금지 규칙과 placement ID 중복을 확인한 뒤 이 행을 후보에 확정한다.
 		const bool isBoss = WORLD_BOOTSTRAP_KIND::BOSS == placement.eKind;
 		const bool isPlayerSpawn =
 			WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN == placement.eKind;
@@ -734,25 +773,38 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 		staged.push_back(std::move(placement));
 	}
+	// 3. 후속 sequence ID 목록을 읽는다. 아래 lane은 이 목록과 조인하지만 trigger의 모든 target을 여기서 조인하지는 않는다.
 	std::vector<std::string> sequences;
 	std::unordered_set<std::string> sequenceIds;
 	for (std::uint32_t i = 0; i < sequenceCount; ++i)
 	{
-		if (!std::getline(input, line)) { m_strStatus = "World sequence ID list is truncated"; return false; }
+		if (!std::getline(input, line))
+		{
+			m_strStatus = "World sequence ID list is truncated";
+			return false;
+		}
 		StripCarriageReturn(line);
 		if (!IsStableId(line) || !sequenceIds.insert(line).second)
-		{ m_strStatus = "World sequence ID is invalid or duplicated"; return false; }
+		{
+			m_strStatus = "World sequence ID is invalid or duplicated";
+			return false;
+		}
 		sequences.push_back(line);
 	}
+	// 4. 쿠크 행진 lane은 sequence ID를 참조하며 지연/지속 시간은 ms, 시작·끝 위치는 world 좌표다.
 	std::vector<CARD_MAZE_MARCH_LANE> lanes;
 	std::unordered_set<std::string> laneIds;
 	for (std::uint32_t i = 0u; i < laneCount; ++i)
 	{
-		if (!std::getline(input, line)) { m_strStatus = "Card maze lanes truncated"; return false; }
+		if (!std::getline(input, line))
+		{
+			m_strStatus = "Card maze lanes truncated";
+			return false;
+		}
 		StripCarriageReturn(line);
 		const auto f = SplitTabs(line);
 		CARD_MAZE_MARCH_LANE lane;
-		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() != 9u ||
+		if (worldId != WORLD_ID::KOUKUSAYDON_ARENA || f.size() != 9u ||
 			!sequenceIds.contains(std::string(f[0])) || !laneIds.insert(std::string(f[0])).second ||
 			!ParseNumber(f[1], lane.delayMs) || lane.delayMs > 120000u ||
 			!ParseNumber(f[2], lane.durationMs) || lane.durationMs == 0u || lane.durationMs > 120000u ||
@@ -760,21 +812,28 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			!ParseNumber(f[6], lane.endX) || !ParseNumber(f[7], lane.endY) || !ParseNumber(f[8], lane.endZ) ||
 			!std::isfinite(lane.startX) || !std::isfinite(lane.startY) || !std::isfinite(lane.startZ) ||
 			!std::isfinite(lane.endX) || !std::isfinite(lane.endY) || !std::isfinite(lane.endZ))
-		{ m_strStatus = "Card maze lane is invalid"; return false; }
+		{
+			m_strStatus = "Card maze lane is invalid";
+			return false;
+		}
 		lane.instanceId = f[0];
 		lanes.push_back(std::move(lane));
 	}
+	// 5. 마리오 공은 stage/layout별 slot이 0부터 빈틈없이 들어오는지 확인한다. 그룹별 전체 개수를 채웠는지는 검사하지 않는다.
 	std::vector<MARIO_SOURCE_BALL> balls;
 	std::vector<std::uint8_t> ballSlots(4u * 3u, 0u);
 	for (std::uint32_t i = 0u; i < ballCount; ++i)
 	{
-		if (!std::getline(input, line)) { m_strStatus = "Mario ball rows truncated"; return false; }
+		if (!std::getline(input, line))
+		{
+			m_strStatus = "Mario ball rows truncated";
+			return false;
+		}
 		StripCarriageReturn(line);
 		const auto f = SplitTabs(line);
 		MARIO_SOURCE_BALL ball;
-		/* Slots arrive 0,1,2.. per (stage, layout) so the mask bit is the
-		Client's binding index; only stage 4 reaches twelve. */
-		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() != 9u || "MARIOBALL" != f[0] ||
+		// (stage, layout)별 0,1,2... slot은 Client binding과 popped mask bit를 연결한다. stage 4는 최대 12개, 나머지는 9개다.
+		if (worldId != WORLD_ID::KOUKUSAYDON_ARENA || f.size() != 9u || "MARIOBALL" != f[0] ||
 			!ParseNumber(f[1], ball.stage) || ball.stage < 1u || ball.stage > 4u ||
 			!ParseNumber(f[2], ball.layout) || ball.layout < 1u || ball.layout > 3u ||
 			!ParseNumber(f[3], ball.slot) || ball.slot != ballSlots[(ball.stage - 1u) * 3u + ball.layout - 1u] ||
@@ -783,20 +842,28 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			!ParseNumber(f[5], ball.placementId) || 0u == ball.placementId ||
 			!ParseNumber(f[6], ball.x) || !ParseNumber(f[7], ball.y) || !ParseNumber(f[8], ball.z) ||
 			!std::isfinite(ball.x) || !std::isfinite(ball.y) || !std::isfinite(ball.z))
-		{ m_strStatus = "Mario ball row is invalid"; return false; }
+		{
+			m_strStatus = "Mario ball row is invalid";
+			return false;
+		}
 		++ballSlots[(ball.stage - 1u) * 3u + ball.layout - 1u];
 		balls.push_back(ball);
 	}
+	// 6. 바운싱 공은 placement ID를 중복 없이 저장하고 양수 주기(ms)/속도 및 엄격 증가 key로 아래 보간 함수의 전제를 만든다.
 	std::vector<MARIO_BOUNCING_BALL> bouncingBalls;
 	std::unordered_set<std::uint64_t> bouncingIds;
 	for (std::uint32_t i = 0u; i < bouncingBallCount; ++i)
 	{
-		if (!std::getline(input, line)) { m_strStatus = "Mario bouncing balls truncated"; return false; }
+		if (!std::getline(input, line))
+		{
+			m_strStatus = "Mario bouncing balls truncated";
+			return false;
+		}
 		StripCarriageReturn(line);
 		const auto f = SplitTabs(line);
 		MARIO_BOUNCING_BALL ball;
 		std::uint32_t keyCount = 0u;
-		if (worldId != WORLD_ID::KAKULSAYDON_ARENA || f.size() < 9u || f[0] != "MARIOBOUNCE" ||
+		if (worldId != WORLD_ID::KOUKUSAYDON_ARENA || f.size() < 9u || f[0] != "MARIOBOUNCE" ||
 			!ParseNumber(f[1], ball.placementId) || !ball.placementId || !bouncingIds.insert(ball.placementId).second ||
 			!ParseNumber(f[2], ball.x) || !ParseNumber(f[3], ball.y) || !ParseNumber(f[4], ball.z) ||
 			!ParseNumber(f[5], ball.radius) || !ParseNumber(f[6], ball.durationMs) || !ParseNumber(f[7], ball.playbackSpeed) ||
@@ -805,7 +872,10 @@ bool LostArk::Server::CWorldBootstrap::Load(
 			!std::isfinite(ball.durationMs) || ball.durationMs < 1.f || ball.durationMs > 120000.f ||
 			!std::isfinite(ball.playbackSpeed) || ball.playbackSpeed < .1f || ball.playbackSpeed > 4.f ||
 			!ParseNumber(f[8], keyCount) || keyCount < 2u || keyCount > 4096u || f.size() != 9u + 2u * keyCount)
-		{ m_strStatus = "Mario bouncing ball is invalid"; return false; }
+		{
+			m_strStatus = "Mario bouncing ball is invalid";
+			return false;
+		}
 		for (std::uint32_t key = 0u; key < keyCount; ++key)
 		{
 			MARIO_BOUNCING_BALL::KEY value;
@@ -813,19 +883,28 @@ bool LostArk::Server::CWorldBootstrap::Load(
 				!std::isfinite(value.timeMs) || !std::isfinite(value.offsetY) || std::abs(value.offsetY) > 100.f ||
 				value.timeMs < 0.f || value.timeMs > ball.durationMs ||
 				(key && value.timeMs <= ball.keys.back().timeMs))
-			{ m_strStatus = "Mario bouncing ball key is invalid"; return false; }
+			{
+				m_strStatus = "Mario bouncing ball key is invalid";
+				return false;
+			}
 			ball.keys.push_back(value);
 		}
+		// 0과 duration의 두 끝 key가 있어야 하고 offset 차이는 0.0001 이내여야 한다. 주기 경계의 위치 연속성을 근사 허용한다.
 		if (ball.keys.front().timeMs != 0.f || ball.keys.back().timeMs != ball.durationMs ||
 			std::abs(ball.keys.front().offsetY - ball.keys.back().offsetY) > .0001f)
-		{ m_strStatus = "Mario bouncing ball loop is discontinuous"; return false; }
+		{
+			m_strStatus = "Mario bouncing ball loop is discontinuous";
+			return false;
+		}
 		bouncingBalls.push_back(std::move(ball));
 	}
+	// 7. 선언한 모든 행 뒤에는 빈 행도 허용하지 않는다. getline 실패가 EOF인지 I/O 오류인지 별도로 구분하지 않는다.
 	if (std::getline(input, line))
 	{
 		m_strStatus = "World bootstrap has trailing rows";
 		return false;
 	}
+	// NPC 시선 대상은 모든 배치를 읽은 뒤 선형 검색한다. enabled NPC이며 자기 자신이 아니어야 한다.
 	for (const WORLD_BOOTSTRAP_PLACEMENT& placement : staged)
 	{
 		if (!placement.bHasNpcBehavior ||
@@ -851,6 +930,7 @@ bool LostArk::Server::CWorldBootstrap::Load(
 		}
 	}
 
+	// 8. 모든 명시적 검증을 통과한 후보만 멤버로 교체한다. 아래 문자열 대입/상태 작성의 할당 예외까지 원자적인 교체는 아니다.
 	m_Placements = std::move(staged);
 	m_SequenceInstanceIds = std::move(sequences);
 	m_CardMazeLanes = std::move(lanes);
@@ -863,30 +943,46 @@ bool LostArk::Server::CWorldBootstrap::Load(
 	return true;
 }
 
+// Load가 검증한 2개 이상 증가 key/양수 duration·speed와 0 이상인 유한한 Server clock(ms)를 전제로 주기 내 Y offset을 구한다.
+// 시간에 speed를 곱해 fmod로 위상을 만든 뒤 upper_bound가 처음으로 phase보다 큰 key를 찾는다.
+// 탐색은 O(log key 수), 양끝 밖은 끝값을 쓰고 사이에서는 바로 이전/다음 key를 선형 보간한다. 전제를 여기서 재검사하지 않는다.
 float LostArk::Server::MARIO_BOUNCING_BALL::Sample_OffsetY(const double clockMs) const
 {
 	const float phase = static_cast<float>(std::fmod(clockMs * playbackSpeed, durationMs));
 	const auto next = std::upper_bound(keys.begin(), keys.end(), phase,
-		[](float time, const KEY& key) { return time < key.timeMs; });
-	if (next == keys.begin()) return keys.front().offsetY;
-	if (next == keys.end()) return keys.back().offsetY;
+		[](float time, const KEY& key)
+		{
+			return time < key.timeMs;
+		});
+	if (next == keys.begin())
+		return keys.front().offsetY;
+	if (next == keys.end())
+		return keys.back().offsetY;
 	const auto& before = *std::prev(next);
 	return before.offsetY + (next->offsetY - before.offsetY) *
 		(phase - before.timeMs) / (next->timeMs - before.timeMs);
 }
 
+// CGameRoom의 Mario 충돌이 이전 tick~현재 tick의 Y 이동 범위를 얻는다. 유한한 fromMs<=toMs와 Sample_OffsetY의 key 전제를 따른다.
+// low/high는 입력값을 누적하지 않고 새 최소/최대로 덮어쓴다. world Y는 소비자가 ball.y와 radius를 더해 구성한다.
 void LostArk::Server::MARIO_BOUNCING_BALL::Sample_SweptOffsetY(
 	const double fromMs, const double toMs, float& low, float& high) const
 {
-	const float first = Sample_OffsetY(fromMs), last = Sample_OffsetY(toMs);
-	low = (std::min)(first, last); high = (std::max)(first, last);
-	const double begin = fromMs * playbackSpeed, end = toMs * playbackSpeed;
-	// Include intermediate key extrema and the wrap boundary: a fast fall may
-	// cross the whole player between two 30 Hz endpoints.
+	const float first = Sample_OffsetY(fromMs),
+		last = Sample_OffsetY(toMs);
+	low = (std::min)(first, last);
+	high = (std::max)(first, last);
+	const double begin = fromMs * playbackSpeed,
+		end = toMs * playbackSpeed;
+	// 양끝만 보면 tick 사이의 빠른 낙하/반등을 놓칠 수 있어 구간 안의 key 극값과 주기 경계도 포함한다.
+	// 각 key에서 begin 이상인 첫 주기 발생 시각을 ceil로 찾는다. 같은 key는 매 주기 같은 높이라 한 번 포함하면 충분하다.
+	// key 사이가 선형이라는 전제에서 전체 key를 O(key 수) 순회하며, 플레이어의 연속 이동 궤적까지 푸는 함수는 아니다.
 	for (const auto& key : keys)
 	{
 		const double occurrence = key.timeMs + std::ceil((begin - key.timeMs) / durationMs) * durationMs;
-		if (occurrence < begin || occurrence > end) continue;
-		low = (std::min)(low, key.offsetY); high = (std::max)(high, key.offsetY);
+		if (occurrence < begin || occurrence > end)
+			continue;
+		low = (std::min)(low, key.offsetY);
+		high = (std::max)(high, key.offsetY);
 	}
 }

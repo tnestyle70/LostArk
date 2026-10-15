@@ -269,7 +269,7 @@ def stage(output):
     renamed['displayName'] = '알비온_사라지기이펙트'
     assert {k: v for k, v in renamed.items() if k != 'displayName'} == {
         k: v for k, v in before.items() if k != 'displayName'}
-    emit(renamed, '소멸 이펙트', duration=2201, existingCompositionResourceId='kakulsaydon.g1.presentation.66',
+    emit(renamed, '소멸 이펙트', duration=2201, existingCompositionResourceId='koukusaydon.g1.presentation.66',
          sourceChange='DISPLAY_NAME_ONLY_SAME_ASSET_AND_RESOURCE')
 
     # Explicit user replacement: preserve this existing library identity while

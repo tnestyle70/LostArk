@@ -1,10 +1,14 @@
+// Server entity ID를 세대가 있는 slot과 Character의 weak_ptr로 연결한다.
 #include "NetObjectRegistry.h"
 
+// Registry에 연결하고 조회하는 실제 Client 표시 객체 타입을 사용한다.
 #include "Character.h"
 
+// 검증·slot 순회에 고정폭 정수를 사용한다. utility는 조회 결과를 vector로 이동할 때 쓴다.
 #include <cstdint>
 #include <utility>
 
+// ClientReplication의 spawn 처리에서 호출한다. 거부 경로는 outHandle을 바꾸지 않는다.
 bool Client::CNetObjectRegistry::Register(
 	const NET_PLAYER_RECORD& record,
 	const std::shared_ptr<CCharacter>& character,
@@ -95,6 +99,7 @@ bool Client::CNetObjectRegistry::Find_Handle(
 	return true;
 }
 
+// 외형·직업 교체가 현재 slot의 record와 weak_ptr를 바꾼다. entity ID와 handle 세대는 유지한다.
 bool Client::CNetObjectRegistry::Replace(
 	const LostArk::Shared::NET_ENTITY_ID netEntityId,
 	const NET_PLAYER_RECORD& record,
@@ -237,6 +242,7 @@ std::vector<std::shared_ptr<CCharacter>> Client::CNetObjectRegistry::Get_LiveObj
 	return objects;
 }
 
+// UI·Level이 순회할 record 복사본과 잠긴 shared_ptr를 함께 모은다.
 std::vector<Client::LIVE_NET_PLAYER>
 Client::CNetObjectRegistry::Get_LivePlayers() const
 {
@@ -260,6 +266,7 @@ Client::CNetObjectRegistry::Get_LivePlayers() const
 	return players;
 }
 
+// 연결을 모두 무효화한다. Layer가 소유한 Character를 여기서 직접 삭제하지 않는다.
 void Client::CNetObjectRegistry::Reset()
 {
 	//접속이 끊기거나 월드 상태를 비울 때 모든 slot을 무효화한다.

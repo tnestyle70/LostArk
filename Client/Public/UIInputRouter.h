@@ -1,139 +1,110 @@
-#pragma once
+﻿#pragma once
 
+// Client의 창 handle과 Engine의 bool_t·좌표·문자열 타입을 사용한다.
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
 
 NS_BEGIN(Client)
 
-/* Mouse hit-testing and gameplay-mouse gating for CUILayoutRuntime-driven screens (the real
-CUIObject runtime replacing the ImGui interim rendering), replacing what ImGui::BeginPopupModal
-+ ImGui::IsMouseClicked/GetMousePos gave those screens for free. Uses the same native sources
-CPlayerController's own world-ray picking already uses (GetCursorPos/ScreenToClient,
-CGameInstance::Get_DIMouseStateRaw) instead of ImGui, since the whole point of this migration is
-for the runtime UI path to not depend on ImGui at all.
-
-Scope: one modal-style screen owning input for the whole frame while it's open (matching how
-BeginPopupModal already behaved) -- not a z-ordered arbitration system across several
-simultaneously-interactive screens. No currently planned migration needs that; add it if one
-does. */
+// UI 클릭을 창 하나에 전달하고 게임 입력을 막는다. UI 객체의 생성·삭제는 담당하지 않는다.
 class CUIInputRouter final
 {
 public:
+	// 객체 없이 호출하는 static 함수다. 내부 static 객체 하나를 참조로 돌려준다.
 	static CUIInputRouter& Get();
 
 public:
-	/* Call once per frame before any screen checks its own widgets. */
+
+	// MainApp::Update가 각 창의 입력 검사 전에 버튼·휠 상태를 준비한다.
 	void Begin_Frame();
-	/* MainApp supplies actual cinematic ownership. Suppression never changes a
-	   window's open state or its sprites' authored/runtime visibility. */
+
+	// 컷신 입력 차단을 전환한다. 해제 순간 눌려 있던 왼쪽 버튼은 놓을 때까지 새 클릭으로 받지 않는다.
 	void Set_CinematicSuppressed(bool_t suppressed)
 	{
 		if (!suppressed && m_bCinematicSuppressed) m_bLeftAwaitRelease = m_bLeftDownThisFrame;
 		m_bCinematicSuppressed = suppressed;
 	}
 	bool_t Is_CinematicSuppressed() const { return m_bCinematicSuppressed; }
-	/* rect is in the caller's own document reference-resolution units; converted to real
-	viewport pixels here so callers don't duplicate that scale math. */
+
+	// 문서 기준 사각형에 현재 커서가 들어왔는지 검사한다.
 	bool_t Is_Hovered(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
 		f32_t fRefWidth, f32_t fRefHeight) const;
-	/* True once on the real left-click down-edge while hovered; also claims the mouse for this
-	frame (see Claim_Mouse_This_Frame) whether or not the caller acts on it. */
+
+	// 앞 창과 중복 소비를 검사해 왼쪽 눌림 한 번을 위젯 하나에 전달한다.
 	bool_t Is_Clicked(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight,
 		f32_t fRefWidth, f32_t fRefHeight);
-	/* Real left-click down-edge this frame, independent of any rect. */
+
+	// 현재·이전 프레임 버튼 상태로 새 눌림을 읽는다. 영역이나 중복 소비는 검사하지 않는다.
 	bool_t Is_LeftClickEdge() const;
-	/* Real right-click down-edge this frame, independent of any rect -- for a menu that closes
-	   on "right-clicked anywhere outside my own art" (checked as !Is_Hovered(wholeMenuRect) &&
-	   Is_RightClickEdge()), the real dismiss gesture for the Party context menu -- not a left
-	   click. */
+
+	// 메뉴 바깥 우클릭 검사 등에 쓰는 오른쪽 버튼의 새 눌림이다.
 	bool_t Is_RightClickEdge() const;
-	/* Left button currently held, independent of any rect -- for a multi-frame drag gesture
-	(press on frame N, keep moving through frame N+k, release on frame N+k) that Is_Clicked's
-	single-frame edge can't express by itself. */
+
+	// 드래그가 유지·종료를 판별할 때 쓰는 버튼 상태다. 컷신·해제 대기 중에는 false다.
 	bool_t Is_LeftDown() const { return !Is_PointerInputSuppressed() && !m_bLeftAwaitRelease && m_bLeftDownThisFrame; }
-	/* Real left-click up-edge this frame, independent of any rect -- the drag-release
-	counterpart to Is_LeftClickEdge. */
+
 	bool_t Is_LeftReleaseEdge() const { return !Is_PointerInputSuppressed() && !m_bLeftAwaitRelease && !m_bLeftDownThisFrame && m_bLeftDownLastFrame; }
-	/* Current cursor position converted into the caller's own document reference-resolution
-	units (the inverse of the scaling Is_Hovered applies) -- for a drag gesture that needs the
-	real mouse delta/position between frames, not just a hit-test bool. False (position
-	unmodified) if the cursor or viewport size can't be read this frame. */
+
+	// 문서 기준 좌표와 Client 픽셀 좌표를 각각 제공한다. 조회 실패는 출력값을 보존한다.
 	bool_t Get_MousePosition(f32_t fRefWidth, f32_t fRefHeight, f32_t& outX, f32_t& outY) const;
-	/* Raw client-area pixel position, with no reference-resolution conversion -- the same space
-	ImGui::GetMousePos() reads in this single-viewport game (WorkPos is always (0,0) here), for a
-	caller that has to hand a drop position to an ImGui screen not yet migrated (e.g.
-	CInventoryView::Try_Consume_ItemDrop's contract with CMainApp::Render_ItemQuickSlots). False
-	if the cursor can't be read this frame. */
+
 	bool_t Get_ClientCursorPosition(f32_t& outX, f32_t& outY) const;
-	/* Wheel notches (+ = away from the user) that arrived since the previous frame. Read from
-	WM_MOUSEWHEEL (WndProc, Client.cpp) rather than DirectInput: a runtime window that has the
-	cursor claims the mouse, which blocks CGameInstance::Get_DIMouseMove for the very frames a
-	list under that cursor wants to scroll. */
+
+	// 이번 프레임의 완성된 120단위 휠 눈금이다. 나머지 증분은 다음 프레임에 남긴다.
 	int32_t Get_MouseWheelNotches() const { return Is_PointerInputSuppressed() ? 0 : m_iWheelNotchesThisFrame; }
-	/* WndProc only. */
+	// Client.cpp의 WndProc이 WM_MOUSEWHEEL 값을 전달한다.
 	void On_MouseWheel(int32_t iWheelDelta);
-	/* A modal/full-screen UI screen claims the mouse for the whole frame regardless of which
-	specific widget (if any) is hovered -- its own dim backdrop swallowing clicks, matching
-	BeginPopupModal's own behavior. */
+
+	// UI의 마우스 점유를 기록한다. 실제 Engine 차단은 MainApp과 End_Frame에서 반영한다.
 	void Claim_Mouse_This_Frame();
 	bool_t Is_MouseClaimedThisFrame() const { return m_bCinematicSuppressed || m_bLeftAwaitRelease || m_bMouseClaimedThisFrame; }
-	/* True if anything claimed the mouse last frame. CMainApp::Update applies its per-frame
-	SetInputBlocked before the windows that only get to hover-claim during Render (party, chat),
-	so a claim made there still blocks the following frame's gameplay mouse commands. */
+
+	// Render 중 뒤늦게 생긴 UI 점유도 다음 MainApp::Update가 사용할 수 있게 보관한다.
 	bool_t Was_MouseClaimedLastFrame() const { return m_bMouseClaimedLastFrame; }
-	/* Screen-pixel rect of the runtime window drawn over every other runtime window this frame
-	(the character info window registers it each frame while open). LOA-font text has no depth
-	and every window's text pass runs after all sprites, so the windows underneath skip glyphs
-	whose anchor falls inside this rect instead of bleeding through the panel. Cleared in
-	End_Frame. */
+
+	// 앞 창의 Client 픽셀 영역을 기록한다. 다음 Begin_Frame이 중재용으로 복사한 뒤 비운다.
 	void Set_TopWindowRect(const void* pOwner, f32_t fScreenX, f32_t fScreenY,
 		f32_t fScreenWidth, f32_t fScreenHeight);
 	bool_t Is_UnderTopWindow(f32_t fScreenX, f32_t fScreenY) const;
-	/* Which window's widgets the following hit tests belong to. Two open windows can overlap,
-	and each tests its own rects without knowing about the other, so one press used to fire a
-	button in the front window and another in the window behind it. A window names itself for
-	the duration of its input pass (CUIPointerScope below) and the router then answers only the
-	front one: a press over the registered top window is refused to every other window, and any
-	one press is consumed by the first widget that takes it. */
+
+	// 입력을 검사하는 창의 주소 표식이다. 가리키는 객체를 보유하거나 역참조하지 않는다.
 	void Set_PointerScope(const void* pScope) { m_pPointerScope = pScope; }
 	const void* Get_PointerScope() const { return m_pPointerScope; }
-	/* Text-input capture for a runtime UI text field (the Create Character nickname box) -- the
-	WM_CHAR half of what ImGui::InputText provided. While active, WndProc (Client.cpp) feeds every
-	committed WM_CHAR UTF-16 unit into a queue the owning screen drains once per frame via
-	Take_TypedChars, and every io.WantTextInput-style keybind/gameplay gate must also treat
-	Is_TextInputActive as "someone is typing". The still-composing (uncommitted) Hangul string
-	stays readable via Engine::CImGuiLayer::Get_ImeCompositionString() -- composition happens at
-	the window level, not the widget, so it keeps working without InputText. */
+
+	// 닉네임·채팅창이 문자 수신을 켜고 끈다. WndProc에서 받은 문자는 Take_TypedChars로 가져간다.
 	void Start_TextInput();
 	void Stop_TextInput();
 	bool_t Is_TextInputActive() const { return m_bTextInputActive; }
-	/* WndProc only. Queues a committed WM_CHAR UTF-16 unit (control chars like '\b'/'\r'/escape
-	included -- the field interprets them) while text input is active; dropped otherwise. */
+
+	// 활성 입력창의 확정 UTF-16 코드 단위를 최대 256개 보관한다. 제어 문자는 소비자가 해석한다.
 	void On_Char(wchar_t ch);
-	/* Returns and clears everything typed since the last call. */
+
+	// 입력창에 문자열을 이동하고 큐를 비워 같은 입력을 다시 전달하지 않는다.
 	wstring_t Take_TypedChars();
-	/* Applies CGameInstance::Get().SetInputBlocked(false, true) if anything claimed the mouse
-	this frame. Call once per frame, after every screen has had a chance to render. */
+
+	// MainApp의 정상 Render 끝에서 입력 차단과 다음 프레임 버튼 상태를 확정한다.
 	void End_Frame();
 
 private:
+	// scope만 컷신 입력 소유자를 임시로 바꾸고 복원할 수 있다.
 	friend class CUIPointerScope;
 	bool_t Is_PointerInputSuppressed() const
 	{
 		return m_bCinematicSuppressed &&
 			(!m_pCinematicPointerOwner || m_pPointerScope != m_pCinematicPointerOwner);
 	}
+	// 외부의 기본 생성을 제한한다. Get의 지역 static은 정상 종료 때 자동 소멸하며 CBase 참조 계수를 쓰지 않는다.
 	CUIInputRouter() = default;
 
 private:
+	// 컷신·왼쪽 버튼 해제 대기와 이번/이전 프레임 UI 점유를 별도로 기억한다.
 	bool_t	m_bCinematicSuppressed = false;
 	bool_t	m_bLeftAwaitRelease = false;
 	bool_t	m_bMouseClaimedThisFrame = false;
 	bool_t	m_bMouseClaimedLastFrame = false;
 	bool_t	m_bHasTopWindow = false;
-	/* The top window registers during its own render, after windows drawn earlier have already
-	hit-tested, so arbitration reads the previous frame's registration. A window keeps its
-	position from frame to frame, which is what makes that safe. */
+	// 창의 Update·Render에서 등록한 영역을 다음 Begin_Frame에 복사해 클릭 중재에 사용한다.
+	// owner 주소는 역참조하지 않는 비교용 표식이다.
 	const void*	m_pTopWindowOwner = nullptr;
 	const void*	m_pTopWindowOwnerLastFrame = nullptr;
 	bool_t	m_bHasTopWindowLastFrame = false;
@@ -141,15 +112,16 @@ private:
 	f32_t	m_fTopWindowYLastFrame = 0.f;
 	f32_t	m_fTopWindowWidthLastFrame = 0.f;
 	f32_t	m_fTopWindowHeightLastFrame = 0.f;
+	// 입력 검사 중인 창과 컷신 허용 창의 주소 표식이다. 소유·역참조하지 않는다.
 	const void*	m_pPointerScope = nullptr;
 	const void*	m_pCinematicPointerOwner = nullptr;
+	// Is_Clicked가 한 번 승인한 왼쪽 눌림을 같은 프레임의 다른 위젯이 재사용하지 못하게 한다.
 	bool_t	m_bLeftClickConsumed = false;
 	f32_t	m_fTopWindowX = 0.f;
 	f32_t	m_fTopWindowY = 0.f;
 	f32_t	m_fTopWindowWidth = 0.f;
 	f32_t	m_fTopWindowHeight = 0.f;
-	/* Left-button down-edge is computed once in Begin_Frame (not per Is_Clicked call, since a
-	caller may test several candidate widgets in one frame) and rolled forward in End_Frame. */
+	// Begin_Frame이 버튼을 한 번 읽고 End_Frame이 이전 상태로 넘겨 눌림·놓임을 판별한다.
 	bool_t	m_bLeftDownThisFrame = false;
 	bool_t	m_bLeftDownLastFrame = false;
 	bool_t	m_bRightDownThisFrame = false;
@@ -157,11 +129,11 @@ private:
 	bool_t	m_bTextInputActive = false;
 	int32_t	m_iWheelDeltaPending = 0;
 	int32_t	m_iWheelNotchesThisFrame = 0;
+	// WndProc과 입력창이 같은 메인 스레드 흐름에서 전달하는 확정 문자 큐다.
 	wstring_t	m_TypedChars;
 };
 
-/* Names the window whose widgets are being hit-tested, for as long as it lives. Every runtime
-window that can overlap another one opens this at the top of its input pass. */
+// 입력 검사 블록 동안 창 표식을 바꾸고 소멸할 때 이전 표식으로 복원한다.
 class CUIPointerScope final
 {
 public:
@@ -169,10 +141,11 @@ public:
 		: m_pPrevious(CUIInputRouter::Get().Get_PointerScope()),
 		  m_pPreviousCinematicOwner(CUIInputRouter::Get().m_pCinematicPointerOwner)
 	{
-		// Only a cinematic-owned control may opt in; normal windows and gameplay stay blocked.
+		// 컷신 전용 조작만 입력을 허용하며 일반 창과 게임 입력 차단은 유지한다.
 		CUIInputRouter::Get().m_pCinematicPointerOwner = allowCinematicInput ? pOwner : nullptr;
 		CUIInputRouter::Get().Set_PointerScope(pOwner);
 	}
+	// 블록을 나가면 이전 창을 복원한다. 저장한 주소의 객체를 삭제하지 않는다.
 	~CUIPointerScope()
 	{
 		CUIInputRouter::Get().Set_PointerScope(m_pPrevious);

@@ -100,11 +100,18 @@ public:
 	static void Clear_EntranceCinematicFovYOverride();
 	// First key of the active authored cue, or 45 degrees before it is prepared.
 	static f32_t Get_EntranceCinematicAuthoredFovYDegrees();
-#ifdef _DEBUG
-	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
+	/* Debug/Release F1은 재생 요청만 남기고 다음 Level Update가 기존 컷신을 시작한다.
+	   중복·전환·카메라 소유권 충돌은 상태 메시지로 거절하며 저작 데이터는 저장하지 않는다. */
 	bool_t Request_DebugEntranceReplay();
+    // Profiler는 pose 소유권과 cue 시간을 읽고 기존 runtime을 차용한다. 카메라를 변경하지 않는다.
+    bool Is_EntranceCinematicActive() const { return m_bEntranceCinematicApplied && !m_bEntranceCinematicDone; }
+    float Get_EntranceCinematicSeconds() const { return m_fEntranceCinematicSeconds; }
+    float Get_EntranceCinematicDurationSeconds() const { return m_EntranceCameraCue.iDurationMs * 0.001f; }
+    CMapPlacementRuntime& Get_GeometryDiagnosticRuntime() { return m_MapRuntime; }
 	const std::string& Get_DebugEntranceReplayStatus() const
 	{ return m_strDebugEntranceReplayStatus; }
+#ifdef _DEBUG
+	shared_ptr<CCamera_Free> Get_DebugCamera() const { return m_pCamera; }
 	/* Map Tool borrows this level's live map the same way the Kouku and Valtan
 	   arenas lend theirs. The level keeps ownership; the tool only edits the
 	   placements in place. */
@@ -249,9 +256,9 @@ private:
 	void Update_EntranceCinematic(f32_t fTimeDelta);
 	void End_EntranceCinematic();
 
-#ifdef _DEBUG
 	bool_t Can_DebugEntranceReplay(std::string& outStatus) const;
 	void Consume_DebugEntranceReplay();
+#ifdef _DEBUG
 	bool_t Ready_DebugLevelChangeTriggers(const std::string& areaId);
 	/* O opens m_ValtanEntryView without walking to the guide NPC first --
 	   debug-only shortcut for iterating on ValtanRaidEntry_Layout.json's visual
@@ -366,10 +373,11 @@ private:
 	bool_t m_wasEscapeDownForEntranceSkip = false;
 	weak_ptr<CTransform> m_pEntranceRestoreTarget;
 
-#ifdef _DEBUG
+	// 이 Level의 메인 스레드만 쓰며 F1 요청부터 기존 컷신 종료까지의 상태를 두 구성에서 공유한다.
 	bool_t m_bDebugEntranceReplayRequested = false;
 	bool_t m_bDebugEntranceReplayActive = false;
 	std::string m_strDebugEntranceReplayStatus;
+#ifdef _DEBUG
 	std::vector<shared_ptr<CTrigger_Box>> m_DebugLevelChangeTriggers;
 	bool_t m_bMapAuthoringActive = false;
 	bool_t m_wasODownForValtanEntryDebugPreview = false;

@@ -1,22 +1,29 @@
-"""Validate light authoring documents and atomically publish runtime resources."""
+"""LightResources 저작 JSON을 검증하고 runtime 파일 하나를 교체한다. Map 광원은 검증만 하며 게시는 Map 경로가 맡는다."""
 
 from __future__ import annotations
 
+# Validate/Publish와 source·destination·Area 인자를 받는다. 모듈 설명은 CLI 도움말로도 쓰인다.
 import argparse
+# 중복 key·비표준 숫자를 거부하며 UTF-8 광원 문서를 읽고 저장한다.
 import json
 import math
+# 임시 파일의 fsync와 runtime 파일 교체를 수행한다.
 import os
 from pathlib import Path
 import re
+# Client가 사용하는 float32 정밀도로 수치 경계를 비교한다.
 import struct
 import sys
+# 대상과 같은 폴더에 임시 파일을 만들어 교체 전에 다시 검증한다.
 import tempfile
 from typing import Any
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+# 재사용 광원 정의의 저작 정본과 Client 게시 파일 경로다.
 RESOURCE_SOURCE = Path("Data/Rendering/Authored/LightResources.json")
 RESOURCE_RUNTIME = Path("Client/Bin/DataFiles/Rendering/LightResources.runtime.json")
+# 재사용 정의는 local offset·anchor를, Map 배치는 world 위치·group·enabled를 소유한다.
 RESOURCE_FIELDS = {
     "lightResourceId", "displayName", "kind", "defaultAnchorKind", "localOffset",
     "localRotationDegrees", "rangeMeters", "falloffExponent", "innerConeDegrees",
@@ -31,7 +38,7 @@ STABLE_ID = re.compile(r"[A-Za-z0-9_.-]{1,128}\Z")
 
 
 class LightValidationError(ValueError):
-    """A document cannot be consumed by the Client light reader."""
+    """Client 광원 reader가 수용할 수 없는 문서의 검증 실패다."""
 
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -47,6 +54,7 @@ def _reject_constant(value: str) -> None:
     raise LightValidationError(f"Non-standard JSON number: {value}")
 
 
+# 최상위 형식 검증에 앞서 중첩 object까지 중복 key와 NaN·Infinity를 거부한다.
 def parse_document(raw: bytes) -> dict[str, Any]:
     try:
         return json.loads(raw.decode("utf-8-sig"), object_pairs_hook=_unique_object,
@@ -84,8 +92,7 @@ def _float32(value: float) -> float:
 
 
 def _finite32(value: Any, minimum: float, maximum: float, context: str) -> float:
-    # The C++ editor serializes binary32 with nine significant digits. Compare
-    # narrowed values against narrowed limits so a saved endpoint round-trips.
+    # C++ 저장값의 경계가 다시 읽힐 수 있도록 값과 허용 범위를 모두 binary32로 줄여 비교한다.
     number = _number(value, context)
     try:
         narrowed = _float32(number)
@@ -120,6 +127,7 @@ def _name(value: Any, context: str) -> None:
         raise LightValidationError(f"{context} must contain 1 to 256 UTF-8 bytes.")
 
 
+# 종류별 범위·원뿔·방향광 제약을 검사한다. range는 m, rotation과 cone은 degree다.
 def _light_values(row: dict[str, Any], offset: str, rotation: str, context: str) -> None:
     kind = row["kind"]
     if kind not in ("POINT", "SPOT", "DIRECTIONAL"):
@@ -142,6 +150,7 @@ def _light_values(row: dict[str, Any], offset: str, rotation: str, context: str)
         raise LightValidationError(f"{context} directional range and offset must be zero.")
 
 
+# 재사용할 lightResourceId의 고유성·다음 ordinal·anchor와 광원 값을 검사한다.
 def validate_resources(document: Any) -> dict[str, Any]:
     _exact(document, {"schema", "formatVersion", "revision", "nextLightResourceOrdinal", "lights"}, "root")
     if document["schema"] != "lostark.light-resources" or _number(document["formatVersion"], "formatVersion") != 1:
@@ -168,6 +177,7 @@ def validate_resources(document: Any) -> dict[str, Any]:
     return document
 
 
+# 게시할 Area의 개별 광원을 검사한다. receiver·staticShadowChannel은 있을 때만 검사한다.
 def validate_map_lights_v2(document: Any, area_id: str) -> dict[str, Any]:
     _exact(document, {"schema", "formatVersion", "areaId", "provenance", "nextLightOrdinal", "lights"}, "map light root")
     if document["schema"] != "lostark.map-light-presentation" or _number(document["formatVersion"], "formatVersion") != 2:
@@ -202,6 +212,7 @@ def validate_map_lights_v2(document: Any, area_id: str) -> dict[str, Any]:
     return document
 
 
+# 파싱·검증 → 임시 저장·재검증 → source 변경 검사 → 단일 runtime 교체 순서다.
 def publish_resources(source: Path, destination: Path, *, publish: bool) -> dict[str, Any]:
     source = source.resolve()
     destination = destination.resolve()
@@ -209,6 +220,7 @@ def publish_resources(source: Path, destination: Path, *, publish: bool) -> dict
         raise LightValidationError("Source and runtime destination must be different files.")
     original = source.read_bytes()
     document = validate_resources(parse_document(original))
+    # Validate 모드는 읽기만 한다. Publish 실패 시 남은 임시 파일은 finally에서 정리한다.
     if publish:
         payload = (json.dumps(document, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
         destination.parent.mkdir(parents=True, exist_ok=True)

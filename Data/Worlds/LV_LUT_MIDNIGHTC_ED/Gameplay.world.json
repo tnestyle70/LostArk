@@ -2006,10 +2006,10 @@
       "events": []
     },
     {
-      "placementId": "boss.kakulsaydon.bingo.saydon",
+      "placementId": "boss.koukusaydon.bingo.saydon",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_BINGO_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         -0.600000024,
         0,
@@ -2019,10 +2019,10 @@
       "enabled": false
     },
     {
-      "placementId": "boss.kakulsaydon.g1.kouku",
+      "placementId": "boss.koukusaydon.g1.kouku",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         22,
         -0.0500000007,
@@ -2032,10 +2032,10 @@
       "enabled": false
     },
     {
-      "placementId": "boss.kakulsaydon.g1.saydon",
+      "placementId": "boss.koukusaydon.g1.saydon",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         -0.07,
         1.32,
@@ -2045,10 +2045,10 @@
       "enabled": false
     },
     {
-      "placementId": "boss.kakulsaydon.g2.big-saydon",
+      "placementId": "boss.koukusaydon.g2.big-saydon",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         10.2399998,
         10,
@@ -2058,10 +2058,10 @@
       "enabled": false
     },
     {
-      "placementId": "boss.kakulsaydon.g2.kouku",
+      "placementId": "boss.koukusaydon.g2.kouku",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         6.36000013,
         10.5600004,
@@ -2071,10 +2071,10 @@
       "enabled": false
     },
     {
-      "placementId": "boss.kakulsaydon.g3.saydon",
+      "placementId": "boss.koukusaydon.g3.saydon",
       "kind": "boss",
-      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "position": [
         -0.0700000003,
         1.32000005,
@@ -2276,7 +2276,7 @@
       ]
     },
     {
-      "placementId": "player.spawn.kakul.party01",
+      "placementId": "player.spawn.kouku.party01",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2289,7 +2289,7 @@
       "enabled": true
     },
     {
-      "placementId": "player.spawn.kakul.party02",
+      "placementId": "player.spawn.kouku.party02",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2302,7 +2302,7 @@
       "enabled": true
     },
     {
-      "placementId": "player.spawn.kakul.party03",
+      "placementId": "player.spawn.kouku.party03",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2315,7 +2315,7 @@
       "enabled": true
     },
     {
-      "placementId": "player.spawn.kakul.party04",
+      "placementId": "player.spawn.kouku.party04",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2328,7 +2328,7 @@
       "enabled": true
     },
     {
-      "placementId": "stage.kakul.sl01",
+      "placementId": "stage.kouku.sl01",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2341,7 +2341,7 @@
       "enabled": false
     },
     {
-      "placementId": "stage.kakul.sl02",
+      "placementId": "stage.kouku.sl02",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2354,7 +2354,7 @@
       "enabled": false
     },
     {
-      "placementId": "stage.kakul.sl03",
+      "placementId": "stage.kouku.sl03",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2367,7 +2367,7 @@
       "enabled": false
     },
     {
-      "placementId": "stage.kakul.sl04",
+      "placementId": "stage.kouku.sl04",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,
@@ -2380,7 +2380,7 @@
       "enabled": false
     },
     {
-      "placementId": "stage.kakul.sl05",
+      "placementId": "stage.kouku.sl05",
       "kind": "playerSpawn",
       "archetypeId": null,
       "encounterId": null,

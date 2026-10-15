@@ -312,7 +312,7 @@ bool_t CWorldSequencePlayer::Prepare_AreaLoad(const uint32_t levelIndex,
 	if (!staged->document.Load(path, areaId, staged->placements, staged->deploy, status))
 		return fail("World sequence load failed: " + status);
 	if (cancelled()) return false;
-	if (levelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (levelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		// These source-ball leaves are Server-triggered, rather than sequence
 		// tracks. Parse them on the same Loader worker and commit with the Area.

@@ -27,7 +27,7 @@ class BossWeaponSocketTests(unittest.TestCase):
         case("ghost", lambda row: row.update(archetypeId="BOSS_VALTAN_GHOST"), True)
         case("bounds", lambda row: row.update(weaponSocketTransform={
             "positionMeters": [-10, 10, 0], "rotationDegrees": [-360, 360, 0]}), True)
-        case("owner", lambda row: row.update(archetypeId="BOSS_KAKULSAYDON_G1_KOUKU"))
+        case("owner", lambda row: row.update(archetypeId="BOSS_KOUKUSAYDON_G1_KOUKU"))
         case("weaponless", lambda row: row.update(weaponModel=None))
         case("null", lambda row: row.update(weaponSocketTransform=None))
         case("missing-field", lambda row: row["weaponSocketTransform"].pop("positionMeters"))

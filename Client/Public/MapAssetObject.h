@@ -67,6 +67,7 @@ public:
 	{ return UPDATE_PHASE_UPDATE | UPDATE_PHASE_LATE; }
 	virtual bool_t Uses_FinalCameraSubmission() const override { return true; }
 	virtual void Submit_FinalCamera() override;
+    bool_t Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATIAL_BOUNDS& bounds) const override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_Group(RENDERGROUP group) override;
 	virtual int32_t Get_BlendSortPriority() const override;
@@ -133,6 +134,10 @@ private:
 	f32_t m_fWorldCullRadius = {};
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
 	MAP_FRUSTUM_RUNTIME_STATE m_FrustumState{};
+    MAP_SCENE_VISIBILITY_KIND m_SceneVisibilityKind = MAP_SCENE_VISIBILITY_KIND::STATIC_SURFACE;
+    bool m_bBernVisibility = false, m_bDistanceHidden = false, m_bDistanceWasEnabled = false;
+    uint64_t m_iDistanceSettingsRevision = 0u;
+    float2_t m_CullViewport{};
 	// Stable camera decisions persist; transient reject grace is reused only within this frame.
 	uint64_t m_iCameraCullRevision = 0u;
 	bool_t m_bCameraCullCached = false;

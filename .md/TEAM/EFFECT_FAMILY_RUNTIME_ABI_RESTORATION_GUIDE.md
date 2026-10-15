@@ -792,7 +792,46 @@ V2의 화면 효과를 V1으로 옮길 때 프로필 이름만 복사하지 않�
 
 `effect.ue3.cubesample-01-scene.v1`은 기존 sourceProfile.scalars의 `project_clarity_strength`를 선택적으로 소비한다. 생략/0은 기존 shader와 alpha/clip을 유지하며 값은 유한한 0~1이다. codec 공통 material 검증과 staging이 범위를 검사한다. 기존 `g_SourceScalars0.w`를 사용하므로 CBuffer/schema/profile ID와 carrier ABI는 바뀌지 않는다. 이 필드는 원본 MIC에서 회수한 값이 아닌 프로젝트 저작 보정이다.
 
-활성화한 재질만 배경 transmission을 제한하고, 원본 particle의 정규화 chroma를 흡수와 자체 면 발광에 적용한다. 원래 caustic·edge는 유지하며 자체 발광을 배경 highlight 제한에 넣지 않는다. 밝은 배경의 중간 alpha coverage를 보정하되 fade0/1과 원본 clip을 유지한다. 자체 발광은 SceneColor/SceneBloom/black 평가에 동일하게 들어가므로 기존 per-effect Bloom 추출을 소비한다. 배경 전달의 gain·alpha도 세 평가에서 고정하며 억제된 배경 Bloom을 새로 만들지 않는다. 강도1의 보정분은 입력 SceneBloom을 선형으로 전달한다. 연결 범위는 차원술사 Q 두 저작 문서의 해당 CubeSample 요소이며 다른 동일 재질은 기본0이다. 실제 Q 색·원본 텍스처·현재 tone을 포함한 수치 검증과 사용자 화면 판정은 별도다.
+활성화한 재질만 배경 transmission을 제한하고, 원본 particle의 정규화 chroma를 흡수와 자체 면 발광에 적용한다. 원래 caustic·edge는 유지하며 자체 발광을 배경 highlight 제한에 넣지 않는다. 밝은 배경의 중간 alpha coverage를 보정하되 fade0/1과 원본 clip을 유지한다. clarity 연결 범위는 차원술사 Q 두 저작 문서의 해당 CubeSample 요소이며 다른 동일 재질은 기본0이다. 실제 Q 색·원본 텍스처·현재 tone을 포함한 수치 검증과 사용자 화면 판정은 별도다.
+
+CubeSample 전체의 RT2는 현재 배경 C에서 결정한 RGB 전달 계수 T로 `T*B + I*max(Extract(F(C))-T*Extract(C),0)`를 출력한다. B는 이미 가중된 배경 Bloom이고 I는 현재 문서 배율이다. tint/emissive 증폭으로 새로 threshold를 넘긴 부분만 현재 문서에 귀속하며, 항등 전달은 억제된 배경 Bloom을 되살리지 않는다. C^5 계산에 B를 재대입하지 않으며 clarity0도 같은 전달 정책을 쓴다. 실제 CubeSample 호출이 설정한 invocation-local 표식으로 Mesh carrier의 공용 재평가를 건너뛰어 RT2를 보존한다. 다른 family의 재평가·RT0·alpha·blend·전역 품질 설정은 유지한다. 프로젝트의 Bloom 소유권 정책 보완이며 원본 보조 MRT 복원과 구분한다.
+
+### CubeSample의 exact Q/R/A 색 응답과 읽기 전용 장면 입력
+
+`Shader_EffectCubeColorResponse.hlsli`의 국소 보정은 source profile42와 아래 문서·element
+쌍과 실제 `ALPHA_ONE_SIDED_DEPTH_READ`/`ALPHA_TWO_SIDED_DEPTH_READ`가 모두 일치할 때만
+활성화한다. 같은 ID라도 additive/multiply 편집에는 적용하지 않는다. `project_clarity_strength`와 별도 선택이며 다른
+CubeSample, 비교용 Q restore와 원본 native family 전체에 적용하지 않는다.
+
+| 문서 ID | element ID |
+|---|---|
+| `effect.dimensionmaster.skill.2050100.tuning.restore` | `authored.source-particle.b4984eeabefb0fc93783ecda` |
+| `effect.dimensionmaster.skill.2050180.tuning.restore` | `authored.tuning.dimensionmaster.r.purple-glass-sequence` |
+| `effect.dimensionmaster.skill.2050210.a1.full.restore` | `authored.composition.dimensionmaster.a.hit-1-purple-cube`부터 `hit-4-purple-cube`까지 네 exact ID |
+
+Client `Bind_MaterialInputs`는 generic mesh의 매 draw에서 `g_CubeColorResponseEnabled`를
+다시 쓴다. 대상 draw는 `CGameInstance::Bind_ActiveSceneColorTransform(CShader*) const`를
+통해 Renderer가 commit한 exposure, source tone curve/toe, enabled와 baked grading LUT를
+바인딩한다. Engine은 문서·스킬 ID를 해석하지 않으며 `Render_Final`과 같은 curve packing을
+사용한다. 이 API는 장면 설정과 LUT 소유권을 변경하지 않는다. null shader, 활성 source-post의
+LUT 누락이나 바인딩 실패는 실패 HRESULT를 반환하고 호출자는 해당 render operation을
+중단한다. source-post OFF도 상태를 바인딩해 이전 draw의 활성값을 재사용하지 않는다.
+
+보정 목표는 현재 굴절 전 배경의 표시색에 초기 Hable에서의 저작 cube alpha-over 기여분을
+더한 값이다. 현재 tone/LUT와 alpha에서 이 값에 가까워지는0~60000 HDR 재질 RGB를
+최대8회 가중 오차 탐색으로 구한다. source-post OFF, alpha가 거의0, 비유한 재질/배경 입력과
+기존보다 오차가 큰 해는 기존 RGB를 유지한다. CubeSample은 clarity와 emissive를 포함한
+현재 저작 RGB/alpha를 기준으로 사용한다. clarity 이전 native 출력을 기준으로 쓰면 면 자체
+발광을 다시 제거할 수 있다. 기존 RT2 계산 뒤 RT0 RGB에만 색 응답을 적용하므로 이 solver
+전후의 alpha, clip, 굴절 UV, RT1/RT2와 blend 상태는 동일하다. 단, 저작 emissive와 clarity를
+변경하면 solver 이전 HDR/Bloom 에너지와 coverage 자체는 바뀐다. schema와 원본 profile ID는
+늘리지 않고 기존 `detail.color.emissiveIntensity` 및 `project_clarity_strength`를 소비한다.
+
+LUT는 일반적으로 역함수가 없고 같은 occurrence 내부 입자는 같은 SceneHDR snapshot을
+공유하므로 겹침에서 실제 blend 목적지와 보정 입력이 다를 수 있다. 이 경로는 제한된 근사이며
+전역 tone/LUT 우회나 과거 Bloom halo 복구가 아니다. 전역 렌더링 저장값·Resources는 유지한다.
+소스 연결·제품 빌드·GPU 수치와 사용자 화면 승인은 [큐브 결과](../GB/09-21/2026-09-21_DIMENSIONMASTER_Q_CUBE_CLARITY_IMPLEMENTATION_RESULT.md)의
+색 응답 후속 항목을 따른다. 앞선 Bloom 수정의 빌드 증거와 구분한다.
 
 ### Native ScreenPost source material curves
 

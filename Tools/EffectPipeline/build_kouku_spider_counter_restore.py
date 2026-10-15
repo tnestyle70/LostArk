@@ -6,17 +6,20 @@ are preserved with compare-before-write checks. Native programs are recovered by
 the existing native-material pipeline and supplied through --native-material-patch.
 """
 from pathlib import Path
+import sys
 import argparse
 import copy
 import json
-import xml.etree.ElementTree as ET
 
 import build_kouku_gate1_full_restore as source
 from extract_ue3_skeletal_mesh_sockets import parse_socket_contract
 
 ROOT = source.ROOT
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 ACTION_ID = 4219776
-PATTERN_ID = 'KAKULSAYDON_G1_PATTERN_15'
+PATTERN_ID = 'KOUKUSAYDON_G1_PATTERN_15'
 STAGES = {1: ('rpcz00_att_battle_6_02', '눈빛·먼지'),
           2: ('rpcz00_att_battle_6_03', '검정·빨강 바닥과 돌진')}
 
@@ -53,7 +56,7 @@ def project(evidence, material_patch):
         doc = source.read(destination / f'effect.kouku.gate1.{ACTION_ID}.full.restore.effect.json')
         doc['effectAssetId'] = asset_id(stage)
         doc['sourceModelPreview'] = source.source_model_preview(source.ACTION, ACTION_ID, [stage],
-            'GATE2', 'MN_RPCZ_00', 'boss.kakulsaydon.g2.kouku')
+            'GATE2', 'MN_RPCZ_00', 'boss.koukusaydon.g2.kouku')
         doc['displayName'] = '쿠크 거미카운터 원본 ' + {1: '눈빛·먼지', 2: '돌진·바닥'}[stage]
         assert len(doc['displayName'].encode('utf8')) <= 64
         for element in doc['elements']:
@@ -104,7 +107,7 @@ def connect(composition, durations):
     result = copy.deepcopy(composition)
     pattern = next(p for p in result['patterns'] if p['patternId'] == PATTERN_ID)
     assert pattern['actorProfileId'] == 'MN_RPCZ_00' and pattern['gateId'] == 'GATE2'
-    assert pattern['targetBossPlacementId'] == 'boss.kakulsaydon.g2.kouku'
+    assert pattern['targetBossPlacementId'] == 'boss.koukusaydon.g2.kouku'
     pattern_duration = sum(stage['durationMs'] for stage in pattern['stages'])
     resources = {}
     for stage, (clip, label) in STAGES.items():
@@ -114,7 +117,7 @@ def connect(composition, durations):
             resources[stage] = matching[0]
             continue
         ordinal = result['nextPresentationResourceOrdinal']
-        identifier = f'kakulsaydon.g1.presentation.{ordinal}'
+        identifier = f'koukusaydon.g1.presentation.{ordinal}'
         assert not any(r['resourceId'] == identifier for r in result['presentationResources'])
         row = dict(resourceId=identifier, displayName=f'쿠크_거미카운터({clip})_{label}_FullRestore',
             defaultAnchorKind='BOSS', kind='EFFECT', assetId=asset_id(stage), resourceKind='V1_EFFECT',
@@ -197,23 +200,9 @@ def stage_install(docs, durations, evidence, replace_authored=False):
     composition = json.loads(composition_bytes)
     updated, links = connect(composition, durations)
     writes.append((composition_path, composition_bytes, encoded(updated)))
-    for suffix in ('', '.filters'):
-        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        current = path.read_bytes()
-        text = current.decode('utf8')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        additions = []
-        for doc in docs.values():
-            name = '..\\..\\Data\\Effects\\Authored\\' + doc['effectAssetId'] + '.effect.json'
-            if f'Include="{name}"' not in text:
-                additions.append(f'    <None Include="{name}"><Filter>96.DataFiles</Filter></None>' if suffix
-                                 else f'    <None Include="{name}" />')
-        if additions:
-            prefix, marker, tail = text.rpartition('</Project>')
-            assert marker
-            text = prefix + '  <ItemGroup>' + newline + newline.join(additions) + newline + '  </ItemGroup>' + newline + marker + tail
-        ET.fromstring(text)
-        writes.append((path, current, text.encode('utf8')))
+    metadata_paths = [ROOT / 'Data/Effects/Authored' / (doc['effectAssetId'] + '.effect.json')
+                      for doc in docs.values()]
+    writes.extend(stage_data_solution(ROOT, metadata_paths))
     source.write(evidence / 'composition_before.json', composition)
     source.write(evidence / 'composition_candidate.json', updated)
     source.write(evidence / 'composition_links.json', links)

@@ -201,6 +201,21 @@
     <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp">
       <Filter>07.Boss\00.Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_WorldEntitySimulation.cpp">
+      <Filter>07.Boss\00.Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_ValtanSimulation.cpp">
+      <Filter>07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_ValtanGhost.cpp">
+      <Filter>07.Boss\01.Valtan</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuTargeting.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Private\GameRoom_KoukuMechanics.cpp">
+      <Filter>07.Boss\02.KoukuSaydon</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\GameRoom_BossStageActions.cpp">
       <Filter>07.Boss\00.Shared</Filter>
     </ClCompile>
@@ -530,7 +545,7 @@
     <ClInclude Include="..\Private\ServerGameplayContractTests_PinnedGenerationFixture.h">
       <Filter>98.Tests\09.Generation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
+    <ClInclude Include="..\..\Tools\Build\PCH.h">
       <Filter>99.Default</Filter>
     </ClInclude>
     <ClInclude Include="..\Public\IocpService.h">

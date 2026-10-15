@@ -1,3 +1,5 @@
+﻿// Animation Tool이 참조 Action 슬롯으로 구성한 로컬 클립 순서를 읽고 저장한다.
+// 판정 Logic과 Server 권위 전투는 Composition 및 게시 데이터의 별도 책임이다.
 #include "KoukuSaydonAnimationPatternDocument.h"
 
 #include "DataJson.h"
@@ -21,6 +23,7 @@ namespace
 {
 	using namespace Client;
 
+	// 애니메이션 패턴 schema와 편집 상한이다. 원본 Action 참조 및 보스 Composition 문서와 구분한다.
 	constexpr std::string_view PATTERN_SCHEMA =
 		"lostark.kouku-saydon-animation-pattern-bindings";
 	constexpr std::string_view REFERENCE_ONLY = "REFERENCE_ONLY";
@@ -36,6 +39,7 @@ namespace
 	constexpr std::uintmax_t MAX_PATTERN_BYTES = 8u * 1024u * 1024u;
 	constexpr std::uintmax_t MAX_REFERENCE_BYTES = 16u * 1024u * 1024u;
 
+	// 필수 키와 타입을 함께 검사한다. 반환 포인터는 입력 JSON의 원소를 차용한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char* name,
@@ -45,6 +49,7 @@ namespace
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
 
+	// 필수 키의 누락과 알 수 없는 추가 키를 함께 거절한다.
 	bool Has_ExactProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> names)
@@ -59,6 +64,7 @@ namespace
 		return true;
 	}
 
+	// 저장 identity와 클립 이름의 ASCII 문자 및 길이를 검사한다. 점 경로 토큰은 거절한다.
 	bool Is_StableToken(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 255u)
@@ -76,12 +82,14 @@ namespace
 		return value != "." && value != "..";
 	}
 
+	// 이 문서가 지원하는 네 쿠크 프로필만 허용한다. 임의 프로필의 파일 경로를 만들지 않는다.
 	bool Is_SupportedProfile(const std::string_view value)
 	{
 		return value == "MN_RPCT_05" || value == "MN_RPCT_06" ||
 			value == "MN_RPCT_07" || value == "MN_RPCZ_00";
 	}
 
+	// 참조 revision이 소문자 16진수 64자리인지 검사한다. 참조 파일을 해시하는 함수는 아니다.
 	bool Is_LowerHexSha256(const std::string_view value)
 	{
 		if (64u != value.size())
@@ -93,6 +101,7 @@ namespace
 		});
 	}
 
+	// 표시 이름의 byte 길이와 제어 문자를 검사한다. UTF-8 전체 바이트열 검증은 하지 않는다.
 	bool Is_DisplayName(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 1024u)
@@ -103,12 +112,14 @@ namespace
 		});
 	}
 
+	// 저장된 클립 종료 정책을 알려진 세 가지로 제한한다. 실제 포즈 재생은 Animation Tool이 수행한다.
 	bool Is_EndPolicy(const std::string_view value)
 	{
 		return value == END_EXACT || value == END_HOLD_LAST_POSE ||
 			value == END_LOOP_TO_WINDOW;
 	}
 
+	// 유한하고 범위 안의 정수 값이면 출력한다. 실수 토큰 표기라도 값이 정수이면 이 파서는 허용한다.
 	bool Try_ParseUnsigned(
 		const DATA_JSON_VALUE& value,
 		const std::uint32_t maximum,
@@ -127,6 +138,7 @@ namespace
 		return true;
 	}
 
+	// 원본 클립 시계의 배율을 0.01부터 16까지 유한한 값으로 읽는다.
 	bool Try_ParsePlayRate(
 		const DATA_JSON_VALUE& value,
 		f32_t& outValue)
@@ -140,6 +152,7 @@ namespace
 		return std::isfinite(outValue);
 	}
 
+	// 시작 ms, 양수 재생 길이 ms와 배율의 허용 범위를 검사한다. 실제 모델 클립의 끝 시각은 여기서 비교하지 않는다.
 	bool Is_ValidTiming(
 		const std::uint32_t sourceStartMs,
 		const std::uint32_t playMs,
@@ -151,6 +164,7 @@ namespace
 			playRate <= 16.f;
 	}
 
+	// 저장 ID가 지정 prefix와 양의 십진 번호로 구성되었는지 확인한다. 선행 0과 남는 문자를 거절하며 성공 시에만 번호를 출력한다.
 	bool Try_ParseIdOrdinal(
 		const std::string_view value,
 		const std::string_view prefix,
@@ -177,16 +191,19 @@ namespace
 		return true;
 	}
 
+	// 프로필별 패턴 ID의 생성 범위를 만든다. UI 목록 index를 저장 identity로 사용하지 않는다.
 	std::string Build_PatternPrefix(const std::string_view profileId)
 	{
-		return "kakulsaydon." + std::string(profileId) + ".pattern.";
+		return "koukusaydon." + std::string(profileId) + ".pattern.";
 	}
 
+	// 배치 ID를 소유 패턴 아래에 두어 다른 패턴의 배치와 섞이지 않게 한다.
 	std::string Build_OccurrencePrefix(const std::string_view patternId)
 	{
 		return std::string(patternId) + ".clip.";
 	}
 
+	// Action ID, Stage ID와 Slot ID를 하나의 참조 키로 결합한다. ID에 허용하지 않는 개행을 구분자로 사용한다.
 	std::string Build_SourceKey(
 		const std::uint32_t sourceActionId,
 		const std::string_view stageId,
@@ -196,6 +213,7 @@ namespace
 			std::string(stageId) + "\n" + std::string(slotId);
 	}
 
+	// 프로필에 맞는 파일 이름과 점 경로 요소를 검사한다. 프로젝트 루트 내부에 있는지까지 판정하는 함수는 아니다.
 	bool Is_ExpectedPath(
 		const std::filesystem::path& path,
 		const std::string_view profileId)
@@ -214,6 +232,7 @@ namespace
 		return true;
 	}
 
+	// Parse_Text와 Validate가 공유하는 문서 구조 검사다. 실제 참조와 모델 없이 ID, 카운터, 개수와 재생 값만 확인한다.
 	bool Validate_DocumentShape(
 		const KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT& document,
 		std::string& outStatus)
@@ -233,6 +252,7 @@ namespace
 
 		const std::string patternPrefix = Build_PatternPrefix(
 			document.strProfileId);
+		// 패턴과 배치 ID의 중복을 따로 검사한다. totalClips는 문서 전체의 누적 상한을 검사하는 데 사용한다.
 		std::unordered_set<std::string> patternIds;
 		std::unordered_set<std::string> occurrenceIds;
 		std::size_t totalClips = 0u;
@@ -283,6 +303,7 @@ namespace
 		return true;
 	}
 
+	// 파일 크기를 먼저 확인한 뒤 임시 문자열로 읽는다. 완전한 읽기에 성공했을 때만 outText를 교체한다.
 	bool Read_Text(
 		const std::filesystem::path& path,
 		const std::uintmax_t maximumBytes,
@@ -320,6 +341,7 @@ namespace
 		return true;
 	}
 
+	// 저장 시점의 Action 참조를 읽고 엄격한 파싱 및 모델 검증을 수행한다. 성공한 임시 문서만 outReference에 교체한다.
 	bool Load_ReferenceFromPath(
 		const std::filesystem::path& path,
 		const std::string_view expectedProfileId,
@@ -344,6 +366,8 @@ namespace
 		return true;
 	}
 
+	// 저작한 클립 목록을 같은 순서의 JSON으로 쓴다. float 재파싱의 값 보존을 위해 충분한 자릿수를 사용한다.
+	// 이 helper는 검증이나 파일 교체를 하지 않는다.
 	std::string Serialize(
 		const KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT& document)
 	{
@@ -410,6 +434,7 @@ namespace
 		return output.str();
 	}
 
+	// 저장에 실패한 임시 파일을 정리한다. error_code를 사용해 정리 실패가 원래 오류를 가리지 않게 한다.
 	void Remove_Temporary(const std::filesystem::path& path)
 	{
 		std::error_code cleanupError;
@@ -417,6 +442,7 @@ namespace
 	}
 }
 
+// 지원 프로필의 저작 patternbindings 경로를 프로젝트 Data 루트에서 구한다. Bin 게시 파일을 선택하지 않는다.
 std::filesystem::path Client::CKoukuSaydonAnimationPatternDocument::Resolve_Path(
 	const std::string_view profileId)
 {
@@ -428,6 +454,8 @@ std::filesystem::path Client::CKoukuSaydonAnimationPatternDocument::Resolve_Path
 			std::string(profileId) + ".patternbindings.json"));
 }
 
+// Load와 저장 재검증이 JSON을 임시 문서로 파싱한다. 마지막 구조 검증까지 성공한 경우에만 출력을 교체한다.
+// 실패하면 기존 outDocument를 유지하며 개별 오류 행을 남기는 Composition의 부분 격리 방식은 사용하지 않는다.
 bool_t Client::CKoukuSaydonAnimationPatternDocument::Parse_Text(
 	const std::string_view text,
 	KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT& outDocument,
@@ -488,6 +516,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Parse_Text(
 	staged.strReferenceRevision = revision->Get_String();
 	staged.strAuthority = authority->Get_String();
 	staged.Patterns.reserve(patterns->Get_Array().size());
+	// 패턴마다의 클립 상한과 별도로 문서 전체의 누적 개수를 제한한다.
 	std::size_t parsedClipCount = 0u;
 
 	for (const DATA_JSON_VALUE& patternValue : patterns->Get_Array())
@@ -609,6 +638,8 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Parse_Text(
 	return true;
 }
 
+// 참조 문서를 먼저 검증하고 profile과 revision을 맞춘다. 다음으로 각 패턴의 원본 슬롯과 모델 클립을 연결한다.
+// 입력 문서는 읽기 전용이며 성공해도 Server PRODUCT 권한을 부여하지 않는다.
 bool_t Client::CKoukuSaydonAnimationPatternDocument::Validate(
 	const KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT& document,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -634,6 +665,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Validate(
 		return false;
 	}
 
+	// REVIEW_CANDIDATE Action만 원본으로 허용한다. HOLDOUT Action의 슬롯은 연결 후보 집합에 넣지 않는다.
 	std::unordered_set<std::uint32_t> reviewCandidateActions;
 	std::unordered_set<std::string> referenceSlots;
 	for (const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE& action : reference.Actions)
@@ -680,6 +712,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Validate(
 	return true;
 }
 
+// 경로, 읽기, 파싱과 참조 연결을 차례로 확인한다. 임시 문서가 모두 통과한 뒤에만 기존 출력과 교체한다.
 bool_t Client::CKoukuSaydonAnimationPatternDocument::Load_FromPath(
 	const std::filesystem::path& path,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -711,6 +744,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Load_FromPath(
 	return true;
 }
 
+// Animation Tool의 프로필 선택에서 기본 경로를 구해 동일한 Load_FromPath 경로로 위임한다.
 bool_t Client::CKoukuSaydonAnimationPatternDocument::Load(
 	const std::string_view profileId,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -729,6 +763,8 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Load(
 		availableClips, outDocument, outStatus);
 }
 
+// Animation Tool이 편집한 로컬 패턴만 저장한다. Action 참조의 변경을 저장 준비와 최종 교체 전에 검사한다.
+// 목적 pattern 파일의 bytes CAS나 세 문서 병합은 하지 않으며 참조 파일 자체도 수정하지 않는다.
 bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 	const KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT& document,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -754,6 +790,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 		return false;
 	}
 
+	// 사용자가 보던 Action 참조가 최신 파일과 같아야 저장 준비를 계속한다.
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT currentReference;
 	if (!Load_ReferenceFromPath(referencePath, expectedProfileId,
 		expectedModelAssetId, availableClips, currentReference, outStatus))
@@ -776,6 +813,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 		return false;
 	}
 
+	// 같은 디렉터리의 고유 임시 파일에 쓰고 write, flush, commit과 close 결과를 확인한다.
 	std::filesystem::path temporary = destination;
 	temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) +
 		L"." + std::to_wstring(GetCurrentThreadId()) +
@@ -800,6 +838,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 		return false;
 	}
 
+	// 임시 파일을 재파싱하여 의미 연결을 검사하고 원문서와 구조체 값이 같은지도 확인한다.
 	std::string verificationText;
 	KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT reparsed;
 	std::string verificationStatus;
@@ -816,6 +855,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 		return false;
 	}
 
+	// 임시 파일을 만드는 동안 Action 참조가 바뀌었으면 목적 파일을 교체하지 않는다. 비교 대상은 저장할 pattern 파일이 아니다.
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT finalReference;
 	if (!Load_ReferenceFromPath(referencePath, expectedProfileId,
 		expectedModelAssetId, availableClips, finalReference,
@@ -835,6 +875,7 @@ bool_t Client::CKoukuSaydonAnimationPatternDocument::Save_Atomic(
 		return false;
 	}
 
+	// 검증한 임시 파일로 목적 파일을 원자적으로 교체한다. 교체 성공 뒤 별도의 재열기 없이 true를 반환한다.
 	if (!MoveFileExW(temporary.c_str(), destination.c_str(),
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{

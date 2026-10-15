@@ -2257,7 +2257,7 @@ namespace
                 "Room policy result round trip");
         }
 
-        C2S_DEBUG_KILL_GATE_BOSSES kill{ 42u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G3_SAYDON" };
+        C2S_DEBUG_KILL_GATE_BOSSES kill{ 42u, WORLD_ID::KOUKUSAYDON_ARENA, "BOSS_KOUKUSAYDON_G3_SAYDON" };
         CPacketWriter killWriter;
         testRunner.Require(Write_Message(killWriter, kill) && Is_Known_Packet_Type(PACKET_TYPE::C2S_DEBUG_KILL_GATE_BOSSES), "Gate Kill request is registered and serializes");
         CPacketReader killReader{ killWriter.Get_Buffer() };
@@ -2267,7 +2267,7 @@ namespace
             killDecoded.strExpectedBossArchetypeId == kill.strExpectedBossArchetypeId, "Gate Kill request round trip preserves stale-view guard");
         kill.iRequestSequence = 0; CPacketWriter invalidKill;
         testRunner.Require(!Write_Message(invalidKill, kill), "Gate Kill rejects zero sequence");
-        S2C_DEBUG_KILL_GATE_BOSSES_RESULT killed{42u, WORLD_ID::KAKULSAYDON_ARENA, DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED, 2u};
+        S2C_DEBUG_KILL_GATE_BOSSES_RESULT killed{42u, WORLD_ID::KOUKUSAYDON_ARENA, DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED, 2u};
         CPacketWriter resultWriter; testRunner.Require(Write_Message(resultWriter, killed), "Gate Kill result serializes");
         CPacketReader resultReader{resultWriter.Get_Buffer()}; S2C_DEBUG_KILL_GATE_BOSSES_RESULT result;
         testRunner.Require(Read_Message(resultReader, result) && result.iKilledCount == 2u && result.eResult == killed.eResult,
@@ -2417,7 +2417,7 @@ namespace
 	{
 		C2S_MARIO_MOVE request{};
 		request.iClientSequence = 17u;
-		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		for (const auto direction : { MARIO_DIRECTION::STOP, MARIO_DIRECTION::LEFT, MARIO_DIRECTION::RIGHT })
 		{
 			request.eDirection = direction;
@@ -2537,12 +2537,12 @@ namespace
     void Test_FearSnapshotProtocol(TEST_RUNNER& testRunner)
     {
         S2C_WORLD_SNAPSHOT snapshot{};
-        snapshot.iServerTick = 100u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        snapshot.iServerTick = 100u; snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
         PLAYER_SNAPSHOT player{}; player.iNetEntityId = 100u;
         player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
         player.eAction = PLAYER_ACTION_STATE::FEAR; player.iActionStartTick = 100u;
-        player.iFearEndTick = 190u; player.strFearPresentationId = "kakulsaydon.g1.logic.28";
+        player.iFearEndTick = 190u; player.strFearPresentationId = "koukusaydon.g1.logic.28";
         player.iInvulnerabilityZonePulseTick = 100u;
         snapshot.Players = {player};
         CPacketWriter writer;
@@ -2579,7 +2579,7 @@ namespace
 	{
 		S2C_WORLD_SNAPSHOT snapshot{};
 		snapshot.iServerTick = 10u;
-		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 		PLAYER_SNAPSHOT player{};
 		player.iNetEntityId = 100u;
@@ -2744,7 +2744,7 @@ namespace
 	void Test_CombatSuccessSnapshotProtocol(TEST_RUNNER& testRunner)
 	{
 		S2C_WORLD_SNAPSHOT snapshot{};
-		snapshot.iServerTick = 11u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.iServerTick = 11u; snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 		PLAYER_SNAPSHOT player{}; player.iNetEntityId = 101u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		snapshot.Players.push_back(player);
@@ -2841,7 +2841,7 @@ namespace
 	{
 		S2C_WORLD_SNAPSHOT snapshot{};
 		snapshot.iServerTick = 11u;
-		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 		PLAYER_SNAPSHOT player{};
 		player.iNetEntityId = 101u;
@@ -3043,7 +3043,7 @@ namespace
 	{
 		// A marker belongs to the displayed player, including an outside participant.
 		S2C_WORLD_SNAPSHOT snapshot{};
-		snapshot.iServerTick = 11u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.iServerTick = 11u; snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		snapshot.ActiveGameplayRevision = Make_GameplayDataRevision(1u);
 		PLAYER_SNAPSHOT markerPlayer{}; markerPlayer.iNetEntityId = 101u;
 		markerPlayer.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
@@ -3080,7 +3080,7 @@ namespace
 			"Unknown Mario marker rejects the snapshot before writing");
 
 		using namespace LostArk::Shared;
-		const C2S_MARIO_RETURN request{ 41u, WORLD_ID::KAKULSAYDON_ARENA };
+		const C2S_MARIO_RETURN request{ 41u, WORLD_ID::KOUKUSAYDON_ARENA };
 		CPacketWriter writer;
 		testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 6u,
 			"Mario return transmits only sequence and world, never destination");
@@ -3169,7 +3169,7 @@ namespace
 	{
 		C2S_DEBUG_MARIO_JUMP request{};
 		request.iClientSequence = 17u;
-		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		request.eDirection = MARIO_DIRECTION::RIGHT;
 		CPacketWriter writer;
 		testRunner.Require(Write_Message(writer, request) && writer.Get_Buffer().size() == 7u,
@@ -3293,7 +3293,7 @@ namespace
 	{
 		C2S_DEBUG_SET_MADNESS_FORM request{};
 		request.iRequestSequence = 11u;
-		request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		request.eForm = PLAYER_MADNESS_FORM::CLOWN;
 		CPacketWriter writer;
 		testRunner.Require(Write_Message(writer, request) &&
@@ -3321,7 +3321,7 @@ namespace
 		{
 			S2C_DEBUG_SET_MADNESS_FORM_RESULT result{};
 			result.iRequestSequence = 11u;
-			result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			result.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			result.eResult = static_cast<DEBUG_MADNESS_FORM_RESULT>(reason);
 			result.eActiveForm = PLAYER_MADNESS_FORM::CLOWN;
 			CPacketWriter resultWriter;
@@ -3651,7 +3651,7 @@ namespace
 	{
 		C2S_INTERACTION_SLOT slot{};
 		slot.iRequestSequence = 21u;
-		slot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		slot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		slot.eSlot = INTERACTION_SLOT::E;
 		CPacketWriter slotWriter;
 		testRunner.Require(Write_Message(slotWriter, slot) &&
@@ -3671,7 +3671,7 @@ namespace
 
 		C2S_DEBUG_SET_KOUKU_HUD_MODE modeRequest{};
 		modeRequest.iRequestSequence = 22u;
-		modeRequest.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		modeRequest.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		modeRequest.eMode = KOUKU_HUD_MODE::MARIO;
 		CPacketWriter modeWriter;
 		testRunner.Require(Write_Message(modeWriter, modeRequest) &&
@@ -3688,7 +3688,7 @@ namespace
 		{
 			S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT result{};
 			result.iRequestSequence = 22u;
-			result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			result.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			result.eResult = static_cast<DEBUG_KOUKU_HUD_MODE_RESULT>(reason);
 			result.eActiveOverride = KOUKU_HUD_MODE::MAZE;
 			CPacketWriter resultWriter;
@@ -3705,7 +3705,7 @@ namespace
 		}
 
 		S2C_SCENE_PROFILE_APPLY scene{};
-		scene.strProfileId = "scene.kakulsaydon.find-true-dark.v1";
+		scene.strProfileId = "scene.koukusaydon.find-true-dark.v1";
 		scene.iBlendMs = 500u;
 		scene.iDurationMs = 24000u;
 		CPacketWriter sceneWriter;
@@ -3728,7 +3728,7 @@ namespace
 			DEBUG_WORLD_PLAYBACK_OPERATION::REPLAY_TRIGGER, DEBUG_WORLD_PLAYBACK_OPERATION::PLAY_SEQUENCE,
 			DEBUG_WORLD_PLAYBACK_OPERATION::REPLAY_SEQUENCE, DEBUG_WORLD_PLAYBACK_OPERATION::STOP_SEQUENCE })
 		{
-			C2S_DEBUG_WORLD_PLAYBACK request{ 21u, WORLD_ID::KAKULSAYDON_ARENA, operation, "world.sequence.instance.8" };
+			C2S_DEBUG_WORLD_PLAYBACK request{ 21u, WORLD_ID::KOUKUSAYDON_ARENA, operation, "world.sequence.instance.8" };
 			CPacketWriter writer;
 			testRunner.Require(Write_Message(writer, request), "Viewer operation writes a stable target");
 			CPacketReader reader{ writer.Get_Buffer() };
@@ -3847,48 +3847,48 @@ namespace
 			"Protocol 129 preserves main trigger identities with WORLD occurrence placement");
 	}
 
-	void Test_KakulAuthoringCommandProtocol(TEST_RUNNER& testRunner)
+	void Test_KoukuAuthoringCommandProtocol(TEST_RUNNER& testRunner)
 	{
 		testRunner.Require(
 			static_cast<std::uint16_t>(
-				PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) ==
+				PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA) ==
 				static_cast<std::uint16_t>(
 					PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT) + 1u &&
 			static_cast<std::uint16_t>(
 				PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT) ==
 				static_cast<std::uint16_t>(
-					PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) + 1u &&
+					PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA) + 1u &&
 			Is_Known_Packet_Type(
-				PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA) &&
+				PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA) &&
 			Is_Known_Packet_Type(
 				PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT),
-			"Kakul Authoring Packet Identities Are Append Only And Known");
+			"Kouku Authoring Packet Identities Are Append Only And Known");
 
-		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA enter{};
+		C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA enter{};
 		enter.iRequestSequence = 41u;
 		CPacketWriter enterWriter;
 		testRunner.Require(
 			Write_Message(enterWriter, enter) &&
 			4u == enterWriter.Get_Buffer().size(),
-			"Writer Kakul Arena Entry");
+			"Writer Kouku Arena Entry");
 		CPacketReader enterReader{ enterWriter.Get_Buffer() };
-		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA decodedEnter{};
+		C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA decodedEnter{};
 		testRunner.Require(
 			Read_Message(enterReader, decodedEnter) &&
 			enter.iRequestSequence == decodedEnter.iRequestSequence &&
 			0u == enterReader.Get_RemainingSize(),
-			"Kakul Arena Entry Round Trip");
-		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA invalidEnter{};
+			"Kouku Arena Entry Round Trip");
+		C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA invalidEnter{};
 		CPacketWriter invalidEnterWriter;
 		testRunner.Require(!Write_Message(invalidEnterWriter, invalidEnter),
-			"Reject Kakul Arena Entry Without Sequence");
+			"Reject Kouku Arena Entry Without Sequence");
 
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT teleport{};
 		teleport.iRequestSequence = 42u;
-		teleport.strPlacementId = "stage.kakul.extracted-area-01";
+		teleport.strPlacementId = "stage.kouku.extracted-area-01";
 		CPacketWriter teleportWriter;
 		testRunner.Require(Write_Message(teleportWriter, teleport),
-			"Writer Kakul Stage Teleport");
+			"Writer Kouku Stage Teleport");
 		CPacketReader teleportReader{ teleportWriter.Get_Buffer() };
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT decodedTeleport{};
 		testRunner.Require(
@@ -3896,26 +3896,26 @@ namespace
 			teleport.iRequestSequence == decodedTeleport.iRequestSequence &&
 			teleport.strPlacementId == decodedTeleport.strPlacementId &&
 			0u == teleportReader.Get_RemainingSize(),
-			"Kakul Stage Teleport Round Trip");
+			"Kouku Stage Teleport Round Trip");
 
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT invalidTeleport = teleport;
-		invalidTeleport.strPlacementId = "stage kakul invalid";
+		invalidTeleport.strPlacementId = "stage kouku invalid";
 		CPacketWriter invalidTeleportWriter;
 		testRunner.Require(
 			!Write_Message(invalidTeleportWriter, invalidTeleport),
-			"Reject Kakul Stage Teleport With Unstable Placement Id");
+			"Reject Kouku Stage Teleport With Unstable Placement Id");
 
 		std::vector<std::uint8_t> truncated = teleportWriter.Get_Buffer();
 		truncated.pop_back();
 		CPacketReader truncatedReader{ truncated };
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT unchanged{};
 		unchanged.iRequestSequence = 99u;
-		unchanged.strPlacementId = "stage.kakul.unchanged";
+		unchanged.strPlacementId = "stage.kouku.unchanged";
 		testRunner.Require(
 			!Read_Message(truncatedReader, unchanged) &&
 			99u == unchanged.iRequestSequence &&
-			"stage.kakul.unchanged" == unchanged.strPlacementId,
-			"Reject Truncated Kakul Teleport Without Mutation");
+			"stage.kouku.unchanged" == unchanged.strPlacementId,
+			"Reject Truncated Kouku Teleport Without Mutation");
 	}
 
 	void Test_ReturnToBernProtocol(TEST_RUNNER& testRunner)
@@ -3960,7 +3960,7 @@ namespace
 	void Test_PartyTransferFailureProtocol(TEST_RUNNER& testRunner)
 	{
 		for (const auto targetWorld : { WORLD_ID::BERN, WORLD_ID::VALTAN_ARENA,
-			WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::MAHARAKA, WORLD_ID::COLOSSEUM })
+			WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::MAHARAKA, WORLD_ID::COLOSSEUM })
 			for (const auto result : { PARTY_TRANSFER_RESULT::REJECTED_NOT_LEADER,
 				PARTY_TRANSFER_RESULT::REJECTED_ROOM_FULL, PARTY_TRANSFER_RESULT::REJECTED_MEMBER_UNAVAILABLE,
 				PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, PARTY_TRANSFER_RESULT::REJECTED_OUTBOUND_BUSY })
@@ -8501,7 +8501,7 @@ namespace
 		C2S_RAID_ENTRY_PROPOSE propose{};
 		propose.iRequestSequence = 7u;
 		propose.strNpcPlacementId = "npc.bern.beda.guide";
-		propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
+		propose.eTarget = RAID_ENTRY_TARGET::KOUKUSAYDON;
 		CPacketWriter proposeWriter;
 		testRunner.Require(
 			Write_Message(proposeWriter, propose), "Writer Raid Entry Propose");
@@ -8511,7 +8511,7 @@ namespace
 			Read_Message(proposeReader, decodedPropose) &&
 			7u == decodedPropose.iRequestSequence &&
 			decodedPropose.strNpcPlacementId == "npc.bern.beda.guide" &&
-			RAID_ENTRY_TARGET::KAKULSAYDON == decodedPropose.eTarget &&
+			RAID_ENTRY_TARGET::KOUKUSAYDON == decodedPropose.eTarget &&
 			0u == proposeReader.Get_RemainingSize(),
 			"Raid Entry Propose Round Trip");
 
@@ -8660,13 +8660,13 @@ namespace
 		selected.iRequestSequence = 17u;
 		selected.eOperation =
 			KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
-		selected.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
-		selected.Scope.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-		selected.Scope.strBossPlacementId = "boss.kakulsaydon.g1.kouku";
-		selected.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+		selected.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+		selected.Scope.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1";
+		selected.Scope.strBossPlacementId = "boss.koukusaydon.g1.kouku";
+		selected.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G1_KOUKU";
 		selected.Scope.ExpectedGameplayRevision = revision;
 		selected.Scope.iExpectedSourceRevision = SOURCE_REVISION;
-		selected.strPatternId = "KAKULSAYDON_G1_PIZZA";
+		selected.strPatternId = "KOUKUSAYDON_G1_PIZZA";
 
 		CPacketWriter selectedWriter;
 		const bool selectedEncoded = Write_Message(selectedWriter, selected);
@@ -8847,7 +8847,7 @@ namespace
 			Is_Known_Packet_Type(
 				PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE),
 			"KoukuSaydon Audition Packet Types Are Append Only And Known");
-		auto bundle = selected; bundle.strPatternId.clear(); bundle.strBundleId = "kakulsaydon.bundle.1";
+		auto bundle = selected; bundle.strPatternId.clear(); bundle.strBundleId = "koukusaydon.bundle.1";
 		bundle.Scope.strGateId = "GATE2"; bundle.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
 		CPacketWriter bundleWriter; const bool bundleWritten = Write_Message(bundleWriter, bundle);
 		CPacketReader bundleReader(bundleWriter.Get_Buffer()); decltype(bundle) decodedBundle;
@@ -8855,20 +8855,20 @@ namespace
 		auto stop = bundle; stop.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::STOP;
 		CPacketWriter stopInvalid; testRunner.Require(!Write_Message(stopInvalid, stop), "Bundle stop requires exact run epoch");
 		stop.iExpectedRunEpoch = 19u; CPacketWriter stopWriter; testRunner.Require(Write_Message(stopWriter, stop), "Bundle stop accepts exact run epoch");
-		S2C_KOUKUSAYDON_BUNDLE_STATE run; run.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; run.strEncounterId = selected.Scope.strEncounterId;
+		S2C_KOUKUSAYDON_BUNDLE_STATE run; run.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; run.strEncounterId = selected.Scope.strEncounterId;
 		run.strBundleId = bundle.strBundleId; run.iRunEpoch = 19; run.iCommonStartTick = 100; run.iServerTick = 105;
 		run.PinnedGameplayRevision = revision; run.iPinnedSourceRevision = SOURCE_REVISION;
 		KOUKUSAYDON_BUNDLE_MEMBER_STATE activeMember{};
 		activeMember.strMemberId = "member.1";
 		activeMember.iBossNetEntityId = 101u;
-		activeMember.strPatternId = "KAKULSAYDON_G1_A";
+		activeMember.strPatternId = "KOUKUSAYDON_G1_A";
 		activeMember.iPatternSequence = 1u;
 		activeMember.iStartTick = 100u;
 		activeMember.eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::ACTIVE;
 		KOUKUSAYDON_BUNDLE_MEMBER_STATE pendingMember{};
 		pendingMember.strMemberId = "member.2";
 		pendingMember.iBossNetEntityId = 102u;
-		pendingMember.strPatternId = "KAKULSAYDON_G1_B";
+		pendingMember.strPatternId = "KOUKUSAYDON_G1_B";
 		pendingMember.iPatternSequence = 0u;
 		pendingMember.iStartTick = 110u;
 		pendingMember.eState = KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE::PENDING;
@@ -8908,7 +8908,7 @@ namespace
         C2S_BALANCE_PATCH patch{77u, revision, {
             {BALANCE_DOMAIN::PLAYER, "ARTIST", "moveSpeed", 2.95, 3.125},
             {BALANCE_DOMAIN::STAGGER, "ENCOUNTER_VALTAN|pattern|stage|0", "staggerGaugeMaximum", 12000., 16000.},
-            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|ENCOUNTER_KAKULSAYDON_G1|pattern|logic|SUCCESS|0", "maxHpDamagePercent", 10., 8.}}};
+            {BALANCE_DOMAIN::PATTERN_DAMAGE, "O|ENCOUNTER_KOUKUSAYDON_G1|pattern|logic|SUCCESS|0", "maxHpDamagePercent", 10., 8.}}};
         CPacketWriter writer; const bool wrote = Write_Message(writer, patch);
         CPacketReader reader(writer.Get_Buffer()); C2S_BALANCE_PATCH decoded;
         tests.Require(wrote && Read_Message(reader, decoded) && !reader.Get_RemainingSize() &&
@@ -9096,7 +9096,7 @@ void Test_CharacterStateProtocol(TEST_RUNNER& tests)
     result.Items = {{upgrade.strItemId, 1u, EQUIPMENT_SLOT::WEAPON, 37u, 18u},
         {"AVATAR_WARLORD_MOKOKO_036_HEAD", 1u, EQUIPMENT_SLOT::AVATAR_HEAD}};
     result.iSilver = result.iGold = MAX_RESTORE_PURSE_AMOUNT; result.iHonorTitleId = 30001u;
-    result.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; result.iPlayerId = 42u; result.iNetEntityId = 57u;
+    result.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; result.iPlayerId = 42u; result.iNetEntityId = 57u;
     result.eCharacterClass = CHARACTER_CLASS_ID::WARLORD;
     CPacketWriter writer; const bool encoded = Write_Message(writer, result);
     CPacketReader reader{writer.Get_Buffer()}; S2C_CAPTURE_CHARACTER_RESULT decoded;
@@ -9420,7 +9420,7 @@ void Test_Integrated130Protocol(TEST_RUNNER& tests)
         PACKET_TYPE::S2C_PARTY_TRANSFER_RESULT,
         PACKET_TYPE::C2S_RETURN_TO_BERN,
         PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
-        PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+        PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA,
         PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT,
         PACKET_TYPE::S2C_WORLD_SEQUENCE_PLAY,
         PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE,
@@ -9893,7 +9893,7 @@ int main(const int argumentCount, char* arguments[])
 	Test_UseEstherSkillRoundTrip(testRunner);
 	Test_DebugUseEstherRoundTrip(testRunner);
 	Test_RevivePlayerRoundTrip(testRunner);
-	Test_KakulAuthoringCommandProtocol(testRunner);
+	Test_KoukuAuthoringCommandProtocol(testRunner);
 	Test_DebugTeleportPositionProtocol(testRunner);
 	Test_DebugMadnessFormProtocol(testRunner);
 	Test_VehicleRidingProtocol(testRunner);

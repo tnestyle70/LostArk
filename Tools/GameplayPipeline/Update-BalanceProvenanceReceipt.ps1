@@ -203,7 +203,7 @@ foreach ($key in $current.Keys) {
 # BOSS row grammar; they do not claim extracted or combat-fidelity tuning.
 foreach ($entry in @($receipt.entries | Where-Object {
 	[string]$_.targetDocument -ceq 'Data/Balance/BossProfiles.json' -and
-	[string]$_.targetId -clike 'boss:BOSS_KAKULSAYDON_*'
+	[string]$_.targetId -clike 'boss:BOSS_KOUKUSAYDON_*'
 })) {
 	$entry.basis = 'PROJECT_TUNED'
 	$entry.source = [pscustomobject]@{

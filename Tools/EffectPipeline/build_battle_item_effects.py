@@ -19,6 +19,9 @@ import build_gate3_world_auras as world
 import build_kouku_pattern_native as native
 
 ROOT = world.ROOT
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 OUT = ROOT / 'out/BattleItemEffects20260929'
 TARGETS = {
     'effect.world.item.destruction_bomb':
@@ -199,25 +202,9 @@ def install():
                                          ensure_ascii=False) + ',\n'
                         for asset, (_, label) in TARGETS.items() if '"assetId": "' + asset + '"' not in text)
     replace_checked(tree_path, previous, text.replace(anchor, anchor + additions).encode())
-    for suffix in ('', '.filters'):
-        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        previous = path.read_bytes()
-        text = previous.decode('utf8')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        anchor = next(line for line in text.splitlines(keepends=True)
-                      if 'effect.world.move_destination.effect.json' in line)
-        if suffix:
-            start = text.index(anchor)
-            end = text.index('    </None>', start) + len('    </None>' + newline)
-            anchor = text[start:end]
-        additions = ''
-        for asset in TARGETS:
-            relative = '..\\..\\Data\\Effects\\Authored\\' + asset + '.effect.json'
-            if relative not in text:
-                additions += ('    <None Include="' + relative + '">' + newline +
-                              '      <Filter>96.DataFiles\\Effects</Filter>' + newline +
-                              '    </None>' + newline) if suffix else '    <None Include="' + relative + '" />' + newline
-        replace_checked(path, previous, text.replace(anchor, anchor + additions).encode())
+    metadata_paths = [ROOT / 'Data/Effects/Authored' / (asset + '.effect.json') for asset in TARGETS]
+    for path, previous, content in stage_data_solution(ROOT, metadata_paths):
+        replace_checked(path, previous, content)
 
 
 if __name__ == '__main__':

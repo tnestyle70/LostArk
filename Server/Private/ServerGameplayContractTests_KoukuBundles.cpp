@@ -41,7 +41,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 
 #ifdef _DEBUG
 	{
-		S2C_WORLD_SNAPSHOT snapshot{}; snapshot.iServerTick = 10u; snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		S2C_WORLD_SNAPSHOT snapshot{}; snapshot.iServerTick = 10u; snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		snapshot.ActiveGameplayRevision.Bytes.front() = 1u;
 		PLAYER_SNAPSHOT player{}; player.iNetEntityId = 1u; player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
 		snapshot.Players.push_back(player);
@@ -71,7 +71,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		std::ifstream input(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", std::ios::binary);
 		std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
 		if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
-		const std::string encounter = "ENCOUNTER_KAKULSAYDON_G1";
+		const std::string encounter = "ENCOUNTER_KOUKUSAYDON_G1";
 		const auto appendPattern = [&](const std::string& id, const std::string& boss, const std::string& placement, const unsigned duration)
 		{
 			bytes += "PATTERN	" + encounter + "	" + id + "	" + id + ".action	AUDITION_ONLY	0	0	0	0	0	0	0	1	1	ANY	ANY	0\n";
@@ -83,38 +83,38 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			bytes += "PATTERNTARGET	" + id + "	GATE2	" + placement + "\n";
 			bytes += "PATTERNSPAWNRESET	" + encounter + "	" + id + "	1\n";
 		};
-		appendPattern("KAKULSAYDON_G1_BUNDLE_A", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
-		appendPattern("KAKULSAYDON_G1_BUNDLE_B", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
-		appendPattern("KAKULSAYDON_G1_BUNDLE_A_FOLLOW", "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 200u);
-		const std::string encoreId = "KAKULSAYDON_G3_ENCORE_REUSE_CONTRACT";
+		appendPattern("KOUKUSAYDON_G1_BUNDLE_A", "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 200u);
+		appendPattern("KOUKUSAYDON_G1_BUNDLE_B", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON", "boss.koukusaydon.g2.big-saydon", 1000u);
+		appendPattern("KOUKUSAYDON_G1_BUNDLE_A_FOLLOW", "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 200u);
+		const std::string encoreId = "KOUKUSAYDON_G3_ENCORE_REUSE_CONTRACT";
 		for (const bool layout : {false, true})
 		{
 			const std::string id = encoreId + (layout ? "_LAYOUT" : "");
 			const auto begin = bytes.size();
-			appendPattern(id, "BOSS_KAKULSAYDON_G3_SAYDON", "boss.kakulsaydon.g3.saydon", 1000u);
+			appendPattern(id, "BOSS_KOUKUSAYDON_G3_SAYDON", "boss.koukusaydon.g3.saydon", 1000u);
 			const auto gate = bytes.find("GATE2", begin); bytes.replace(gate, 5u, "GATE3");
 			if (layout) bytes += "PATTERNWORLDSEQUENCE\t" + encounter + "\t" + id +
 				"\t0\tworld.encore.layout\t1\t0\t0\t0\tNONE\t0\t0\t0\t1000\tencore.layout\n";
 		}
-		const std::string reentryId = "KAKULSAYDON_G1_REENTRY_CONTRACT";
-		appendPattern(reentryId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 10000u);
+		const std::string reentryId = "KOUKUSAYDON_G1_REENTRY_CONTRACT";
+		appendPattern(reentryId, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 10000u);
 		bytes += "PATTERNLOGIC\t" + encounter + "\t" + reentryId + "\t0\treentry.hit\tENTER_AREA\t0\t10000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
 		bytes += "PATTERNLOGICREARM\t" + encounter + "\t" + reentryId + "\treentry.hit\tON_REENTER\n";
 		bytes += "PATTERNLOGICREGION\t" + encounter + "\t" + reentryId + "\treentry.hit\t0\treentry.body\tBOSS_CURRENT\tCIRCLE\t0\t0\t0\t0\t1\t1\t1\t4\t45\tNONE\tNONE\n";
 		bytes += "PATTERNLOGICOUTCOME\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
 		bytes += "PATTERNLOGICPUSH\t" + encounter + "\t" + reentryId + "\treentry.hit\tSUCCESS\t0\t2\t242\n";
-		const std::string ellipseId = "KAKULSAYDON_G1_ELLIPSE_CONTRACT";
-		appendPattern(ellipseId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 10000u);
+		const std::string ellipseId = "KOUKUSAYDON_G1_ELLIPSE_CONTRACT";
+		appendPattern(ellipseId, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 10000u);
 		bytes += "PATTERNLOGIC\t" + encounter + "\t" + ellipseId + "\t0\tellipse.hit\tENTER_AREA\t0\t10000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
 		bytes += "PATTERNLOGICREGION\t" + encounter + "\t" + ellipseId + "\tellipse.hit\t0\tellipse.body\tBOSS_CURRENT\tREVERSE_SECTOR\t0\t0\t0\t725\t1\t1\t1\t0.6\t0\tNONE\tNONE\t0.6\t12\n";
 		bytes += "PATTERNLOGICOUTCOME\t" + encounter + "\t" + ellipseId + "\tellipse.hit\tSUCCESS\t0\tMAX_HP_PERCENT_DAMAGE\t10\t0\t-\n";
 		bytes += "PATTERNLOGICPUSH\t" + encounter + "\t" + ellipseId + "\tellipse.hit\tSUCCESS\t0\t2\t242\tBOSS_FORWARD\n";
-		const std::string retargetId = "KAKULSAYDON_G1_RETARGET_CONTRACT";
+		const std::string retargetId = "KOUKUSAYDON_G1_RETARGET_CONTRACT";
 		bytes += "PATTERN\t" + encounter + "\t" + retargetId + "\t" + retargetId + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t3\tANY\tANY\t0\n";
-		bytes += "PATTERNBOSS\t" + encounter + "\t" + retargetId + "\tBOSS_KAKULSAYDON_G2_BIG_SAYDON\n";
+		bytes += "PATTERNBOSS\t" + encounter + "\t" + retargetId + "\tBOSS_KOUKUSAYDON_G2_BIG_SAYDON\n";
 		bytes += "PATTERNPOLICY\t" + encounter + "\t" + retargetId + "\tNORMAL\t1\t1\tNONE\tNONE\n";
 		bytes += "PATTERNSOURCE\t" + encounter + "\t" + retargetId + "\t1\t0\t0\t0\t0\t0\t0\n";
-		bytes += "PATTERNTARGET\t" + retargetId + "\tGATE2\tboss.kakulsaydon.g2.big-saydon\n";
+		bytes += "PATTERNTARGET\t" + retargetId + "\tGATE2\tboss.koukusaydon.g2.big-saydon\n";
 		for (unsigned index = 0u; index < 3u; ++index)
 		{
 			const auto actionId = retargetId + ".stage." + std::to_string(index + 1u);
@@ -123,29 +123,29 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			if (index != 1u)
 				bytes += "PATTERNSTAGEACTION\t" + encounter + "\t" + retargetId + "\t" + actionId + "\t0\tENTER\tRETARGET_RANDOM_ALIVE\tboss.target.pattern\t1\t0\n";
 		}
-		const std::string randomTriggerId = "KAKULSAYDON_G1_RANDOM_TARGET_TRIGGER_CONTRACT";
+		const std::string randomTriggerId = "KOUKUSAYDON_G1_RANDOM_TARGET_TRIGGER_CONTRACT";
         const std::string randomPresentationId = randomTriggerId + "_PRESENTATION";
-        appendPattern(randomPresentationId, "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
+        appendPattern(randomPresentationId, "BOSS_KOUKUSAYDON_G2_BIG_SAYDON", "boss.koukusaydon.g2.big-saydon", 1000u);
         for (unsigned index = 0u; index < 3u; ++index)
             bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + randomPresentationId + "\trandom.presentation." +
                 std::to_string(index) + "\tBOSS_RANDOM_TARGET_PRESENTATION\t" + std::to_string(index * 200u) +
                 "\t150\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
-		appendPattern(randomTriggerId, "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "boss.kakulsaydon.g2.big-saydon", 1000u);
+		appendPattern(randomTriggerId, "BOSS_KOUKUSAYDON_G2_BIG_SAYDON", "boss.koukusaydon.g2.big-saydon", 1000u);
 		for (unsigned index = 0u; index < 3u; ++index)
 			bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + randomTriggerId + "\trandom.target." +
 				std::to_string(index) + "\tBOSS_RANDOM_TARGET\t" + std::to_string(index * 200u) +
 				"\t34\t0\t0\t0\t0\t-\t0\t0\t0\t1\t0\t0\t0\t0\t0\t0\t0\t0\t0\n";
-		const std::string rootId = "KAKULSAYDON_G1_ROOT_MOTION_CONTRACT";
+		const std::string rootId = "KOUKUSAYDON_G1_ROOT_MOTION_CONTRACT";
 		for (const bool legacy : { false, true })
 		{
 			const auto id = rootId + (legacy ? "_LEGACY" : "");
-			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 3000u);
+			appendPattern(id, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 3000u);
 			bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + id + "\t0\t4\t" +
 				(legacy ? "0:0:0,1000:0:0,2000:0.6:0.3,3000:0:0\n" :
 				 "0:0:0:0,1000:0:0:0,2000:0.6:0.3:1.25,3000:0:0:0\n");
 		}
 		const std::string rootChainId = rootId + "_CHAIN";
-		appendPattern(rootChainId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1500u);
+		appendPattern(rootChainId, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 1500u);
 		const auto chainHeader = bytes.find("PATTERN\t" + encounter + "\t" + rootChainId + "\t");
 		const auto chainStageCount = bytes.find("\t1\t1\tANY\tANY\t0\n", chainHeader);
 		bytes.replace(chainStageCount, std::string("\t1\t1\tANY\tANY\t0\n").size(), "\t1\t2\tANY\tANY\t0\n");
@@ -156,28 +156,28 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		bytes += "PATTERNSTAGEBRANCH\t" + encounter + "\t" + rootChainId + "\t" + rootChainId + ".stage.2\tTIMEOUT\t-\n";
 		bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + rootChainId + "\t0\t2\t0:0:0:0,1500:0.2:0:0.3\n";
 		bytes += "PATTERNSTAGEROOTMOTION\t" + encounter + "\t" + rootChainId + "\t1\t3\t0:0:0:0,750:0:0.05:0.5,1500:0:0.1:0\n";
-		const std::string motionId = "KAKULSAYDON_G1_MOTION_CONTRACT";
+		const std::string motionId = "KOUKUSAYDON_G1_MOTION_CONTRACT";
 		for (const bool invalidNavigation : {false, true})
 		{
 			const auto id = motionId + (invalidNavigation ? "_OFFNAV" : "");
-			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 7400u);
+			appendPattern(id, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 7400u);
 			const std::string reset = "PATTERNSPAWNRESET	" + encounter + "	" + id + "	1\n";
 			bytes.erase(bytes.size() - reset.size());
 			bytes += "PATTERNBOSSMOTION	" + encounter + "	" + id + "	1870	5780	2.04	10.56	316.95	" +
 				(invalidNavigation ? "99999" : "11.79") + "	10.56	326.79	314.7368\n";
 		}
-		const std::string contactId = "KAKULSAYDON_G1_CONTACT_CONTRACT";
-		const std::string crossParentId = "KAKULSAYDON_G1_CROSS_PARENT";
-		appendPattern(crossParentId, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 1000u);
+		const std::string contactId = "KOUKUSAYDON_G1_CONTACT_CONTRACT";
+		const std::string crossParentId = "KOUKUSAYDON_G1_CROSS_PARENT";
+		appendPattern(crossParentId, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 1000u);
         const auto resetRow = "PATTERNSPAWNRESET\t" + encounter + "\t" + crossParentId + "\t1\n";
         bytes.erase(bytes.find(resetRow), resetRow.size());
 		bytes += "PATTERNFIXEDTIMELINE\t" + encounter + "\t" + crossParentId + "\n";
 		std::array<std::string, 4u> crossIds{};
 		for (unsigned direction = 0u; direction < 4u; ++direction)
 		{
-			const auto id = crossIds[direction] = "KAKULSAYDON_G1_CROSS_CHILD_" + std::to_string(direction);
+			const auto id = crossIds[direction] = "KOUKUSAYDON_G1_CROSS_CHILD_" + std::to_string(direction);
 			const auto begin = bytes.size();
-			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", 100u);
+			appendPattern(id, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", 100u);
 			const auto reset = bytes.find("PATTERNSPAWNRESET\t" + encounter + "\t" + id + "\t1\n", begin);
 			bytes.erase(reset);
 			const auto count = bytes.find("\t1\t1\tANY\tANY\t0\n", begin);
@@ -199,7 +199,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		bytes += "PATTERNMECHANICTRIGGER\t" + encounter + "\t" + crossParentId + "\tparent.later.hud\tHUD_ENTER\t300\t300\t3\t0\t0\t0\t-\t0\t0\t0\t1\n";
 		const auto appendContactFixture = [&](const std::string& id, const bool miss, const bool lastTick)
 		{
-			appendPattern(id, "BOSS_KAKULSAYDON_G2_KOUKU", "boss.kakulsaydon.g2.kouku", miss || lastTick ? 500u : 1000u);
+			appendPattern(id, "BOSS_KOUKUSAYDON_G2_KOUKU", "boss.koukusaydon.g2.kouku", miss || lastTick ? 500u : 1000u);
 			if (miss || lastTick) bytes += "PATTERNTIMELINE\t" + encounter + "\t" + id + "\t1000\n";
 			const auto row = [&](const std::initializer_list<std::string> fields)
 			{
@@ -210,8 +210,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			row({ "PATTERNWORLDSEQUENCE", encounter, id, "0", "world.contact.card", "1", "0", "0", "0", "NONE", "0", "0", "0", "1000", "contact.card" });
 			row({ "PATTERNWORLDPLACEMENT", encounter, id, "contact.card", "0", "2", "0", "15", "0", "-10", "0.5", "2", "1.5" });
 			row({ "PATTERNLOGIC", encounter, id, "0", "contact.deadline", "EXTERNAL_SIGNAL", "0", "1000", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", lastTick ? "1" : "0", "-", "0", "0" });
-			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "SUCCESS", "0", "FOLLOWUP_PATTERN", "0", "0", "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" });
-			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "TIMEOUT", "0", "FOLLOWUP_PATTERN", "0", "0", "KAKULSAYDON_G1_BUNDLE_A" });
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "SUCCESS", "0", "FOLLOWUP_PATTERN", "0", "0", "KOUKUSAYDON_G1_BUNDLE_A_FOLLOW" });
+			row({ "PATTERNLOGICOUTCOME", encounter, id, "contact.deadline", "TIMEOUT", "0", "FOLLOWUP_PATTERN", "0", "0", "KOUKUSAYDON_G1_BUNDLE_A" });
 			row({ "PATTERNLOGIC", encounter, id, "1", "contact.hit", "OBJECT_CONTACT", lastTick ? "900" : "100", "100", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "-", "0", "0" });
 			row({ "PATTERNLOGICCONTACTGROUP", encounter, id, "contact.hit", "-", "100" });
 			row({ "PATTERNLOGICCONTACTTARGET", encounter, id, "contact.hit", "contact.card", "world.contact.card", "0", "0", "0.1" });
@@ -232,10 +232,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		appendContactFixture(contactId + "_FINAL", false, true);
 		for (const unsigned offset : {0u, 67u})
 		{
-			const std::string id = "kakulsaydon.bundle.contract." + std::to_string(offset);
+			const std::string id = "koukusaydon.bundle.contract." + std::to_string(offset);
 			bytes += "PATTERNBUNDLE	" + id + "	" + encounter + "	GATE2\n";
-			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.a	KAKULSAYDON_G1_BUNDLE_A	boss.kakulsaydon.g2.kouku	0\n";
-			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.b	KAKULSAYDON_G1_BUNDLE_B	boss.kakulsaydon.g2.big-saydon	" + std::to_string(offset) + "\n";
+			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.a	KOUKUSAYDON_G1_BUNDLE_A	boss.koukusaydon.g2.kouku	0\n";
+			bytes += "PATTERNBUNDLEMEMBER	" + id + "	member.b	KOUKUSAYDON_G1_BUNDLE_B	boss.koukusaydon.g2.big-saydon	" + std::to_string(offset) + "\n";
 		}
 		const auto headerEnd = bytes.find('\n');
 		const auto headerCount = bytes.rfind('\t', headerEnd);
@@ -342,27 +342,27 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		{
 			const auto makeRoom = [&]()
 			{
-				auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
-				for (const char* id : {"boss.kakulsaydon.g2.kouku", "boss.kakulsaydon.g2.big-saydon"})
+				auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA, generation);
+				for (const char* id : {"boss.koukusaydon.g2.kouku", "boss.koukusaydon.g2.big-saydon"})
 				{
 					const auto* placement = room->Find_Placement(id); SERVER_WORLD_ENTITY entity;
 					if (placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity)) { ++room->m_iNextNetEntityId; room->m_WorldEntities.push_back(std::move(entity)); }
 				}
 				return room;
 			};
-			const auto getBoss = [](CGameRoom& room, const bool second) { return room.Find_KoukuSaydonArenaBoss(second ? "boss.kakulsaydon.g2.big-saydon" : "boss.kakulsaydon.g2.kouku", second ? "BOSS_KAKULSAYDON_G2_BIG_SAYDON" : "BOSS_KAKULSAYDON_G2_KOUKU"); };
+			const auto getBoss = [](CGameRoom& room, const bool second) { return room.Find_KoukuSaydonArenaBoss(second ? "boss.koukusaydon.g2.big-saydon" : "boss.koukusaydon.g2.kouku", second ? "BOSS_KOUKUSAYDON_G2_BIG_SAYDON" : "BOSS_KOUKUSAYDON_G2_KOUKU"); };
 			const auto requestFor = [&](CGameRoom& room, const unsigned offset)
 			{
 				C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request; request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
-				request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.Scope.strEncounterId = encounter; request.Scope.strGateId = "GATE2";
+				request.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; request.Scope.strEncounterId = encounter; request.Scope.strGateId = "GATE2";
 				request.Scope.ExpectedGameplayRevision = room.m_GameplayCatalog.Get_ActiveRevision(); request.Scope.iExpectedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room.m_GameplayCatalog.Active());
-				request.strBundleId = "kakulsaydon.bundle.contract." + std::to_string(offset); return request;
+				request.strBundleId = "koukusaydon.bundle.contract." + std::to_string(offset); return request;
 			};
 			const auto tick = [](CGameRoom& room) { room.Update_WorldEntities(1.f / 30.f); ++room.m_iServerTick; };
 			for (const bool layout : {false, true})
 			{
 				auto room = makeRoom();
-				const auto* placement = room->Find_Placement("boss.kakulsaydon.bingo.saydon");
+				const auto* placement = room->Find_Placement("boss.koukusaydon.bingo.saydon");
 				SERVER_WORLD_ENTITY entity;
 				const bool spawned = placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity);
 				if (spawned) { ++room->m_iNextNetEntityId; room->m_WorldEntities.push_back(std::move(entity)); }
@@ -370,8 +370,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				request.strBundleId.clear(); request.strPatternId = encoreId + (layout ? "_LAYOUT" : "");
 				request.Scope.strGateId = "BINGO";
-				request.Scope.strBossPlacementId = "boss.kakulsaydon.bingo.saydon";
-				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_BINGO_SAYDON";
+				request.Scope.strBossPlacementId = "boss.koukusaydon.bingo.saydon";
+				request.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_BINGO_SAYDON";
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
 				const auto verdict = room->Evaluate_KoukuSaydonPatternAudition(931u, request, result);
 				tests.Require(spawned && verdict == (layout ? KOUKUSAYDON_PATTERN_AUDITION_RESULT::REJECTED_UNSUPPORTED_PATTERN :
@@ -380,7 +380,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				if (!layout && verdict == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED)
 				{
 					tick(*room);
-					const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+					const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
 					tests.Require(boss && boss->strPatternId == encoreId && boss->iPatternSequence != 0u,
 						"Encore Server snapshot retains the exact original Gate 3 pattern identity");
 				}
@@ -390,8 +390,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto room = makeRoom(); auto request = requestFor(*room, 0u);
 				request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				request.strBundleId.clear(); request.strPatternId = crossParentId;
-				request.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				request.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+				request.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
 				const bool queued = room->Evaluate_KoukuSaydonPatternAudition(917u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
 				tick(*room); auto* boss = getBoss(*room, false);
@@ -452,8 +452,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
                 auto request = requestFor(*room, 0u);
                 request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
                 request.strBundleId.clear(); request.strPatternId = crossParentId;
-                request.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-                request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+                request.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+                request.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
                 S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
                 const bool queued = room->Evaluate_KoukuSaydonPatternAudition(917u, request, result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
                 tick(*room); tick(*room);
@@ -561,8 +561,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 					auto rootRoom = makeRoom(); auto rootRequest = requestFor(*rootRoom, 0u);
 					rootRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 					rootRequest.strBundleId.clear(); rootRequest.strPatternId = rootId;
-					rootRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-					rootRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+					rootRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+					rootRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 					auto* moving = getBoss(*rootRoom, false);
 					moving->fYawDegrees = 90.f;
 					const std::array<float, 3u> origin{moving->fSpawnPositionX, moving->fSpawnPositionY, moving->fSpawnPositionZ};
@@ -626,8 +626,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto chainRoom = makeRoom(); auto chainRequest = requestFor(*chainRoom, 0u);
 				chainRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				chainRequest.strBundleId.clear(); chainRequest.strPatternId = rootChainId;
-				chainRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				chainRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				chainRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+				chainRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 				auto* moving = getBoss(*chainRoom, false); moving->fYawDegrees = 0.f;
 				const std::array<float, 3u> origin{moving->fSpawnPositionX, moving->fSpawnPositionY, moving->fSpawnPositionZ};
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
@@ -652,8 +652,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto contactRoom = makeRoom(); auto contactRequest = requestFor(*contactRoom, 0u);
 				contactRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				contactRequest.strBundleId.clear(); contactRequest.strPatternId = contactId;
-				contactRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				contactRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				contactRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+				contactRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT contactResult;
 				const bool contactQueued = contactRoom->Evaluate_KoukuSaydonPatternAudition(908u, contactRequest, contactResult) ==
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
@@ -674,8 +674,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto deadlineRoom = makeRoom(); auto deadlineRequest = requestFor(*deadlineRoom, 0u);
 				deadlineRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				deadlineRequest.strBundleId.clear(); deadlineRequest.strPatternId = contactId + (finalTickSuccess ? "_FINAL" : "_MISS");
-				deadlineRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				deadlineRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				deadlineRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+				deadlineRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT deadlineResult;
 				const bool queuedDeadline = deadlineRoom->Evaluate_KoukuSaydonPatternAudition(909u, deadlineRequest, deadlineResult) ==
 					KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
@@ -687,7 +687,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 					deadlineRoom->m_KoukuSaydonPatternAudition.Members.front().PatternIds.size() == 1u;
 				for (unsigned i = 20u; i < 31u; ++i) tick(*deadlineRoom);
 				const auto& deadlineRun = deadlineRoom->m_KoukuSaydonPatternAudition;
-				const auto expected = finalTickSuccess ? "KAKULSAYDON_G1_BUNDLE_A_FOLLOW" : "KAKULSAYDON_G1_BUNDLE_A";
+				const auto expected = finalTickSuccess ? "KOUKUSAYDON_G1_BUNDLE_A_FOLLOW" : "KOUKUSAYDON_G1_BUNDLE_A";
 				const bool resolvedOnce = deadlineRun.Members.size() == 1u &&
 					deadlineRun.Members.front().PatternIds.size() == 2u &&
 					deadlineRun.Members.front().PatternIds.back() == expected &&
@@ -703,8 +703,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto motionRoom = makeRoom(); auto motionRequest = requestFor(*motionRoom, 0u);
 				motionRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				motionRequest.strBundleId.clear(); motionRequest.strPatternId = motionId;
-				motionRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku";
-				motionRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+				motionRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku";
+				motionRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 				S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT motionResult;
 				const bool motionQueued = motionRoom->Evaluate_KoukuSaydonPatternAudition(920u, motionRequest, motionResult) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
 				if (!motionQueued) std::cout << "[STATUS] Boss Motion admission: " << motionRoom->m_strStatus << '\n';
@@ -739,8 +739,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto randomRoom = makeRoom(); auto randomRequest = requestFor(*randomRoom, 0u);
 				randomRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				randomRequest.strBundleId.clear(); randomRequest.strPatternId = presentationOnly ? randomPresentationId : randomTriggerId;
-				randomRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.big-saydon";
-				randomRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+				randomRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.big-saydon";
+				randomRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
 				auto* boss = getBoss(*randomRoom, true);
 				for (unsigned index = 0u; index < 4u; ++index)
 				{
@@ -824,8 +824,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				auto targetingRoom = makeRoom(); auto targetingRequest = requestFor(*targetingRoom, 0u);
 				targetingRequest.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
 				targetingRequest.strBundleId.clear(); targetingRequest.strPatternId = retargetId;
-				targetingRequest.Scope.strBossPlacementId = "boss.kakulsaydon.g2.big-saydon";
-				targetingRequest.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+				targetingRequest.Scope.strBossPlacementId = "boss.koukusaydon.g2.big-saydon";
+				targetingRequest.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
 				auto* targetingBoss = getBoss(*targetingRoom, true);
 				SERVER_PLAYER target{}; target.iPlayerId = 940u; target.iNetEntityId = 940u;
 				target.iCurrentHp = 100u; target.isCombatReady = true;
@@ -881,7 +881,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			tests.Require(room->Build_KoukuBundleState(replicated) && replicated.Members.size() == 2u && replicated.iCommonStartTick == 1u, "Bundle room replication includes both actors and the shared clock");
 			if (first)
 			{
-				KOUKUSAYDON_LOGIC_OUTPUT followup; followup.FollowupPatternIds = {"KAKULSAYDON_G1_BUNDLE_A_FOLLOW"}; room->Apply_KoukuLogicOutput(followup, *first, 1u);
+				KOUKUSAYDON_LOGIC_OUTPUT followup; followup.FollowupPatternIds = {"KOUKUSAYDON_G1_BUNDLE_A_FOLLOW"}; room->Apply_KoukuLogicOutput(followup, *first, 1u);
 				tests.Require(room->m_KoukuSaydonPatternAudition.Members[0].PatternIds.size() == 2u && room->m_KoukuSaydonPatternAudition.Members[1].PatternIds.size() == 1u, "Bundle follow-up remains in the requesting member chain");
 			}
 			for (unsigned i=0;i<18u;++i) tick(*room);
@@ -890,15 +890,15 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			tests.Require(room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE, "Bundle finishes only when all member chains complete");
 			auto isolated = makeRoom(); auto one = requestFor(*isolated,0u);
 			one.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED; one.strBundleId.clear();
-			one.strPatternId = "KAKULSAYDON_G1_BUNDLE_A"; one.Scope.strBossPlacementId = "boss.kakulsaydon.g2.kouku"; one.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+			one.strPatternId = "KOUKUSAYDON_G1_BUNDLE_A"; one.Scope.strBossPlacementId = "boss.koukusaydon.g2.kouku"; one.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 			const bool singleQueued = isolated->Evaluate_KoukuSaydonPatternAudition(905u,one,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED; tick(*isolated);
 			tests.Require(singleQueued && getBoss(*isolated,false)->iPatternStartTick == 1u && getBoss(*isolated,true)->strPatternId.empty(), "Single child audition starts only its exact actor");
 			auto ordered = makeRoom();
-			const auto* orderedPlacement = ordered->Find_Placement("boss.kakulsaydon.g1.saydon"); SERVER_WORLD_ENTITY orderedBoss;
+			const auto* orderedPlacement = ordered->Find_Placement("boss.koukusaydon.g1.saydon"); SERVER_WORLD_ENTITY orderedBoss;
 			const bool orderedReady = orderedPlacement && ordered->Build_WorldEntity(*orderedPlacement, ordered->m_iNextNetEntityId, orderedBoss);
 			if (orderedReady) { ++ordered->m_iNextNetEntityId; ordered->m_WorldEntities.push_back(std::move(orderedBoss)); }
 			auto all = requestFor(*ordered,0u); all.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_ALL; all.strBundleId.clear(); all.Scope.strGateId = "GATE1";
-			all.Scope.strBossPlacementId = "boss.kakulsaydon.g1.saydon"; all.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+			all.Scope.strBossPlacementId = "boss.koukusaydon.g1.saydon"; all.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 			const bool orderedQueued = ordered->Evaluate_KoukuSaydonPatternAudition(906u,all,result) == KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED;
 			tests.Require(orderedReady && orderedQueued && ordered->m_KoukuSaydonPatternAudition.Members.size() == 1u && ordered->m_KoukuSaydonPatternAudition.Members.front().PatternIds.size() > 1u, "Existing Play All remains one actor with a sequential Product queue");
 			auto worldRoom = makeRoom(); auto worldRequest = requestFor(*worldRoom,0u); worldRoom->Evaluate_KoukuSaydonPatternAudition(907u,worldRequest,result); tick(*worldRoom);
@@ -953,8 +953,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 		{
 			// The production admission reads a newly published file while this room
 			// retains its original process catalog. Never replace the user's Product.
-			auto reloadRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
-			for (const char* id : {"boss.kakulsaydon.g2.kouku", "boss.kakulsaydon.g2.big-saydon"})
+			auto reloadRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA, generation);
+			for (const char* id : {"boss.koukusaydon.g2.kouku", "boss.koukusaydon.g2.big-saydon"})
 			{
 				const auto* placement = reloadRoom->Find_Placement(id); SERVER_WORLD_ENTITY entity;
 				if (placement && reloadRoom->Build_WorldEntity(*placement, reloadRoom->m_iNextNetEntityId, entity))
@@ -963,9 +963,9 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			const auto oldSource = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
 			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST play{};
 			play.iRequestSequence = 1u; play.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_BUNDLE;
-			play.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; play.Scope.strEncounterId = encounter;
+			play.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; play.Scope.strEncounterId = encounter;
 			play.Scope.strGateId = "GATE2"; play.Scope.ExpectedGameplayRevision = revision;
-			play.Scope.iExpectedSourceRevision = oldSource; play.strBundleId = "kakulsaydon.bundle.contract.0";
+			play.Scope.iExpectedSourceRevision = oldSource; play.strBundleId = "koukusaydon.bundle.contract.0";
 			S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
 			tests.Require(reloadRoom->Evaluate_KoukuSaydonPatternAudition(950u, play, result) ==
 				KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED, "Kouku live reload begins from the original room generation");
@@ -980,7 +980,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 			fs::create_directories(lockPath.parent_path(), error);
 			{ std::ofstream marker(ownerScript); marker << "# Temporary publisher lock fixture\n"; }
 			const auto publishedPath = publishRoot / L"Gameplay" / L"Gameplay.bootstrap";
-			const std::string sourcePrefix = "KOUKUSAYDONPRODUCTREVISION\t" + encounter + "\tBOSS_KAKULSAYDON_G1_KOUKU\t";
+			const std::string sourcePrefix = "KOUKUSAYDONPRODUCTREVISION\t" + encounter + "\tBOSS_KOUKUSAYDON_G1_KOUKU\t";
 			const auto changeSource = [&](std::string value, unsigned source)
 			{
 				const auto start = value.find(sourcePrefix) + sourcePrefix.size();
@@ -988,10 +988,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				return value;
 			};
 			std::string published = changeSource(bytes, oldSource + 1u);
-			const std::string shortStage = "KAKULSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t200\t";
+			const std::string shortStage = "KOUKUSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t200\t";
 			const auto stageAt = published.find(shortStage);
 			if (stageAt != std::string::npos) published.replace(stageAt, shortStage.size(),
-				"KAKULSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t700\t");
+				"KOUKUSAYDON_G1_BUNDLE_A.stage.1\tACTIVE\t700\t");
 			const auto publish = [&](const std::string& contents)
 			{
 				std::ofstream output(publishedPath, std::ios::binary | std::ios::trunc);
@@ -1030,8 +1030,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_KoukuBundles(TESTS& tes
 				"Next Complete Play admits published Kouku source while preserving the real process gameplay hash");
 			for (unsigned tick = 0u; tick < 10u && refreshed; ++tick)
 			{ reloadRoom->Update_WorldEntities(1.f / 30.f); ++reloadRoom->m_iServerTick; }
-			auto* liveBoss = reloadRoom->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU");
-			tests.Require(refreshed && liveBoss && liveBoss->strPatternId == "KAKULSAYDON_G1_BUNDLE_A" &&
+			auto* liveBoss = reloadRoom->Find_KoukuSaydonArenaBoss("boss.koukusaydon.g2.kouku", "BOSS_KOUKUSAYDON_G2_KOUKU");
+			tests.Require(refreshed && liveBoss && liveBoss->strPatternId == "KOUKUSAYDON_G1_BUNDLE_A" &&
 				liveBoss->PinnedDefinitionRevision == revision,
 				"Server ticks consume the newly published 700ms stage instead of the old 200ms stage");
 			const auto refreshedEpoch = reloadRoom->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;

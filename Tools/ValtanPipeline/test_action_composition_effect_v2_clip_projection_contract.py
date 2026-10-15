@@ -7,6 +7,10 @@ rendering continues to consume the already-loaded immutable V2 snapshot.
 """
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import cpp_function_definition, read_source_text
 
 import json
 import unittest
@@ -29,7 +33,7 @@ def source_slice(source: str, begin: str, end: str) -> str:
 class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.source = WORKBENCH.read_text(encoding="utf-8-sig")
+        cls.source = read_source_text(WORKBENCH, encoding="utf-8-sig")
         cls.header = HEADER.read_text(encoding="utf-8-sig")
 
     def test_stable_identity_owns_stage_or_clip_and_projected_occurrence(self) -> None:
@@ -44,10 +48,8 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
         self.assertIn("strClipOccurrenceId", stable)
         self.assertIn('StableId += "/occurrence/"', stable)
 
-        resolver = source_slice(
-            self.source,
-            "const Client::EFFECT_V2_BINDING* ResolveEffectV2Binding(",
-            "float ResolveTimelineDisplayWidthPx(",
+        resolver = cpp_function_definition(
+            self.source, "const Client::EFFECT_V2_BINDING* ResolveEffectV2Binding(",
         )
         self.assertIn("BuildEffectV2BindingStableId(", resolver)
         self.assertIn("strClipOccurrenceId", resolver)
@@ -89,15 +91,11 @@ class ActionCompositionEffectV2ClipProjectionContract(unittest.TestCase):
             "bool_t Client::CValtanActionWorkbench::Delete_SelectedTimelineBox(",
             "bool_t Client::CValtanActionWorkbench::Apply_AnimationOccurrenceTiming(",
         )
-        details = source_slice(
-            self.source,
-            "void Client::CValtanActionWorkbench::Render_Details(",
-            "bool_t Client::CValtanActionWorkbench::Validate_TimelineDependencyWindows(",
+        details = cpp_function_definition(
+            self.source, "void Client::CValtanActionWorkbench::Render_Details(",
         )
-        timeline_render = source_slice(
-            self.source,
-            "void Client::CValtanActionWorkbench::Render_Timeline(",
-            "void Client::CValtanActionWorkbench::Render_SemanticLinkedRows(",
+        timeline_render = cpp_function_definition(
+            self.source, "void Client::CValtanActionWorkbench::Render_Timeline(",
         )
         for block in (duplicate, delete, details, timeline_render):
             self.assertIn("strEffectV2ClipOccurrenceId", block)

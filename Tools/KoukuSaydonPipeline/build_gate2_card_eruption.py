@@ -17,7 +17,7 @@ from scipy.spatial.transform import Rotation
 ROOT=Path(__file__).resolve().parents[2]
 WORK=ROOT/'out/KoukuGate2Restore20260911'
 SOURCE=WORK/'Source/BG_RAD_KOUKUSATON_B/StaticMesh3'
-OUTPUT=ROOT/'Client/Bin/Resources/Map/KakulSaydon/Gate2Intro/CardEruption'
+OUTPUT=ROOT/'Client/Bin/Resources/Map/KoukuSaydon/Gate2Intro/CardEruption'
 
 
 def accessor(document,payload,index):

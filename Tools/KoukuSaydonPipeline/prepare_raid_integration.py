@@ -13,7 +13,7 @@ from pathlib import Path
 ACTION = Path('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json')
 SEQUENCE = Path('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json')
 WORLD = Path('Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json')
-PREFIX = 'KAKULSAYDON_G1_PATTERN_'
+PREFIX = 'KOUKUSAYDON_G1_PATTERN_'
 
 
 def prepare(action, sequence, world):
@@ -23,7 +23,7 @@ def prepare(action, sequence, world):
     def define(identity, **fields):
         row = next((r for r in action['logics'] if r.get('displayName') == fields.get('displayName') and r.get('logicType') == fields.get('logicType')), None)
         if row is None:
-            identity = f"kakulsaydon.g1.logic.{action['nextLogicOrdinal']}"
+            identity = f"koukusaydon.g1.logic.{action['nextLogicOrdinal']}"
             action['nextLogicOrdinal'] += 1
             row = {'logicId': identity}
             action['logics'].append(row)
@@ -31,13 +31,13 @@ def prepare(action, sequence, world):
         row.update(fields)
         return row
     def original(number):
-        return logics[f'kakulsaydon.g1.logic.{number}']
+        return logics[f'koukusaydon.g1.logic.{number}']
     def result(identity, label, kind, **fields):
         return define(identity, displayName=label, logicType='RESULT', outcomeKind=kind,
                       percent=0, durationMs=0, followupPatternId=fields.pop('followupPatternId', ''), **fields)
 
     original(82).update(judgementKind='COUNTER_WINDOW', endsPatternOnSuccess=True)
-    counter = result('kakulsaydon.raid.counter.success', '세이튼_돌진카운터_그로기', 'FOLLOWUP_PATTERN',
+    counter = result('koukusaydon.raid.counter.success', '세이튼_돌진카운터_그로기', 'FOLLOWUP_PATTERN',
                      followupPatternId=PREFIX+'4')['logicId']
     for box in patterns[80]['logicOccurrences']:
         if box['logicId'] == original(82)['logicId']:
@@ -55,10 +55,10 @@ def prepare(action, sequence, world):
     original(89).update(triggerKind='MARIO_PHASE2_PLAYERS', teleportPosition=list(maiden[0]['positionOffset']))
     original(90).update(triggerKind='BOSS_TELEPORT_FACE_CENTER', teleportPosition=[5.96, 1.30, 950.59])
     placements = {r['placementId']: r for r in world['placements']}
-    original(88).update(triggerKind='BOSS_TELEPORT_XZ', teleportPosition=list(placements['boss.kakulsaydon.g2.kouku']['position']))
-    wipe = result('kakulsaydon.raid.mario.failure', '마리오_실패_전원즉사', 'INSTANT_DEATH')['logicId']
+    original(88).update(triggerKind='BOSS_TELEPORT_XZ', teleportPosition=list(placements['boss.koukusaydon.g2.kouku']['position']))
+    wipe = result('koukusaydon.raid.mario.failure', '마리오_실패_전원즉사', 'INSTANT_DEATH')['logicId']
     for number, stage in ((88, 1), (91, 2), (92, 3), (93, 4)):
-        enter = result(f'kakulsaydon.raid.mario.enter.{stage}', f'마리오_{stage}단계_입장', 'MARIO_ENTER',
+        enter = result(f'koukusaydon.raid.mario.enter.{stage}', f'마리오_{stage}단계_입장', 'MARIO_ENTER',
                        marioStage=stage, followupPatternId=PREFIX+'33')['logicId']
         boxes = [b for b in patterns[number]['logicOccurrences'] if b['logicId'] == original(59)['logicId']]
         if len(boxes) != 1:
@@ -93,12 +93,12 @@ def prepare(action, sequence, world):
             new.append(entry)
         row['entries'] = new
     def p(n): return ('PATTERN', PREFIX+str(n))
-    def b(n): return ('BUNDLE', f'kakulsaydon.bundle.{n}')
+    def b(n): return ('BUNDLE', f'koukusaydon.bundle.{n}')
     flow('GATE1', [p(n) for n in (1, 2, 6, 7, 29, 30, 47, 48, 58, 78, 79, 80, 81, 82, 83)])
     flow('GATE2', [b(1), b(2), b(3), b(6), b(7), p(21), b(9), b(10), p(27), p(85), p(86), p(87), b(4), p(25)])
     flow('GATE3', [p(n) for n in (38, 39, 40, 41, 43, 46, 49, 59, 52, 65, 66, 88, 91, 35, 92, 93)])
     # Initial boss templates stay dormant until the Server-owned cinematic handoff.
-    placements['boss.kakulsaydon.g1.kouku']['enabled'] = False
+    placements['boss.koukusaydon.g1.kouku']['enabled'] = False
 
     seq_patterns = {p['patternId']: p for p in sequence['patterns']}
     arrival_logic = next(r['logicId'] for r in sequence['logics'] if r.get('triggerKind') == 'ROOM_PLAYER_ARRIVAL')

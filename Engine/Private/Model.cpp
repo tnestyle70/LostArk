@@ -1,14 +1,8 @@
 #include "Model.h"
 #include "SourceCharacterProgramRegistry.h"
-#pragma push_macro("new")
-#undef new
 #include "Assimp/Importer.hpp"
 #include "Assimp/postprocess.h"
-#pragma pop_macro("new")
-#pragma push_macro("new")
-#undef new
 #include "Assimp/scene.h"
-#pragma pop_macro("new")
 #include "Engine_VertexTypes.h"
 #include "Profiler.h"
 #include "GameInstance.h"
@@ -16,6 +10,7 @@
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
 #include "Mesh.h"
+#include "MeshLod.h"
 #include "Bone.h"
 #include "Shader.h"
 #include "Material.h"
@@ -52,8 +47,7 @@ namespace
 {
     bool NativeHairUsesExtraUV(const Engine::MODEL_SOURCE_CHARACTER_PARAMETERS& source)
     {
-        // Program 7 uses UV1 only for two-tone colour interpolation. Some retail
-        // hair meshes contain UV0 alone and disable this exact native branch.
+        // Program 7의 UV1은 두 색 보간에만 쓰인다. UV0만 가진 일부 원본 머리 mesh는 해당 분기를 사용하지 않는다.
         return source.program == 7u &&
             (source.baseConstants[16].x != 0.f || source.lightConstants[13].x != 0.f ||
              source.baseConstants[18].y == 0.f || source.baseConstants[18].w == 0.f ||
@@ -104,6 +98,7 @@ CModel::CModel(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContex
 {
 }
 
+// Clone의 기본 복사 단계다. 공유 가능한 메시·재질은 참조를 유지하고 아래 본·애니메이션은 새 상태로 복제한다.
 CModel::CModel(const CModel& Prototype)
     : CComponent { Prototype }
     , m_pAIScene { Prototype.m_pAIScene }
@@ -505,7 +500,7 @@ bool_t CModel::Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose
     vector<float4x4_t> local, combined;
     float3_t unscaledRoot = m_vRootMotionUnscaledTranslation;
     if (!Build_AnimationTransitionPose(pose, local, combined, &unscaledRoot)) return false;
-    // Admission completes before touching either the cursor or live palette.
+    // 허용 조건을 모두 확인한 뒤 cursor와 현재 palette를 변경한다.
     if (pose.targetIndex != UINT32_MAX)
     {
         m_iCurrentAnimIndex = pose.targetIndex;
@@ -631,9 +626,7 @@ bool_t CModel::Sample_BoneCombinedMatricesForAnimation(
 		{
 			return false;
 		}
-		/* Only an active live transition proves that m_BlendFromPose belongs to
-		   this clip edge.  Once the live transition is complete (or when the same
-		   clip is restarted without a new blend), ignore the stale saved pose. */
+		/* 현재 blend 전환 중일 때만 m_BlendFromPose를 사용한다. 전환 완료나 새 blend 없는 재시작에서는 이전 pose를 무시한다. */
 		if (bUseCurrentPoseAndBlend && m_fBlendElapsed < m_fBlendDuration &&
 			fBlendElapsedSeconds < m_fBlendDuration)
 		{
@@ -785,10 +778,8 @@ bool_t CModel::Set_BoneLocalMatrix(
 uint32_t CModel::Pose_BonesFrom(const CModel& source)
 {
     m_bAnimationEnvelopeExternalPose = true;
-    /* By name, because the two skeletons are cooked separately and neither order nor count
-       matches: a worn part carries the body's bones plus its own. */
-    // A weak owner distinguishes a new model allocated at a retired source address.
-    // Unowned prototypes retain the uncached path without extending their lifetime.
+    /* 몸체·장비 골격은 별도로 변환되어 순서와 개수가 다르므로 이름으로 본을 연결한다. */
+    // weak owner로 같은 주소를 재사용한 새 모델을 구분한다. 소유자 없는 prototype은 수명을 늘리지 않는 비cache 경로를 사용한다.
     const auto sourceOwner = source.weak_from_this().lock();
     const bool sameSource = sourceOwner && m_pSourcePoseModel == &source &&
         m_SourcePoseOwner.lock() == sourceOwner;
@@ -829,7 +820,7 @@ uint32_t CModel::Pose_BonesFrom(const CModel& source)
             ++supplied;
             continue;
         }
-        /* A costume-only bone: its parent was posed already, so its own rest local carries it. */
+        /* 장비 전용 본은 먼저 계산한 부모 pose에 자신의 rest local을 결합한다. */
         m_Bones[index]->Update_CombinedTransformationMatrix(
             m_Bones, XMLoadFloat4x4(&m_PreTransformMatrix));
     }
@@ -1083,10 +1074,18 @@ HRESULT CModel::Initialize(void* pArg)
 
 HRESULT CModel::Render(uint32_t iMeshIndex)
 {
+    return Render(iMeshIndex, nullptr);
+}
+
+HRESULT CModel::Render(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* screenLod)
+{
+    if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex]) return E_INVALIDARG;
+    MESH_SCREEN_LOD_DESC resolved{};
+    screenLod = Resolve_StaticMeshLodView(iMeshIndex, screenLod, resolved);
     if (FAILED(m_Meshes[iMeshIndex]->Bind_Resources()))
         return E_FAIL;
 
-    const HRESULT drawResult = m_Meshes[iMeshIndex]->Render();
+    const HRESULT drawResult = m_Meshes[iMeshIndex]->Render(screenLod);
     if (FAILED(drawResult))
         return E_FAIL;
     if (S_OK == drawResult)
@@ -1105,12 +1104,35 @@ HRESULT CModel::Render_Instanced(uint32_t iMeshIndex,
         return E_INVALIDARG;
     }
 
+    MESH_SCREEN_LOD_DESC resolved{};
+    screenLod = Resolve_StaticMeshLodView(iMeshIndex, screenLod, resolved);
     const HRESULT drawResult = m_Meshes[iMeshIndex]->Render_Instanced(
         pInstanceBuffer, iInstanceStride, iNumInstances, iInstanceByteOffset, screenLod);
     if (S_OK == drawResult)
         if (auto* profiler = CGameInstance::Get().Get_Profiler())
             profiler->Record_ModelSubmitted(this);
     return drawResult;
+}
+
+HRESULT CModel::Render_InstancedIndirect(uint32_t meshIndex, ID3D11Buffer* instanceBuffer,
+    uint32_t stride, uint32_t byteOffset, ID3D11Buffer* args, uint32_t argsByteOffset,
+    const MESH_SCREEN_LOD_DESC* screenLod)
+{
+    return Render_InstancedIndirect(meshIndex, instanceBuffer, stride, byteOffset, args,
+        argsByteOffset, Get_StaticMeshLodLevel(meshIndex, screenLod));
+}
+
+HRESULT CModel::Render_InstancedIndirect(uint32_t meshIndex, ID3D11Buffer* instanceBuffer,
+    uint32_t stride, uint32_t byteOffset, ID3D11Buffer* args, uint32_t argsByteOffset,
+    uint32_t lodLevel)
+{
+    if (meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex] ||
+        (lodLevel && !Can_UseStaticMeshLod(meshIndex))) return E_INVALIDARG;
+    const HRESULT result = m_Meshes[meshIndex]->Render_InstancedIndirect(instanceBuffer,
+        stride, byteOffset, args, argsByteOffset, lodLevel, Uses_AttributeSensitiveLod(meshIndex));
+    if (result == S_OK)
+        if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Record_ModelSubmitted(this);
+    return result;
 }
 
 bool_t CModel::Can_ShareStaticInstanceStateWith(const CModel& other) const
@@ -1153,8 +1175,7 @@ bool_t CModel::Can_BatchStaticLightingWith(const CModel& other) const
 
 bool_t CModel::Has_SameStaticLightingTextures(const CModel& other) const
 {
-    // One instance slot is shared across every submesh. A representative is
-    // reusable only when its whole ordered material-lighting bundle matches.
+    // 하나의 instance slot을 모든 submesh가 공유하므로 순서가 같은 전체 재질·조명 묶음만 대표 객체를 재사용한다.
     if (m_Meshes.empty() || m_Meshes.size() != other.m_Meshes.size()) return false;
     for (size_t meshIndex = 0u; meshIndex < m_Meshes.size(); ++meshIndex)
     {
@@ -1212,9 +1233,7 @@ HRESULT CModel::Bind_StaticLightingBankMesh(const shared_ptr<CShader>& shader,
                     return E_INVALIDARG;
         materials[i] = model->m_Materials[materialIndex].get();
     }
-    // CMaterial revalidates the current material's entire surface, overrides,
-    // non-lighting resources and required lighting inputs before binding SRVs.
-    // Other meshes were admitted by the caller and are checked at their own bind.
+    // CMaterial이 현재 표면·override·비조명 자원·필수 조명 입력을 재검증한 뒤 SRV를 바인딩한다. 다른 mesh는 각자의 바인딩 때 확인한다.
     return materials[0]->Bind_StaticLightingBank(shader,
         std::span<const CMaterial* const>(materials.data(), models.size()));
 }
@@ -1258,7 +1277,7 @@ HRESULT CModel::Prepare_OrderedStaticGeometry(
         MODEL_MESH_DATA Combined;
         Combined.name = "ordered-static-geometry";
         Combined.vertexKind = MODEL_VERTEX_KIND::STATIC;
-        // Material identity belongs to the preserved ranges, not this carrier.
+        // 재질 identity는 보존된 원래 범위에 속하며 이 carrier가 새로 정의하지 않는다.
         Combined.materialIndex = UINT32_MAX;
         Combined.hasColor0 = true;
         uint64_t iVertices = 0u, iIndices = 0u;
@@ -1305,8 +1324,7 @@ HRESULT CModel::Prepare_OrderedStaticGeometry(
             Combined.hasTexcoord1 |= Source.hasTexcoord1;
             Combined.hasTexcoord2 |= Source.hasTexcoord2;
         }
-        // Reuse the exact existing CMesh static conversion and pretransform.
-        // No readback, disk decode, or alternate model runtime is introduced.
+        // 기존 CMesh의 정적 변환·pretransform을 재사용한다.
         Staged->pMesh = shared_ptr<CMesh>(new CMesh(m_pDevice, m_pContext));
         const MODEL_SKELETON_DATA NoSkeleton{};
         const HRESULT Result = Staged->pMesh->Initialize_Prototype(
@@ -1371,8 +1389,7 @@ bool_t CModel::Play_Animation(f32_t fTimeDelta)
         return false;
 
     Engine::CProfilerModelAnimationScope modelAnimationScope(CGameInstance::Get().Get_Profiler(), this);
-    // Default scale leaves external local-pose edits untouched. Only a scaled
-    // pose needs restoration before an unkeyed channel or blend consumes it.
+    // 기본 배율에서는 외부 local-pose 편집을 유지한다. 배율을 적용한 pose만 다음 채널·blend 계산 전에 복원한다.
     if (m_fRootMotionVerticalScale != 1.f && m_iRootMotionBoneIndex >= 0 &&
         static_cast<size_t>(m_iRootMotionBoneIndex) < m_Bones.size() && m_Bones[m_iRootMotionBoneIndex])
     {
@@ -1432,8 +1449,7 @@ HRESULT CModel::Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_
         return E_INVALIDARG;
 
     const CMesh& mesh = *m_Meshes[iMeshIndex];
-    // WModel meshes share the full skeleton palette; Assimp meshes retain
-    // their own bone subsets and inverse-bind offsets in slots 1..N.
+    // WModel은 전체 골격 palette를 공유하고 Assimp mesh는 slot 1..N의 자체 본 부분집합·inverse-bind를 유지한다.
     const size_t paletteIndex = mesh.m_bUsesSkeletonPalette ? 0u : iMeshIndex + 1u;
     if (m_SkinPalettes.size() <= paletteIndex)
         m_SkinPalettes.resize(paletteIndex + 1u);
@@ -1469,8 +1485,7 @@ uint32_t CModel::Override_MaterialTexture(
     if (nullptr == pMaterialNameFragment || 0 == pMaterialNameFragment[0])
         return 0u;
 
-    /* Case-insensitive: the source materials are named inconsistently across rigs and the
-       caller should not have to know which spelling a given class shipped. */
+    /* rig마다 원본 재질 이름의 대소문자가 달라 대소문자 구분 없이 비교한다. */
     string fragment = pMaterialNameFragment;
     transform(fragment.begin(), fragment.end(), fragment.begin(),
         [](unsigned char c) { return static_cast<char_t>(tolower(c)); });
@@ -1521,8 +1536,7 @@ uint32_t CModel::Override_MaterialDyeColor(
 
 namespace
 {
-    /* Every Override_* below matches a material the same way: case-insensitively, on a
-    fragment of its name, so a caller never has to know a class rig's material order. */
+    /* Override_*는 대소문자 구분 없는 재질 이름 부분 일치를 사용해 호출자가 rig의 재질 순서에 의존하지 않게 한다. */
     bool_t MaterialNameContains(const string& name, const string& fragment)
     {
         string lowered = name;
@@ -1812,27 +1826,87 @@ uint32_t CModel::Get_MeshVertexCount(uint32_t iMeshIndex) const
 	return m_Meshes[iMeshIndex]->Get_NumVertices();
 }
 
-bool_t CModel::Has_StaticMeshLod(uint32_t iMeshIndex) const
+bool_t CModel::Has_StaticMeshLod(uint32_t meshIndex) const
 {
-	return iMeshIndex < m_Meshes.size() && m_Meshes[iMeshIndex] &&
-		m_Meshes[iMeshIndex]->m_StaticLod && !m_Meshes[iMeshIndex]->Has_MorphBaseVertices();
+    return Can_UseStaticMeshLod(meshIndex);
 }
 
-uint32_t CModel::Get_StaticMeshLodLevel(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const
+CModel::STATIC_MESH_LOD_SUPPORT CModel::Get_StaticMeshLodSupport(uint32_t meshIndex) const
 {
-    if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
-        return 0u;
-    uint32_t indexCount = 0u, firstIndex = 0u;
-    return m_Meshes[iMeshIndex]->Select_StaticLod(view, indexCount, firstIndex);
+    using S = STATIC_MESH_LOD_SUPPORT;
+    if (meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex]) return S::INVALID_MESH;
+    if (m_eType != MODEL::NONANIM) return S::SKINNED;
+    if (m_Meshes[meshIndex]->Has_MorphBaseVertices()) return S::MORPHED;
+    const auto* surface = Get_MaterialSurface(meshIndex);
+    if (!surface) return S::INVALID_MESH;
+    // native wind는 위치/색/phase/owner를 비선형 소비한다. static error만으로 변형된
+    // 삼각형의 오차를 보증할 수 없으므로 단순 family 허용으로 원본을 제거하지 않는다.
+    if (surface->sourceFoliageWind) return S::WIND_DEFORMATION;
+    if (surface->family == MODEL_SURFACE_FAMILY::SOURCE_CHARACTER) return S::SOURCE_PROGRAM;
+    if (surface->renderMode != MODEL_SURFACE_RENDER_MODE::INHERIT &&
+        surface->renderMode != MODEL_SURFACE_RENDER_MODE::DEFERRED) return S::RENDER_MODE;
+    if (surface->family == MODEL_SURFACE_FAMILY::LEGACY) return S::UNSUPPORTED_FAMILY;
+    if (!m_Meshes[meshIndex]->Get_StaticLod(Uses_AttributeSensitiveLod(meshIndex))) return S::NO_DERIVED_RANGE;
+    return S::AVAILABLE;
 }
 
-uint32_t CModel::Get_StaticMeshSelectedIndexCount(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const
+bool_t CModel::Can_UseStaticMeshLod(uint32_t meshIndex) const
 {
-    if (iMeshIndex >= m_Meshes.size() || !m_Meshes[iMeshIndex])
-        return 0u;
-    uint32_t indexCount = 0u, firstIndex = 0u;
-    m_Meshes[iMeshIndex]->Select_StaticLod(view, indexCount, firstIndex);
-    return indexCount;
+    return Get_StaticMeshLodSupport(meshIndex) == STATIC_MESH_LOD_SUPPORT::AVAILABLE;
+}
+
+bool_t CModel::Uses_AttributeSensitiveLod(uint32_t meshIndex) const
+{
+    const auto* surface = Get_MaterialSurface(meshIndex);
+    // 기존 불투명 BG만 v3 원경 규칙을 유지한다. alpha/paint/terrain 등은 UV 가중치를
+    // 원경에도 낮추지 않고 RGBA 오차 가중치를 높인 별도 v4 index cache를 소비한다.
+    return !surface || surface->family != MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
+        (surface->sourceBgFlags & 64u) != 0u || surface->pbrAlphaMasked ||
+        Has_MaterialTexture(meshIndex, aiTextureType_OPACITY);
+}
+
+const MESH_SCREEN_LOD_DESC* CModel::Resolve_StaticMeshLodView(uint32_t meshIndex,
+    const MESH_SCREEN_LOD_DESC* input, MESH_SCREEN_LOD_DESC& resolved) const
+{
+    if (!input || !Can_UseStaticMeshLod(meshIndex)) return nullptr;
+    resolved = *input;
+    resolved.attributeSensitive = Uses_AttributeSensitiveLod(meshIndex);
+    return &resolved;
+}
+
+uint32_t CModel::Get_StaticMeshLodLevel(uint32_t meshIndex, const MESH_SCREEN_LOD_DESC* view) const
+{
+    if (meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex]) return 0u;
+    MESH_SCREEN_LOD_DESC resolved{};
+    view = Resolve_StaticMeshLodView(meshIndex, view, resolved);
+    uint32_t count = 0u, first = 0u;
+    return m_Meshes[meshIndex]->Select_StaticLod(view, count, first);
+}
+
+uint32_t CModel::Get_StaticMeshSelectedIndexCount(uint32_t meshIndex, const MESH_SCREEN_LOD_DESC* view) const
+{
+    uint32_t count = 0u, first = 0u;
+    Get_StaticMeshDrawRange(meshIndex, view, count, first);
+    return count;
+}
+
+bool_t CModel::Get_StaticMeshDrawRange(uint32_t meshIndex, const MESH_SCREEN_LOD_DESC* view,
+    uint32_t& count, uint32_t& firstIndex) const
+{
+    if (meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex]) return false;
+    MESH_SCREEN_LOD_DESC resolved{};
+    view = Resolve_StaticMeshLodView(meshIndex, view, resolved);
+    m_Meshes[meshIndex]->Select_StaticLod(view, count, firstIndex);
+    return true;
+}
+
+bool_t CModel::Get_StaticMeshLodRange(uint32_t meshIndex, uint32_t level,
+    uint32_t& count, uint32_t& firstIndex, f32_t& localError) const
+{
+    if (meshIndex >= m_Meshes.size() || !m_Meshes[meshIndex] ||
+        (level && !Can_UseStaticMeshLod(meshIndex))) return false;
+    return m_Meshes[meshIndex]->Get_StaticLodRange(level, Uses_AttributeSensitiveLod(meshIndex),
+        count, firstIndex, localError);
 }
 
 bool_t CModel::Has_MorphBaseVertices(uint32_t iMeshIndex) const
@@ -1987,8 +2061,7 @@ HRESULT CModel::Ready_BinaryModel(const char_t* pModelFilePath)
 
 HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, const MODEL_ASSET_LOAD_DESC& loadDesc)
 {
-	/* Join before allocating meshes/materials. A malformed replacement never
-	   changes a shared prototype or an already admitted material instance. */
+	/* 연결 검증을 먼저 끝내 잘못된 교체 입력이 공유 prototype·기존 재질을 바꾸지 않게 한다. */
 	vector<string> overriddenNames;
 	for (const MODEL_MATERIAL_OVERRIDE& replacement : loadDesc.materialOverrides)
 	{
@@ -2129,7 +2202,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
         {
             const auto& source = replacement.surface.sourceCharacter;
             const uint32_t mask = source.baseTextureMask | source.lightTextureMask;
-            // These native programs consume constants only in both source passes.
+            // 이 native program은 두 원본 pass 모두 상수만 사용한다.
             const bool textureless = source.program == 64u || source.program == 65u ||
                 source.program == 1510u || source.program == 1512u;
             if (!Is_SourceCharacterProgramSupported(source.program) ||
@@ -2191,8 +2264,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                     any_of(materialSource.meshes.begin(), materialSource.meshes.end(), [&](const auto& mesh) {
                         return mesh.materialIndex == materialIndex && (!mesh.hasTexcoord1 || mesh.vertexKind != MODEL_VERTEX_KIND::STATIC);
                     })) return failOverride("source map lightmap requires native static UV1");
-                // Some multipart weapons repeat one MIC in several material
-                // slots. An exact source name intentionally replaces all of them.
+                // 여러 부품의 슬롯에 같은 MIC가 반복될 수 있어 정확히 같은 원본 이름은 모두 교체한다.
                 material.surface = replacement.surface;
                 material.sourceCharacterTextures = replacement.sourceCharacterTextures;
                 material.bakedAveragePath = replacement.bakedAveragePath;
@@ -2422,7 +2494,7 @@ HRESULT CModel::Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& materialSource, c
                     return failOverride("invalid source detail normal");
                 match->detailNormalPath = path;
             }
-            // Sampler identity accompanies the source diffuse, including the old explicit mirror rows.
+            // 원본 diffuse와 함께 sampler identity도 유지하며 명시적 mirror 설정도 포함한다.
             match->diffuseMirrorU = replacement.diffuseMirrorU;
         }
         if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_SPECULAR_OPAQUE)
@@ -2606,7 +2678,7 @@ HRESULT CModel::Ready_BinaryModel(
     for (const auto& mesh : asset.meshes)
         materialSource->meshes.push_back({ mesh.materialIndex, mesh.vertexKind,
             mesh.hasColor0, mesh.hasTexcoord1, mesh.hasTexcoord2, !mesh.tangentHandedness.empty() });
-    // Keep only small material rows/channel facts, never decoded vertex/index arrays.
+    // 작은 재질 행·채널 정보만 보관하고 복원한 vertex·index 배열은 보관하지 않는다.
     m_pMaterialSource = materialSource;
     MODEL_MATERIAL_SOURCE staged = *materialSource;
     if (FAILED(Apply_MaterialOverrides(staged, loadDesc))) return E_INVALIDARG;
@@ -2680,9 +2752,7 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
 	{
 		if (MODEL::NONANIM == m_eType)
 		{
-			/* Runtime culling bounds are derived from every decoded vertex. The
-			   embedded AABB is validated import metadata, but it must not be the
-			   sole authority for a placement disappearing at the camera edge. */
+			/* culling 경계는 복원한 모든 정점으로 구한다. 파일의 AABB는 검증용 import 정보이며 단독으로 가시성을 결정하지 않는다. */
 			for (const VTXMESH& vertex : mesh.vertices)
 			{
 				Include_LocalPosition(XMVector3TransformCoord(
@@ -2701,30 +2771,22 @@ HRESULT CModel::Ready_Meshes(const MODEL_ASSET_DATA& asset)
             mesh, asset.skeleton, XMLoadFloat4x4(&m_PreTransformMatrix));
         if (nullptr == pMesh)
             return E_FAIL;
-        // Only undeformed native opaque map geometry opts into additional LOD
-        // indices. Other models retain their original buffer and render contract.
-        if (MODEL::NONANIM == m_eType && mesh.materialIndex < asset.materials.size())
+        // geometry cache는 첫 material variant의 family에 묶지 않는다. 모든 static
+        // 원본에서 두 파생 IB를 준비하고 실제 draw 시 현재 material/변형 계약을 검사한다.
+        // 실패/축약 불가 mesh는 원본 IB를 그대로 유지하며 Resources에는 쓰지 않는다.
+        if (MODEL::NONANIM == m_eType)
         {
-            const auto& material = asset.materials[mesh.materialIndex];
-            const auto& surface = material.surface;
-            if (surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED &&
-                !surface.sourceFoliageWind && (surface.sourceBgFlags & 64u) == 0u && material.opacityPath.empty() &&
-                (surface.renderMode == MODEL_SURFACE_RENDER_MODE::INHERIT ||
-                 surface.renderMode == MODEL_SURFACE_RENDER_MODE::DEFERRED))
+            const HRESULT lodResult = pMesh->Prepare_StaticLod(mesh, XMLoadFloat4x4(&m_PreTransformMatrix));
+            if (FAILED(lodResult))
             {
-                const HRESULT lodResult = pMesh->Prepare_StaticLod(mesh, XMLoadFloat4x4(&m_PreTransformMatrix));
-                if (FAILED(lodResult))
-                {
-                    char message[192]{};
-                    sprintf_s(message, "[Engine][MeshLOD] optional index LOD unavailable hr=0x%08X; keeping original mesh\n", static_cast<uint32_t>(lodResult));
-                    OutputDebugStringA(message);
-                }
+                char message[192]{};
+                sprintf_s(message, "[Engine][MeshLOD] optional index LOD unavailable hr=0x%08X; keeping original mesh\n", static_cast<uint32_t>(lodResult));
+                OutputDebugStringA(message);
             }
         }
         m_Meshes.push_back(pMesh);
     }
-    // Keep source geometry only for explicitly opted-in multi-submesh effects.
-    // Clones share it; ordinary map/character models pay no retained CPU cost.
+    // 명시적으로 선택한 다중 submesh 이펙트만 원본 geometry를 보관하고 복제본끼리 공유한다.
     if (m_bRetainOrderedStaticGeometry && MODEL::NONANIM == m_eType &&
         asset.meshes.size() > 1u)
     {
@@ -2787,8 +2849,7 @@ namespace
             !std::isfinite(rayLength) || rayLength <= 1.e-8f) return false;
         for (const auto& row : world.m) for (const float value : row)
             if (!std::isfinite(value)) return false;
-        // A world transform must be affine. Reject a projective matrix rather
-        // than treating a perspective ray as a line after the inverse.
+        // world 변환은 affine이어야 한다. 역변환 ray를 직선으로 다룰 수 없는 projective 행렬은 거부한다.
         if (world._14 != 0.f || world._24 != 0.f || world._34 != 0.f || world._44 != 1.f) return false;
         vector_t determinant;
         const matrix_t inverse = XMMatrixInverse(&determinant, XMLoadFloat4x4(&world));
@@ -2812,8 +2873,7 @@ bool_t CModel::Try_GetStaticOcclusionMesh(const uint32_t meshIndex,
     const auto& mesh = m_Meshes[meshIndex];
     if (!mesh || mesh->m_hasUniqueVertexBuffer || !mesh->m_PickGeometry) return false;
     const auto& geometry = *mesh->m_PickGeometry;
-    // Prepare_StaticPickGeometry validates every indexed position and index at
-    // initialization. A filtered triangle count means the original IB is unsafe.
+    // 초기화 때 모든 index·참조 정점을 검증한다. 삼각형이 걸러졌다면 원래 IB를 그대로 사용할 수 없다.
     if (geometry.skinned || geometry.vertices.empty() || geometry.nodes.empty() ||
         geometry.vertices.size() > (std::numeric_limits<uint32_t>::max)() ||
         geometry.indices.empty() || geometry.indices.size() % 3u != 0u ||
@@ -2958,8 +3018,7 @@ bool_t CModel::Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) co
             if (!bounds.valid) continue;
             const uint32_t bone = mesh->m_BoneIndices[index];
             if (bone >= m_Bones.size() || !m_Bones[bone]) return false;
-            // Exactly the same inverse-bind * combined order as the GPU palette.
-            // Combined already owns the asset pretransform; do not apply it twice.
+            // GPU palette와 같은 inverse-bind * combined 순서다. combined에 포함된 asset pretransform을 중복 적용하지 않는다.
             const matrix_t skin = XMLoadFloat4x4(&mesh->m_OffsetMatrices[index]) *
                 m_Bones[bone]->Get_CombinedTransformationMatrix();
             for (uint32_t corner = 0u; corner < 8u; ++corner)
@@ -3007,7 +3066,7 @@ bool_t CModel::Build_AnimationEnvelopeRadius(f32_t& radius) const
         const float* values = &m._11;
         for (size_t i = 0; i < 16; ++i) if (!std::isfinite(values[i])) return false;
         if (m._14 != 0.f || m._24 != 0.f || m._34 != 0.f || m._44 != 1.f) return false;
-        // Gershgorin bound of A*A^T bounds the largest singular value, including shear.
+        // A*A^T의 Gershgorin 상계의 제곱근으로 shear를 포함한 최대 stretch를 제한한다.
         double squaredStretch = 0.;
         for (size_t row = 0; row < 3; ++row)
         {
@@ -3073,10 +3132,7 @@ bool_t CModel::Build_AnimationEnvelopeRadius(f32_t& radius) const
             const auto& offset = mesh->m_OffsetMatrices[index];
             for (const auto& row : offset.m)
                 for (const float value : row) if (!std::isfinite(value)) return false;
-            // Inverse binds may retain a positive homogeneous scale after
-            // inversion. Divide by that exact w instead of rejecting or
-            // rounding it. Positive skin weights remain a convex combination
-            // after their homogeneous weights are normalized by the GPU.
+            // inverse-bind의 양수 동차 배율은 실제 w로 나눈다. GPU가 동차 가중치를 정규화하면 양수 skin weight의 볼록 결합이 유지된다.
             if (offset._14 != 0.f || offset._24 != 0.f || offset._34 != 0.f || offset._44 <= 0.f) return false;
             const double inverseW = 1. / double(offset._44);
             for (uint32_t corner = 0; corner < 8; ++corner)
@@ -3117,8 +3173,7 @@ void CModel::Include_BindGeometryPosition(fvector_t value)
 HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
 {
     Engine::CProfilerScope loadScope(CGameInstance::Get().Get_Profiler(), "Model.Load.Materials");
-    // Each slot owns its material and device-only texture preparation. Publish
-    // the complete vector only after every worker has finished successfully.
+    // 각 slot이 재질·device 전용 texture 준비를 소유한다. 모든 worker가 성공한 뒤 완성된 vector를 공개한다.
     vector<shared_ptr<CMaterial>> staged(asset.materials.size());
     static std::atomic_uint backgroundWorkers{ 0u };
     struct MATERIAL_PREPARATION final
@@ -3168,8 +3223,7 @@ HRESULT CModel::Ready_Materials(const MODEL_ASSET_DATA& asset)
         }
     } batch{ asset.materials, staged, m_pDevice, m_pContext, backgroundWorkers };
 
-    // Small/static map materials stay serial. At most three extra workers
-    // across all simultaneous model loads use Windows' existing thread pool.
+    // 작은 정적 맵 재질은 순차 처리한다. 동시 모델 로드를 통틀어 Windows thread pool의 추가 worker를 최대 3개 사용한다.
     const unsigned processors = static_cast<unsigned>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
     const unsigned limit = processors > 2u ? (std::min)(3u, processors - 2u) : 0u;
     PTP_WORK work = asset.hasSkeleton && asset.materials.size() >= 3u && limit != 0u &&

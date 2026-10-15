@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests_PlayerSkillFixtures.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
@@ -481,7 +481,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_PlayerCombos(TESTS& tes
 			"Clear pending explicit command on forced movement");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& room = *roomStorage;
 		const WORLD_BOOTSTRAP_PLACEMENT* spawn =
@@ -696,7 +696,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RuntimeSupportPredictio
 	TESTS& tests, const CServerNavigation& navigation)
 {
 	// Exercise the real room floor, movement command and serialized snapshot.
-	auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 	CGameRoom& room = *roomStorage;
 	room.m_ServerNavigation = navigation;
 	room.m_ServerCollisionSystem = {};

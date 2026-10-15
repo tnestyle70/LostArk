@@ -1,22 +1,29 @@
+// Client 진입점과 엔진 사이에서 Level 전환, 제품 UI, 네트워크·연출·도구의 프레임 순서를 조율한다.
+// socket 선언을 Windows 계열 헤더보다 먼저 준비하는 Client include 순서를 유지한다.
 #include <WinSock2.h>
 #include "imgui.h"
-#pragma push_macro("new")
-#undef new
+//제품 글자 색의 Colors::White 등을 읽는다.
 #include <DirectXColors.h>
-#pragma pop_macro("new")
+// 초기 장치·창 설정, 렌더링 조정값, 공용 shader의 정점 layout을 엔진에 전달한다.
 #include "Engine_InitTypes.h"
 #include "Engine_RenderTypes.h"
 #include "Engine_VertexTypes.h"
 
+// wWinMain이 호출하는 MainApp의 진입 함수와 제품 창·도구 보유 상태를 선언한다.
 #include "MainApp.h"
+// 전환 전에 캐릭터 자원 비동기 준비를 취소·대기해 이전 작업이 다음 Level로 넘어가지 않게 한다.
 #include "PlayableCharacterAssetService.h"
+// Server 제한 시간·월드 체력을 표시하는 view를 MainApp이 생성·보유하고 현재 HUD snapshot으로 갱신한다.
 #include "DungeonTimerView.h"
 #include "WorldHealthBarView.h"
+// 보스 mechanic 막대의 머리 위치를 화면에 투영할 때 이름표의 공통 투영 함수를 사용한다.
 #include "WorldPlayerNameplateView.h"
 
+// 선택 창의 세션 roster와 입장 pending identity를 연결하고 실제 Level 전환 뒤 확정한다.
 #include "CharacterRoster.h"
 #include "CharacterSelectionState.h"
 #include "CharacterSelectWindowView.h"
+// 현재 Level의 marker·채팅·전투 snapshot을 제품 창에 전달하고 창이 내놓은 intent를 소비한다.
 #include "MinimapView.h"
 #include "ChatWindowView.h"
 #include "CombatHUDViewModel.h"
@@ -34,9 +41,12 @@
 #include "Valtan.h"
 #include "KoukuSaydonCompositionDocument.h"
 #include "PlayerCommandSink.h"
+// 엔진 관리자 생성·프레임 갱신·그리기·종료를 요청하는 단일 접근점이다. MainApp은 각 관리자를 직접 소유하지 않는다.
 #include "GameInstance.h"
+// 제품 루프에 ImGui frame을 열고 닫으며 창의 입력 점유를 gameplay 차단에 반영한다.
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
+// 목적지의 등록 정보와 생성 함수를 찾고, TransitionService에 예약된 LOAD/ACTIVATE를 안전한 프레임 경계에서 소비한다.
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "Level_Bern.h"
@@ -46,21 +56,24 @@
 #include "Level_Lobby.h"
 #include "ActionPresentationTimeline.h"
 #include "Level_CharacterSelect.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "Level_Loading.h"
 #include "Level_ValtanArena.h"
 #include "LobbyCommandService.h"
+// 수신 dispatch와 수리·구매·장착 요청 전송, 연결 종료를 담당한다. 이동·스킬 요청은 현재 Level의 command sink 경계를 이용한다.
 #include "NetworkManager.h"
 #include "Npc.h"
 #include "PartyWindowView.h"
 #include "UITextOcclusion.h"
 #include "PlayerSkillCatalog.h"
+// 엔진·UI·도구 단계의 CPU/GPU 시간을 기록하고 F7 표시 도구에 엔진의 측정기를 연결한다.
 #include "Profiler.h"
 #include "ProfilerTool.h"
 #include "AnimationTargetService.h"
 #include "Character.h"
 #include "EffectFailureDiagnostic.h"
 #include "Presentation_Manager.h"
+// 저작 JSON은 ProjectDataRoot, 실행 이미지·모델은 RuntimeAssetRoot 아래에서 찾아 두 경로의 역할을 구분한다.
 #include "ProjectDataRoot.h"
 #include "RuntimeAssetRoot.h"
 #include "UserSettingsDocument.h"
@@ -90,9 +103,11 @@
 #include "ClickMoveEffect.h"
 #include "SoundCueCatalog.h"
 #include "UI_Sprite.h"
+// 여러 제품 창의 클릭·텍스트 입력 점유를 모아 gameplay 입력에 전달한다. UILayoutRuntime은 저작 슬롯을 STATIC Layer sprite로 만든다.
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
+// MainApp이 F1 요청으로 도구를 지연 생성하고 현재 Level·문서·preview 소유자를 연결한다.
 #include "ActorCatalog.h"
 #include "Animation_Tool.h"
 #include "KoukuSaydonActionWorkbench.h"
@@ -127,6 +142,10 @@
 #include "ValtanPatternFlowService.h"
 #include "ValtanTuningCommandService.h"
 
+//UISoundPlayer, OPEN과 CLOSE sound에 대한 enum을 제공해준다.
+//실제 물리 wav 폴더를 쓰지 않도록 한다.
+#include "UISoundPlayer.h"
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -153,6 +172,7 @@ namespace
 		"valtanStaggerHeadOffsetX", "valtanStaggerHeadOffsetY", "valtanStaggerWidthScale", "valtanStaggerHeightScale",
 		"valtanArmorBreakOffsetX", "valtanArmorBreakOffsetY", "valtanArmorBreakWidthScale", "valtanArmorBreakHeightScale" };
 
+	// 보스 HP 표시가 발탄 본체·유령의 stable archetype ID를 같은 계열로 분류한다.
 	bool IsValtanBossArchetype(const std::string& id)
 	{
 		return id == "BOSS_VALTAN" || id == "BOSS_VALTAN_GHOST";
@@ -160,6 +180,7 @@ namespace
 
 	constexpr const char* HUD_MECHANIC_SLOTS[] = { "Boss_StaggerBg", "Boss_StaggerTrack", "Boss_StaggerFill" };
 
+	// HUD 위치 문서의 byte를 읽는다. 파일 열기 실패는 출력을 보존하지만 읽기 도중 실패는 출력 문자열을 바꿨을 수 있다.
 	bool ReadHudBarText(const std::filesystem::path& path, std::string& text)
 	{
 		std::ifstream stream(path, std::ios::binary);
@@ -168,6 +189,8 @@ namespace
 		return !stream.bad();
 	}
 
+	// 로드·저장 검증이 schema와 각 숫자의 finite·범위를 확인해 지역 배열에 준비한다.
+	// 전부 성공한 뒤 세 출력 배열을 함께 바꾸므로 검증 실패는 이전 출력값을 보존한다.
 	bool ReadHudBarPositions(const Client::DATA_JSON_VALUE& root, std::array<f32_t, 12>& offsets,
 		std::array<f32_t, 2>& mechanicScale, std::array<f32_t, 8>& valtanTuning)
 	{
@@ -176,8 +199,8 @@ namespace
 		if (!root.Is_Object() || !schema || !schema->Is_String() ||
 			schema->Get_String() != "lostark.kouku-hud-modes" || !version ||
 			!version->Is_Number() || version->Get_Number() != 1.0) return false;
-		// Legacy mechanicOffsetX/Y are screen-placement values. Preserve them on disk;
-		// new head-relative offsets default to zero instead of reinterpreting old tuning.
+		// 기존 mechanicOffsetX/Y는 화면 기준 저장값이다. 새 머리 기준 offset은 0에서 시작해 이전 값을 다른 좌표계로 재해석하지 않는다.
+		// 이전 저장 field는 문서에 보존하고 새 좌표계의 기본값만 별도로 준비한다.
 		std::array<f32_t, 12> staged{};
 		std::array<f32_t, 2> stagedScale{ 1.f / 3.f, 1.f };
 		if (const auto* positions = root.Find("healthBarPositions"))
@@ -190,8 +213,7 @@ namespace
 						std::abs(value->Get_Number()) > 1280.0) return false;
 					staged[i] = static_cast<f32_t>(value->Get_Number());
 				}
-			/* Old documents had one shared enemy Y. Missing category fields inherit
-			that saved position until individually authored; existing tuning is retained. */
+			// 보스별 field가 없는 이전 문서는 공통 적 X/Y를 초기값으로 물려받는다. 개별 저작값이 있으면 그대로 유지한다.
 			for (size_t i = 6u; i < staged.size(); ++i)
 				if (!positions->Find(HUD_BAR_POSITION_KEYS[i])) staged[i] = staged[4u + i % 2u];
 			for (size_t i = 0u; i < stagedScale.size(); ++i)
@@ -202,7 +224,7 @@ namespace
 					stagedScale[i] = static_cast<f32_t>(value->Get_Number());
 				}
 		}
-		// Inherit existing Kouku tuning once on load, then keep each boss independently editable.
+		// 로드 때 기존 쿠크 튜닝을 초기값으로 한 번만 이어받고 이후 각 보스를 독립적으로 편집한다.
 		std::array<f32_t, 8> stagedValtan{ staged[0], staged[1], stagedScale[0], stagedScale[1], -24.f, -40.f, 1.f, 1.f };
 		if (const auto* positions = root.Find("healthBarPositions"))
 			for (size_t i = 0u; i < stagedValtan.size(); ++i)
@@ -219,6 +241,8 @@ namespace
 		return true;
 	}
 
+	// HUD 저장이 기존 JSON의 모든 field를 재귀적으로 직렬화한다. 문자열은 Escape하고 숫자는 17자리 정밀도로 쓴다.
+	// 스트림 소유권과 최종 I/O 성공 확인은 호출자에게 있으며 여기서는 반환 상태를 제공하지 않는다.
 	void WriteHudBarJson(std::ostream& out, const Client::DATA_JSON_VALUE& value, const size_t depth = 0u)
 	{
 		using Client::DATA_JSON_TYPE;
@@ -247,6 +271,8 @@ namespace
 	}
 
 #ifdef _DEBUG
+    // 도구에 전달할 class movie 상태 조회·검사 명령 callback을 만든다.
+    // Level 포인터를 장기 보관하지 않고 호출 때 현재 Character Select를 확인하며 배경 열기 callback의 소유권은 이동한다.
     Client::CLASS_MOVIE_INSPECTION_CALLBACKS ClassMovieInspectionCallbacks(
         Client::CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openBackground)
     {
@@ -276,6 +302,8 @@ namespace
         };
         return callbacks;
     }
+    // 기존 effect 도구를 Character Select와 발탄 입장 연출의 Level-owned player에 연결한다.
+    // play·seek·pause·선택 preview callback은 호출 때 현재 Level을 확인하고 불가 상태는 오류로 돌려준다.
     void ConfigureClassMovieEditor(Client::CEffect_Tool& tool,
         Client::CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openBackground)
     {
@@ -353,7 +381,7 @@ namespace
             if (option == options.end() || !level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
             { status = "This Movie category is no longer available."; return false; }
             auto& preview = level->Get_ClassSelectionPresentation();
-            // Level Play establishes the selected background before the shared seek.
+            // 공용 seek 전에 Level의 Play로 선택한 배경과 현재 연출을 먼저 준비한다.
             if ((!preview.Is_Active() || preview.Get_ActiveClass() != classId) && !level->Play_ClassCinematic(classId))
             { status = level->Get_ClassCinematicStatus(); return false; }
             const bool sampled = preview.Seek(classId, loop, timeMs);
@@ -445,74 +473,18 @@ namespace
         tool.Set_ClassMovieCallbacks(std::move(movieCallbacks));
     }
 #endif
-    void WriteStartupDiagnostic(const char* stage, const HRESULT result,
-        const std::string& status)
-    {
-        // Resolve beside the repository launcher, independent of the process cwd.
-        wchar_t modulePath[32768]{};
-        const DWORD pathLength = GetModuleFileNameW(nullptr, modulePath,
-            static_cast<DWORD>(std::size(modulePath)));
-        std::filesystem::path logPath = "ClientStartup.user.log";
-        if (pathLength > 0 && pathLength < std::size(modulePath))
-            logPath = std::filesystem::path(modulePath).parent_path().parent_path().parent_path() /
-                L"Default" / L"ClientStartup.user.log";
-        std::ofstream output(logPath, std::ios::binary | std::ios::app);
-        if (!output)
-            return;
-        SYSTEMTIME time{};
-        GetLocalTime(&time);
-        output << std::setfill('0') << time.wYear << '-'
-            << std::setw(2) << time.wMonth << '-' << std::setw(2) << time.wDay << ' '
-            << std::setw(2) << time.wHour << ':' << std::setw(2) << time.wMinute << ':'
-            << std::setw(2) << time.wSecond << " pid=" << GetCurrentProcessId()
-            << " stage=" << stage << " hr=0x" << std::hex << std::uppercase
-            << static_cast<unsigned long>(result) << std::dec << " status=" << status << '\n';
-    }
-
-    void WriteGraphicsAdapterDiagnostic(ID3D11Device* device)
-    {
-        try
-        {
-            ComPtr<IDXGIDevice> dxgiDevice;
-            ComPtr<IDXGIAdapter> adapter;
-            DXGI_ADAPTER_DESC description{};
-            HRESULT result = device ? device->QueryInterface(IID_PPV_ARGS(dxgiDevice.GetAddressOf())) : E_POINTER;
-            if (SUCCEEDED(result)) result = dxgiDevice->GetAdapter(adapter.GetAddressOf());
-            if (SUCCEEDED(result)) result = adapter->GetDesc(&description);
-            if (FAILED(result))
-            {
-                WriteStartupDiagnostic("Graphics.Adapter", result, "unavailable");
-                return;
-            }
-            char name[512]{};
-            WideCharToMultiByte(CP_UTF8, 0, description.Description, -1,
-                name, static_cast<int>(std::size(name)), nullptr, nullptr);
-            std::ostringstream detail;
-            detail << "name=" << name << " vendor=0x" << std::hex << description.VendorId
-                << " device=0x" << description.DeviceId << " luid=0x"
-                << static_cast<unsigned long>(description.AdapterLuid.HighPart) << ":0x"
-                << description.AdapterLuid.LowPart << " featureLevel=0x" << device->GetFeatureLevel()
-                << std::dec << " dedicatedVideoBytes=" << description.DedicatedVideoMemory
-                << " sharedSystemBytes=" << description.SharedSystemMemory;
-            WriteStartupDiagnostic("Graphics.Adapter", S_OK, detail.str());
-        }
-        catch (...) { } // Diagnostics must not change startup success.
-    }
-
-	/* The MVP award page is a full-screen modal (retail places it on
-	   sortingLayer "3_topmostHUD" with orderInLayer 2000), so the combat HUD,
-	   the boss bar and their text passes all stop while it is up. */
+	// MVP 결과 화면은 전면 modal이다. 표시 중에는 전투 HUD·보스 bar와 그 글자의 표시를 함께 제한한다.
 	bool_t Is_MvpResultPageOpen()
 	{
-		const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+		const CLevel_KoukuSaydonArena* pArena = CLevel_KoukuSaydonArena::Get_Active();
 		if (nullptr != pArena && pArena->Debug_Is_MvpResultVisible())
 			return true;
 		const CLevel_ValtanArena* pValtan = CLevel_ValtanArena::Get_Active();
 		return nullptr != pValtan && pValtan->Is_MvpResultVisible();
 	}
 
-	/* Product-path wall clock (seconds since first call) -- replaces ImGui::GetTime() in every
-	non-Debug timer here, so no product state machine depends on the ImGui frame loop. */
+	// 제품 표시 타이머가 사용하는 최초 호출 이후의 단조 증가 초다.
+	// ImGui frame 시계에 의존하지 않으며 실제 날짜/시각을 나타내는 벽시계는 아니다.
 	f64_t Product_Now_Seconds()
 	{
 		static const std::chrono::steady_clock::time_point s_Epoch =
@@ -521,14 +493,10 @@ namespace
 			std::chrono::steady_clock::now() - s_Epoch).count();
 	}
 
-	/* Retail login/server-select screen (EFUI_LOBBY login.gfx, Server_Login group) rebuilt on
-	the Lobby: server rows + 접속(서버 선택) button + 종료/뒤로/환경설정 icon buttons, slots
-	authored in Lobby_Layout.json at 1280x720 (retail 1920x1080 coordinates x 2/3). The row list
-	itself comes from Data/UI/Lobby/LobbyServers.json (name/state/tag/count are the user's
-	choice, not Server data -- this project has no account/server directory). */
+	// Lobby_Layout.json의 1280×720 슬롯에 접속(서버 선택)·종료·환경설정을 배치한다.
+	// 서버 이름·상태·인원은 LobbyServers.json의 표시 데이터이며 계정 서버 응답이 아니다.
 	constexpr size_t LOBBY_SERVER_ROW_COUNT = 8;
-	/* 37-frame retail logo reveal (total_sequence_00001..00073, every other frame of a 40fps
-	timeline) at 20 fps, then the static Logo_Final image takes over. */
+	// 37장 로고 도입부를 20fps로 재생한 뒤 Logo_Final 정지 그림으로 넘기는 초 단위 길이다.
 	constexpr f32_t LOBBY_LOGO_INTRO_SECONDS = 37.f / 20.f;
 
 	struct LOBBY_PRODUCT_RECT final
@@ -539,6 +507,7 @@ namespace
 		f32_t fHeight = 0.f;
 	};
 
+	// 좌표와 크기가 finite이고 너비·높이가 양수인지 확인한다. viewport 내부 여부까지 제한하지는 않는다.
 	bool_t Is_ValidProductRect(const LOBBY_PRODUCT_RECT& Rect)
 	{
 		return std::isfinite(Rect.fX) && std::isfinite(Rect.fY) &&
@@ -546,6 +515,7 @@ namespace
 			Rect.fWidth > 0.f && Rect.fHeight > 0.f;
 	}
 
+	// UI view에서 받은 rect를 검증한다. false여도 view가 출력 성분을 이미 채웠을 수 있으므로 호출자는 반환값을 먼저 확인한다.
 	bool_t Get_LobbySlotRect(Client::CUILayoutRuntime* pView, const char* pSlotId,
 		LOBBY_PRODUCT_RECT& outRect)
 	{
@@ -554,20 +524,9 @@ namespace
 			Is_ValidProductRect(outRect);
 	}
 
-	/* Not _DEBUG-gated: the K (skill window) toggle below needs this in Release too, not just
-	the _DEBUG-only map tool focus check further down. */
-	bool_t IsWindowOwnedByCurrentProcess(HWND hWnd)
-	{
-		if (nullptr == hWnd)
-			return false;
 
-		DWORD processId = {};
-		return 0 != GetWindowThreadProcessId(hWnd, &processId) &&
-			GetCurrentProcessId() == processId;
-	}
 
-	/* "12345" -> "12,345", for floating damage numbers -- not _DEBUG-gated, floating damage draws
-	in Release too. */
+	// Release 피해 숫자에도 사용할 수 있도록 12345를 12,345 형식의 소유 wide 문자열로 만든다.
 	wstring Format_ThousandsSeparated(uint32_t iValue)
 	{
 		const wstring strDigits = std::to_wstring(iValue);
@@ -584,13 +543,8 @@ namespace
 		return strResult;
 	}
 
-	/* Shared by RenderItemUpgradeListText (left-list rows), RenderItemUpgradeLevelText (the big
-	"selected item" name label), Update_ItemUpgradeSelection (click-to-select + icon swap), and
-	the success/fail detail text so the id/name/icon triple has exactly one source. Built fresh
-	from the real replicated inventory each time it's needed (cheap in-memory filter, same cost
-	class as CInventoryView::Update's own per-frame rebuild) rather than cached, so a fresh
-	S2C_INVENTORY_SNAPSHOT (e.g. right after the Valtan clear rewards land) is reflected the very
-	next frame with no separate invalidation path. */
+	// 재련 목록·선택·결과 표시가 같은 item ID·이름·아이콘 값을 사용한다.
+	// 복제 인벤토리에서 매번 새 목록을 구성하므로 별도 cache 무효화 없이 다음 snapshot이 표시된다.
 	struct ITEM_UPGRADE_SLOT_INFO
 	{
 		string strItemId;
@@ -600,6 +554,7 @@ namespace
 		uint16_t iUpgradeLevel = 0;
 	};
 
+	// 표시 이름의 UTF-8 유효성을 검사하며 wide 문자열을 만든다. 먼저 출력을 비우므로 실패 시 이전 문자열은 보존하지 않는다.
 	bool_t ConvertUtf8ToWide(const string& strUtf8, wstring& outWide)
 	{
 		outWide.clear();
@@ -614,9 +569,7 @@ namespace
 			strUtf8.data(), static_cast<int>(strUtf8.size()), outWide.data(), iRequiredLength);
 	}
 
-	/* The upgrade list contains only owned Honor Whisper gear, including equipped entries.
-	The catalog has no gear set field: its stable item ID and equipment slot identify the set.
-	Order follows S2C_INVENTORY_SNAPSHOT, never a synthetic catalog loadout. */
+	// 복제 인벤토리에 실제 보유한 강화 가능 장비만 목록으로 만든다. 장착 장비도 포함하며 순서는 snapshot을 따른다.
 	vector<ITEM_UPGRADE_SLOT_INFO> BuildItemUpgradeSlots()
 	{
 		vector<ITEM_UPGRADE_SLOT_INFO> slots;
@@ -643,7 +596,7 @@ namespace
 	}
 
 
-	// The authored layout has example icons; every visible row must instead name owned gear.
+	// 저작 예시 아이콘을 실제 보유 장비로 바꾸고 표시 가능한 최대 6행 안에서 선택 index를 제한한다.
 	void SyncItemUpgradeSlotSprites(CUILayoutRuntime& view,
 		const vector<ITEM_UPGRADE_SLOT_INFO>& slots, int32_t& selected)
 	{
@@ -666,16 +619,11 @@ namespace
 			view.Set_SlotPosition("ItemUpgrade_ListSelectedExample", x, y);
 	}
 
-	/* Every slot ItemUpgradeUI.json authors, for Hide_ItemUpgrade (all false) and
-	Open_ItemUpgradeWindow's own initial "show everything" pass (all true, before the existing
-	explicit hides for the completion-effect/modal/result slots that must start hidden run on top
-	of it) -- CUILayoutRuntime has no generic Render(class, revision) pass to fall back on the way
-	CHUDRuntimeView did, so every one of these 97 authored slots needs an explicit visibility
-	owner now instead of an implicit "wasn't drawn this frame". */
+	// STATIC 재련 슬롯은 명시적으로 표시 상태를 관리한다.
+	// 전체 숨김 또는 최초 열기 후 modal·완료 이펙트를 별도로 숨기는 공통 목록이다.
 	constexpr const char_t* ITEM_UPGRADE_ALL_SLOTS[] =
 	{
-		/* Solid backdrop under the whole window (same rect as the result modal). The centre art
-		fades out at both edges, so without it the world shows through between the three panels. */
+		// 중앙 장식의 투명한 가장자리 사이로 월드가 비치지 않도록 창 전체 아래에 두는 불투명 배경이다.
 		"ItemUpgrade_WindowBg",
 		"ItemUpgrade_SuccessModalBg", "ItemUpgrade_PanelBg", "ItemUpgrade_RecipeIconBgExample",
 		"ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeIconBg1",
@@ -715,6 +663,7 @@ namespace
 
 #ifdef _DEBUG
 
+	// Debug HUD 도구의 class 이름을 고른다. 미지원 enum은 도구의 Default 그룹으로 연결한다.
 	const char_t* GetHUDLayoutClassId(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
 	{
@@ -741,7 +690,7 @@ namespace
 	}
 #endif
 
-	/* HUD_Layout.json's "ownerClass" strings (no spaces) must match the schema/tool names. */
+	// HUD_Layout.json의 ownerClass는 schema·도구에서 쓰는 공백 없는 class 이름과 일치해야 한다.
 	const string GetHUDOwnerClassName(
 		const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
 	{
@@ -767,8 +716,8 @@ namespace
 		}
 	}
 
-	/* Server tick deadlines wrap at uint32_t. Keep the HUD's status presentation on the same
-	half-range ordering as CGameRoom instead of treating a wrapped future deadline as expired. */
+	// uint32_t tick의 wrap을 고려해 차이의 부호로 같은 half-range 순서를 사용한다.
+	// 0 deadline은 비활성이며 wrap 이후의 미래 시각을 즉시 만료로 보지 않게 한다.
 	bool_t Is_ServerDeadlinePending(const uint32_t iServerTick, const uint32_t iDeadlineTick)
 	{
 		return 0u != iDeadlineTick &&
@@ -779,11 +728,13 @@ namespace
 
 CMainApp* CMainApp::s_pActiveInstance = nullptr;
 
+// wWinMain이 보유한 MainApp 주소를 등록해 Level과 메뉴가 공용 UI 열기를 요청할 수 있게 한다. 요청자는 이 객체를 소유하지 않는다.
 CMainApp::CMainApp()
 {
 	s_pActiveInstance = this;
 }
 
+// 공용 UI 요청의 접근 주소를 먼저 끊고 Free로 제품·엔진을 종료한다. Create의 초기화 실패도 이 경로를 따른다.
 CMainApp::~CMainApp()
 {
 	if (this == s_pActiveInstance)
@@ -791,24 +742,20 @@ CMainApp::~CMainApp()
 	Free();
 }
 
-void CMainApp::Play_UIButtonClickSound()
-{
-	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-		L"Sound/UI/Select/ui_default_button_click2__59426200.wav");
-	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
-}
-
+// 월드 메뉴가 닫힌 환경설정 창만 연다. 존재하지 않거나 이미 열렸으면 상태를 유지한다.
 void CMainApp::Open_SystemOptionsWindow()
 {
 	if (nullptr != m_pSystemOptionView && !m_pSystemOptionView->Is_Open())
 		m_pSystemOptionView->Open();
 }
 
+// 월드 메뉴가 캐릭터 선택 복귀를 시작한다. Server capture 대기 등록과 예약·전송 실패 모두 false를 반환한다.
+// 즉시 복귀 가능한 경우에는 로비 요청 예약 성공 뒤 연결을 닫고 true를 반환한다.
 bool_t CMainApp::Return_ToCharacterSelect()
 {
 	if (CLevelTransitionService::Is_Pending() || m_bCharacterReturnPending)
 		return false;
-	CNetworkManager& network = CNetworkManager::Get();
+	CNetworkManager &network = CNetworkManager::Get();
 	if (CCharacterSelectionState::Has_ActiveCharacter() && network.Is_Connected() &&
 		!CCharacterSelectionState::Is_RestorePending())
 	{
@@ -816,50 +763,68 @@ bool_t CMainApp::Return_ToCharacterSelect()
 		WORLD_ID world = WORLD_ID::END;
 		switch (static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()))
 		{
-		case LEVEL::BERN: world = WORLD_ID::BERN; break;
-		case LEVEL::VALTAN_ARENA: world = WORLD_ID::VALTAN_ARENA; break;
-		case LEVEL::KAKULSAYDON_ARENA: world = WORLD_ID::KAKULSAYDON_ARENA; break;
-		case LEVEL::MAHARAKA: world = WORLD_ID::MAHARAKA; break;
-		case LEVEL::COLOSSEUM: world = WORLD_ID::COLOSSEUM; break;
-		default: break;
+		case LEVEL::BERN:
+			world = WORLD_ID::BERN;
+			break;
+		case LEVEL::VALTAN_ARENA:
+			world = WORLD_ID::VALTAN_ARENA;
+			break;
+		case LEVEL::KOUKUSAYDON_ARENA:
+			world = WORLD_ID::KOUKUSAYDON_ARENA;
+			break;
+		case LEVEL::MAHARAKA:
+			world = WORLD_ID::MAHARAKA;
+			break;
+		case LEVEL::COLOSSEUM:
+			world = WORLD_ID::COLOSSEUM;
+			break;
+		default:
+			break;
 		}
 		if (world != WORLD_ID::END)
 		{
 			const auto sequence = CCharacterSelectionState::Next_StateRequestSequence();
 			const auto generation = network.Get_WorldInboundGeneration();
-			if (!CCharacterSelectionState::Begin_WorldStateCapture(sequence, world,
-				network.Get_LocalPlayerId(), network.Get_LocalEntityId(), generation)) return false;
+			if (!CCharacterSelectionState::Begin_WorldStateCapture(sequence, world, network.Get_LocalPlayerId(),
+																   network.Get_LocalEntityId(), generation))
+				return false;
 			CNetworkPlayerCommandSink sink;
 			if (!sink.Request_CaptureCharacter(sequence))
 			{
 				CCharacterSelectionState::Finish_WorldStateCapture();
-				CLevelTransitionService::Report_Recovery(SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
-					"character.capture-send", "Character state could not be requested. Retry character selection.", E_FAIL);
+				CLevelTransitionService::Report_Recovery(
+					SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED, "character.capture-send",
+					"Character state could not be requested. Retry character selection.", E_FAIL);
 				return false;
 			}
 			m_bCharacterReturnPending = true;
 			m_dCharacterCaptureStartedAt = Product_Now_Seconds();
 			m_iCharacterCaptureWorldGeneration = generation;
-			// Keep the current Level updating replication until its final state arrives.
+			// 최종 상태 응답을 받을 때까지 현재 Level의 복제 갱신을 유지한다.
 			return false;
 		}
 	}
 	CCharacterSelectionState::Capture_ActiveWorldState();
-	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select")) return false;
+	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select"))
+		return false;
 	m_bOpenCharacterSelectOnLobby = true;
 	network.Close_ServerConnection();
 	return true;
 }
 
+// Update가 capture 결과와 같은 world generation을 확인해 로비 요청을 마무리한다.
+// 5초 timeout·연결 종료·세대 변경·실패는 여기서 슬롯을 다시 덮어쓰지 않고 대기만 정리해 진단을 남긴다.
 void CMainApp::Pump_ReturnToCharacterSelect()
 {
-	if (!m_bCharacterReturnPending) return;
-	CNetworkManager& network = CNetworkManager::Get();
+	if (!m_bCharacterReturnPending)
+		return;
+	CNetworkManager &network = CNetworkManager::Get();
 	const auto status = CCharacterSelectionState::Get_WorldStateCaptureStatus();
 	const bool_t sameWorld = network.Get_WorldInboundGeneration() == m_iCharacterCaptureWorldGeneration;
 	if (status == CHARACTER_CAPTURE_STATUS::CAPTURED && sameWorld && !CLevelTransitionService::Is_Pending())
 	{
-		if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select.saved")) return;
+		if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "world.menu.character-select.saved"))
+			return;
 		m_bOpenCharacterSelectOnLobby = true;
 		m_bCharacterReturnPending = false;
 		CCharacterSelectionState::Finish_WorldStateCapture();
@@ -872,36 +837,34 @@ void CMainApp::Pump_ReturnToCharacterSelect()
 		m_bCharacterReturnPending = false;
 		CCharacterSelectionState::Finish_WorldStateCapture();
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED,
-			"character.capture-incomplete", "Character state was not confirmed. The previous slot state is preserved; retry character selection.", E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED, "character.capture-incomplete",
+			"Character state was not confirmed. The previous slot state is preserved; retry character selection.",
+			E_FAIL);
 	}
 }
 
-void CMainApp::Play_PopupRequestSound()
-{
-	const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-		L"Sound/UI/System/sys_party_request1__654410772.wav");
-	CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
-}
-
+// 베른 선박 NPC가 탈것 창을 선박 mode로 연다. view가 없으면 아무 상태도 바꾸지 않는다.
 void CMainApp::Open_ShipWindow()
 {
 	if (nullptr != m_pVehicleWindowView)
 		m_pVehicleWindowView->Open_Ships();
 }
 
+// 베른 수리 NPC가 기존 수리 view의 열기 경로를 호출한다.
 void CMainApp::Open_RepairWindow()
 {
 	if (nullptr != m_pRepairWindowView)
 		m_pRepairWindowView->Open();
 }
 
-void CMainApp::Open_ShopWindow(const string& strNpcPlacementId)
+// 상점 NPC의 stable placement ID를 view에 전달한다. 상품 상태·구매 요청은 기존 view 경계가 담당한다.
+void CMainApp::Open_ShopWindow(const string &strNpcPlacementId)
 {
 	if (nullptr != m_pShopWindowView)
 		m_pShopWindowView->Open(strNpcPlacementId);
 }
 
+// NPC가 처음 열 때 재련 요청 identity와 연출 시각을 초기화하고 보유 장비 sprite를 맞춘다. 이미 열린 창은 보존한다.
 void CMainApp::Open_ItemUpgradeWindow()
 {
 	if (nullptr == m_pItemUpgradeView || m_bItemUpgradePreviewVisible)
@@ -911,15 +874,11 @@ void CMainApp::Open_ItemUpgradeWindow()
 	m_iPendingItemUpgradeRequest = 0;
 	m_bItemUpgradeResultUnavailable = false;
 	m_bItemUpgradePendingAttemptSuccess = false;
-	/* Show every authored slot first (Hide_ItemUpgrade's own inverse) -- unlike the old
-	CHUDRuntimeView generic Render(class, revision) pass, a CUI_Sprite has no implicit
-	"wasn't drawn this frame" default, so every slot needs an explicit owner. The explicit hides
-	right below (100%-only art, modal/result slots) then apply on top of this, same as before. */
-	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+	// 전체 저작 슬롯의 표시 소유권을 명시적으로 설정한 뒤 아래에서 완료 전용·modal·결과 슬롯을 숨긴다.
+	for (const char_t *pSlotId : ITEM_UPGRADE_ALL_SLOTS)
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, true);
 
-	/* Reopening always starts the gauge idle at 0 -- reset the state machine and hide
-	the 100%-only art so a completed run from a previous open doesn't carry over. */
+	// 다시 열면 gauge를 0% 대기로 초기화한다. 이전 완료 이펙트와 예약 시각이 새 화면으로 이어지지 않게 비운다.
 	m_iItemUpgradePreviousPercent = 0;
 	m_bItemUpgradeGrowing = false;
 	m_dItemUpgradeGrowStartSeconds = -1.0;
@@ -950,6 +909,8 @@ void CMainApp::Open_ItemUpgradeWindow()
 	SyncItemUpgradeSlotSprites(*m_pItemUpgradeView, BuildItemUpgradeSlots(), m_iItemUpgradeSelectedSlot);
 }
 
+// 창 닫기·Level 전환이 WAITING 반복음을 멈추고 현재 요청/결과 표시를 비운다.
+// Server 인벤토리는 바꾸지 않으며 STATIC 슬롯만 숨긴다.
 void CMainApp::Hide_ItemUpgrade()
 {
 	if (ITEM_UPGRADE_ATTEMPT_RESULT::WAITING == m_eItemUpgradeAttemptResult)
@@ -958,70 +919,71 @@ void CMainApp::Hide_ItemUpgrade()
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
 	if (nullptr == m_pItemUpgradeView)
 		return;
-	for (const char_t* pSlotId : ITEM_UPGRADE_ALL_SLOTS)
+	for (const char_t *pSlotId : ITEM_UPGRADE_ALL_SLOTS)
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
 }
 
+// 현재 쿠크 관문이 요청한 presentation profile을 변경 edge에서만 적용한다.
+// 같은 Level에서 자신이 적용한 profile을 아직 소유한 경우에만 이전 profile 복원을 시도한다.
 void CMainApp::Update_KoukuGateSceneProfile()
 {
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
-    if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
-    {
-        // The newly activated Level owns its profile; do not restore across Levels.
-        m_strKoukuGateProfileRequest.clear();
-        m_strKoukuGateProfileApplied.clear();
-        m_strSceneProfileBeforeKoukuGate.clear();
-        return;
-    }
-    const string requested = arena->Get_GatePresentationProfileId();
-    if (requested == m_strKoukuGateProfileRequest) return;
-    // Consume one gate edge, including a failed request. A Sequence may own a
-    // different profile on following frames and must not be overwritten here.
-    m_strKoukuGateProfileRequest = requested;
-    string status;
-    bool changed = false;
-    if (!requested.empty())
-    {
-        const string previous = m_RenderingProfiles.Get_ActiveProfileId();
-        changed = m_RenderingProfiles.Activate_Profile(requested, status);
-        if (changed)
-        {
-            if (m_strSceneProfileBeforeKoukuGate.empty())
-                m_strSceneProfileBeforeKoukuGate = previous;
-            m_strKoukuGateProfileApplied = requested;
-        }
-    }
-    else
-    {
-        if (!m_strKoukuGateProfileApplied.empty() &&
-            m_RenderingProfiles.Get_ActiveProfileId() == m_strKoukuGateProfileApplied &&
-            !m_strSceneProfileBeforeKoukuGate.empty())
-            changed = m_RenderingProfiles.Activate_Profile(m_strSceneProfileBeforeKoukuGate, status);
-        m_strKoukuGateProfileApplied.clear();
-        m_strSceneProfileBeforeKoukuGate.clear();
-    }
-    if (!status.empty())
-    {
+	auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+	if (!arena || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
+	{
+		// 새 Level이 현재 profile을 소유하므로 Level을 넘어 이전 쿠크 profile을 복원하지 않는다.
+		m_strKoukuGateProfileRequest.clear();
+		m_strKoukuGateProfileApplied.clear();
+		m_strSceneProfileBeforeKoukuGate.clear();
+		return;
+	}
+	const string requested = arena->Get_GatePresentationProfileId();
+	if (requested == m_strKoukuGateProfileRequest)
+		return;
+	// 관문 요청 변경을 한 번 소비한다. 실패 요청도 기록해 다음 프레임의 다른 시퀀스 profile을 반복 덮어쓰지 않는다.
+	// 뒤이어 profile을 소유한 시퀀스의 선택은 그대로 유지한다.
+	m_strKoukuGateProfileRequest = requested;
+	string status;
+	bool changed = false;
+	if (!requested.empty())
+	{
+		const string previous = m_RenderingProfiles.Get_ActiveProfileId();
+		changed = m_RenderingProfiles.Activate_Profile(requested, status);
+		if (changed)
+		{
+			if (m_strSceneProfileBeforeKoukuGate.empty())
+				m_strSceneProfileBeforeKoukuGate = previous;
+			m_strKoukuGateProfileApplied = requested;
+		}
+	}
+	else
+	{
+		if (!m_strKoukuGateProfileApplied.empty() &&
+			m_RenderingProfiles.Get_ActiveProfileId() == m_strKoukuGateProfileApplied &&
+			!m_strSceneProfileBeforeKoukuGate.empty())
+			changed = m_RenderingProfiles.Activate_Profile(m_strSceneProfileBeforeKoukuGate, status);
+		m_strKoukuGateProfileApplied.clear();
+		m_strSceneProfileBeforeKoukuGate.clear();
+	}
+	if (!status.empty())
+	{
 #ifdef _DEBUG
-        m_strRenderingStatus = status;
+		m_strRenderingStatus = status;
 #endif
-        if (!changed)
-            OutputDebugStringA(("[MainApp][KoukuGateProfile] " + status + "\n").c_str());
-    }
+		if (!changed)
+			OutputDebugStringA(("[MainApp][KoukuGateProfile] " + status + "\n").c_str());
+	}
 }
 
+// 생성/showcase 화면의 열림 상태로 어두운 무대 profile을 활성화하거나 이전 profile을 복원한다.
+// 복원 실패는 로그로 남기고 보관 ID를 비우는 기존 정책을 유지한다.
 void CMainApp::Update_CustomizingSceneProfile()
 {
-	/* The class list wants the stage readable and character creation wants it
-	nearly black behind the panels, which is where the retail screen sits. The
-	profile service belongs to this class, so the swap lives here rather than in
-	the Level, and it only fires when the screen opens or closes. */
-	static constexpr const char_t* CUSTOMIZING_PROFILE_ID =
-		"scene.character-select.customizing-dark.v1";
-	auto* characterSelect = CLevel_CharacterSelect::Get_Active();
-	const bool_t wantsDarkStage =
-		nullptr != characterSelect &&
-		(characterSelect->Is_CustomizingOpen() || characterSelect->Is_ClassShowcaseOpen());
+	// 캐릭터 생성·showcase 화면의 어두운 무대를 MainApp 소유 profile service로 전환한다.
+	// 화면의 필요 상태와 보관된 이전 ID가 달라졌을 때만 활성화/복원을 시도한다.
+	static constexpr const char_t *CUSTOMIZING_PROFILE_ID = "scene.character-select.customizing-dark.v1";
+	auto *characterSelect = CLevel_CharacterSelect::Get_Active();
+	const bool_t wantsDarkStage = nullptr != characterSelect &&
+								  (characterSelect->Is_CustomizingOpen() || characterSelect->Is_ClassShowcaseOpen());
 	const bool_t holdsDarkStage = !m_strSceneProfileBeforeCustomizing.empty();
 	if (wantsDarkStage == holdsDarkStage)
 		return;
@@ -1032,8 +994,7 @@ void CMainApp::Update_CustomizingSceneProfile()
 		const string previous = m_RenderingProfiles.Get_ActiveProfileId();
 		if (!m_RenderingProfiles.Activate_Profile(CUSTOMIZING_PROFILE_ID, status))
 		{
-			/* A missing profile leaves the bright stage up rather than failing the
-			screen; nothing else on it depends on the swap. */
+			// profile 활성화 실패는 화면 전체 시작 실패로 확대하지 않고 이전 밝은 무대 상태와 진단을 유지한다.
 			OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
 			return;
 		}
@@ -1041,17 +1002,18 @@ void CMainApp::Update_CustomizingSceneProfile()
 		return;
 	}
 
-	if (!m_RenderingProfiles.Activate_Profile(
-		m_strSceneProfileBeforeCustomizing, status))
+	if (!m_RenderingProfiles.Activate_Profile(m_strSceneProfileBeforeCustomizing, status))
 	{
 		OutputDebugStringA(("[MainApp][SceneProfile] " + status + "\n").c_str());
 	}
 	m_strSceneProfileBeforeCustomizing.clear();
 }
 
+// showcase 대상의 월드 위치만큼 shadow의 eye와 at을 함께 이동해 기존 방향을 유지한다.
+// 직전 소유 focus만 되돌리고 적용 실패는 추적 상태를 새 값으로 확정하지 않는다.
 void CMainApp::Update_ClassShowcaseShadowFocus()
 {
-	auto& game = CGameInstance::Get();
+	auto &game = CGameInstance::Get();
 	const auto original = game.Get_ShadowLightDesc();
 	if (!original.Settings.bEnabled)
 	{
@@ -1059,11 +1021,9 @@ void CMainApp::Update_ClassShowcaseShadowFocus()
 		return;
 	}
 	auto shadow = original;
-	const auto samePoint = [](const float4_t& a, const float4_t& b)
-	{
-		return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w;
-	};
-	// Remove only our last translation. A new profile/tool focus already replaced it.
+	const auto samePoint = [](const float4_t &a, const float4_t &b)
+	{ return a.x == b.x && a.y == b.y && a.z == b.z && a.w == b.w; };
+	// 직전에 자신이 적용한 focus와 아직 같을 때만 그 이동을 되돌린다. 다른 profile/도구가 바꾼 focus는 덮어쓰지 않는다.
 	if (m_bClassShowcaseShadowFocusActive && samePoint(shadow.vAt, m_vClassShowcaseShadowFocus))
 	{
 		const vector_t undo = XMLoadFloat4(&m_vShadowFocusBeforeClassShowcase) - XMLoadFloat4(&shadow.vAt);
@@ -1072,7 +1032,7 @@ void CMainApp::Update_ClassShowcaseShadowFocus()
 	}
 	const float4_t previousFocus = shadow.vAt;
 	float3_t focus{};
-	const auto* characterSelect = CLevel_CharacterSelect::Get_Active();
+	const auto *characterSelect = CLevel_CharacterSelect::Get_Active();
 	const bool_t active = characterSelect && characterSelect->Try_GetClassShowcaseFocus(focus);
 	if (active)
 	{
@@ -1092,71 +1052,54 @@ void CMainApp::Update_ClassShowcaseShadowFocus()
 	m_vClassShowcaseShadowFocus = shadow.vAt;
 }
 
+// 제품 Update가 재련 응답·선택·버튼을 처리한 뒤 gauge와 결과 연출을 갱신한다.
+// 성장 퍼센트와 연출 시각은 Client 표시값이며 성공 여부는 Server 결과 경로가 정한다.
 void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ItemUpgrade.Update");
 	if (nullptr == m_pItemUpgradeView)
 		return;
 
-	/* The P key toggle has no level awareness of its own (see m_pItemUpgradeView's declaration
-	comment), so m_bItemUpgradePreviewVisible can go true while sitting in a level
-	Update_CombatHUD never supported (e.g. Lobby) -- same level set as Update_CombatHUD's own gate.
-	Unlike the old ImGui pass (which simply wasn't reached and drew nothing there), these slots
-	live under LEVEL::STATIC and would otherwise show through regardless of level. */
+	// 재련 창의 표시 플래그와 지원 Level을 함께 검사한다.
+	// STATIC 슬롯은 호출을 생략해도 남으므로 로비 등 지원 범위 밖에서는 명시적으로 숨긴다.
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t isSupportedLevel =
-		currentLevel == ETOUI(LEVEL::BERN) ||
-		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
+	const bool_t isSupportedLevel = currentLevel == ETOUI(LEVEL::BERN) || currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+									currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+									currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+									currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA);
 	if (!m_bItemUpgradePreviewVisible || !isSupportedLevel)
 	{
 		Hide_ItemUpgrade();
 		return;
 	}
 
-	/* Drives every "animation.frames" flipbook this view owns that ISN'T manually pinned below
-	(SmeltGlow's idle loop, CoreFlash/ShockwaveRing/CompleteEffect/WingDecoFade/ResultWaitEmblem/
-	SuccessEffect/FailEffect) off real elapsed time -- GaugeFill is the one slot this function
-	pins to an exact frame every tick instead (see below), same as CHUDRuntimeView's own
-	Set_Animation_Frame override did before this migration. */
+	// 이 view의 일반 flipbook은 delta 초로 갱신한다. GaugeFill만 아래 수동 퍼센트에 대응한 정확한 frame으로 고정한다.
 	m_pItemUpgradeView->Update(fTimeDelta);
 
 	Update_ItemUpgradeServerResult();
 	Update_ItemUpgradeSelection();
 	Update_ItemUpgradeGrowButton();
-	/* Wait-click checked before Reforge triggers a new WAITING -- both react to the same
-	real left-click-down-edge this frame, so if Reforge ran first the very click that opened the
-	wait overlay would also satisfy the wait-click's "clicked anywhere" check and reveal on the
-	same frame it appeared. */
+	// 기존 WAITING의 결과 공개 클릭을 새 재련 시작보다 먼저 검사한다.
+	// 재련 버튼을 누른 같은 edge가 새로 연 대기 화면까지 즉시 통과하지 않게 순서를 지킨다.
 	Update_ItemUpgradeResultWaitClick();
 	Update_ItemUpgradeReforgeButton();
 	Update_ItemUpgradeResultOkButton();
 
-	/* No real Server 재련 percent exists yet (see m_pItemUpgradeView's declaration comment), so
-	the gauge is a manual state machine driven by ItemUpgrade_LevelUpBtn's click
-	(Update_ItemUpgradeGrowButton) instead of a free-running clock. Idle at 0 until clicked;
-	0->100 fill plays once per click; holds at 100 until the next click. Once a real gauge value
-	exists this should read it the same way Update_LanceMasterIdentityGauge() reads
-	player.iCurrentIdentity, not this state. */
+	// 성장 버튼은 Client 게이지를 0→100으로 한 번 재생한다. 별도 재련 버튼이 Server에 요청하고 응답으로 성공 여부를 받는다.
 	if (m_bItemUpgradeGrowing)
 	{
 		constexpr f32_t GAUGE_FILL_FPS = 45.f;
 		constexpr f32_t GAUGE_FILL_FRAME_COUNT = 100.f;
 		const f32_t fCycleSeconds = GAUGE_FILL_FRAME_COUNT / GAUGE_FILL_FPS;
 		const f64_t fElapsed = Product_Now_Seconds() - m_dItemUpgradeGrowStartSeconds;
-		const int32_t iPercent = std::clamp(
-			static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT),
-			0, 100);
+		const int32_t iPercent =
+			std::clamp(static_cast<int32_t>(fElapsed / fCycleSeconds * GAUGE_FILL_FRAME_COUNT), 0, 100);
 
 		if (100 <= iPercent)
 		{
 			m_iItemUpgradePreviousPercent = 100;
 			m_bItemUpgradeGrowing = false;
-			/* Alpha starts at 0 here -- Set_SlotVisible only lifts bForceHidden (both slots
-			become drawable this same frame), the actual reveal is the fade-in progress block
-			below, driven by m_dItemUpgradeCompleteRevealStartSeconds. */
+			// 완료 슬롯을 그릴 수 있게 하되 alpha는 0에서 시작한다. 아래 시간 기반 fade가 실제 표시량을 올린다.
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_WingedRingGold", true);
 			m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_LevelUpMotion2Big", true);
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", 0.f);
@@ -1168,36 +1111,27 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		else
 		{
 			m_iItemUpgradePreviousPercent = iPercent;
-			/* GaugeFill's own AnimationFrames clock starts independently once this slot's first
-			frame plays, so it would otherwise drift out of phase with iPercent (which is
-			anchored to m_dItemUpgradeGrowStartSeconds) -- pin it to the exact frame every tick
-			instead of letting the two clocks disagree about what "63%" looks like. */
+			// flipbook 자체 시계와 성장 시작 기준 퍼센트가 어긋나지 않도록 매 갱신에 GaugeFill frame을 고정한다.
 			m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", iPercent);
 		}
 	}
 	else if (100 == m_iItemUpgradePreviousPercent)
 	{
-		/* Held-100 state: nothing re-pins this once growing flips false above, so without this
-		GaugeFill's own looping AnimationFrames clock (JSON loop=true, 100 frames/45fps) would
-		free-run straight past frame 99 and repeat the whole 0->100 sweep visually even though
-		m_iItemUpgradePreviousPercent correctly stays at 100. */
+		// 100%를 유지할 때도 마지막 frame 99를 고정해 JSON의 loop 시계가 처음으로 되돌아가지 않게 한다.
 		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 99);
 
 		if (m_dItemUpgradeCompleteRevealStartSeconds >= 0.0)
 		{
 			constexpr f64_t REVEAL_FADE_SECONDS = 0.45;
 			const f32_t fFadeAlpha = static_cast<f32_t>(std::clamp(
-				(Product_Now_Seconds() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS,
-				0.0, 1.0));
+				(Product_Now_Seconds() - m_dItemUpgradeCompleteRevealStartSeconds) / REVEAL_FADE_SECONDS, 0.0, 1.0));
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_WingedRingGold", fFadeAlpha);
 			m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", fFadeAlpha);
 		}
 	}
 
-	/* CoreFlash fires exactly once, the same frame Update_ItemUpgradeGrowButton starts a fill;
-	ShockwaveRing is scheduled for CoreFlash's own real duration (28 frames/20fps) later so the
-	two real Scaleform layers play in their authored order instead of together (real ordering:
-	coreLevelEffect1 before compF_shockwave_red inside levelUpMotion_mc). */
+	// 성장 시작 프레임에 CoreFlash를 한 번 재생하고 28프레임/20fps 뒤에 ShockwaveRing을 예약한다.
+	// 동시에 시작하지 않아 원래 두 layer의 순서를 유지한다.
 	if (m_bItemUpgradeCoreFlashPending)
 	{
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_CoreFlash");
@@ -1205,18 +1139,14 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		m_dItemUpgradeShockwaveScheduledAt = Product_Now_Seconds() + CORE_FLASH_DURATION_SECONDS;
 		m_bItemUpgradeCoreFlashPending = false;
 	}
-	if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 &&
-		Product_Now_Seconds() >= m_dItemUpgradeShockwaveScheduledAt)
+	if (m_dItemUpgradeShockwaveScheduledAt >= 0.0 && Product_Now_Seconds() >= m_dItemUpgradeShockwaveScheduledAt)
 	{
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ShockwaveRing");
 		m_dItemUpgradeShockwaveScheduledAt = -1.0;
 	}
 	if (m_dItemUpgradeResultSettleAt >= 0.0 && Product_Now_Seconds() >= m_dItemUpgradeResultSettleAt)
 	{
-		// Burst's real one-shot duration is over -- swap the circle+burst out for the settled
-		// icon/name/result content (RenderItemUpgradeSuccessDetailText/FailDetailText gate on
-		// this same "settled" condition -- m_dItemUpgradeResultSettleAt < 0.0 while
-		// SUCCESS/FAIL is showing -- so the text appears in lockstep with this reveal).
+		// 결과 효과가 끝나면 아이콘·상세 글자로 전환한다. 아래에서 settle 예약을 비워 텍스트 pass도 같은 프레임부터 상세 화면을 그리게 한다.
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", false);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", false);
@@ -1224,39 +1154,30 @@ void CMainApp::Update_ItemUpgrade(const f32_t fTimeDelta)
 		const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessOkBtn", bSuccess);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailOkBtn", !bSuccess);
-		// Real success_mc/fail_mc detail: a decorative frame + item icon sit behind the settled
-		// result text (real local placements traced from ItemBuildUpLevelWndContent's own
-		// success_mc/fail_mc timelines). Real in-game capture shows just icon/name/result -- no
-		// wide winged ribbon banner -- so SuccessDiamondWinged is never shown. Same frame for
-		// both outcomes now (SuccessDiamondFrame reused for fail too) -- FailDiamondFrame is
-		// never shown.
+		// 성공·실패 모두 공통 장식 frame을 쓰고 결과 아이콘만 고른다. 상세 글자는 뒤의 텍스트 pass가 같은 결과 상태로 그린다.
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessDiamondFrame", true);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessItemIconMarker", bSuccess);
 		m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", !bSuccess);
-		m_pItemUpgradeView->Set_SlotTexture(bSuccess ?
-			"ItemUpgrade_SuccessItemIconMarker" : "ItemUpgrade_FailItemIconMarker", m_strItemUpgradeAttemptIcon);
+		m_pItemUpgradeView->Set_SlotTexture(bSuccess ? "ItemUpgrade_SuccessItemIconMarker"
+													 : "ItemUpgrade_FailItemIconMarker",
+											m_strItemUpgradeAttemptIcon);
 		m_dItemUpgradeResultSettleAt = -1.0;
 	}
 
-	/* Idle (not growing, held at 0) is the only state SmeltGlow's own JSON loop should be
-	visible in -- hidden for the rest of the fill and at 100% so it doesn't glow underneath the
-	completion art. WingedRingGold/LevelUpMotion2Big/CompleteEffect are the inverse: hidden
-	everywhere except the held-100 state set above. A fresh click (Update_ItemUpgradeGrowButton)
-	re-hides all three the same frame it restarts the fill from 0. */
+	// SmeltGlow는 채우지 않는 0% 대기에서만 표시한다.
+	// 완료 이펙트는 100% 유지에서만 보이며 새 성장 클릭은 같은 프레임에 다시 숨긴다.
 	const bool_t bIdle = !m_bItemUpgradeGrowing && 0 == m_iItemUpgradePreviousPercent;
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SmeltGlow", bIdle);
-	/* Idle has no per-frame branch above to pin this itself (unlike the growing/held-100
-	cases), so GaugeFill's own clock would otherwise free-run through its looping AnimationFrames
-	while sitting idle at 0%. */
+	// 대기 중에도 GaugeFill을 frame 0에 고정해 자체 loop가 진행되는 모습을 막는다.
 	if (bIdle)
 		m_pItemUpgradeView->Set_Animation_Frame("ItemUpgrade_GaugeFill", 0);
 }
 
 #ifdef _DEBUG
-void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle)
+// Debug 창 제목에 ImGui 측정 FPS를 표시한다. 최소 500ms 경과 후 갱신하되 기본 제목이 바뀌면 기다리지 않고 새로 표시한다.
+void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t *pBaseTitle)
 {
-	if (nullptr == g_hWnd || nullptr == pBaseTitle || L'\0' == pBaseTitle[0] ||
-		nullptr == ImGui::GetCurrentContext())
+	if (nullptr == g_hWnd || nullptr == pBaseTitle || L'\0' == pBaseTitle[0] || nullptr == ImGui::GetCurrentContext())
 		return;
 
 	constexpr size_t WINDOW_TITLE_CAPACITY = 128u;
@@ -1265,45 +1186,28 @@ void CMainApp::Update_DebugWindowTitleWithFps(const wchar_t* pBaseTitle)
 	static ULONGLONG previousRefreshTick = 0ull;
 
 	const ULONGLONG currentTick = ::GetTickCount64();
-	const bool baseTitleChanged =
-		0 != std::wcscmp(previousBaseTitle, pBaseTitle);
-	if (!baseTitleChanged &&
-		currentTick - previousRefreshTick < REFRESH_INTERVAL_MS)
+	const bool baseTitleChanged = 0 != std::wcscmp(previousBaseTitle, pBaseTitle);
+	if (!baseTitleChanged && currentTick - previousRefreshTick < REFRESH_INTERVAL_MS)
 		return;
 
-	::wcsncpy_s(
-		previousBaseTitle,
-		_countof(previousBaseTitle),
-		pBaseTitle,
-		_TRUNCATE);
+	::wcsncpy_s(previousBaseTitle, _countof(previousBaseTitle), pBaseTitle, _TRUNCATE);
 	previousRefreshTick = currentTick;
 
 	WCHAR windowTitle[WINDOW_TITLE_CAPACITY]{};
-	::_snwprintf_s(
-		windowTitle,
-		_countof(windowTitle),
-		_TRUNCATE,
-		L"%ls | FPS %.1f",
-		pBaseTitle,
-		ImGui::GetIO().Framerate);
+	::_snwprintf_s(windowTitle, _countof(windowTitle), _TRUNCATE, L"%ls | FPS %.1f", pBaseTitle,
+				   ImGui::GetIO().Framerate);
 	::SetWindowTextW(g_hWnd, windowTitle);
 }
 #endif
 
+// wWinMain의 Create 요청으로 엔진 관리자, 제품 데이터·UI를 준비한 뒤 Lobby용 Loading Level을 연다.
+// 엔진 관리자는 GameInstance가, 제품 창·도구·렌더링 프로필은 MainApp이 보유한다. 필수 초기화 실패는 Free로 정리된다.
 HRESULT CMainApp::Initialize()
 {
-    WriteStartupDiagnostic("Initialize", S_OK, "begin");
-    const auto InitializeStage = [](const char* stage, const auto& initialize)
-    {
-        WriteStartupDiagnostic(stage, S_OK, "begin");
-        const HRESULT result = initialize();
-        WriteStartupDiagnostic(stage, result, FAILED(result) ? "failed" : "ready");
-        return result;
-    };
-	/* CreateWICTextureFromFile (used by the HUD runtime view for non-DDS art) needs COM on the
-	calling thread. The main thread never initializes it otherwise. */
+	// HUD 이미지의 WIC 로더를 위해 메인 스레드에 COM을 준비한다. 현재 이 호출 자체의 HRESULT는 검사하지 않는다.
 	CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
+	// Client.cpp가 만든 창 handle과 현재 client pixel 크기를 ENGINE_DESC에 담는다. GameInstance가 이 값으로 장치·입력·Level별 관리 공간을 준비한다.
 	ENGINE_DESC engineDesc{};
 	engineDesc.hInstance = g_hInst;
 	engineDesc.hWnd = g_hWnd;
@@ -1315,201 +1219,156 @@ HRESULT CMainApp::Initialize()
 	engineDesc.iWinSizeX = physicalClient.right;
 	engineDesc.iWinSizeY = physicalClient.bottom;
 
-    HRESULT startupResult = InitializeStage("Engine.Initialize", [&]()
-    {
-        return CGameInstance::Get().Initialize_Engine(engineDesc, m_pDevice, m_pContext);
-    });
-    if (FAILED(startupResult))
-        return startupResult;
-    WriteGraphicsAdapterDiagnostic(m_pDevice.Get());
+	// Get()으로 찾은 GameInstance의 Initialize_Engine이 장치와 Graphic_Device·Renderer·Object/Level/Prototype_Manager 등을 만들고 보유한다.
+	// 반환받은 장치·context의 COM 참조는 MainApp의 UI·도구 생성에도 공유한다.
+	HRESULT startupResult = CGameInstance::Get().Initialize_Engine(engineDesc, m_pDevice, m_pContext);
+	if (FAILED(startupResult))
+		return startupResult;
 
+	// 엔진 연결 뒤에 사용자 표시 변경 callback을 등록한다. 게시 rendering profile 로드는 별도로 실패 여부를 검사한다.
 	string displayStatus;
 	if (!CClientWindowDisplay::Attach_Engine(displayStatus))
 		return E_FAIL;
 	CUserSettings::Get().Set_DisplayApplyCallback(CClientWindowDisplay::Apply);
-	/* Preferences were parsed before window creation; apply audio after Engine startup. */
+	// 창 생성 전에 읽은 사용자 설정의 오디오 적용은 엔진 시작 뒤 수행한다.
 	CUserSettings::Get().Initialize();
 
-    WriteStartupDiagnostic("Rendering.Load_Runtime", S_OK, "begin");
 	string renderingProfileStatus;
 	if (!m_RenderingProfiles.Load_Runtime(renderingProfileStatus))
 	{
-        WriteStartupDiagnostic("Rendering.Load_Runtime", E_FAIL, renderingProfileStatus);
-		OutputDebugStringA((
-			"[MainApp] Rendering profile initialization failed: " +
-			renderingProfileStatus + "\n").c_str());
+		OutputDebugStringA(
+			("[MainApp] Rendering profile initialization failed: " + renderingProfileStatus + "\n").c_str());
 #ifdef _DEBUG
-		MessageBoxA(g_hWnd, renderingProfileStatus.c_str(),
-			"Rendering Profile Load Failed", MB_OK | MB_ICONERROR);
+		MessageBoxA(g_hWnd, renderingProfileStatus.c_str(), "Rendering Profile Load Failed", MB_OK | MB_ICONERROR);
 #endif
 		return E_FAIL;
 	}
 
-    WriteStartupDiagnostic("Rendering.Load_Runtime", S_OK, renderingProfileStatus);
+	// 선택적 조명 inventory는 실패를 기록하고 계속한다. 필수 profile 로드와 같은 실패 정책으로 묶지 않는다.
 	std::string lightStatus;
 	if (!m_LightResources.Load_Runtime(lightStatus))
-		OutputDebugStringA(("[MainApp] Light resources unavailable: "+lightStatus+"\n").c_str());
+		OutputDebugStringA(("[MainApp] Light resources unavailable: " + lightStatus + "\n").c_str());
 	if (!m_LightResources.Refresh_MapResources("LV_LUT_MIDNIGHTC_ED", lightStatus))
-		OutputDebugStringA(("[MainApp] Map light resources unavailable: "+lightStatus+"\n").c_str());
-    WriteStartupDiagnostic("Network.Initialize", S_OK, "begin");
-    if (!CNetworkManager::Get().Initialize())
-    {
-        const int networkError = CNetworkManager::Get().Get_LastErrorCode();
-        const HRESULT networkResult = networkError ? HRESULT_FROM_WIN32(networkError) : E_FAIL;
-        WriteStartupDiagnostic("Network.Initialize", networkResult,
-            "WSAStartup error=" + std::to_string(networkError));
-        return networkResult;
-    }
-    WriteStartupDiagnostic("Network.Initialize", S_OK, "ready");
-    startupResult = InitializeStage("ImGui.Initialize", [&]() { return ReadyImGuiRuntime(); });
-    if (FAILED(startupResult))
-        return startupResult;
+		OutputDebugStringA(("[MainApp] Map light resources unavailable: " + lightStatus + "\n").c_str());
+	if (!CNetworkManager::Get().Initialize())
+	{
+		const int networkError = CNetworkManager::Get().Get_LastErrorCode();
+		const HRESULT networkResult = networkError ? HRESULT_FROM_WIN32(networkError) : E_FAIL;
+		return networkResult;
+	}
+	startupResult = ReadyImGuiRuntime();
+	if (FAILED(startupResult))
+		return startupResult;
 
 #ifdef _DEBUG
-    startupResult = InitializeStage("DebugTools.Initialize", [&]() { return ReadyDebugTools(); });
-    if (FAILED(startupResult))
-        return startupResult;
+	startupResult = ReadyDebugTools();
+	if (FAILED(startupResult))
+		return startupResult;
 #endif
 
-    startupResult = InitializeStage("Fonts.Initialize", [&]() { return Ready_Fonts(); });
-    if (FAILED(startupResult))
-        return startupResult;
-    startupResult = InitializeStage("StaticPrototypes.Initialize", [&]() { return Ready_Prototype_For_Static(); });
-    if (FAILED(startupResult))
-        return startupResult;
+	startupResult = Ready_Fonts();
+	if (FAILED(startupResult))
+		return startupResult;
+	startupResult = Ready_Prototype_For_Static();
+	if (FAILED(startupResult))
+		return startupResult;
 
-    WriteStartupDiagnostic("EffectCatalog.Load", S_OK, "begin");
 	std::string effectCatalogStatus;
 	if (!CEffectCatalog::Load(effectCatalogStatus))
 	{
-        WriteStartupDiagnostic("EffectCatalog.Load", E_FAIL, effectCatalogStatus);
-		const std::string diagnostic =
-			"[MainApp] Effect Catalog initialization failed: " +
-			effectCatalogStatus + "\n";
+		const std::string diagnostic = "[MainApp] Effect Catalog initialization failed: " + effectCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 #ifdef _DEBUG
-		MessageBoxA(g_hWnd, effectCatalogStatus.c_str(),
-			"Effect Catalog Load Failed", MB_OK | MB_ICONERROR);
+		MessageBoxA(g_hWnd, effectCatalogStatus.c_str(), "Effect Catalog Load Failed", MB_OK | MB_ICONERROR);
 #endif
 		return E_FAIL;
 	}
 
-    WriteStartupDiagnostic("EffectCatalog.Load", S_OK, effectCatalogStatus);
 
-	// The Loader snapshots skill definitions before starting its worker. Release
-	// must not depend on opening an authoring tool to initialize these definitions.
-	// Preserve the existing Level/replication failure and recovery boundary.
+	// Loader worker가 사용할 스킬 정의를 먼저 읽는다. 실패는 로그로 남기고 실제 Level·복제의 자원 준비 경계에서 처리한다.
 	if (CPlayerSkillCatalog::Get_Skills().empty())
 	{
 		Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Catalog.PlayerSkills.Initialize");
 		std::string skillCatalogStatus;
 		if (!CPlayerSkillCatalog::Load(skillCatalogStatus))
-			OutputDebugStringA(("[MainApp] Player Skill Catalog initialization failed: " +
-				skillCatalogStatus + "\n").c_str());
+			OutputDebugStringA(
+				("[MainApp] Player Skill Catalog initialization failed: " + skillCatalogStatus + "\n").c_str());
 	}
 
-	/* Was only ever loaded lazily from the F1 "Inventory (Debug)" panel's own render code, so
-	CItemCatalog::Find_ById() returned nullptr for every real item (no icon, just the quantity
-	text) until a player opened Developer Tools at least once. Not fatal on failure -- the debug
-	panel already tolerated an empty catalog (just disables "Give"), so real gameplay should too
-	rather than blocking Client startup over it. */
+	// 아이템 아이콘이 도구를 처음 여는 시점에 의존하지 않도록 catalog를 시작 때 읽는다. 실패하면 빈 catalog 처리를 유지한다.
 	std::string itemCatalogStatus;
 	if (!Client::CItemCatalog::Load(itemCatalogStatus))
 	{
-		const std::string diagnostic =
-			"[MainApp] Item Catalog initialization failed: " + itemCatalogStatus + "\n";
+		const std::string diagnostic = "[MainApp] Item Catalog initialization failed: " + itemCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
-	/* Same policy: without it nameplates show bare names and the title window is empty. */
+	// 칭호 catalog도 같은 선택적 로드 정책이다. 실패하면 기존 이름표·빈 칭호 목록 처리를 사용한다.
 	std::string honorTitleStatus;
 	if (!Client::CHonorTitleCatalog::Load(honorTitleStatus))
 	{
 		OutputDebugStringA(("[MainApp] Honor title catalog initialization failed: " + honorTitleStatus + "\n").c_str());
 	}
 
-	/* Not fatal, same reasoning as CItemCatalog above -- a missing/broken sound catalog just
-	means CCharacter::Update_SoundCues() finds no variants for every cue and silently plays
-	nothing (Client-only presentation, no gameplay authority depends on it). */
+	// 소리 cue 정의가 없어도 시작은 계속한다. 누락은 로그와 해당 표시 경로에서 처리한다.
 	std::string soundCatalogStatus;
 	const bool_t soundCatalogLoaded = Client::CSoundCueCatalog::Load(soundCatalogStatus);
 	{
-		const std::string diagnostic = (soundCatalogLoaded ?
-			"[MainApp] Sound Cue Catalog: " :
-			"[MainApp] Sound Cue Catalog initialization failed: ") + soundCatalogStatus + "\n";
+		const std::string diagnostic = (soundCatalogLoaded ? "[MainApp] Sound Cue Catalog: "
+														   : "[MainApp] Sound Cue Catalog initialization failed: ") +
+									   soundCatalogStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
 	std::string estherActionSoundStatus;
 	if (!Client::CEstherActionSoundCueDocument::Load(estherActionSoundStatus))
 	{
-		const std::string diagnostic =
-			"[MainApp] Esther action Sound cues isolated: " +
-			estherActionSoundStatus + "\n";
+		const std::string diagnostic = "[MainApp] Esther action Sound cues isolated: " + estherActionSoundStatus + "\n";
 		OutputDebugStringA(diagnostic.c_str());
 	}
 
-	/* Created FIRST among the STATIC-level UI documents -- CUI_Sprite draw order follows
-	creation order, and the always-on combat HUD must sit underneath the boss bar, Esther
-	window, Item Upgrade window, and inventory, matching the old ImGui submission order. */
-    WriteStartupDiagnostic("UI.Initialize", S_OK, "begin");
-	m_pHUDRuntimeView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
-		L"UI/HUD/HUD_Layout.json");
+	//공통 UI 음원만 미리 준비하고 누락은 해당 효과음에 한정한다.
+	Prepare_UISounds();
+
+	// MainApp은 화면별 view를 보유하고 CUILayoutRuntime은 JSON 슬롯을 STATIC Layer의 sprite로 만든다.
+	// Level을 바꿔도 남는 UI이므로 아래에서 최초 표시·숨김과 창 겹침 순서를 함께 정한다.
+	m_pHUDRuntimeView = std::make_unique<CUILayoutRuntime>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC),
+														   TEXT("Layer_UI"), L"UI/HUD/HUD_Layout.json");
 	Hide_CombatHUD();
 	m_pCombatAnalysisView = std::make_unique<CCombatAnalysisFrameView>(m_pDevice, m_pContext);
 	Load_KoukuHudModes();
 	Load_HudQuickSlotData();
-	m_pBossUIView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
-		L"UI/BossUI/BossUI.json");
+	m_pBossUIView = std::make_unique<CUILayoutRuntime>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+													   L"UI/BossUI/BossUI.json");
+	// 저작 기준 rect를 먼저 보관하고 화면 배율·offset을 적용한다. 기준 자체를 preview 값으로 덮어쓰지 않는다.
 	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
 	{
-		auto& base = m_MechanicBarBaseRects[i];
-		m_MechanicBarHasBase[i] = m_pBossUIView->Get_SlotRect(HUD_MECHANIC_SLOTS[i],
-			base.x, base.y, base.z, base.w);
+		auto &base = m_MechanicBarBaseRects[i];
+		m_MechanicBarHasBase[i] = m_pBossUIView->Get_SlotRect(HUD_MECHANIC_SLOTS[i], base.x, base.y, base.z, base.w);
 	}
 	Apply_MechanicBarRect();
 
-	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
-	/* Authored layer tints are opaque -- every real slot would otherwise sit fully visible from
-	this Level::STATIC construction until the first Update_BossHealthBar() call finds a valid
-	boss. */
+	m_pDungeonTimerView = std::make_unique<CDungeonTimerView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	// 보스가 없는 초기 프레임에 저작된 불투명 슬롯이 나타나지 않도록 생성 직후 숨긴다.
 	Hide_BossHealthBar();
 	m_pWorldHealthBarView = std::make_unique<CWorldHealthBarView>(m_pDevice, m_pContext);
 	(void)Reload_HealthBarPositions(m_strHealthBarPositionStatus);
-	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
-		L"UI/Esther/EstherUI.json");
-	/* Same reasoning as Hide_BossHealthBar just above -- hidden until Update_EstherGauge finds a
-	real Esther roster in a Valtan room. */
+	m_pEstherUIView = std::make_unique<CUILayoutRuntime>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
+														 L"UI/Esther/EstherUI.json");
+	// 실제 raid gauge의 표시 조건을 만족하기 전에는 에스더 슬롯도 숨긴다.
 	Hide_EstherUI();
-	m_pEstherCutinService = std::make_unique<CEstherCutinPresentationService>(
-		m_pDevice, m_pContext);
-	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
-		L"UI/ItemUpgrade/ItemUpgradeUI.json");
-	/* Authored layer tints are opaque -- every slot would otherwise sit fully visible from this
-	Level::STATIC construction until the first real Update_ItemUpgrade() call (P not pressed
-	yet). */
+	m_pEstherCutinService = std::make_unique<CEstherCutinPresentationService>(m_pDevice, m_pContext);
+	m_pItemUpgradeView = std::make_unique<CUILayoutRuntime>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC),
+															TEXT("Layer_UI"), L"UI/ItemUpgrade/ItemUpgradeUI.json");
+	// 재련 창이 처음 열리기 전까지 STATIC 슬롯을 명시적으로 숨긴다.
 	Hide_ItemUpgrade();
-	m_pLobbyBackgroundView = std::make_unique<CUILayoutRuntime>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC), TEXT("Layer_UI"),
-		L"UI/Lobby/Lobby_Layout.json");
-	/* Hidden until Update_LobbyButtons finds the Lobby active -- and behind every ImGui window
-	by construction (engine sprites render before ImGui), which is all the old BACKGROUND draw
-	target actually guaranteed here. */
+	m_pLobbyBackgroundView = std::make_unique<CUILayoutRuntime>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC),
+																TEXT("Layer_UI"), L"UI/Lobby/Lobby_Layout.json");
+	// 로비가 활성화될 때까지 배경을 숨긴다. 엔진 sprite이므로 ImGui 창보다 먼저 그려진다.
 	m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 	Load_LobbyServers();
-	/* After the Lobby view on purpose: created later means its sprites join Layer_UI later and
-	draw on top of the Lobby backdrop/buttons while the window is open. Its own constructor
-	hides every slot. */
-	m_pCharacterSelectWindowView = std::make_unique<CCharacterSelectWindowView>(
-		m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
-	/* m_pSkillWindowView is intentionally never constructed anymore: the K keybind that opened
-	it was removed by product decision (see the migrated keybind block below), so the window can
-	never open, and constructing it would stand up the last ImGui product-path renderer for
-	nothing. Every "skillWindowOpen" gate already null-checks it. The class/files stay for a
-	future real re-introduction. */
+	// 캐릭터 선택 창은 로비 뒤에 생성해 로비 배경·버튼 위에 표시한다. 창 생성자가 초기 슬롯을 숨긴다.
+	m_pCharacterSelectWindowView =
+		std::make_unique<CCharacterSelectWindowView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
+	// 현재 스킬 창은 생성하지 않는다. 관련 갱신 분기는 view가 있을 때만 실행된다.
 	m_pInventoryView = std::make_unique<CInventoryView>(m_pDevice, m_pContext);
 	m_pRepairWindowView = std::make_unique<CRepairWindowView>(m_pDevice, m_pContext);
 	m_pShopWindowView = std::make_unique<CShopWindowView>(m_pDevice, m_pContext);
@@ -1517,36 +1376,28 @@ HRESULT CMainApp::Initialize()
 	m_pChatWindowView = std::make_unique<CChatWindowView>(m_pDevice, m_pContext);
 	m_pPartyWindowView = std::make_unique<CPartyWindowView>(m_pDevice, m_pContext);
 	m_pMinimapView = std::make_unique<CMinimapView>(m_pDevice, m_pContext, ETOUI(LEVEL::STATIC));
-	/* Last of the runtime windows on purpose: its sprites join Layer_UI last and draw over the
-	inventory/chat/party panels while it is open (it also registers itself as the router's top
-	window so their text passes stay underneath). */
+	// 캐릭터 정보 창은 앞서 만든 인벤토리·채팅·파티 위에 그린다. router의 창 우선순위도 해당 view가 관리한다.
 	m_pCharacterInfoView = std::make_unique<CCharacterInfoWindowView>(m_pDevice, m_pContext);
-	/* Opened from the character info window's avatar page, drawn over it: constructed last. */
+	// 아바타 창은 캐릭터 정보 창에서 열리고 그 위에 표시하도록 뒤에 생성한다.
 	m_pAvatarBookView = std::make_unique<CAvatarBookWindowView>(m_pDevice, m_pContext);
-	/* Vehicle window (N): a separate panel on the right, drawn over the windows above. */
+	// N 탈것 창은 앞서 생성한 창들 위에 표시한다.
 	m_pVehicleWindowView = std::make_unique<CVehicleWindowView>(m_pDevice, m_pContext);
-	/* Honor title window: opened from the character info window, drawn over it. */
+	// 칭호 창은 캐릭터 정보 창에서 열고 그 위에 표시한다.
 	m_pHonorTitleWindowView = std::make_unique<CHonorTitleWindowView>(m_pDevice, m_pContext);
-	/* World map window (M): a large centred panel, drawn over the windows above. */
+	// M 월드 지도 창은 화면 중앙의 큰 패널로 앞선 창 위에 표시한다.
 	m_pWorldMapWindowView = std::make_unique<CWorldMapWindowView>(m_pDevice, m_pContext);
 	m_pSongCastGaugeView = std::make_unique<CSongCastGaugeView>(m_pDevice, m_pContext);
-	/* System option window (Escape): a centred panel over the windows above. */
+	// Escape 환경설정 창은 앞선 runtime 창들 위에 표시한다.
 	m_pSystemOptionView = std::make_unique<CSystemOptionWindowView>(m_pDevice, m_pContext);
-	/* Last of all: the carried quick-slot icon must ride over every window above. */
+	// 운반 중인 quick-slot 아이콘은 마지막에 생성해 모든 창 위에 표시한다.
 	m_pQuickSlotDragView = std::make_unique<CQuickSlotDragView>(m_pDevice, m_pContext);
 
-    WriteStartupDiagnostic("UI.Initialize", S_OK, "ready");
-    WriteStartupDiagnostic("Lobby.Start_Level", S_OK, "begin");
-    startupResult = Start_Level(LEVEL::LOBBY);
-    WriteStartupDiagnostic("Lobby.Start_Level", startupResult,
-        FAILED(startupResult) ? CLevelTransitionService::Get_Status() : "ready");
-    if (FAILED(startupResult))
-        return startupResult;
-    WriteStartupDiagnostic("Initialize", S_OK, "ready");
+	// 시작 목적지는 Lobby로 고정하고 Start_Level에 Loading 생성과 엔진 Level 교체를 맡긴다.
+	startupResult = Start_Level(LEVEL::LOBBY);
+	if (FAILED(startupResult))
+		return startupResult;
 	return S_OK;
 }
-
-
 #ifdef _DEBUG
 namespace
 {
@@ -1580,8 +1431,8 @@ namespace
    row.iDurationMs = 3000u;
    rows.push_back(std::move(row));
   }
-  // This explicit refresh inventories physical Sound assets once. Playback
-  // still resolves every Resources-relative ID through the existing audio owner.
+  // 명시적인 새로고침 때 실제 Sound 파일 목록을 한 번 수집한다. 재생 시에는
+  // 기존 오디오 소유자가 각 Resources 상대 ID를 해석하므로 별도 재생 경로를 만들지 않는다.
   std::error_code ec;
   const auto root = CRuntimeAssetRoot::Get_ResourceRoot();
   const auto sounds = CRuntimeAssetRoot::Resolve(L"Sound");
@@ -1603,7 +1454,7 @@ namespace
     rows.push_back(std::move(row));
    }
   if (ec) status += " Sound inventory: " + ec.message();
-  if (const auto* arena = CLevel_KakulSaydonArena::Get_Active())
+  if (const auto* arena = CLevel_KoukuSaydonArena::Get_Active())
    for (const auto& shot : arena->Get_CameraShots())
    {
     KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE row;
@@ -1676,9 +1527,9 @@ namespace
   const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status,
   const CWorldSequenceDocument* sourceDocument = nullptr, const bool previewAtCharacter = false)
  {
-  auto* arena = CLevel_KakulSaydonArena::Get_Active();
+  auto* arena = CLevel_KoukuSaydonArena::Get_Active();
   if (!arena) { status = "World preview requires the KoukuSaydon Arena."; return false; }
-  std::vector<CLevel_KakulSaydonArena::COMPOSITION_WORLD_PREVIEW_CUE> cues;
+  std::vector<CLevel_KoukuSaydonArena::COMPOSITION_WORLD_PREVIEW_CUE> cues;
   CWorldGameplayDocument placements;
   bool loaded = false;
   for (const auto& box : pattern.WorldOccurrences)
@@ -1754,7 +1605,7 @@ namespace
                 "; worldGeneration=" + std::to_string(worldGeneration) + "; runEpoch=" + std::to_string(runEpoch) +
                 "; gate=" + request.strStartGateId + "; reason=" + std::string(reason));
         }
-        catch (...) { } // Diagnostics never decide admission or change request ownership.
+        catch (...) { } // 진단 기록은 입장 판정이나 요청 소유권을 변경하지 않는다.
     }
 }
 
@@ -1765,7 +1616,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         return std::string(source) + " revision mismatch: expected " + std::to_string(expected) +
             ", current " + std::to_string(actual) + ". Wait for Publish to finish, then retry Complete Play.";
     };
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     auto& network = CNetworkManager::Get();
     const bool worldChanged = m_iKoukuCompletePlayWorldGeneration != 0u &&
         m_iKoukuCompletePlayWorldGeneration != network.Get_WorldInboundGeneration();
@@ -1866,8 +1717,8 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     if (m_iKoukuRaidPendingRequest && m_KoukuRaidReplyDeadline != std::chrono::steady_clock::time_point{} &&
         std::chrono::steady_clock::now() >= m_KoukuRaidReplyDeadline)
     {
-        // A deadline is a notice, not a Server verdict. Retain the exact request
-        // until its reply or the owning world session ends; never allow a second START.
+        // 기한 초과는 알림이며 Server의 최종 판정이 아니다. 같은 요청을 보존하고
+        // 응답을 받거나 해당 월드 세션이 끝날 때까지 두 번째 START를 허용하지 않는다.
         m_KoukuRaidReplyDeadline = {};
         m_strKoukuRaidReplyStatus = m_strKoukuCompletePlayStatus =
             "Server raid reply timed out; still waiting for this request's final Server response.";
@@ -1941,7 +1792,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             ", current " + Format_GameplayDataRevision(CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision); }
         if (ready)
         {
-            // Preload and validate immutable documents only. No playback, spawn, camera or teleport occurs here.
+            // 여기서는 불변 문서를 미리 읽고 검증한다. 재생·생성·카메라·순간이동은 시작하지 않는다.
             for (const auto& pattern : sequences.Get_LastGood().Patterns)
             {
                 preparationStage = "sequence.expand:" + pattern.strPatternId;
@@ -1980,7 +1831,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
             {
                 diagnostics.detail = preparationError;
                 diagnostics.submission = "READY has not been sent; local resources are still preparing.";
-                return; // PREPARING owns no playback clock; never acknowledge queued-only work.
+                return; // PREPARING에는 재생 시계가 없으므로 큐 등록만 끝난 작업을 준비 완료로 회신하지 않는다.
             }
             if (ready)
             {
@@ -2003,7 +1854,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         }
         diagnostics.failed = !ready;
         diagnostics.detail = ready ? "Local documents, resources and gate presentation are prepared." : preparationError;
-        // Preserve the exact local preflight result before the bounded wire reason is shortened.
+        // 전송 사유가 길이 제한으로 축약되기 전에 로컬 사전 검증 결과 원문을 보관한다.
         try
         {
             CNetworkManager::Get().Record_SessionEvent("kouku.raid.prepare",
@@ -2018,7 +1869,7 @@ void CMainApp::UpdateKoukuGateCompletePlay()
                 "; gameplayPinned=" + Format_GameplayDataRevision(state.PinnedGameplayRevision) +
                 "; reason=" + preparationError);
         }
-        catch (...) { } // Diagnostics never decide readiness or alter the acknowledgement.
+        catch (...) { } // 진단 기록은 준비 상태를 판정하거나 확인 응답을 변경하지 않는다.
         if (preparationError.size() > MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES)
         {
             auto cut = MAX_KOUKUSAYDON_PATTERN_AUDITION_REASON_BYTES;
@@ -2058,12 +1909,12 @@ void CMainApp::UpdateKoukuGateCompletePlay()
         {
             Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Cinematic.StopPreview");
             m_pKoukuPresentationPlayer->Stop_Preview();
-            // Natural cinematic completion keeps the authored return blend alive.
-            // Explicit Stop/abort still uses Debug_ReturnToPlayerCamera below.
+            // 시네마틱이 자연 종료되면 저작된 복귀 블렌드를 유지한다.
+            // 명시적인 Stop/중단은 아래 Debug_ReturnToPlayerCamera 경로를 사용한다.
             arena->Stop_CompositionCamera(!active);
         }
-        // Commit the prepared combat owner before returning the cinematic lease.
-        // Restoring the old book first would Play/Seek it only to replace it again.
+        // 시네마틱 사용권을 반환하기 전에 준비된 전투 소유자를 먼저 확정한다.
+        // 이전 book을 먼저 복원하면 다시 교체할 재생본에 Play/Seek를 수행하게 된다.
         std::string restorationStatus;
         if (active)
         {
@@ -2075,13 +1926,13 @@ void CMainApp::UpdateKoukuGateCompletePlay()
                 if (!restorationStatus.empty()) m_strKoukuCompletePlayStatus += " / " + restorationStatus;
                 return;
             }
-            // Stop_Preview restores its entry profile. Commit this gate's environment
-            // now so the camera return and first visible HUD frame use the same scene.
+            // Stop_Preview가 진입 때의 프로필을 복원하므로 이 관문의 환경을 여기서 확정해
+            // 복귀 카메라와 처음 다시 보이는 HUD 프레임이 같은 장면을 사용하게 한다.
             Update_KoukuGateSceneProfile();
         }
         if (!arena->End_ServerRaidCinematicPresentation(!active, restorationStatus))
         { m_strKoukuCompletePlayStatus = "Previous gate restore failed: " + restorationStatus; return; }
-        // Input and HUD unlock together only after the prepared scene handoff succeeds.
+        // 준비된 장면 인계가 성공한 뒤 입력과 HUD의 잠금을 함께 해제한다.
         arena->Debug_SetSequenceCombatPending(false);
         m_strKoukuRaidPresentationKey.clear(); m_strKoukuRaidFailedKey.clear();
         m_strKoukuCompletePlayStatus = state.strReason.empty() ? "Server " + state.strGateId + " | " +
@@ -2138,10 +1989,10 @@ void CMainApp::UpdateKoukuGateCompletePlay()
 #ifdef _DEBUG
         StopCompositionPreview(m_eCompositionPreviewOwner); ClearKoukuSequenceArrivals();
 #endif
-        // Later gates and late observers may enter without the initial PREPARING phase.
+        // 후속 관문이나 늦게 합류한 관찰자는 최초 PREPARING 단계를 거치지 않을 수 있다.
         if (!arena->Prepare_ServerRaidGatePresentation(state.strGateId, status)) { fail(status); return; }
         if (!arena->Begin_ServerRaidCinematicPresentation(status)) { fail(status); return; }
-        // Sequence scene restoration now returns directly to the prepared combat profile.
+        // Sequence의 장면 복귀 대상을 준비된 전투 프로필로 바로 설정한다.
         Update_KoukuGateSceneProfile();
         if (!m_pKoukuPresentationPlayer->Begin_BundlePreview(expanded, bundleId, clockMs, false, status, &arena->Get_WorldSequenceDocument(), true, false))
         { fail(status); return; }
@@ -2152,421 +2003,428 @@ void CMainApp::UpdateKoukuGateCompletePlay()
     m_strKoukuCompletePlayStatus = "Server " + state.strGateId + " | " + state.strSequencePatternId + " | " + std::to_string(clockMs) + " ms";
 }
 
-
-void CMainApp::Sync_CinematicUI()
+//I/P/N/M 키로 열고 닫기, Update의 UI 표시 허용 분기에서 네 창의 단축키를 처리한다.
+void CMainApp::Update_RuntimeWindowShortcuts()
 {
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
-	// Composition camera sampling follows Engine.Late_Update; refresh the
-	// character owner before queued body/equipment/shadow draws consume it.
-	if (arena) arena->Sync_CinematicPlayerVisibility();
-	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	auto* valtanArena = CLevel_ValtanArena::Get_Active();
-	if (valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
-		valtanArena->Sync_CinematicPlayerVisibility();
-	auto* colosseum = currentLevel == ETOUI(LEVEL::COLOSSEUM)
-		? CLevel_Development::Get_Active(LEVEL::COLOSSEUM) : nullptr;
-	const bool_t colosseumResult = colosseum &&
-		colosseum->Get_Replication().Get_ColosseumMatchState().iMatchId != 0u &&
-		colosseum->Get_Replication().Get_ColosseumMatchState().ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED;
-	const bool_t suppressed =
-		(arena && currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-		 arena->Is_CinematicInputBlocked()) ||
-		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) &&
-		 valtanArena->Is_CinematicHUDSuppressed()) ||
-		(colosseum && (colosseum->Is_ColosseumIntroActive() || colosseumResult));
-	auto& router = CUIInputRouter::Get();
-	if (suppressed && !router.Is_CinematicSuppressed())
-	{
-		// Release may arrive while updates are hidden; no gesture may commit after the cutscene.
-		if (m_pInventoryView) m_pInventoryView->Cancel_Interaction();
-		if (m_pRepairWindowView) m_pRepairWindowView->Cancel_Interaction();
-		if (m_pShopWindowView) m_pShopWindowView->Cancel_Interaction();
-		if (m_pCharacterInfoView) m_pCharacterInfoView->Cancel_Interaction();
-		if (m_pAvatarBookView) m_pAvatarBookView->Cancel_Interaction();
-		if (m_pVehicleWindowView) m_pVehicleWindowView->Cancel_Interaction();
-		if (m_pHonorTitleWindowView) m_pHonorTitleWindowView->Cancel_Interaction();
-		if (m_pWorldMapWindowView) m_pWorldMapWindowView->Cancel_Interaction();
-		if (m_pSystemOptionView) m_pSystemOptionView->Cancel_Interaction();
-		if (m_pChatWindowView) m_pChatWindowView->Cancel_Interaction();
-		if (m_pPartyWindowView) m_pPartyWindowView->Cancel_Interaction();
-		if (m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
-	}
-	router.Set_CinematicSuppressed(suppressed);
-}
-
-void CMainApp::Update(const f32_t fTimeDelta)
-{
-#ifdef _DEBUG
-	if (m_pGuideAITool) m_pGuideAITool->Update();
-	if (m_pMaharakaAITool)
-	{
-		m_pMaharakaAITool->Set_Active(static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()) == LEVEL::MAHARAKA &&
-			CNetworkManager::Get().Is_Connected());
-		m_pMaharakaAITool->Update();
-	}
-#endif
-	// Commit last frame's request before this frame builds UI and render queues.
-	// The newly active Level must Update/Late_Update before its first Render.
-	Pump_ReturnToCharacterSelect();
-	Apply_LevelRequest();
-	{
-		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.InputAndUI.Update");
-	Update_CustomizingSceneProfile();
-
-	/* Once per frame, before any screen's Update()/Render() checks its own widgets via
-	CUIInputRouter -- resets its click-edge tracking. End_Frame() (this function's very end)
-	applies the gameplay-mouse block for anything that claimed the mouse this frame. */
-	CUIInputRouter::Get().Begin_Frame();
-	CUITextOcclusion::Get().Begin_Frame();
-	Sync_CinematicUI();
-	UpdateProfilerRuntime();
-
-	UpdateDebugToolShortcut();
-
-	/* System option rows read every frame: the cursor lock follows focus and window moves,
-	the FPS readout is a smoothed frame rate. */
-	CUserSettings::Get().Update_CursorLock(IsWindowOwnedByCurrentProcess(GetForegroundWindow()));
-	if (fTimeDelta > 0.f)
-	{
-		const f32_t fInstantFps = 1.f / fTimeDelta;
-		m_fSmoothedFps = m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
-	}
-
-	/* The loading screen owns the screen: no window opens or toggles under it, and anything left
-	open from the previous Level closes here. */
-	const bool_t bLoadingLevel =
-		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
-	if (bLoadingLevel && !m_bWasLoadingLevel)
-		Close_RuntimeWindowsForLoading();
-	m_bWasLoadingLevel = bLoadingLevel;
-
-	if (!Is_RuntimeUIScreenSuppressed())
-	{
-	/* I is a normal gameplay keybind (the inventory), not an F1/F6 tool-switch key.
-	Is_TextInputActive is the runtime UI's own WantTextInput (the ImGui-free nickname field) --
-	both must gate every keybind below the same way. */
+	//창 존재 문자 입력 확인 -> 전경과 키 상태 확인 -> 새로 누른 순간에 토글 -> 소리 재생
+	//이전 키 상태 저장
+	//I: 인벤토리 열기 닫기
 	if (nullptr != m_pInventoryView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
+		//GetForegrondWindow 함수가 반환하는 것과 그거를 IsWindowOwnedByCurrentProcess가
+		//어떤 원리로 반환을 하는 거지?
 		const bool_t windowFocused =
 			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t iDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x49 /* VK_I */) & 0x8000);
+		//I 키 입력 GetAsyncKeyState <- InputManager가 없나?
+		const bool_t iDown =
+			windowFocused && 0 != (GetAsyncKeyState(0x49 /* I 키 */) & 0x8000);
+
 		if (iDown && !m_bIDown)
 		{
 			m_pInventoryView->Toggle();
-			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-				m_pInventoryView->Is_Open() ?
-				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
-				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
-			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+
+			Play_UISound(m_pInventoryView->Is_Open()
+				? UI_SOUND_CUE::WINDOW_OPEN
+				: UI_SOUND_CUE::WINDOW_CLOSE);
 		}
 		m_bIDown = iDown;
 	}
 
-	/* P is the retail character info window keybind (same gating as I above). */
+	// P는 캐릭터 정보 창을 토글하며 I와 같은 텍스트 입력·전경·Loading 조건을 사용한다.
 	if (nullptr != m_pCharacterInfoView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t keyDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x50 /* VK_P */) & 0x8000);
+		const bool_t windowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused && 0 != (GetAsyncKeyState(0x50 /* P 키 */) & 0x8000);
 		if (keyDown && !m_bCharacterInfoKeyDown)
 		{
 			m_pCharacterInfoView->Toggle();
-			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-				m_pCharacterInfoView->Is_Open() ?
-				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
-				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
-			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+
+			Play_UISound(m_pCharacterInfoView->Is_Open()
+				? UI_SOUND_CUE::WINDOW_OPEN
+				: UI_SOUND_CUE::WINDOW_CLOSE);
 		}
 		m_bCharacterInfoKeyDown = keyDown;
 	}
 
-	/* N is the vehicle window keybind (same gating as I / P above). */
+	// N은 탈것 창을 토글하며 기존 제품 창과 같은 입력 허용 조건을 사용한다.
 	if (nullptr != m_pVehicleWindowView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t keyDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x4E /* VK_N */) & 0x8000);
+		const bool_t windowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused && 0 != (GetAsyncKeyState(0x4E /* N 키 */) & 0x8000);
 		if (keyDown && !m_bVehicleWindowKeyDown)
 		{
 			m_pVehicleWindowView->Toggle();
-			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-				m_pVehicleWindowView->Is_Open() ?
-				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
-				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
-			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+
+			Play_UISound(m_pVehicleWindowView->Is_Open()
+				? UI_SOUND_CUE::WINDOW_OPEN
+				: UI_SOUND_CUE::WINDOW_CLOSE);
 		}
 		m_bVehicleWindowKeyDown = keyDown;
 	}
 
-	/* M is the retail world map keybind (same gating as I / P / N above). The window itself
-	stays hidden on levels without a minimap area (see Update_Minimap). */
+	// M은 월드 지도 창을 토글한다. 실제 지도 영역이 없는 Level의 표시는 Update_Minimap이 별도로 제한한다.
 	if (nullptr != m_pWorldMapWindowView && !ImGui::GetIO().WantTextInput &&
 		!CUIInputRouter::Get().Is_TextInputActive())
 	{
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t keyDown = windowFocused &&
-			0 != (GetAsyncKeyState(0x4D /* VK_M */) & 0x8000);
+		const bool_t windowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t keyDown = windowFocused && 0 != (GetAsyncKeyState(0x4D /* M 키 */) & 0x8000);
 		if (keyDown && !m_bWorldMapKeyDown)
 		{
 			m_pWorldMapWindowView->Toggle();
-			const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-				m_pWorldMapWindowView->Is_Open() ?
-				L"Sound/UI/Select/ui_inventory_show1__669750910.wav" :
-				L"Sound/UI/Select/ui_inventory_hide1__7273537.wav");
-			CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+
+			Play_UISound(m_pWorldMapWindowView->Is_Open()
+				? UI_SOUND_CUE::WINDOW_OPEN
+				: UI_SOUND_CUE::WINDOW_CLOSE);
 		}
 		m_bWorldMapKeyDown = keyDown;
 	}
+}
 
-	Update_SystemOptionWindow(fTimeDelta);
-	Update_LobbyButtons(fTimeDelta);
-	Update_CharacterSelectWindow(fTimeDelta);
-	Update_Minimap(fTimeDelta);
-	Update_CombatHUD(fTimeDelta);
-	/* Screen-anchored, so it runs in every Level -- including the one the HUD
-	   Layout Tool is used from. */
-	if (nullptr != m_pDungeonTimerView)
+//UI가 숨겨진 동안 네 단축키의 눌림 상태만 갱신한다.
+void CMainApp::Sync_RuntimeWindowShortcutKeys(bool_t bFocused)
+{
+    m_bIDown = bFocused && 0 != (GetAsyncKeyState(0x49 /* I 키 */) & 0x8000);
+    m_bCharacterInfoKeyDown = bFocused && 0 != (GetAsyncKeyState(0x50 /* P 키 */) & 0x8000);
+    m_bVehicleWindowKeyDown = bFocused && 0 != (GetAsyncKeyState(0x4E /* N 키 */) & 0x8000);
+    m_bWorldMapKeyDown = bFocused && 0 != (GetAsyncKeyState(0x4D /* M 키 */) & 0x8000);
+}
+
+
+// 현재 아레나의 cinematic 표시 조건을 UI router에 맞춘다.
+// 처음 억제되는 프레임에는 열린 창의 gesture와 운반 icon을 취소해 연출 종료 뒤 지연 클릭이 확정되지 않게 한다.
+void CMainApp::Sync_CinematicUI()
+{
+	auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+	// composition 카메라는 Engine.Late_Update 뒤 샘플되므로 body·장비·shadow 제출 전에 캐릭터 표시 소유 상태를 맞춘다.
+	// 이 함수는 제품 UI 입력 억제와 캐릭터의 시네마틱 표시 상태를 같은 프레임에 동기화한다.
+	if (arena)
+		arena->Sync_CinematicPlayerVisibility();
+	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
+	auto *valtanArena = CLevel_ValtanArena::Get_Active();
+	if (valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA))
+		valtanArena->Sync_CinematicPlayerVisibility();
+	auto *colosseum =
+		currentLevel == ETOUI(LEVEL::COLOSSEUM) ? CLevel_Development::Get_Active(LEVEL::COLOSSEUM) : nullptr;
+	const bool_t colosseumResult = colosseum && colosseum->Get_Replication().Get_ColosseumMatchState().iMatchId != 0u &&
+								   colosseum->Get_Replication().Get_ColosseumMatchState().ePhase ==
+									   LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED;
+	const bool_t suppressed =
+		(arena && currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) && arena->Is_CinematicInputBlocked()) ||
+		(valtanArena && currentLevel == ETOUI(LEVEL::VALTAN_ARENA) && valtanArena->Is_CinematicHUDSuppressed()) ||
+		(colosseum && (colosseum->Is_ColosseumIntroActive() || colosseumResult));
+	auto &router = CUIInputRouter::Get();
+	if (suppressed && !router.Is_CinematicSuppressed())
 	{
-#ifdef _DEBUG
-		CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
-#endif
-		// Gameplay owns the deadline. Interpolate only between received Server ticks.
-		{
-			static std::uint32_t previousTick = 0u, previousDeadline = 0u;
-			static f32_t snapshotAge = 0.f;
-			CCombatHUDViewModel& HudModel = CCombatHUDViewModel::Get();
-			const HUD_PLAYER_STATE& player = HudModel.Get_Player();
-			const auto* arena = CLevel_KakulSaydonArena::Get_Active();
-			const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
-			const auto deadline = subject ? subject->iKoukuMinigameEndTick : player.iKoukuMinigameEndTick;
-			if (previousTick != player.iServerTick || previousDeadline != deadline)
-			{
-				previousTick = player.iServerTick;
-				previousDeadline = deadline;
-				snapshotAge = 0.f;
-			}
-			else snapshotAge += (std::max)(0.f, fTimeDelta);
-			bool_t previewVisible = false;
-#ifdef _DEBUG
-			previewVisible = m_bDungeonTimerPreview;
-#endif
-			if (deadline != 0u || (!HudModel.Is_DungeonTimerRunning() && !previewVisible))
-			{
-				HUD_DUNGEON_TIMER_STATE state{};
-				state.isVisible = player.isValid && deadline != 0u;
-				const auto remainingTicks = deadline - player.iServerTick;
-				state.fSeconds = state.isVisible && remainingTicks <= 0x7fffffffu ?
-					(std::max)(0.f, static_cast<float>(remainingTicks) / 30.f - snapshotAge) : 0.f;
-				HudModel.Set_DungeonTimer(state, false);
-			}
-		}
-		m_pDungeonTimerView->Update(fTimeDelta,
-			CCombatHUDViewModel::Get().Get_DungeonTimer());
+		// 갱신을 숨긴 사이 mouse release가 들어올 수 있으므로 시네마틱 진입 edge에서 진행 중 UI gesture를 취소한다.
+		if (m_pInventoryView)
+			m_pInventoryView->Cancel_Interaction();
+		if (m_pRepairWindowView)
+			m_pRepairWindowView->Cancel_Interaction();
+		if (m_pShopWindowView)
+			m_pShopWindowView->Cancel_Interaction();
+		if (m_pCharacterInfoView)
+			m_pCharacterInfoView->Cancel_Interaction();
+		if (m_pAvatarBookView)
+			m_pAvatarBookView->Cancel_Interaction();
+		if (m_pVehicleWindowView)
+			m_pVehicleWindowView->Cancel_Interaction();
+		if (m_pHonorTitleWindowView)
+			m_pHonorTitleWindowView->Cancel_Interaction();
+		if (m_pWorldMapWindowView)
+			m_pWorldMapWindowView->Cancel_Interaction();
+		if (m_pSystemOptionView)
+			m_pSystemOptionView->Cancel_Interaction();
+		if (m_pChatWindowView)
+			m_pChatWindowView->Cancel_Interaction();
+		if (m_pPartyWindowView)
+			m_pPartyWindowView->Cancel_Interaction();
+		if (m_pQuickSlotDragView)
+			m_pQuickSlotDragView->Cancel();
 	}
-	Update_ItemUpgrade(fTimeDelta);
-	Update_BossHealthBar();
-	Update_EstherGauge(fTimeDelta);
-	if (nullptr != m_pEstherCutinService)
-		m_pEstherCutinService->Update(fTimeDelta);
-
-	/* Always observe physical edges, including capture/focus frames. A held key
-	   cannot arm an item when the UI closes. Thrown items reserve this request
-	   sequence locally and only submit it after PlayerController confirms. */
+	router.Set_CinematicSuppressed(suppressed);
+}
+// wWinMain의 한 프레임을 제품 순서로 조율한다. 전환 요청 → UI 입력 차단 → 수신 dispatch → 엔진 갱신 → 연출·도구·환경 반영 순이다.
+// Object·Physics·Level의 실제 갱신은 GameInstance에 위임하고 MainApp은 이들 사이의 제품 요청을 연결한다.
+void CMainApp::Update(const f32_t fTimeDelta)
+{
+#ifdef _DEBUG
+	if (m_pGuideAITool)
+		m_pGuideAITool->Update();
+	if (m_pMaharakaAITool)
 	{
-		constexpr int VIRTUAL_KEYS[4] = { 0x31, 0x32, 0x33, 0x34 };
-		const bool_t inputAllowed = GetForegroundWindow() == g_hWnd &&
-			!ImGui::GetIO().WantTextInput && !ImGui::GetIO().WantCaptureKeyboard &&
-			!CUIInputRouter::Get().Is_TextInputActive() &&
-			!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
-			!CUIInputRouter::Get().Is_CinematicSuppressed() &&
-			!(m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying());
-		for (int32_t i = 0; i < 4; ++i)
+		m_pMaharakaAITool->Set_Active(static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()) ==
+										  LEVEL::MAHARAKA &&
+									  CNetworkManager::Get().Is_Connected());
+		m_pMaharakaAITool->Update();
+	}
+#endif
+	// 전 프레임 요청을 UI와 렌더 큐 구성 전에 반영한다.
+	// 새 Level은 첫 Render 전에 Update/Late_Update를 거쳐 표시 상태를 준비해야 한다.
+	Pump_ReturnToCharacterSelect();
+	Apply_LevelRequest();
+	{
+		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.InputAndUI.Update");
+		Update_CustomizingSceneProfile();
+
+		// 각 view가 widget 입력을 읽기 전에 프레임별 클릭 추적을 초기화한다.
+		// 프레임의 마우스 점유 확정인 End_Frame은 Update 끝이 아니라 아래 Render 끝에서 호출한다.
+		CUIInputRouter::Get().Begin_Frame();
+		CUITextOcclusion::Get().Begin_Frame();
+		Sync_CinematicUI();
+		UpdateProfilerRuntime();
+
+		UpdateDebugToolShortcut();
+
+		// 현재 사용자 설정으로 커서 잠금과 전경 상태를 갱신하고 FPS 표시값은 프레임 시간으로 평활한다.
+		CUserSettings::Get().Update_CursorLock(IsWindowOwnedByCurrentProcess(GetForegroundWindow()));
+		if (fTimeDelta > 0.f)
 		{
-			const bool_t keyDown = 0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
-			if (inputAllowed && keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
+			const f32_t fInstantFps = 1.f / fTimeDelta;
+			m_fSmoothedFps =
+				m_fSmoothedFps <= 0.f ? fInstantFps : m_fSmoothedFps + (fInstantFps - m_fSmoothedFps) * 0.1f;
+		}
+
+		// Loading 동안 이전 Level의 열린 창을 닫고 새 창 토글도 막아 로딩 화면의 입력 소유권을 유지한다.
+		const bool_t bLoadingLevel = ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
+		if (bLoadingLevel && !m_bWasLoadingLevel)
+			Close_RuntimeWindowsForLoading();
+		m_bWasLoadingLevel = bLoadingLevel;
+
+		if (!Is_RuntimeUIScreenSuppressed())
+		{
+			Update_RuntimeWindowShortcuts();
+
+			Update_SystemOptionWindow(fTimeDelta);
+			Update_LobbyButtons(fTimeDelta);
+			Update_CharacterSelectWindow(fTimeDelta);
+			Update_Minimap(fTimeDelta);
+			Update_CombatHUD(fTimeDelta);
+			// 화면 좌표를 쓰는 HUD이므로 특정 월드에 한정하지 않고 저작 도구가 열린 Level에서도 갱신한다.
+			if (nullptr != m_pDungeonTimerView)
 			{
-				if (CPlayerController* pController = Find_ActivePlayerController(); pController &&
-					pController->Request_UseItem(m_iNextUseItemSequence, m_strItemQuickSlot[i]))
+#ifdef _DEBUG
+				CCombatHUDViewModel::Get().Debug_Tick_DungeonTimer(fTimeDelta);
+#endif
+				// 만료 tick은 Server가 정한다. 받은 tick 사이의 표시만 로컬 경과 시간으로 보간한다.
 				{
-					if (0u == ++m_iNextUseItemSequence) m_iNextUseItemSequence = 1u;
+					static std::uint32_t previousTick = 0u, previousDeadline = 0u;
+					static f32_t snapshotAge = 0.f;
+					CCombatHUDViewModel &HudModel = CCombatHUDViewModel::Get();
+					const HUD_PLAYER_STATE &player = HudModel.Get_Player();
+					const auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+					const auto *subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+					const auto deadline = subject ? subject->iKoukuMinigameEndTick : player.iKoukuMinigameEndTick;
+					if (previousTick != player.iServerTick || previousDeadline != deadline)
+					{
+						previousTick = player.iServerTick;
+						previousDeadline = deadline;
+						snapshotAge = 0.f;
+					}
+					else
+						snapshotAge += (std::max)(0.f, fTimeDelta);
+					bool_t previewVisible = false;
+#ifdef _DEBUG
+					previewVisible = m_bDungeonTimerPreview;
+#endif
+					if (deadline != 0u || (!HudModel.Is_DungeonTimerRunning() && !previewVisible))
+					{
+						HUD_DUNGEON_TIMER_STATE state{};
+						state.isVisible = player.isValid && deadline != 0u;
+						const auto remainingTicks = deadline - player.iServerTick;
+						state.fSeconds = state.isVisible && remainingTicks <= 0x7fffffffu
+											 ? (std::max)(0.f, static_cast<float>(remainingTicks) / 30.f - snapshotAge)
+											 : 0.f;
+						HudModel.Set_DungeonTimer(state, false);
+					}
+				}
+				m_pDungeonTimerView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_DungeonTimer());
+			}
+			Update_ItemUpgrade(fTimeDelta);
+			Update_BossHealthBar();
+			Update_EstherGauge(fTimeDelta);
+			if (nullptr != m_pEstherCutinService)
+				m_pEstherCutinService->Update(fTimeDelta);
+
+			// UI capture·전경 이탈 중에도 실제 키 edge를 기록해 눌러 둔 키가 창을 닫을 때 새 요청이 되지 않게 한다.
+			// 던지는 아이템은 sequence를 로컬 예약하고 PlayerController의 조준 확인 후 제출한다.
+			{
+				constexpr int VIRTUAL_KEYS[4] = {0x31, 0x32, 0x33, 0x34};
+				const bool_t inputAllowed = GetForegroundWindow() == g_hWnd && !ImGui::GetIO().WantTextInput &&
+											!ImGui::GetIO().WantCaptureKeyboard &&
+											!CUIInputRouter::Get().Is_TextInputActive() &&
+											!CUIInputRouter::Get().Is_MouseClaimedThisFrame() &&
+											!CUIInputRouter::Get().Is_CinematicSuppressed() &&
+											!(m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying());
+				for (int32_t i = 0; i < 4; ++i)
+				{
+					const bool_t keyDown = 0 != (GetAsyncKeyState(VIRTUAL_KEYS[i]) & 0x8000);
+					if (inputAllowed && keyDown && !m_bItemKeyDown[i] && !m_strItemQuickSlot[i].empty())
+					{
+						if (CPlayerController *pController = Find_ActivePlayerController();
+							pController && pController->Request_UseItem(m_iNextUseItemSequence, m_strItemQuickSlot[i]))
+						{
+							if (0u == ++m_iNextUseItemSequence)
+								m_iNextUseItemSequence = 1u;
+						}
+					}
+					m_bItemKeyDown[i] = keyDown;
 				}
 			}
-			m_bItemKeyDown[i] = keyDown;
-		}
-	}
 
-	/* 5/6/7/8/9/0 ride whatever vehicle is registered on SpecialSkill_1..6 (click-carried from
-	the vehicle window, see Update_QuickSlotDrag); the mounted vehicle's own key dismounts. Same
-	Server round trip as the window's button and the H key. */
-	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
-	{
-		constexpr int SPECIAL_VIRTUAL_KEYS[6] = { 0x35, 0x36, 0x37, 0x38, 0x39, 0x30 }; // VK_5..VK_9, VK_0
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		for (int32_t i = 0; i < 6; ++i)
-		{
-			const bool_t keyDown = windowFocused &&
-				0 != (GetAsyncKeyState(SPECIAL_VIRTUAL_KEYS[i]) & 0x8000);
-			if (keyDown && !m_bSpecialKeyDown[i] && 0u != m_iSpecialQuickSlotVehicle[i])
+			// 5/6/7/8/9/0은 SpecialSkill_1..6에 등록한 탈것의 탑승을 요청한다. 같은 탈것의 키는 하차를 요청하며 결과는 Server 왕복을 따른다.
+			if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 			{
-				const HUD_PLAYER_STATE& quickSlotPlayer = CCombatHUDViewModel::Get().Get_Player();
-				const uint32_t iRequest = quickSlotPlayer.iVehicleId == m_iSpecialQuickSlotVehicle[i] ?
-					0u : m_iSpecialQuickSlotVehicle[i];
-				if (CPlayerController* pController = Find_ActivePlayerController())
-					(void)pController->Request_VehicleRiding(iRequest);
+				constexpr int SPECIAL_VIRTUAL_KEYS[6] = {0x35, 0x36, 0x37,
+														 0x38, 0x39, 0x30}; // 5~9와 0의 가상 키 코드 순서다.
+				const bool_t windowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+				for (int32_t i = 0; i < 6; ++i)
+				{
+					const bool_t keyDown = windowFocused && 0 != (GetAsyncKeyState(SPECIAL_VIRTUAL_KEYS[i]) & 0x8000);
+					if (keyDown && !m_bSpecialKeyDown[i] && 0u != m_iSpecialQuickSlotVehicle[i])
+					{
+						const HUD_PLAYER_STATE &quickSlotPlayer = CCombatHUDViewModel::Get().Get_Player();
+						const uint32_t iRequest = quickSlotPlayer.iVehicleId == m_iSpecialQuickSlotVehicle[i]
+													  ? 0u
+													  : m_iSpecialQuickSlotVehicle[i];
+						if (CPlayerController *pController = Find_ActivePlayerController())
+							(void)pController->Request_VehicleRiding(iRequest);
+					}
+					m_bSpecialKeyDown[i] = keyDown;
+				}
 			}
-			m_bSpecialKeyDown[i] = keyDown;
+
+			// Enter는 다른 텍스트 입력이 없을 때 채팅을 연다. 열린 InputText의 capture는 아래 gameplay 키 입력도 막는다.
+			// Escape는 텍스트 입력 중에도 닫기에 사용해야 하므로 WantTextInput 검사 밖에서 처리한다.
+			if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput &&
+				!CUIInputRouter::Get().Is_TextInputActive())
+			{
+				// 채팅을 실제 그리는 Level에서만 열어 보이지 않는 입력창이 키를 점유하지 않게 한다.
+				const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+				const bool_t chatLevelAllowed =
+					ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel ||
+					ETOUI(LEVEL::KOUKUSAYDON_ARENA) == chatLevel || ETOUI(LEVEL::MAHARAKA) == chatLevel ||
+					ETOUI(LEVEL::COLOSSEUM) == chatLevel;
+				const bool_t windowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+				const bool_t enterDown =
+					chatLevelAllowed && windowFocused && 0 != (GetAsyncKeyState(VK_RETURN) & 0x8000);
+				if (enterDown && !m_bEnterDown && !m_pChatWindowView->Is_Open())
+					m_pChatWindowView->Open_Input();
+				m_bEnterDown = enterDown;
+			}
+			if (nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open())
+			{
+				const bool_t escapeDown =
+					IsWindowOwnedByCurrentProcess(GetForegroundWindow()) && 0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+				if (escapeDown && !m_bEscapeDown)
+					m_pChatWindowView->Close_Input();
+				m_bEscapeDown = escapeDown;
+			}
 		}
-	}
+		else
+		{
+			// 시네마틱으로 창을 숨겨도 실제 키 edge는 갱신하되 창의 열림 상태를 바꾸지는 않는다.
+			const bool_t focused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+			const auto down = [focused](int key) { return focused && 0 != (GetAsyncKeyState(key) & 0x8000); };
+			Sync_RuntimeWindowShortcutKeys(focused);
+			m_bSystemOptionKeyDown = m_bEscapeDown = down(VK_ESCAPE);
+			m_bEnterDown = down(VK_RETURN);
+			for (int i = 0; i < 4; ++i)
+				m_bItemKeyDown[i] = down(0x31 + i);
+			const int keys[] = {0x35, 0x36, 0x37, 0x38, 0x39, 0x30};
+			for (int i = 0; i < 6; ++i)
+				m_bSpecialKeyDown[i] = down(keys[i]);
+		}
 
-	/* Enter opens the chat input the same way K toggles the skill window: only while nothing
-	else already owns text input, so it cannot hijack an unrelated focused field. Once open,
-	ImGui::GetIO().WantTextInput is true for as long as the InputText keeps focus, which both
-	naturally blocks this same re-open check and (via the keyboardCaptured/SetInputBlocked
-	logic below) blocks gameplay key polling while typing -- no separate plumbing needed for
-	that part. Escape closes it and is checked outside the WantTextInput guard, since that is
-	exactly the state Escape needs to fire in. */
-	if (nullptr != m_pChatWindowView && !ImGui::GetIO().WantTextInput &&
-		!CUIInputRouter::Get().Is_TextInputActive())
-	{
-		/* Same level restriction as the chat window's own Render() gate -- Enter should not open
-		an input box that would render invisible in a level the window is not drawn in. */
-		const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
-		const bool_t chatLevelAllowed =
-			ETOUI(LEVEL::BERN) == chatLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel ||
-			ETOUI(LEVEL::MAHARAKA) == chatLevel || ETOUI(LEVEL::COLOSSEUM) == chatLevel;
-		const bool_t windowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t enterDown = chatLevelAllowed && windowFocused &&
-			0 != (GetAsyncKeyState(VK_RETURN) & 0x8000);
-		if (enterDown && !m_bEnterDown && !m_pChatWindowView->Is_Open())
-			m_pChatWindowView->Open_Input();
-		m_bEnterDown = enterDown;
-	}
-	if (nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open())
-	{
-		const bool_t escapeDown = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
-			0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
-		if (escapeDown && !m_bEscapeDown)
-			m_pChatWindowView->Close_Input();
-		m_bEscapeDown = escapeDown;
-	}
-
-	}
-	else
-	{
-		// Keep the real key edges current without changing any hidden window's state.
-		const bool_t focused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const auto down = [focused](int key) { return focused && 0 != (GetAsyncKeyState(key) & 0x8000); };
-		m_bIDown = down(0x49); m_bCharacterInfoKeyDown = down(0x50);
-		m_bVehicleWindowKeyDown = down(0x4e); m_bWorldMapKeyDown = down(0x4d);
-		m_bSystemOptionKeyDown = m_bEscapeDown = down(VK_ESCAPE); m_bEnterDown = down(VK_RETURN);
-		for (int i = 0; i < 4; ++i) m_bItemKeyDown[i] = down(0x31 + i);
-		const int keys[] = {0x35, 0x36, 0x37, 0x38, 0x39, 0x30};
-		for (int i = 0; i < 6; ++i) m_bSpecialKeyDown[i] = down(keys[i]);
-	}
-
-	if (nullptr != m_pImGuiLayer)
-		m_pImGuiLayer->BeginFrame();
+		if (nullptr != m_pImGuiLayer)
+			m_pImGuiLayer->BeginFrame();
 
 #ifdef _DEBUG
-	const bool_t mapToolOpen = m_bDeveloperToolsVisible &&
-		nullptr != m_pMapTool && m_pMapTool->IsOpen();
-	const HWND foregroundWindow = GetForegroundWindow();
-	const bool_t externalToolFocused = mapToolOpen &&
-		nullptr != foregroundWindow &&
-		foregroundWindow != g_hWnd &&
-		IsWindowOwnedByCurrentProcess(foregroundWindow);
-	const bool_t authoredEffectPlacementConsumed =
-		(nullptr != m_pEffectTool && m_pEffectTool->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT)) |
-		(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
-	/* Evaluated before the OR so every armed picker still runs its own frame. */
-    if (m_pWorldSceneTool) m_pWorldSceneTool->Update(fTimeDelta,
-        m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE));
-	const bool_t worldMeshPickConsumed = UpdateWorldMeshInspectionInput();
-	const bool_t worldLevelPickConsumed = UpdateWorldLevelPlacementPickInput();
-	const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() ||
-		authoredEffectPlacementConsumed || worldLevelPickConsumed || worldMeshPickConsumed;
-	const bool_t worldLeftMouseConsumed = mapEffectPlacementConsumed ||
-		(nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
+		const bool_t mapToolOpen = m_bDeveloperToolsVisible && nullptr != m_pMapTool && m_pMapTool->IsOpen();
+		const HWND foregroundWindow = GetForegroundWindow();
+		const bool_t externalToolFocused = mapToolOpen && nullptr != foregroundWindow && foregroundWindow != g_hWnd &&
+										   IsWindowOwnedByCurrentProcess(foregroundWindow);
+		const bool_t authoredEffectPlacementConsumed =
+			(nullptr != m_pEffectTool && m_pEffectTool->Update_AuthoringPlacementInput(
+											 m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::EFFECT) &&
+											 m_eDebugInputOwner == DEBUG_TOOL::EFFECT)) |
+			(nullptr != m_pEffectToolV2 && m_pEffectToolV2->Update_AuthoringPlacementInput(
+											   m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) &&
+											   m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2));
+		// 각 picker를 OR의 단축 평가 전에 갱신해 다른 picker가 true여도 예약된 입력 처리를 생략하지 않는다.
+		if (m_pWorldSceneTool)
+			m_pWorldSceneTool->Update(fTimeDelta,
+									  m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::WORLD_SCENE));
+		const bool_t worldMeshPickConsumed = UpdateWorldMeshInspectionInput();
+		const bool_t worldLevelPickConsumed = UpdateWorldLevelPlacementPickInput();
+		const bool_t mapEffectPlacementConsumed = UpdateMapEffectPlacementInput() || authoredEffectPlacementConsumed ||
+												  worldLevelPickConsumed || worldMeshPickConsumed;
+		const bool_t worldLeftMouseConsumed =
+			mapEffectPlacementConsumed || (nullptr != m_pMapTool && m_pMapTool->ConsumesWorldLeftMouse());
 #else
-	constexpr bool_t mapEffectPlacementConsumed = false;
-	constexpr bool_t externalToolFocused = false;
-	constexpr bool_t worldLeftMouseConsumed = false;
+		constexpr bool_t mapEffectPlacementConsumed = false;
+		constexpr bool_t externalToolFocused = false;
+		constexpr bool_t worldLeftMouseConsumed = false;
 #endif
 
-	/* The runtime nickname field blocks DirectInput keyboard polling exactly the way an
-	ImGui InputText's WantsCaptureKeyboard does -- WASD/skill keys must not fire mid-typing. */
-	const bool_t keyboardCaptured = (nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
-		CUIInputRouter::Get().Is_TextInputActive() || CUIInputRouter::Get().Is_CinematicSuppressed();
-	/* A runtime UI window (inventory, character info, party, chat) that has the cursor claims
-	the mouse through CUIInputRouter; without folding that in here this call would re-open the
-	gameplay mouse for CPlayerController's tick right after End_Frame() closed it, so a left
-	click on the panel became a basic attack underneath. Last frame's claim covers the windows
-	that only hover-claim during Render (after this point). */
-	const bool_t mouseCaptured = (nullptr != m_pImGuiLayer &&
-		(m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused)) ||
-		CUIInputRouter::Get().Is_MouseClaimedThisFrame() ||
-		CUIInputRouter::Get().Was_MouseClaimedLastFrame();
-	CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
-	CGameInstance::Get().SetMouseButtonBlocked(
-		DIM::LB,
-		worldLeftMouseConsumed);
-	CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, mapEffectPlacementConsumed);
-
+		// 제품 nickname 입력도 ImGui 키보드 capture와 합쳐 WASD·스킬 키가 문자 입력과 동시에 나가지 않게 한다.
+		const bool_t keyboardCaptured =
+			(nullptr != m_pImGuiLayer && (m_pImGuiLayer->WantsCaptureKeyboard() || externalToolFocused)) ||
+			CUIInputRouter::Get().Is_TextInputActive() || CUIInputRouter::Get().Is_CinematicSuppressed();
+		// 제품 창의 마우스 점유와 전 프레임 점유를 함께 읽어 PlayerController 직전에 입력 차단을 다시 풀지 않게 한다.
+		// Render에서만 hover를 등록하는 창은 이 시점에 전 프레임 점유가 필요하다.
+		const bool_t mouseCaptured =
+			(nullptr != m_pImGuiLayer && (m_pImGuiLayer->WantsCaptureMouse() || externalToolFocused)) ||
+			CUIInputRouter::Get().Is_MouseClaimedThisFrame() || CUIInputRouter::Get().Was_MouseClaimedLastFrame();
+		CGameInstance::Get().SetInputBlocked(keyboardCaptured, mouseCaptured);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::LB, worldLeftMouseConsumed);
+		CGameInstance::Get().SetMouseButtonBlocked(DIM::RB, mapEffectPlacementConsumed);
 	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Network.DrainAndDispatch");
+		// 수신 큐를 제품 소비자에게 전달한 다음 Engine/Level을 갱신해 이번 프레임이 새 snapshot을 읽게 한다.
 		CNetworkManager::Get().Update();
 	}
-	// Release raids also emit owner lifecycle events; drain the shared queues every frame.
+	// Release raid도 소유자 수명 이벤트를 내므로 공용 큐를 매 프레임 비운다.
 	CKoukuSaydonPatternAuditionService::Get().Update();
-    {
-        const auto& admitted = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
-        using STATE = KOUKU_SAYDON_PATTERN_AUDITION_STATE;
-        if (CLevel_KakulSaydonArena::Get_Active() && CNetworkManager::Get().Is_Connected() &&
-            admitted.iWorldInboundGeneration == CNetworkManager::Get().Get_WorldInboundGeneration() &&
-            admitted.DraftRowsRevision.Is_Valid() &&
-            admitted.iRoomAuditionEpoch && admitted.iPinnedSourceRevision &&
-            (admitted.eState == STATE::QUEUED || admitted.eState == STATE::ACTIVE || admitted.eState == STATE::COMPLETED) &&
-            !CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(admitted.iPinnedSourceRevision,
-                admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch))
-        {
-            std::string status;
-            if (CKoukuSaydonPresentationAssetService::Authorize_DraftProduct(
-                admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch, status))
-                (void)CKoukuSaydonPresentationAssetService::Admit_RunProduct(ETOUI(LEVEL::KAKULSAYDON_ARENA),
-                    admitted.iPinnedSourceRevision, admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch, status);
-        }
-    }
-	/* PLAY_PATTERN_ID has one process-wide verdict/lifecycle queue shared by
-	   Balance, Effect, and Valtan Boss Tools. Drain it once per frame here, independent
-	   of which panel is visible or which tree row is expanded. */
+	{
+		const auto &admitted = CKoukuSaydonPatternAuditionService::Get().Get_Snapshot();
+		using STATE = KOUKU_SAYDON_PATTERN_AUDITION_STATE;
+		if (CLevel_KoukuSaydonArena::Get_Active() && CNetworkManager::Get().Is_Connected() &&
+			admitted.iWorldInboundGeneration == CNetworkManager::Get().Get_WorldInboundGeneration() &&
+			admitted.DraftRowsRevision.Is_Valid() && admitted.iRoomAuditionEpoch && admitted.iPinnedSourceRevision &&
+			(admitted.eState == STATE::QUEUED || admitted.eState == STATE::ACTIVE ||
+			 admitted.eState == STATE::COMPLETED) &&
+			!CKoukuSaydonPresentationAssetService::Matches_AdmittedRun(
+				admitted.iPinnedSourceRevision, admitted.DraftRowsRevision, admitted.iRoomAuditionEpoch))
+		{
+			std::string status;
+			if (CKoukuSaydonPresentationAssetService::Authorize_DraftProduct(admitted.DraftRowsRevision,
+																			 admitted.iRoomAuditionEpoch, status))
+				(void)CKoukuSaydonPresentationAssetService::Admit_RunProduct(
+					ETOUI(LEVEL::KOUKUSAYDON_ARENA), admitted.iPinnedSourceRevision, admitted.DraftRowsRevision,
+					admitted.iRoomAuditionEpoch, status);
+		}
+	}
+	// PLAY_PATTERN_ID의 판정·수명 큐는 Balance·Effect·Valtan 도구가 함께 사용한다.
+	// 창 표시나 tree 펼침에 관계없이 여기서 프레임당 한 번 소비한다.
 	CValtanPatternAuditionService::Get().Update();
 	CValtanPatternFlowService::Get().Update();
 	CValtanTuningCommandService::Get().Update();
-    if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Consume_ServerPlayCancelRequest())
-    {
-        m_pKoukuSaydonActionWorkbench->Cancel_DraftPlayPreparation();
-        if (m_pKoukuSaydonBossTool)
-            (void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
-    }
+	if (m_pKoukuSaydonActionWorkbench && m_pKoukuSaydonActionWorkbench->Consume_ServerPlayCancelRequest())
+	{
+		m_pKoukuSaydonActionWorkbench->Cancel_DraftPlayPreparation();
+		if (m_pKoukuSaydonBossTool)
+			(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(m_strKoukuCompletePlayStatus);
+	}
 	if (m_pKoukuSaydonBossTool)
 	{
 		const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
 		m_pKoukuSaydonBossTool->Update();
-		if (preparing) m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
+		if (preparing)
+			m_strKoukuCompletePlayStatus = m_pKoukuSaydonBossTool->Get_Status();
 		if (m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench->Set_ServerPlayPreparationPending(
 				m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
@@ -2574,15 +2432,18 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Engine.Update");
-	CGameInstance::Get().Update_Engine(fTimeDelta);
+		// 입력·Object·Physics·Level·Late_Update는 엔진 관리자가 순서대로 수행한다. MainApp이 각 오브젝트를 직접 순회하지 않는다.
+		CGameInstance::Get().Update_Engine(fTimeDelta);
 	}
 	Update_KoukuGateSceneProfile();
 #ifdef _DEBUG
-	// Debug reset handling follows the common raid consumer.
+	// 공용 raid 소비 뒤에 Debug reset 요청을 처리한다.
 #endif
-	if (!CLevel_KakulSaydonArena::Get_Active()) UpdateKoukuGateCompletePlay();
-	// Consume the Server reset before a finished entry preview can queue its next gate.
-	if (auto* startArena = CLevel_KakulSaydonArena::Get_Active(); startArena && startArena->Consume_DebugReturnToStartSucceeded())
+	if (!CLevel_KoukuSaydonArena::Get_Active())
+		UpdateKoukuGateCompletePlay();
+	// 입장 preview 완료가 다음 관문을 예약하기 전에 Server reset을 먼저 소비한다.
+	if (auto *startArena = CLevel_KoukuSaydonArena::Get_Active();
+		startArena && startArena->Consume_DebugReturnToStartSucceeded())
 	{
 		CancelKoukuGateCompletePlay("Returned to arena start after Server reset.");
 #ifdef _DEBUG
@@ -2591,107 +2452,111 @@ void CMainApp::Update(const f32_t fTimeDelta)
 	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.Presentation.Prepare");
-	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> valtanEnvironmentSamples;
-	CValtan::Collect_StageEnvironmentSamples(valtanEnvironmentSamples);
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
-	{
-		if (!m_pKoukuPresentationPlayer)
-			m_pKoukuPresentationPlayer = std::make_unique<CKoukuSaydonPresentationPlayer>(
-				m_pDevice, m_pContext, m_RenderingProfiles);
-		arena->Set_TargetedCombatPresentationPlayer(m_pKoukuPresentationPlayer.get());
-		std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
-		m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
-		std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
-		arena->Collect_KoukuPresentationViews(bosses, cards);
-		UpdateKoukuGateCompletePlay();
-		m_pKoukuPresentationPlayer->Update(fTimeDelta, bosses, cards);
-		arena->Set_CompositionWorldEmissionResolver([this](std::uint32_t sourceRevision, std::string_view patternId, std::string_view occurrenceId,
-			CLevel_KakulSaydonArena::WORLD_EMISSION_ANCHOR& anchor)
-		{ return m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Resolve_ProductWorldEmissionAnchor(
-			sourceRevision, patternId, occurrenceId, anchor); });
+		std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> valtanEnvironmentSamples;
+		CValtan::Collect_StageEnvironmentSamples(valtanEnvironmentSamples);
+		if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+		{
+			if (!m_pKoukuPresentationPlayer)
+				m_pKoukuPresentationPlayer =
+					std::make_unique<CKoukuSaydonPresentationPlayer>(m_pDevice, m_pContext, m_RenderingProfiles);
+			arena->Set_TargetedCombatPresentationPlayer(m_pKoukuPresentationPlayer.get());
+			std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
+			m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
+			std::vector<KOUKU_CARD_PRESENTATION_VIEW> cards;
+			arena->Collect_KoukuPresentationViews(bosses, cards);
+			UpdateKoukuGateCompletePlay();
+			m_pKoukuPresentationPlayer->Update(fTimeDelta, bosses, cards);
+			arena->Set_CompositionWorldEmissionResolver(
+				[this](std::uint32_t sourceRevision, std::string_view patternId, std::string_view occurrenceId,
+					   CLevel_KoukuSaydonArena::WORLD_EMISSION_ANCHOR &anchor)
+				{
+					return m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Resolve_ProductWorldEmissionAnchor(
+															 sourceRevision, patternId, occurrenceId, anchor);
+				});
 #ifdef _DEBUG
-        if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
-        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
+			if (m_pEffectTool)
+				m_pEffectTool->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
+			if (m_pEffectToolV2)
+				m_pEffectToolV2->Set_AuthoringPlayer(m_pKoukuPresentationPlayer.get());
 #endif
-	}
-	else if (m_pKoukuPresentationPlayer && !CLevel_ValtanArena::Get_Active() && valtanEnvironmentSamples.empty())
-	{
+		}
+		else if (m_pKoukuPresentationPlayer && !CLevel_ValtanArena::Get_Active() && valtanEnvironmentSamples.empty())
+		{
 #ifdef _DEBUG
-        if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
-        if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
-		StopCompositionPreview(m_eCompositionPreviewOwner);
+			if (m_pEffectTool)
+				m_pEffectTool->Set_AuthoringPlayer(nullptr);
+			if (m_pEffectToolV2)
+				m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
+			StopCompositionPreview(m_eCompositionPreviewOwner);
 #endif
-		m_pKoukuPresentationPlayer->Reset();
-		m_pKoukuPresentationPlayer.reset();
-	}
-	if (!valtanEnvironmentSamples.empty() && !m_pKoukuPresentationPlayer)
-		m_pKoukuPresentationPlayer = std::make_unique<CKoukuSaydonPresentationPlayer>(
-			m_pDevice, m_pContext, m_RenderingProfiles);
-	if (m_pKoukuPresentationPlayer)
-	{
-		m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
-		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(valtanEnvironmentSamples);
-	}
+			m_pKoukuPresentationPlayer->Reset();
+			m_pKoukuPresentationPlayer.reset();
+		}
+		if (!valtanEnvironmentSamples.empty() && !m_pKoukuPresentationPlayer)
+			m_pKoukuPresentationPlayer =
+				std::make_unique<CKoukuSaydonPresentationPlayer>(m_pDevice, m_pContext, m_RenderingProfiles);
+		if (m_pKoukuPresentationPlayer)
+		{
+			m_pKoukuPresentationPlayer->Set_LightResources(&m_LightResources);
+			m_pKoukuPresentationPlayer->Update_BossStageEnvironments(valtanEnvironmentSamples);
+		}
 #ifdef _DEBUG
-	UpdateLightingPreview();
+		UpdateLightingPreview();
 #endif
-	if (m_pRenderingBenchmark)
-		m_pRenderingBenchmark->Update_RestorationPreview(m_RenderingProfiles,
-			m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING) &&
-			m_bRenderingQualityWindowVisible);
-	if (ETOUI(LEVEL::LOADING) !=
-		CGameInstance::Get().Get_CurrentLevelID())
-	{
-		CEffectPresentationService::Advance_ProductCuePreparation(
-			m_pDevice, m_pContext);
-	}
-	CEffectPresentationService::Commit_PendingSpawns();
-	CEffectPresentationService::Prepare_FrameCamera(fTimeDelta);
-	CEffectPresentationService::Synchronize_FollowAnchors();
+		if (m_pRenderingBenchmark)
+			m_pRenderingBenchmark->Update_RestorationPreview(
+				m_RenderingProfiles, m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::RENDERING) &&
+										 m_bRenderingQualityWindowVisible);
+		if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
+		{
+			CEffectPresentationService::Advance_ProductCuePreparation(m_pDevice, m_pContext);
+		}
+		CEffectPresentationService::Commit_PendingSpawns();
+		CEffectPresentationService::Prepare_FrameCamera(fTimeDelta);
+		CEffectPresentationService::Synchronize_FollowAnchors();
 	}
 	CEffectPresentationService::Update(fTimeDelta);
-	/* Product combat-object groups and Effect Tool previews share one free-group
-	   clock. MainApp advances it exactly once after the Engine object tick. */
+	// 제품 전투 오브젝트와 Effect 도구가 같은 free-group 시계를 사용한다.
+	// Engine 객체 tick 뒤 MainApp이 한 번만 진행시켜 양쪽에서 시간이 중복 누적되지 않게 한다.
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Effect.ProductGroups.Update");
-	CEffectV2Runtime::Advance_ProductGroups(fTimeDelta, m_pDevice, m_pContext);
+		CEffectV2Runtime::Advance_ProductGroups(fTimeDelta, m_pDevice, m_pContext);
 	}
 
-	/* Save and publish jobs are process owners, not window owners. Poll the
-	   immutable Save receipt first, let a hidden Composition caller accept and
-	   reopen its exact local owners, then poll the optional Full DataOnly job. */
+	// 저장·게시 작업은 창이 숨겨져도 진행된다. 변경 불가능한 Save receipt를 먼저 전달해 해당 로컬 소유자가 결과를 수용하게 한 뒤 Full DataOnly 작업을 확인한다.
 	if (nullptr != m_pBalanceTool)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ValtanSaveJob");
-			m_pBalanceTool->Update_EmbeddedPanel();
-			m_pBalanceTool->Update_ValtanSaveJob();
-		}
+	{
+		Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+										 "ImGui.Tool.Balance.Update_ValtanSaveJob");
+		m_pBalanceTool->Update_EmbeddedPanel();
+		m_pBalanceTool->Update_ValtanSaveJob();
+	}
 	if (nullptr != m_pValtanActionWorkbench)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanComposition.Update_SaveState");
-			m_pValtanActionWorkbench->Update_SaveState();
-		}
+	{
+		Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+										 "ImGui.Tool.ValtanComposition.Update_SaveState");
+		m_pValtanActionWorkbench->Update_SaveState();
+	}
 	if (nullptr != m_pBalanceTool)
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Balance.Update_ServerRuntimeSetPublishJob");
-			m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
-		}
+	{
+		Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+										 "ImGui.Tool.Balance.Update_ServerRuntimeSetPublishJob");
+		m_pBalanceTool->Update_ServerRuntimeSetPublishJob();
+	}
 	if (nullptr != m_pValtanBossTool)
 	{
 		{
 			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Update");
-			m_pValtanBossTool->Update(
-			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
-			m_bDeveloperToolsVisible &&
-				IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
+			m_pValtanBossTool->Update(m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS),
+									  m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::VALTAN_LOGIC_PATTERN));
 		}
 	}
 
 	if (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Consume_PublishRequest())
 	{
 #ifdef _DEBUG
-		const bool available = SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, false)) && m_pKoukuSaydonActionWorkbench;
+		const bool available =
+			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, false)) && m_pKoukuSaydonActionWorkbench;
 #else
 		if (!m_pKoukuSaydonActionWorkbench)
 			m_pKoukuSaydonActionWorkbench = make_unique<CKoukuSaydonActionWorkbench>();
@@ -2700,9 +2565,11 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		if (!available)
 			m_strKoukuCompletePlayStatus = "The Composition publisher workspace could not initialize.";
 		else if (m_pKoukuSaydonActionWorkbench->Is_Dirty() || m_pKoukuSaydonActionWorkbench->Is_PublishRunning())
-			m_strKoukuCompletePlayStatus = "Save Composition edits and wait for the current publish before publishing Pattern Flow.";
+			m_strKoukuCompletePlayStatus =
+				"Save Composition edits and wait for the current publish before publishing Pattern Flow.";
 		else if (m_pKoukuSaydonActionWorkbench->Reload(m_strKoukuCompletePlayStatus))
-			m_bKoukuFlowPublishPending = m_pKoukuSaydonActionWorkbench->Publish_AllPatterns(m_strKoukuCompletePlayStatus);
+			m_bKoukuFlowPublishPending =
+				m_pKoukuSaydonActionWorkbench->Publish_AllPatterns(m_strKoukuCompletePlayStatus);
 		m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
 	}
 	if (m_pKoukuSaydonActionWorkbench)
@@ -2712,1340 +2579,1482 @@ void CMainApp::Update(const f32_t fTimeDelta)
 		{
 			m_bKoukuFlowPublishPending = false;
 			m_strKoukuCompletePlayStatus = m_pKoukuSaydonActionWorkbench->Get_Status();
-			if (m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
+			if (m_pKoukuSaydonBossTool)
+				m_pKoukuSaydonBossTool->Set_Status(m_strKoukuCompletePlayStatus);
 		}
 		if (m_pKoukuSaydonActionWorkbench->Consume_ProductInventoryRefreshRequest() && m_pKoukuSaydonBossTool)
 			(void)m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus);
 	}
 
-	#ifdef _DEBUG
+#ifdef _DEBUG
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.DebugTools.Update");
-	if (nullptr != m_pMapTool)
-	{
+		if (nullptr != m_pMapTool)
 		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Map.Update");
-			m_pMapTool->Update(
-			fTimeDelta,
-			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::MAP) &&
-			DEBUG_TOOL::MAP == m_eDebugInputOwner);
-		}
-	}
-	UpdateSequenceViewer();
-	UpdateWorldLevelTool();
-	/* Composition emits a one-shot claim; MainApp remains the sole input-owner
-	   authority. Consume it before Animation_Tool::Update so reclaiming after a
-	   domain deep-link does not stop the active preview for one extra frame. */
-	if (nullptr != m_pValtanActionWorkbench &&
-		m_pValtanActionWorkbench->Consume_PreviewOwnerClaimRequest())
-	{
-		if (m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			nullptr != m_pSequencerTool &&
-			m_pSequencerTool->Uses_ValtanSession())
-		{
-			StopCompositionPreview(m_eCompositionPreviewOwner);
-			m_eDebugInputOwner = m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
-				DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER;
-			m_strToolStatus =
-				"Valtan Action Workbench reclaimed viewport/preview input.";
-		}
-		else
-		{
-			m_strToolStatus =
-				"Preview-owner claim rejected because Valtan Action Workbench is not visible.";
-		}
-	}
-	if (nullptr != m_pAnimationTool)
-	{
-		const bool_t bValtanClockActive = m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
-		const bool_t bAnimationPreviewOwned =
-			(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
-			 DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
-			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
-			 (((m_pSequencerTool->Is_BossSelected() ||
-			   (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
-			    m_pSequencerTool->Uses_ValtanSession())) && DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
-			  (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE &&
-			   DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner))) ||
-			(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
-			 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
-			(m_eCompositionPreviewOwner != DEBUG_TOOL::NONE && !bValtanClockActive);
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Animation.Update");
-			m_pAnimationTool->Update(
-			fTimeDelta,
-			m_bDeveloperToolsVisible && bAnimationPreviewOwned);
-		}
-	}
-	/* Composition Save receipts are delivered independently of both Developer
-	   Tools visibility and the Composition window's Render call. If Effect Tool
-	   does not exist yet, leave the request pending in the Workbench. */
-	if (nullptr != m_pValtanActionWorkbench && nullptr != m_pEffectTool)
-	{
-		std::string ExpectedValtanSourceRevision;
-		if (m_pValtanActionWorkbench->Consume_EffectGraphRefreshRequest(
-				ExpectedValtanSourceRevision))
-		{
-			m_pEffectTool->Request_ValtanGraphRefresh(
-				ExpectedValtanSourceRevision);
-		}
-	}
-	if (m_pEffectTool || m_pEffectToolV2)
-	{
-        shared_ptr<CCamera_Free> effectCamera;
-        const LEVEL effectLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
-        if (effectLevel == LEVEL::CHARACTER_SELECT)
-        { if (auto* arena = CLevel_CharacterSelect::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
-        else if (effectLevel == LEVEL::VALTAN_ARENA)
-        { if (auto* arena = CLevel_ValtanArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
-        else if (effectLevel == LEVEL::KAKULSAYDON_ARENA)
-        { if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) effectCamera = arena->Get_DebugCamera(); }
-        if (m_pCharacterActionWorkbench) m_pCharacterActionWorkbench->Set_Camera(effectCamera);
-        if (m_pEffectToolV2)
-        {
-            m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
-            {
-                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV2.Update_AuthoringWorkspace");
-                m_pEffectToolV2->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
-                IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2);
-            }
-        }
-        if (m_pEffectTool)
-        {
-            std::vector<CEffect_Tool::CLASS_MOVIE_RESOURCE_ROW> movies;
-            if (auto* level = CLevel_CharacterSelect::Get_Active(); level &&
-                CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
-                for (const auto& option : level->Get_ClassMovieOptions())
-                    movies.push_back({option.classId, option.label});
-            m_pEffectTool->Set_ClassMovieResources(std::move(movies));
-
-            m_pEffectTool->Set_AuthoringCamera(effectCamera);
-            {
-                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
-                m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
-                IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
-            }
-            {
-                Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update");
-                m_pEffectTool->Update(fTimeDelta);
-            }
-            EFFECT_RESOURCE_KEY ResourceKey;
-            if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
-            {
-                const bool_t bOpened = ResourceKey.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ?
-                    m_pEffectTool->Open_AuthoringResource(ResourceKey) :
-                    SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT_V2)) && m_pEffectToolV2->Open_Resource(ResourceKey);
-                m_strToolStatus = bOpened ?
-                    "Opened the selected resource in its typed Effect owner." :
-                    "The typed Effect owner preserved its current draft; inspect the owner status.";
-            }
-            std::string movieClassId;
-            if (m_pEffectTool->Consume_ClassMovieEditorRequest(movieClassId))
-            {
-                auto* level = CLevel_CharacterSelect::Get_Active();
-                bool opened = false;
-                if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
-                {
-                    const auto& options = level->Get_ClassMovieOptions();
-                    const auto option = std::find_if(options.begin(), options.end(),
-                        [&](const auto& value) { return value.classId == movieClassId; });
-                    if (option != options.end() && SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) &&
-                        level->Select_ClassMovieCategory(static_cast<size_t>(std::distance(options.begin(), option))))
-                    {
-                        m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
-                        m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
-                        opened = true;
-                    }
-                }
-                m_strToolStatus = opened ? "Opened the selected class movie timeline." :
-                    "Enter Character Select from Lobby before opening a class movie timeline.";
-            }
-        }
-    }
-	if (nullptr != m_pValtanBossTool)
-	{
-		if (m_pValtanBossTool->Consume_LogicPatternOpenRequest())
-		{
-			(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
-		}
-		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
-		if (m_pValtanBossTool->Consume_CameraToolOpenRequest(cameraRequest))
-		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
-				nullptr != m_pCameraTool)
 			{
-				(void)m_pCameraTool->Open_Cue(cameraRequest);
+				Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Map.Update");
+				m_pMapTool->Update(fTimeDelta, m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::MAP) &&
+												   DEBUG_TOOL::MAP == m_eDebugInputOwner);
 			}
 		}
-		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
-		if (m_pValtanBossTool->Consume_EffectToolOpenRequest(effectRequest))
+		UpdateSequenceViewer();
+		UpdateWorldLevelTool();
+		// Composition의 일회성 점유 요청은 MainApp이 확정한다.
+		// Animation_Tool 갱신 전에 소비해 다른 도구 연결에서 복귀한 preview가 한 프레임 더 멈추지 않게 한다.
+		if (nullptr != m_pValtanActionWorkbench && m_pValtanActionWorkbench->Consume_PreviewOwnerClaimRequest())
 		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
-				nullptr != m_pEffectTool)
+			if (m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool &&
+				m_pSequencerTool->Uses_ValtanSession())
 			{
-				const bool_t bOpened =
-					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
-				m_strToolStatus = bOpened ?
-					"Opened the exact Valtan Product Effect in Effect Tool." :
-					"Effect Tool opened, but the exact Product occurrence needs attention.";
+				StopCompositionPreview(m_eCompositionPreviewOwner);
+				m_eDebugInputOwner = m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE
+										 ? DEBUG_TOOL::SEQUENCER_BENCHMARK
+										 : DEBUG_TOOL::SEQUENCER;
+				m_strToolStatus = "Valtan Action Workbench reclaimed viewport/preview input.";
+			}
+			else
+			{
+				m_strToolStatus = "Preview-owner claim rejected because Valtan Action Workbench is not visible.";
 			}
 		}
-	}
-	/* Workbench links use the same stable Product requests as the domain
-	   owners. Each one-shot is drained here; the Workbench never creates a
-	   second Effect or Camera runtime. */
-	if (nullptr != m_pAnimationTool)
-	{
-		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
-		if (m_pAnimationTool->Consume_EffectToolOpenRequest(effectRequest))
+		if (nullptr != m_pAnimationTool)
 		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
-				nullptr != m_pEffectTool)
+			const bool_t bValtanClockActive = m_pAnimationTool->Get_ValtanCompositionPreviewState().bPlaying;
+			const bool_t bAnimationPreviewOwned =
+				(IsDebugToolVisible(DEBUG_TOOL::ANIMATION) && DEBUG_TOOL::ANIMATION == m_eDebugInputOwner) ||
+				(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
+				 (((m_pSequencerTool->Is_BossSelected() ||
+					(m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+					 m_pSequencerTool->Uses_ValtanSession())) &&
+				   DEBUG_TOOL::SEQUENCER == m_eDebugInputOwner) ||
+				  (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE &&
+				   DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner))) ||
+				(IsDebugToolVisible(DEBUG_TOOL::SEQUENCER_BENCHMARK) &&
+				 DEBUG_TOOL::SEQUENCER_BENCHMARK == m_eDebugInputOwner) ||
+				(m_eCompositionPreviewOwner != DEBUG_TOOL::NONE && !bValtanClockActive);
 			{
-				const bool_t bOpened =
-					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
-				m_strToolStatus = bOpened ?
-					"Opened the Workbench Product Effect in Effect Tool." :
-					"Effect Tool opened, but the Workbench occurrence needs attention.";
+				Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Animation.Update");
+				m_pAnimationTool->Update(fTimeDelta, m_bDeveloperToolsVisible && bAnimationPreviewOwned);
 			}
 		}
-		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
-		if (m_pAnimationTool->Consume_CameraToolOpenRequest(cameraRequest))
+		// Composition Save receipt는 Developer Tools 표시나 Render 호출과 관계없이 전달한다.
+		// Effect Tool이 아직 없으면 Workbench의 요청을 소비하지 않고 대기시킨다.
+		if (nullptr != m_pValtanActionWorkbench && nullptr != m_pEffectTool)
 		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
-				nullptr != m_pCameraTool)
+			std::string ExpectedValtanSourceRevision;
+			if (m_pValtanActionWorkbench->Consume_EffectGraphRefreshRequest(ExpectedValtanSourceRevision))
 			{
-				const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
-				m_strToolStatus = bOpened ?
-					"Opened the Workbench camera sequence in Camera Tool." :
-					"Camera Tool opened, but the Workbench cue needs attention.";
+				m_pEffectTool->Request_ValtanGraphRefresh(ExpectedValtanSourceRevision);
 			}
 		}
-	}
-	if (nullptr != m_pValtanActionWorkbench)
-	{
-		EFFECT_RESOURCE_KEY resourceKey;
-		if (m_pValtanActionWorkbench->Consume_EffectResourcePreviewRequest(resourceKey) &&
-			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+		if (m_pEffectTool || m_pEffectToolV2)
 		{
-			(void)m_pEffectTool->Preview_AuthoringResource(resourceKey, m_strToolStatus);
-		}
-		if (m_pValtanActionWorkbench->Consume_EffectResourceOpenRequest(resourceKey) &&
-			SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
-		{
-			const bool opened = m_pEffectTool->Open_AuthoringResource(resourceKey);
-			m_strToolStatus = opened ? "Opened the saved Composition resource in its Effect editor." :
-				"Effect editor preserved its draft; finish the pending edit or check its source status.";
-		}
-		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
-		if (m_pValtanActionWorkbench->Consume_EffectToolOpenRequest(
-				effectRequest))
-		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) &&
-				nullptr != m_pEffectTool)
+			shared_ptr<CCamera_Free> effectCamera;
+			const LEVEL effectLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+			if (effectLevel == LEVEL::CHARACTER_SELECT)
 			{
-				const bool_t bOpened =
-					m_pEffectTool->Open_ValtanProductEffect(effectRequest);
-				m_strToolStatus = bOpened ?
-					"Opened the exact Composition Sequencer Effect in its owner Tool." :
-					"Effect Tool opened, but the selected Composition occurrence needs attention.";
+				if (auto *arena = CLevel_CharacterSelect::Get_Active())
+					effectCamera = arena->Get_DebugCamera();
 			}
-		}
-		CAMERA_TOOL_OPEN_REQUEST cameraRequest;
-		if (m_pValtanActionWorkbench->Consume_CameraToolOpenRequest(
-				cameraRequest))
-		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) &&
-				nullptr != m_pCameraTool)
+			else if (effectLevel == LEVEL::VALTAN_ARENA)
 			{
-				const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
-				m_strToolStatus = bOpened ?
-					"Opened the exact Composition Sequencer camera cue." :
-					"Camera Tool opened, but the selected Composition cue needs attention.";
+				if (auto *arena = CLevel_ValtanArena::Get_Active())
+					effectCamera = arena->Get_DebugCamera();
 			}
-		}
-		if (m_pValtanActionWorkbench->Consume_AnimationToolOpenRequest())
-		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) &&
-				nullptr != m_pAnimationTool)
+			else if (effectLevel == LEVEL::KOUKUSAYDON_ARENA)
 			{
-				(void)m_pAnimationTool->Open_ValtanWorkspace();
-				m_strToolStatus =
-					"Opened Animation Clip/Sequence Intake beside Valtan Action Workbench.";
+				if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+					effectCamera = arena->Get_DebugCamera();
 			}
-		}
-		m_pValtanActionWorkbench->Set_PreviewOwnerActive(
-			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-			nullptr != m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
-			m_eDebugInputOwner == (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
-				DEBUG_TOOL::SEQUENCER_BENCHMARK : DEBUG_TOOL::SEQUENCER));
-	}
-	struct COMPOSITION_SESSION_ROUTE
-	{
-		DEBUG_TOOL owner;
-		CKoukuSaydonActionWorkbench* workbench;
-		CSequencerTool* shell;
-	};
-	const std::array<COMPOSITION_SESSION_ROUTE, 2> compositionRoutes{{
-		{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(),
-            m_pSequencerTool && (m_pSequencerTool->Is_BossSelected() ||
-                (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
-                 m_pSequencerTool->Uses_ValtanSession())) ? m_pSequencerTool.get() : nullptr},
-		{DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(),
-            m_pSequencerTool && m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE ?
-                m_pSequencerTool.get() : nullptr}
-	}};
-	// Drain each edge, read physical inventory once, then distribute immutable rows.
-	bool shellResourceRefresh = false, koukuResourceRefresh = false, presentationResourceRefresh = false;
-	std::vector<CKoukuSaydonActionWorkbench*> resourceSessions;
-	for (const auto& route : compositionRoutes)
-	{
-		if (route.shell) shellResourceRefresh |= route.shell->Consume_ResourceRefreshRequest();
-		if (!route.workbench) continue;
-		resourceSessions.push_back(route.workbench);
-		route.workbench->Set_PresentationModelResolver([this](const auto& pattern, auto target, auto& view) {
-			return m_pKoukuPresentationPlayer &&
-				m_pKoukuPresentationPlayer->Resolve_PatternModelTarget(pattern, target, view);
-		});
-		koukuResourceRefresh |= route.workbench->Consume_ResourceRefreshRequest();
-		presentationResourceRefresh |= route.workbench->Consume_PresentationResourceRefreshRequest();
-	}
-	if (presentationResourceRefresh)
-		Refresh_KoukuPresentationResources(resourceSessions, m_RenderingProfiles, m_LightResources);
-	if ((shellResourceRefresh || presentationResourceRefresh) && m_pValtanActionWorkbench)
-	{
-		std::vector<std::string> lights;
-		for (const auto& resource : m_LightResources.Get_Resources()) lights.push_back(resource.strLightResourceId);
-		m_pValtanActionWorkbench->Set_EnvironmentResources(m_RenderingProfiles.Collect_ProfileIds(), std::move(lights));
-	}
-	if (shellResourceRefresh || koukuResourceRefresh)
-	{
-		if (SUCCEEDED(EnsureAnimationPreviewBackend()))
-		{
-			std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
-			std::string status;
-			(void)m_pAnimationTool->Read_CompositionAnimationResources(resources, status);
-			std::vector<CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW> sequences;
-			std::vector<COMPOSITION_ANIMATION_SEQUENCE_RESOURCE> sequenceResources;
-			std::string sequenceStatus;
-			const bool_t sequencesLoaded = m_pAnimationTool->Get_ValtanCompositionSequences(
-				sequences, sequenceStatus);
-			if (sequencesLoaded)
+			if (m_pCharacterActionWorkbench)
+				m_pCharacterActionWorkbench->Set_Camera(effectCamera);
+			if (m_pEffectToolV2)
 			{
-				for (const auto& sequence : sequences)
+				m_pEffectToolV2->Set_AuthoringCamera(effectCamera);
 				{
-					COMPOSITION_ANIMATION_SEQUENCE_RESOURCE resourceSequence;
-					resourceSequence.strStableId = sequence.strStableId;
-					resourceSequence.strDisplayName = sequence.strDisplayName;
-					resourceSequence.strProfileId = "Valtan";
-					resourceSequence.strTargetAssetName = "Valtan";
-					for (const auto& clip : sequence.Clips)
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+													 "ImGui.Tool.EffectV2.Update_AuthoringWorkspace");
+					m_pEffectToolV2->Update_AuthoringWorkspace(
+						fTimeDelta, m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::EFFECT_V2) &&
+										m_eDebugInputOwner == DEBUG_TOOL::EFFECT_V2);
+				}
+			}
+			if (m_pEffectTool)
+			{
+				std::vector<CEffect_Tool::CLASS_MOVIE_RESOURCE_ROW> movies;
+				if (auto *level = CLevel_CharacterSelect::Get_Active();
+					level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
+					for (const auto &option : level->Get_ClassMovieOptions())
+						movies.push_back({option.classId, option.label});
+				m_pEffectTool->Set_ClassMovieResources(std::move(movies));
+
+				m_pEffectTool->Set_AuthoringCamera(effectCamera);
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+													 "ImGui.Tool.EffectV1.Update_AuthoringWorkspace");
+					m_pEffectTool->Update_AuthoringWorkspace(fTimeDelta, m_bDeveloperToolsVisible &&
+																			 IsDebugToolVisible(DEBUG_TOOL::EFFECT) &&
+																			 m_eDebugInputOwner == DEBUG_TOOL::EFFECT);
+				}
+				{
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.EffectV1.Update");
+					m_pEffectTool->Update(fTimeDelta);
+				}
+				EFFECT_RESOURCE_KEY ResourceKey;
+				if (m_pEffectTool->Consume_TypedEffectResourceOpenRequest(ResourceKey))
+				{
+					const bool_t bOpened = ResourceKey.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT
+											   ? m_pEffectTool->Open_AuthoringResource(ResourceKey)
+											   : SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT_V2)) &&
+													 m_pEffectToolV2->Open_Resource(ResourceKey);
+					m_strToolStatus =
+						bOpened ? "Opened the selected resource in its typed Effect owner."
+								: "The typed Effect owner preserved its current draft; inspect the owner status.";
+				}
+				std::string movieClassId;
+				if (m_pEffectTool->Consume_ClassMovieEditorRequest(movieClassId))
+				{
+					auto *level = CLevel_CharacterSelect::Get_Active();
+					bool opened = false;
+					if (level && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
 					{
-						const auto native = std::find_if(resources.begin(), resources.end(),
-							[&clip](const auto& candidate) {
-								return candidate.strTargetAssetName == "Valtan" &&
-									candidate.strRuntimeClip == clip.strClipName;
-							});
-						COMPOSITION_ANIMATION_RESOURCE resource;
-						if (native != resources.end()) resource = *native;
-						const std::uint32_t nativeDurationMs = resource.iDurationMs;
-						resource.strTargetAssetName = resource.strProfileId = "Valtan";
-						resource.strRuntimeClip = clip.strClipName;
-						if (!clip.bUsesNativeDuration && clip.iDurationMs > 0u)
-							resource.iDurationMs = clip.iDurationMs;
-						if (nativeDurationMs > 0u && resource.iDurationMs > nativeDurationMs)
-							resource.strEndPolicy = clip.strClipName.find("_loop") != std::string::npos ?
-								"LOOP_TO_WINDOW" : "HOLD_LAST_POSE";
-						resourceSequence.Clips.push_back(std::move(resource));
+						const auto &options = level->Get_ClassMovieOptions();
+						const auto option = std::find_if(options.begin(), options.end(), [&](const auto &value)
+														 { return value.classId == movieClassId; });
+						if (option != options.end() && SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER)) &&
+							level->Select_ClassMovieCategory(
+								static_cast<size_t>(std::distance(options.begin(), option))))
+						{
+							m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
+							m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+							opened = true;
+						}
 					}
-					sequenceResources.push_back(std::move(resourceSequence));
+					m_strToolStatus = opened
+										  ? "Opened the selected class movie timeline."
+										  : "Enter Character Select from Lobby before opening a class movie timeline.";
 				}
 			}
-			for (const auto& route : compositionRoutes)
+		}
+		if (nullptr != m_pValtanBossTool)
+		{
+			if (m_pValtanBossTool->Consume_LogicPatternOpenRequest())
 			{
-				if (route.shell) route.shell->Set_AnimationResources(resources, status);
-				if (!route.workbench) continue;
-				route.workbench->Set_ModelResources(resources, status);
-				route.workbench->Set_SequenceResources(sequenceResources, sequenceStatus, sequencesLoaded);
+				(void)EnsureDebugTool(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 			}
-		}
-		else
-		{
-			m_strToolStatus = "Animation preview backend could not initialize for Resources.";
-			for (const auto& route : compositionRoutes)
-				if (route.shell) route.shell->Set_AnimationResources({}, m_strToolStatus);
-		}
-	}
-	// A draft generation is local to its session. Give the shared consumer a monotonic
-	// serial only after selecting the owner, so equal occurrence IDs cannot cross drafts.
-	for (const auto& route : compositionRoutes)
-	{
-		if (!m_strKoukuCompletePlayFlowGate.empty() || !route.workbench || !m_pKoukuPresentationPlayer) continue;
-		const bool ownsPreview = route.owner == m_eCompositionPreviewOwner;
-		const bool productDebugAuthoring = m_eCompositionPreviewOwner == DEBUG_TOOL::NONE &&
-			!m_pKoukuPresentationPlayer->Preview_Playing() && route.owner == DEBUG_TOOL::SEQUENCER;
-		if (!ownsPreview && !productDebugAuthoring) continue;
-		const auto generation = route.workbench->Get_DraftGeneration();
-		if (m_eColliderAuthoringOwner != route.owner || m_iColliderAuthoringDraftGeneration != generation)
-		{
-			m_eColliderAuthoringOwner = route.owner;
-			m_iColliderAuthoringDraftGeneration = generation;
-			m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(
-				route.workbench->Get_Composition(), ++m_iColliderAuthoringSerial);
-		}
-	}
-	std::string activePreviewRouteStatus;
-	DEBUG_TOOL previewStatusOwner = DEBUG_TOOL::NONE;
-    if (m_strKoukuCompletePlayFlowGate.empty()) m_bKoukuLocalPreviewStopRequested = false;
-	for (const auto& route : compositionRoutes)
-	{
-		auto* workbench = route.workbench;
-		auto* shell = route.shell;
-		if (!workbench) continue;
-		// The shared action publisher is polled above in both build configurations.
-		if (route.owner != DEBUG_TOOL::SEQUENCER) workbench->Tick_Background();
-        if (!m_strKoukuCompletePlayFlowGate.empty())
-        {
-            // Reset/Play must not disappear behind the active raid guard. Stop
-            // through the existing Server owner, then consume the immutable
-            // local draft request only after the terminal raid state arrives.
-            bool resetRequested = false;
-            if (workbench->Has_PendingPreviewReset())
-            {
-                KOUKU_PREVIEW_TRANSPORT transport;
-                std::uint32_t seekMs = 0u;
-                resetRequested = workbench->Consume_PreviewTransportRequest(transport, seekMs);
-            }
-            if (shell && !shell->Uses_ValtanSession())
-            {
-                CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport;
-                if (shell->Consume_AnimationPreviewTransportRequest(transport))
-                    resetRequested |= transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP;
-            }
-            if (resetRequested) m_bKoukuLocalPreviewStopRequested = false;
-            if (resetRequested || workbench->Has_PendingLocalPreviewRequest())
-            {
-                if (!m_bKoukuLocalPreviewStopRequested)
-                {
-                    m_bKoukuLocalPreviewStopRequested = true;
-                    CancelKoukuGateCompletePlay("Stopped Complete Play for local Sequence editing.");
-                }
-                auto state = workbench->Get_PreviewState();
-                state.strStatus = m_strKoukuCompletePlayStatus;
-                workbench->Set_PreviewState(state);
-                if (shell) shell->Set_AnimationPreviewStatus(state.strStatus);
-            }
-            continue;
-        }
-	if (nullptr != shell)
-	{
-		COMPOSITION_ANIMATION_RESOURCE resource;
-		if (shell->Consume_AnimationPreviewRequest(resource))
-		{
-			workbench->Cancel_CompleteSequencePlay();
-			if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
+			CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+			if (m_pValtanBossTool->Consume_CameraToolOpenRequest(cameraRequest))
 			{
-				if (m_pAnimationTool->Preview_CompositionAnimationResource(resource, m_strToolStatus))
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) && nullptr != m_pCameraTool)
 				{
-					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-					ClaimCompositionPreviewOwner(route.owner);
-					m_eDebugInputOwner = route.owner;
+					(void)m_pCameraTool->Open_Cue(cameraRequest);
 				}
 			}
-			else
-				m_strToolStatus = "Animation preview backend could not initialize for the selected resource.";
-			shell->Set_AnimationPreviewStatus(m_strToolStatus);
-		}
-	}
-	/* The K Workbench owns only composition data. A click transfers an immutable
-	   occurrence/pattern value to the existing real-CModel preview owner; no
-	   draft pointer or Valtan document crosses this boundary. */
-	std::string previewRouteStatus;
-    const auto notifySequencePlaybackStarted = [&]() {
-        if (route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-            if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
-                arena->Notify_SequencePlaybackStarted();
-    };
-    const auto pausePreviousLocalPreview = [&]() {
-        if (m_eCompositionPreviewOwner != route.owner || !m_pKoukuPresentationPlayer ||
-            m_pKoukuPresentationPlayer->Preview_IsServerClock()) return;
-        // A rejected replacement keeps the previous scene, but its old sound
-        // windows must not continue behind the newly edited timeline.
-        m_pKoukuPresentationPlayer->Pause_Preview(true);
-        if (m_pAnimationTool)
-        {
-            std::string pauseStatus;
-            (void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, pauseStatus);
-        }
-    };
-	if (nullptr != workbench)
-	{
-		KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
-		if (workbench->Consume_AnimationPreviewRequest(
-				occurrence))
-		{
-			if (SUCCEEDED(EnsureAnimationPreviewBackend()) &&
-				nullptr != m_pAnimationTool)
+			EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+			if (m_pValtanBossTool->Consume_EffectToolOpenRequest(effectRequest))
 			{
-				const bool_t previewed =
-					m_pAnimationTool->Preview_KoukuSaydonCompositionAnimation(
-						occurrence, m_strToolStatus);
-				if (previewed)
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
 				{
-					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-					ClaimCompositionPreviewOwner(route.owner);
-					m_eDebugInputOwner = route.owner;
+					const bool_t bOpened = m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+					m_strToolStatus = bOpened ? "Opened the exact Valtan Product Effect in Effect Tool."
+											  : "Effect Tool opened, but the exact Product occurrence needs attention.";
 				}
-				else
-					previewRouteStatus = m_strToolStatus;
 			}
-			else
+		}
+		// Workbench의 일회성 연결 요청을 기존 Effect·Camera 소유자에게 전달한다.
+		// 새 런타임 객체 경로를 만드는 대신 제품에서 쓰는 stable 요청을 소비한다.
+		if (nullptr != m_pAnimationTool)
+		{
+			EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+			if (m_pAnimationTool->Consume_EffectToolOpenRequest(effectRequest))
 			{
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+				{
+					const bool_t bOpened = m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+					m_strToolStatus = bOpened ? "Opened the Workbench Product Effect in Effect Tool."
+											  : "Effect Tool opened, but the Workbench occurrence needs attention.";
+				}
+			}
+			CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+			if (m_pAnimationTool->Consume_CameraToolOpenRequest(cameraRequest))
+			{
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) && nullptr != m_pCameraTool)
+				{
+					const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
+					m_strToolStatus = bOpened ? "Opened the Workbench camera sequence in Camera Tool."
+											  : "Camera Tool opened, but the Workbench cue needs attention.";
+				}
+			}
+		}
+		if (nullptr != m_pValtanActionWorkbench)
+		{
+			EFFECT_RESOURCE_KEY resourceKey;
+			if (m_pValtanActionWorkbench->Consume_EffectResourcePreviewRequest(resourceKey) &&
+				SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+			{
+				(void)m_pEffectTool->Preview_AuthoringResource(resourceKey, m_strToolStatus);
+			}
+			if (m_pValtanActionWorkbench->Consume_EffectResourceOpenRequest(resourceKey) &&
+				SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+			{
+				const bool opened = m_pEffectTool->Open_AuthoringResource(resourceKey);
 				m_strToolStatus =
-					"Animation Tool could not open for KoukuSaydon resource preview.";
-				previewRouteStatus = m_strToolStatus;
+					opened ? "Opened the saved Composition resource in its Effect editor."
+						   : "Effect editor preserved its draft; finish the pending edit or check its source status.";
 			}
-		}
-
-		std::string bundlePreviewId;
-		std::uint32_t bundleClockMs = 0; bool_t bundlePaused = false;
-		if (workbench->Consume_BundlePreviewRequest(bundlePreviewId, bundleClockMs, bundlePaused))
-		{
-			if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
-				workbench->Get_PatternPreviewDocument(), bundlePreviewId, bundleClockMs, bundlePaused, previewRouteStatus,
-				CompositionPreviewWorldSource()))
+			EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST effectRequest;
+			if (m_pValtanActionWorkbench->Consume_EffectToolOpenRequest(effectRequest))
 			{
-				if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
-				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-				ClaimCompositionPreviewOwner(route.owner);
-					m_eDebugInputOwner = route.owner;
-                workbench->Notify_SequencePreviewAdmission(true, previewRouteStatus);
-                if (!bundlePaused) notifySequencePlaybackStarted();
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::EFFECT)) && nullptr != m_pEffectTool)
+				{
+					const bool_t bOpened = m_pEffectTool->Open_ValtanProductEffect(effectRequest);
+					m_strToolStatus =
+						bOpened ? "Opened the exact Composition Sequencer Effect in its owner Tool."
+								: "Effect Tool opened, but the selected Composition occurrence needs attention.";
+				}
+			}
+			CAMERA_TOOL_OPEN_REQUEST cameraRequest;
+			if (m_pValtanActionWorkbench->Consume_CameraToolOpenRequest(cameraRequest))
+			{
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::CAMERA)) && nullptr != m_pCameraTool)
+				{
+					const bool_t bOpened = m_pCameraTool->Open_Cue(cameraRequest);
+					m_strToolStatus = bOpened ? "Opened the exact Composition Sequencer camera cue."
+											  : "Camera Tool opened, but the selected Composition cue needs attention.";
+				}
+			}
+			if (m_pValtanActionWorkbench->Consume_AnimationToolOpenRequest())
+			{
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::ANIMATION)) && nullptr != m_pAnimationTool)
+				{
+					(void)m_pAnimationTool->Open_ValtanWorkspace();
+					m_strToolStatus = "Opened Animation Clip/Sequence Intake beside Valtan Action Workbench.";
+				}
+			}
+			m_pValtanActionWorkbench->Set_PreviewOwnerActive(
+				m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool &&
+				m_pSequencerTool->Uses_ValtanSession() &&
+				m_eDebugInputOwner == (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE
+										   ? DEBUG_TOOL::SEQUENCER_BENCHMARK
+										   : DEBUG_TOOL::SEQUENCER));
+		}
+		struct COMPOSITION_SESSION_ROUTE
+		{
+			DEBUG_TOOL owner;
+			CKoukuSaydonActionWorkbench *workbench;
+			CSequencerTool *shell;
+		};
+		const std::array<COMPOSITION_SESSION_ROUTE, 2> compositionRoutes{
+			{{DEBUG_TOOL::SEQUENCER, m_pKoukuSaydonActionWorkbench.get(),
+			  m_pSequencerTool && (m_pSequencerTool->Is_BossSelected() ||
+								   (m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
+									m_pSequencerTool->Uses_ValtanSession()))
+				  ? m_pSequencerTool.get()
+				  : nullptr},
+			 {DEBUG_TOOL::SEQUENCER_BENCHMARK, m_pSequenceActionWorkbench.get(),
+			  m_pSequencerTool && m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::SEQUENCE
+				  ? m_pSequencerTool.get()
+				  : nullptr}}};
+		// 각 갱신 edge를 소비한 뒤 실제 파일 목록을 한 번 읽고 같은 값 목록을 두 도구에 나눈다.
+		bool shellResourceRefresh = false, koukuResourceRefresh = false, presentationResourceRefresh = false;
+		std::vector<CKoukuSaydonActionWorkbench *> resourceSessions;
+		for (const auto &route : compositionRoutes)
+		{
+			if (route.shell)
+				shellResourceRefresh |= route.shell->Consume_ResourceRefreshRequest();
+			if (!route.workbench)
+				continue;
+			resourceSessions.push_back(route.workbench);
+			route.workbench->Set_PresentationModelResolver(
+				[this](const auto &pattern, auto target, auto &view)
+				{
+					return m_pKoukuPresentationPlayer &&
+						   m_pKoukuPresentationPlayer->Resolve_PatternModelTarget(pattern, target, view);
+				});
+			koukuResourceRefresh |= route.workbench->Consume_ResourceRefreshRequest();
+			presentationResourceRefresh |= route.workbench->Consume_PresentationResourceRefreshRequest();
+		}
+		if (presentationResourceRefresh)
+			Refresh_KoukuPresentationResources(resourceSessions, m_RenderingProfiles, m_LightResources);
+		if ((shellResourceRefresh || presentationResourceRefresh) && m_pValtanActionWorkbench)
+		{
+			std::vector<std::string> lights;
+			for (const auto &resource : m_LightResources.Get_Resources())
+				lights.push_back(resource.strLightResourceId);
+			m_pValtanActionWorkbench->Set_EnvironmentResources(m_RenderingProfiles.Collect_ProfileIds(),
+															   std::move(lights));
+		}
+		if (shellResourceRefresh || koukuResourceRefresh)
+		{
+			if (SUCCEEDED(EnsureAnimationPreviewBackend()))
+			{
+				std::vector<COMPOSITION_ANIMATION_RESOURCE> resources;
+				std::string status;
+				(void)m_pAnimationTool->Read_CompositionAnimationResources(resources, status);
+				std::vector<CAnimation_Tool::COMPOSITION_SEQUENCE_VIEW> sequences;
+				std::vector<COMPOSITION_ANIMATION_SEQUENCE_RESOURCE> sequenceResources;
+				std::string sequenceStatus;
+				const bool_t sequencesLoaded =
+					m_pAnimationTool->Get_ValtanCompositionSequences(sequences, sequenceStatus);
+				if (sequencesLoaded)
+				{
+					for (const auto &sequence : sequences)
+					{
+						COMPOSITION_ANIMATION_SEQUENCE_RESOURCE resourceSequence;
+						resourceSequence.strStableId = sequence.strStableId;
+						resourceSequence.strDisplayName = sequence.strDisplayName;
+						resourceSequence.strProfileId = "Valtan";
+						resourceSequence.strTargetAssetName = "Valtan";
+						for (const auto &clip : sequence.Clips)
+						{
+							const auto native = std::find_if(resources.begin(), resources.end(),
+															 [&clip](const auto &candidate)
+															 {
+																 return candidate.strTargetAssetName == "Valtan" &&
+																		candidate.strRuntimeClip == clip.strClipName;
+															 });
+							COMPOSITION_ANIMATION_RESOURCE resource;
+							if (native != resources.end())
+								resource = *native;
+							const std::uint32_t nativeDurationMs = resource.iDurationMs;
+							resource.strTargetAssetName = resource.strProfileId = "Valtan";
+							resource.strRuntimeClip = clip.strClipName;
+							if (!clip.bUsesNativeDuration && clip.iDurationMs > 0u)
+								resource.iDurationMs = clip.iDurationMs;
+							if (nativeDurationMs > 0u && resource.iDurationMs > nativeDurationMs)
+								resource.strEndPolicy = clip.strClipName.find("_loop") != std::string::npos
+															? "LOOP_TO_WINDOW"
+															: "HOLD_LAST_POSE";
+							resourceSequence.Clips.push_back(std::move(resource));
+						}
+						sequenceResources.push_back(std::move(resourceSequence));
+					}
+				}
+				for (const auto &route : compositionRoutes)
+				{
+					if (route.shell)
+						route.shell->Set_AnimationResources(resources, status);
+					if (!route.workbench)
+						continue;
+					route.workbench->Set_ModelResources(resources, status);
+					route.workbench->Set_SequenceResources(sequenceResources, sequenceStatus, sequencesLoaded);
+				}
 			}
 			else
-            {
-                if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Bundle preview requires the KoukuSaydon Arena.";
-                workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
-                pausePreviousLocalPreview();
-            }
-		}
-		std::string serverBundleId; std::uint32_t bundleRevision = 0;
-		if (workbench->Consume_BundleServerPlayRequest(serverBundleId, bundleRevision) &&
-			route.owner == DEBUG_TOOL::SEQUENCER)
-		{
-			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
-			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
-			m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
-			    [this](std::string_view gate, std::string& status) { return StartKoukuGateCompletePlay(gate, status); });
-			(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
-			workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
-		}
-		KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
-		std::uint32_t startClockMs = 0u;
-		bool_t startPaused = false;
-		std::string targetAssetName;
-		if (workbench->Consume_PatternPreviewRequest(
-    pattern, startClockMs, startPaused, targetAssetName))
-  {
-   const bool completeSequenceRequested = workbench->Is_CompleteSequencePlaying();
-   if (!completeSequenceRequested && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK &&
-    !m_strKoukuCompletePlayFlowGate.empty())
-    CancelKoukuGateCompletePlay("Switched to Play Sequence; automatic combat entry was cancelled.");
-   bool previewAccepted = false;
-   const bool hasAnimation = std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
-    [](const auto& stage) { return !stage.AnimationOccurrences.empty(); });
-   const auto& previewDocument = workbench->Get_PatternPreviewDocument();
-   const bool hasActorLogic = std::any_of(pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
-    [&](const auto& summon) {
-     return !summon.PatternSpawns.empty() || std::any_of(previewDocument.Summons.begin(), previewDocument.Summons.end(),
-      [&](const auto& definition) { return definition.strSummonId == summon.strSummonId &&
-       definition.strSummonKind == "CROSS_DIRECTION_CLONES"; });
-    }) ||
-    std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
-     return box.bEnabled && std::any_of(previewDocument.Logics.begin(), previewDocument.Logics.end(),
-      [&](const auto& logic) { return logic.strLogicId == box.strLogicId &&
-       (logic.strJudgementKind == "CROSS_DIRECTION_CLONES" || logic.strJudgementKind == "BOSS_TRACK_TARGET" ||
-        logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS" || logic.strTriggerKind == "BOSS_TELEPORT_XZ" ||
-        logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED" ||
-        logic.strTriggerKind == "ALBION_AIRBORNE" || logic.strTriggerKind == "ALBION_BLUE_CIRCLE"); });
-    });
-   if ((hasAnimation || hasActorLogic) && (!pattern.strActorProfileId.empty() || pattern.BossMotion || pattern.fAnimationRootVerticalScale != 1.0) && targetAssetName.empty())
-   {
-    auto document = workbench->Get_PatternPreviewDocument();
-    for (auto& previewPattern : document.Patterns)
-     if (previewPattern.strPatternId == pattern.strPatternId) { previewPattern = pattern; break; }
-    KOUKU_SAYDON_COMPOSITION_BUNDLE single;
-    single.strBundleId = pattern.strPatternId;
-    single.strGateId = pattern.strGateId;
-    single.Members.push_back({pattern.strPatternId + ".preview.member", pattern.strPatternId, 0u});
-    document.Bundles.push_back(std::move(single));
-    if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Begin_BundlePreview(
-      document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
-      CompositionPreviewWorldSource(), true, true))
-    {
-     if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
-
-     ClaimCompositionPreviewOwner(route.owner);
-     previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-      CompositionPreviewWorldSource());
-     if (!previewAccepted) StopCompositionPreview(route.owner);
-					m_eDebugInputOwner = route.owner;
-    }
-    else if (!m_pKoukuPresentationPlayer) previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
-
-   }
-   else
-   {
-   bool previewed = !hasAnimation;
-   if (hasAnimation && SUCCEEDED(EnsureAnimationPreviewBackend()) && m_pAnimationTool)
-    previewed = targetAssetName.empty() ?
-     m_pAnimationTool->Preview_KoukuSaydonCompositionPattern(pattern, m_strToolStatus, startClockMs, startPaused) :
-     m_pAnimationTool->Preview_CompositionResourcePattern(pattern, targetAssetName, m_strToolStatus, startClockMs, startPaused);
-   if (previewed && m_pKoukuPresentationPlayer)
-   {
-    const auto& document = workbench->Get_PatternPreviewDocument();
-    previewed = m_pKoukuPresentationPlayer->Begin_Preview(document, pattern,
-     !hasAnimation, startClockMs, startPaused, previewRouteStatus);
-    if (previewed)
-    {
-     if (!hasAnimation && m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
-     ClaimCompositionPreviewOwner(route.owner);
-     m_eDebugInputOwner = route.owner;
-     previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
-      CompositionPreviewWorldSource());
-     if (!previewAccepted)
-     {
-      workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
-      StopCompositionPreview(route.owner);
-     }
-    }
-   }
-   else if (previewed) previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
-   else previewRouteStatus = m_strToolStatus;
-   }
-   if (previewAccepted && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-   {
-    previewAccepted = BeginKoukuSequenceArrivals(workbench->Get_PatternPreviewDocument(), pattern,
-     startClockMs, previewRouteStatus);
-    if (!previewAccepted) StopCompositionPreview(route.owner);
-   }
-   workbench->Notify_SequencePreviewAdmission(previewAccepted, previewRouteStatus);
-   if (previewAccepted && !startPaused) notifySequencePlaybackStarted();
-   if (!previewAccepted && !completeSequenceRequested) pausePreviousLocalPreview();
-   if (completeSequenceRequested && !previewAccepted)
-   {
-    StopCompositionPreview(route.owner);
-    if (route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-     CancelKoukuGateCompletePlay(previewRouteStatus);
-   }
-  }
-
-  KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST summonPlacementPreview;
-  if (workbench->Consume_SummonPlacementPreviewRequest(summonPlacementPreview) &&
-   m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
-   if (!m_pKoukuPresentationPlayer->Preview_SummonPlacement(
-    summonPlacementPreview.strPatternId, summonPlacementPreview.Occurrence))
-    workbench->Notify_WorldObjectEditResult("Summon placement preview is unavailable. Use World Preview to rebuild this box.");
-
-  KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
-  while (workbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
-   if (m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
-    (void)m_pKoukuPresentationPlayer->Preview_PresentationGeometry(
-     presentationGeometryPreview.strPatternId, presentationGeometryPreview.Occurrence);
-
-  KOUKU_PRESENTATION_PREVIEW_REQUEST resourcePreview;
-  if (workbench->Consume_PresentationPreviewRequest(resourcePreview))
-  {
-   if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
-   const bool keepCurrentPreview = m_eCompositionPreviewOwner == route.owner && m_pKoukuPresentationPlayer &&
-    m_pKoukuPresentationPlayer->Preview_HasActiveWorldBox(resourcePreview.strEditedOccurrenceId);
-   if (!keepCurrentPreview)
-   {
-   if (m_pKoukuPresentationPlayer)
-   {
-    auto document = workbench->Get_Composition();
-    KOUKU_SAYDON_COMPOSITION_PATTERN resourcePattern;
-    resourcePattern.strPatternId = "preview.kouku.resource";
-    // Resource audition uses the selected boss context; its temporary placement
-    // never replaces the anchor authored in a Timeline occurrence.
-    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
-     (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && resourcePreview.Occurrence.strAnchorKind == "BOSS"))
-    {
-     const auto selected = std::find_if(document.Patterns.begin(), document.Patterns.end(),
-      [&](const auto& item) { return item.strPatternId == workbench->Get_SelectedPatternId(); });
-     if (selected != document.Patterns.end() && selected->strLoadError.empty())
-     {
-      resourcePattern.strActorProfileId = selected->strActorProfileId;
-      resourcePattern.strGateId = selected->strGateId;
-      resourcePattern.strTargetBossPlacementId = selected->strTargetBossPlacementId;
-     }
-    }
-    KOUKU_SAYDON_COMPOSITION_STAGE stage;
-    stage.strStageId = "preview.resource.stage"; stage.iDurationMs = resourcePreview.Occurrence.iDurationMs;
-    resourcePattern.Stages.push_back(stage);
-    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
-    {
-     if (!resourcePreview.WorldBoxes.empty())
-     {
-      resourcePattern.WorldOccurrences = resourcePreview.WorldBoxes;
-      resourcePattern.Stages.front().iDurationMs = 600000u;
-     }
-     else
-     {
-     if (resourcePreview.Resource.strResourceId.empty())
-     {
-      KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
-      world.strWorldId = "preview.resource.world-definition";
-      world.strDisplayName = resourcePreview.Resource.strDisplayName;
-      world.strSequenceInstanceId = resourcePreview.Resource.strAssetId;
-      world.PositionOffset = resourcePreview.Occurrence.PositionOffset;
-      document.Worlds.push_back(world);
-      resourcePreview.Resource.strResourceId = world.strWorldId;
-     }
-     KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE box;
-     box.strWorldId = resourcePreview.Resource.strResourceId;
-     box.strOccurrenceId = "preview.resource.world";
-     box.iDurationMs = resourcePreview.Occurrence.iDurationMs;
-     resourcePattern.WorldOccurrences.push_back(box);
-     const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
-      [&box](const auto& value) { return value.strWorldId == box.strWorldId; });
-     if (world != document.Worlds.end() && !world->strCompanionEffectResourceId.empty())
-     {
-      KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE effect;
-      effect.strOccurrenceId = "preview.resource.world.effect";
-      effect.strResourceId = world->strCompanionEffectResourceId;
-      effect.strWorldOccurrenceId = box.strOccurrenceId;
-      effect.iDurationMs = box.iDurationMs;
-      resourcePattern.PresentationOccurrences.push_back(std::move(effect));
-     }
-     }
-    }
-    else
-    {
-     if (resourcePreview.Resource.strResourceId.empty())
-      resourcePreview.Resource.strResourceId = "preview.resource";
-     resourcePreview.Occurrence.strResourceId = resourcePreview.Resource.strResourceId;
-     if (resourcePreview.Occurrence.strOccurrenceId.empty())
-      resourcePreview.Occurrence.strOccurrenceId = "preview.resource.occurrence";
-     resourcePreview.Occurrence.iStartMs = 0u;
-     const auto existing = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
-      [&resourcePreview](const auto& resource) { return resource.strResourceId == resourcePreview.Resource.strResourceId; });
-     if (existing == document.PresentationResources.end()) document.PresentationResources.push_back(resourcePreview.Resource);
-     else *existing = resourcePreview.Resource;
-     resourcePattern.PresentationOccurrences.push_back(resourcePreview.Occurrence);
-     if (resourcePreview.Occurrence.strAnchorKind == "WORLD")
-     {
-      KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE worldBox;
-      worldBox.strWorldId = resourcePreview.Occurrence.strWorldId;
-      worldBox.strOccurrenceId = "preview.resource.anchor";
-      worldBox.iDurationMs = resourcePreview.Occurrence.iDurationMs;
-      resourcePattern.WorldOccurrences.push_back(worldBox);
-     }
-    }
-    const auto* worldSource = CompositionPreviewWorldSource();
-    bool worldRequiresActor = false;
-    bool contextReady = true;
-    if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
-    {
-     const auto* arena = CLevel_KakulSaydonArena::Get_Active();
-     if (!arena) { previewRouteStatus = "World Object Preview requires the KoukuSaydon Arena."; contextReady = false; }
-     else contextReady = Resolve_KoukuWorldPreviewActor(document,
-      worldSource ? *worldSource : arena->Get_WorldSequenceDocument(),
-      resourcePreview.strSourcePatternId.empty() ? workbench->Get_SelectedPatternId() : resourcePreview.strSourcePatternId,
-      resourcePattern, worldRequiresActor, previewRouteStatus);
-    }
-    bool resourceStarted = false;
-    if (contextReady && worldRequiresActor)
-    {
-     // Hand props share the exact actor and pose owner used by Pattern Play.
-     // Level still owns WORLD visibility, placement and lighting restoration.
-     document.Patterns.push_back(resourcePattern);
-     KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
-     bundle.strBundleId = resourcePattern.strPatternId;
-     bundle.strGateId = resourcePattern.strGateId;
-     bundle.Members.push_back({resourcePattern.strPatternId + ".member", resourcePattern.strPatternId, 0u});
-     document.Bundles.push_back(std::move(bundle));
-     resourceStarted = m_pKoukuPresentationPlayer->Begin_BundlePreview(document, resourcePattern.strPatternId,
-      0u, !resourcePreview.WorldBoxes.empty(), previewRouteStatus, worldSource, true, true);
-    }
-    else if (contextReady)
-     resourceStarted = m_pKoukuPresentationPlayer->Begin_Preview(document, resourcePattern, true, 0u,
-      !resourcePreview.WorldBoxes.empty(), previewRouteStatus);
-    if (resourceStarted)
-    {
-     if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
-     ClaimCompositionPreviewOwner(route.owner);
-     m_eDebugInputOwner = route.owner;
-     if ((worldRequiresActor || !m_pKoukuPresentationPlayer->Preview_IsBundle()) &&
-      !Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus, worldSource,
-      !worldRequiresActor && resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD && resourcePreview.WorldBoxes.empty()))
-      StopCompositionPreview(route.owner);
-    }
-   }
-   else previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
-   }
-  }
-
-		/* Apply transport after a same-frame preview start, then return the
-		   resulting identity and clock together to the Workbench. */
-		KOUKU_PREVIEW_TRANSPORT transport = KOUKU_PREVIEW_TRANSPORT::NONE;
-		std::uint32_t seekMs = 0u;
-		if (workbench->Consume_PreviewTransportRequest(transport, seekMs) &&
-			m_eCompositionPreviewOwner == route.owner)
-		{
-			const bool ownClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
-            bool previewResumed = false;
-			if (ownClock)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+				m_strToolStatus = "Animation preview backend could not initialize for Resources.";
+				for (const auto &route : compositionRoutes)
+					if (route.shell)
+						route.shell->Set_AnimationResources({}, m_strToolStatus);
+			}
+		}
+		// 초안 generation은 각 세션 내부 값이므로 소유자를 고른 뒤 공용 소비자용 증가 serial을 부여한다.
+		// 서로 다른 초안에 같은 occurrence ID가 있어도 같은 편집으로 오인하지 않게 한다.
+		for (const auto &route : compositionRoutes)
+		{
+			if (!m_strKoukuCompletePlayFlowGate.empty() || !route.workbench || !m_pKoukuPresentationPlayer)
+				continue;
+			const bool ownsPreview = route.owner == m_eCompositionPreviewOwner;
+			const bool productDebugAuthoring = m_eCompositionPreviewOwner == DEBUG_TOOL::NONE &&
+											   !m_pKoukuPresentationPlayer->Preview_Playing() &&
+											   route.owner == DEBUG_TOOL::SEQUENCER;
+			if (!ownsPreview && !productDebugAuthoring)
+				continue;
+			const auto generation = route.workbench->Get_DraftGeneration();
+			if (m_eColliderAuthoringOwner != route.owner || m_iColliderAuthoringDraftGeneration != generation)
+			{
+				m_eColliderAuthoringOwner = route.owner;
+				m_iColliderAuthoringDraftGeneration = generation;
+				m_pKoukuPresentationPlayer->Refresh_ColliderAuthoring(route.workbench->Get_Composition(),
+																	  ++m_iColliderAuthoringSerial);
+			}
+		}
+		std::string activePreviewRouteStatus;
+		DEBUG_TOOL previewStatusOwner = DEBUG_TOOL::NONE;
+		if (m_strKoukuCompletePlayFlowGate.empty())
+			m_bKoukuLocalPreviewStopRequested = false;
+		for (const auto &route : compositionRoutes)
+		{
+			auto *workbench = route.workbench;
+			auto *shell = route.shell;
+			if (!workbench)
+				continue;
+			// 공용 action publisher는 Debug/Release 공통 경로에서 위에서 이미 확인한다.
+			if (route.owner != DEBUG_TOOL::SEQUENCER)
+				workbench->Tick_Background();
+			if (!m_strKoukuCompletePlayFlowGate.empty())
+			{
+				// 활성 raid가 있어도 Reset/Play 요청을 잃지 않도록 기존 Server 소유자에게 정지를 요청한다.
+				// raid의 종료 상태가 도착한 뒤에만 대기 중인 로컬 초안을 소비한다.
+				// 대기하는 요청은 Workbench의 값 snapshot을 유지한다.
+				bool resetRequested = false;
+				if (workbench->Has_PendingPreviewReset())
 				{
-					// Restore the displayed clock before freezing; Update already advanced this frame.
-					m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
-					m_pKoukuPresentationPlayer->Pause_Preview(true);
+					KOUKU_PREVIEW_TRANSPORT transport;
+					std::uint32_t seekMs = 0u;
+					resetRequested = workbench->Consume_PreviewTransportRequest(transport, seekMs);
 				}
-				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
-                {
-                    m_pKoukuPresentationPlayer->Pause_Preview(false);
-                    previewResumed = m_pKoukuPresentationPlayer->Preview_Playing();
-                }
-				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+				if (shell && !shell->Uses_ValtanSession())
+				{
+					CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport;
+					if (shell->Consume_AnimationPreviewTransportRequest(transport))
+						resetRequested |= transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP;
+				}
+				if (resetRequested)
+					m_bKoukuLocalPreviewStopRequested = false;
+				if (resetRequested || workbench->Has_PendingLocalPreviewRequest())
+				{
+					if (!m_bKoukuLocalPreviewStopRequested)
+					{
+						m_bKoukuLocalPreviewStopRequested = true;
+						CancelKoukuGateCompletePlay("Stopped Complete Play for local Sequence editing.");
+					}
+					auto state = workbench->Get_PreviewState();
+					state.strStatus = m_strKoukuCompletePlayStatus;
+					workbench->Set_PreviewState(state);
+					if (shell)
+						shell->Set_AnimationPreviewStatus(state.strStatus);
+				}
+				continue;
+			}
+			if (nullptr != shell)
+			{
+				COMPOSITION_ANIMATION_RESOURCE resource;
+				if (shell->Consume_AnimationPreviewRequest(resource))
+				{
+					workbench->Cancel_CompleteSequencePlay();
+					if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
+					{
+						if (m_pAnimationTool->Preview_CompositionAnimationResource(resource, m_strToolStatus))
+						{
+							if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+								arena->Debug_StopCompositionWorldPreview();
+							if (m_pKoukuPresentationPlayer)
+								m_pKoukuPresentationPlayer->Stop_Preview();
+							ClaimCompositionPreviewOwner(route.owner);
+							m_eDebugInputOwner = route.owner;
+						}
+					}
+					else
+						m_strToolStatus = "Animation preview backend could not initialize for the selected resource.";
+					shell->Set_AnimationPreviewStatus(m_strToolStatus);
+				}
+			}
+			// Workbench는 composition 데이터만 소유한다. 클릭은 occurrence·pattern 값 snapshot을 기존 CModel preview 소유자에게 전달한다.
+			// 이 경계에서 초안 포인터나 발탄 문서의 소유권을 넘기지 않는다.
+			std::string previewRouteStatus;
+			const auto notifySequencePlaybackStarted = [&]()
+			{
+				if (route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+					if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+						arena->Notify_SequencePlaybackStarted();
+			};
+			const auto pausePreviousLocalPreview = [&]()
+			{
+				if (m_eCompositionPreviewOwner != route.owner || !m_pKoukuPresentationPlayer ||
+					m_pKoukuPresentationPlayer->Preview_IsServerClock())
+					return;
+				// 교체가 거부되어 이전 장면을 남기는 경우에도 이전 소리 window는 정지시킨다.
+				// 수정한 타임라인 뒤로 이전 preview 소리가 계속 나지 않게 한다.
+				m_pKoukuPresentationPlayer->Pause_Preview(true);
+				if (m_pAnimationTool)
+				{
+					std::string pauseStatus;
+					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, pauseStatus);
+				}
+			};
+			if (nullptr != workbench)
+			{
+				KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE occurrence;
+				if (workbench->Consume_AnimationPreviewRequest(occurrence))
+				{
+					if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
+					{
+						const bool_t previewed =
+							m_pAnimationTool->Preview_KoukuSaydonCompositionAnimation(occurrence, m_strToolStatus);
+						if (previewed)
+						{
+							if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+								arena->Debug_StopCompositionWorldPreview();
+							if (m_pKoukuPresentationPlayer)
+								m_pKoukuPresentationPlayer->Stop_Preview();
+							ClaimCompositionPreviewOwner(route.owner);
+							m_eDebugInputOwner = route.owner;
+						}
+						else
+							previewRouteStatus = m_strToolStatus;
+					}
+					else
+					{
+						m_strToolStatus = "Animation Tool could not open for KoukuSaydon resource preview.";
+						previewRouteStatus = m_strToolStatus;
+					}
+				}
+
+				std::string bundlePreviewId;
+				std::uint32_t bundleClockMs = 0;
+				bool_t bundlePaused = false;
+				if (workbench->Consume_BundlePreviewRequest(bundlePreviewId, bundleClockMs, bundlePaused))
+				{
+					if (m_pKoukuPresentationPlayer &&
+						m_pKoukuPresentationPlayer->Begin_BundlePreview(
+							workbench->Get_PatternPreviewDocument(), bundlePreviewId, bundleClockMs, bundlePaused,
+							previewRouteStatus, CompositionPreviewWorldSource()))
+					{
+						if (m_pAnimationTool)
+						{
+							std::string stoppedAnimationStatus;
+							(void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus);
+						}
+						if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+							arena->Debug_StopCompositionWorldPreview();
+						ClaimCompositionPreviewOwner(route.owner);
+						m_eDebugInputOwner = route.owner;
+						workbench->Notify_SequencePreviewAdmission(true, previewRouteStatus);
+						if (!bundlePaused)
+							notifySequencePlaybackStarted();
+					}
+					else
+					{
+						if (!m_pKoukuPresentationPlayer)
+							previewRouteStatus = "Bundle preview requires the KoukuSaydon Arena.";
+						workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
+						pausePreviousLocalPreview();
+					}
+				}
+				std::string serverBundleId;
+				std::uint32_t bundleRevision = 0;
+				if (workbench->Consume_BundleServerPlayRequest(serverBundleId, bundleRevision) &&
+					route.owner == DEBUG_TOOL::SEQUENCER)
+				{
+					if (m_pKoukuPresentationPlayer)
+						m_pKoukuPresentationPlayer->Stop_Preview();
+					if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+						arena->Debug_StopCompositionWorldPreview();
+					ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+					if (!m_pKoukuSaydonBossTool)
+						m_pKoukuSaydonBossTool = make_unique<CKoukuSaydonBossTool>();
+					m_pKoukuSaydonBossTool->Set_CompletePlayAdmission(
+						[this](std::string_view gate, std::string &status)
+						{ return StartKoukuGateCompletePlay(gate, status); });
+					(void)m_pKoukuSaydonBossTool->Play_BundleById(serverBundleId, bundleRevision, m_strToolStatus);
+					workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
+																m_strToolStatus);
+				}
+				KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
+				std::uint32_t startClockMs = 0u;
+				bool_t startPaused = false;
+				std::string targetAssetName;
+				if (workbench->Consume_PatternPreviewRequest(pattern, startClockMs, startPaused, targetAssetName))
+				{
+					const bool completeSequenceRequested = workbench->Is_CompleteSequencePlaying();
+					if (!completeSequenceRequested && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK &&
+						!m_strKoukuCompletePlayFlowGate.empty())
+						CancelKoukuGateCompletePlay("Switched to Play Sequence; automatic combat entry was cancelled.");
+					bool previewAccepted = false;
+					const bool hasAnimation =
+						std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
+									[](const auto &stage) { return !stage.AnimationOccurrences.empty(); });
+					const auto &previewDocument = workbench->Get_PatternPreviewDocument();
+					const bool hasActorLogic =
+						std::any_of(pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
+									[&](const auto &summon)
+									{
+										return !summon.PatternSpawns.empty() ||
+											   std::any_of(
+												   previewDocument.Summons.begin(), previewDocument.Summons.end(),
+												   [&](const auto &definition)
+												   {
+													   return definition.strSummonId == summon.strSummonId &&
+															  definition.strSummonKind == "CROSS_DIRECTION_CLONES";
+												   });
+									}) ||
+						std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
+									[&](const auto &box)
+									{
+										return box.bEnabled &&
+											   std::any_of(
+												   previewDocument.Logics.begin(), previewDocument.Logics.end(),
+												   [&](const auto &logic)
+												   {
+													   return logic.strLogicId == box.strLogicId &&
+															  (logic.strJudgementKind == "CROSS_DIRECTION_CLONES" ||
+															   logic.strJudgementKind == "BOSS_TRACK_TARGET" ||
+															   logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS" ||
+															   logic.strTriggerKind == "BOSS_TELEPORT_XZ" ||
+															   logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED" ||
+															   logic.strTriggerKind == "ALBION_AIRBORNE" ||
+															   logic.strTriggerKind == "ALBION_BLUE_CIRCLE");
+												   });
+									});
+					if ((hasAnimation || hasActorLogic) &&
+						(!pattern.strActorProfileId.empty() || pattern.BossMotion ||
+						 pattern.fAnimationRootVerticalScale != 1.0) &&
+						targetAssetName.empty())
+					{
+						auto document = workbench->Get_PatternPreviewDocument();
+						for (auto &previewPattern : document.Patterns)
+							if (previewPattern.strPatternId == pattern.strPatternId)
+							{
+								previewPattern = pattern;
+								break;
+							}
+						KOUKU_SAYDON_COMPOSITION_BUNDLE single;
+						single.strBundleId = pattern.strPatternId;
+						single.strGateId = pattern.strGateId;
+						single.Members.push_back({pattern.strPatternId + ".preview.member", pattern.strPatternId, 0u});
+						document.Bundles.push_back(std::move(single));
+						if (m_pKoukuPresentationPlayer &&
+							m_pKoukuPresentationPlayer->Begin_BundlePreview(
+								document, pattern.strPatternId, startClockMs, startPaused, previewRouteStatus,
+								CompositionPreviewWorldSource(), true, true))
+						{
+							if (m_pAnimationTool)
+							{
+								std::string stoppedAnimationStatus;
+								(void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus);
+							}
+
+							ClaimCompositionPreviewOwner(route.owner);
+							previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
+																	  CompositionPreviewWorldSource());
+							if (!previewAccepted)
+								StopCompositionPreview(route.owner);
+							m_eDebugInputOwner = route.owner;
+						}
+						else if (!m_pKoukuPresentationPlayer)
+							previewRouteStatus = "Pattern actor preview requires the KoukuSaydon Arena.";
+					}
+					else
+					{
+						bool previewed = !hasAnimation;
+						if (hasAnimation && SUCCEEDED(EnsureAnimationPreviewBackend()) && m_pAnimationTool)
+							previewed = targetAssetName.empty()
+											? m_pAnimationTool->Preview_KoukuSaydonCompositionPattern(
+												  pattern, m_strToolStatus, startClockMs, startPaused)
+											: m_pAnimationTool->Preview_CompositionResourcePattern(
+												  pattern, targetAssetName, m_strToolStatus, startClockMs, startPaused);
+						if (previewed && m_pKoukuPresentationPlayer)
+						{
+							const auto &document = workbench->Get_PatternPreviewDocument();
+							previewed = m_pKoukuPresentationPlayer->Begin_Preview(
+								document, pattern, !hasAnimation, startClockMs, startPaused, previewRouteStatus);
+							if (previewed)
+							{
+								if (!hasAnimation && m_pAnimationTool)
+								{
+									std::string stoppedAnimationStatus;
+									(void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus);
+								}
+								ClaimCompositionPreviewOwner(route.owner);
+								m_eDebugInputOwner = route.owner;
+								previewAccepted = Begin_KoukuWorldPreview(document, pattern, previewRouteStatus,
+																		  CompositionPreviewWorldSource());
+								if (!previewAccepted)
+								{
+									workbench->Notify_SequencePreviewAdmission(false, previewRouteStatus);
+									StopCompositionPreview(route.owner);
+								}
+							}
+						}
+						else if (previewed)
+							previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
+						else
+							previewRouteStatus = m_strToolStatus;
+					}
+					if (previewAccepted && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+					{
+						previewAccepted = BeginKoukuSequenceArrivals(workbench->Get_PatternPreviewDocument(), pattern,
+																	 startClockMs, previewRouteStatus);
+						if (!previewAccepted)
+							StopCompositionPreview(route.owner);
+					}
+					workbench->Notify_SequencePreviewAdmission(previewAccepted, previewRouteStatus);
+					if (previewAccepted && !startPaused)
+						notifySequencePlaybackStarted();
+					if (!previewAccepted && !completeSequenceRequested)
+						pausePreviousLocalPreview();
+					if (completeSequenceRequested && !previewAccepted)
+					{
+						StopCompositionPreview(route.owner);
+						if (route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+							CancelKoukuGateCompletePlay(previewRouteStatus);
+					}
+				}
+
+				KOUKU_SUMMON_PLACEMENT_PREVIEW_REQUEST summonPlacementPreview;
+				if (workbench->Consume_SummonPlacementPreviewRequest(summonPlacementPreview) &&
+					m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
+					if (!m_pKoukuPresentationPlayer->Preview_SummonPlacement(summonPlacementPreview.strPatternId,
+																			 summonPlacementPreview.Occurrence))
+						workbench->Notify_WorldObjectEditResult(
+							"Summon placement preview is unavailable. Use World Preview to rebuild this box.");
+
+				KOUKU_PRESENTATION_GEOMETRY_PREVIEW_REQUEST presentationGeometryPreview;
+				while (workbench->Consume_PresentationGeometryPreviewRequest(presentationGeometryPreview))
+					if (m_pKoukuPresentationPlayer && m_eCompositionPreviewOwner == route.owner)
+						(void)m_pKoukuPresentationPlayer->Preview_PresentationGeometry(
+							presentationGeometryPreview.strPatternId, presentationGeometryPreview.Occurrence);
+
+				KOUKU_PRESENTATION_PREVIEW_REQUEST resourcePreview;
+				if (workbench->Consume_PresentationPreviewRequest(resourcePreview))
+				{
+					if (m_pWorldObjectTool)
+						m_pWorldObjectTool->Deactivate();
+					const bool keepCurrentPreview =
+						m_eCompositionPreviewOwner == route.owner && m_pKoukuPresentationPlayer &&
+						m_pKoukuPresentationPlayer->Preview_HasActiveWorldBox(resourcePreview.strEditedOccurrenceId);
+					if (!keepCurrentPreview)
+					{
+						if (m_pKoukuPresentationPlayer)
+						{
+							auto document = workbench->Get_Composition();
+							KOUKU_SAYDON_COMPOSITION_PATTERN resourcePattern;
+							resourcePattern.strPatternId = "preview.kouku.resource";
+							// 리소스 시청용 임시 pattern은 현재 선택한 보스 문맥을 사용한다.
+							// 이 임시 배치는 Timeline occurrence의 저작 anchor를 덮어쓰지 않는다.
+							if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
+								(resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
+								 resourcePreview.Occurrence.strAnchorKind == "BOSS"))
+							{
+								const auto selected = std::find_if(
+									document.Patterns.begin(), document.Patterns.end(), [&](const auto &item)
+									{ return item.strPatternId == workbench->Get_SelectedPatternId(); });
+								if (selected != document.Patterns.end() && selected->strLoadError.empty())
+								{
+									resourcePattern.strActorProfileId = selected->strActorProfileId;
+									resourcePattern.strGateId = selected->strGateId;
+									resourcePattern.strTargetBossPlacementId = selected->strTargetBossPlacementId;
+								}
+							}
+							KOUKU_SAYDON_COMPOSITION_STAGE stage;
+							stage.strStageId = "preview.resource.stage";
+							stage.iDurationMs = resourcePreview.Occurrence.iDurationMs;
+							resourcePattern.Stages.push_back(stage);
+							if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
+							{
+								if (!resourcePreview.WorldBoxes.empty())
+								{
+									resourcePattern.WorldOccurrences = resourcePreview.WorldBoxes;
+									resourcePattern.Stages.front().iDurationMs = 600000u;
+								}
+								else
+								{
+									if (resourcePreview.Resource.strResourceId.empty())
+									{
+										KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
+										world.strWorldId = "preview.resource.world-definition";
+										world.strDisplayName = resourcePreview.Resource.strDisplayName;
+										world.strSequenceInstanceId = resourcePreview.Resource.strAssetId;
+										world.PositionOffset = resourcePreview.Occurrence.PositionOffset;
+										document.Worlds.push_back(world);
+										resourcePreview.Resource.strResourceId = world.strWorldId;
+									}
+									KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE box;
+									box.strWorldId = resourcePreview.Resource.strResourceId;
+									box.strOccurrenceId = "preview.resource.world";
+									box.iDurationMs = resourcePreview.Occurrence.iDurationMs;
+									resourcePattern.WorldOccurrences.push_back(box);
+									const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
+																	[&box](const auto &value)
+																	{ return value.strWorldId == box.strWorldId; });
+									if (world != document.Worlds.end() && !world->strCompanionEffectResourceId.empty())
+									{
+										KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE effect;
+										effect.strOccurrenceId = "preview.resource.world.effect";
+										effect.strResourceId = world->strCompanionEffectResourceId;
+										effect.strWorldOccurrenceId = box.strOccurrenceId;
+										effect.iDurationMs = box.iDurationMs;
+										resourcePattern.PresentationOccurrences.push_back(std::move(effect));
+									}
+								}
+							}
+							else
+							{
+								if (resourcePreview.Resource.strResourceId.empty())
+									resourcePreview.Resource.strResourceId = "preview.resource";
+								resourcePreview.Occurrence.strResourceId = resourcePreview.Resource.strResourceId;
+								if (resourcePreview.Occurrence.strOccurrenceId.empty())
+									resourcePreview.Occurrence.strOccurrenceId = "preview.resource.occurrence";
+								resourcePreview.Occurrence.iStartMs = 0u;
+								const auto existing = std::find_if(
+									document.PresentationResources.begin(), document.PresentationResources.end(),
+									[&resourcePreview](const auto &resource)
+									{ return resource.strResourceId == resourcePreview.Resource.strResourceId; });
+								if (existing == document.PresentationResources.end())
+									document.PresentationResources.push_back(resourcePreview.Resource);
+								else
+									*existing = resourcePreview.Resource;
+								resourcePattern.PresentationOccurrences.push_back(resourcePreview.Occurrence);
+								if (resourcePreview.Occurrence.strAnchorKind == "WORLD")
+								{
+									KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE worldBox;
+									worldBox.strWorldId = resourcePreview.Occurrence.strWorldId;
+									worldBox.strOccurrenceId = "preview.resource.anchor";
+									worldBox.iDurationMs = resourcePreview.Occurrence.iDurationMs;
+									resourcePattern.WorldOccurrences.push_back(worldBox);
+								}
+							}
+							const auto *worldSource = CompositionPreviewWorldSource();
+							bool worldRequiresActor = false;
+							bool contextReady = true;
+							if (resourcePreview.Resource.eKind == KOUKU_SAYDON_PRESENTATION_KIND::WORLD)
+							{
+								const auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+								if (!arena)
+								{
+									previewRouteStatus = "World Object Preview requires the KoukuSaydon Arena.";
+									contextReady = false;
+								}
+								else
+									contextReady = Resolve_KoukuWorldPreviewActor(
+										document, worldSource ? *worldSource : arena->Get_WorldSequenceDocument(),
+										resourcePreview.strSourcePatternId.empty() ? workbench->Get_SelectedPatternId()
+																				   : resourcePreview.strSourcePatternId,
+										resourcePattern, worldRequiresActor, previewRouteStatus);
+							}
+							bool resourceStarted = false;
+							if (contextReady && worldRequiresActor)
+							{
+								// 손 소품은 Pattern Play와 같은 actor·pose 소유자를 사용한다.
+								// WORLD 표시·배치·조명 복원 책임은 계속 Level에 남는다.
+								document.Patterns.push_back(resourcePattern);
+								KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
+								bundle.strBundleId = resourcePattern.strPatternId;
+								bundle.strGateId = resourcePattern.strGateId;
+								bundle.Members.push_back(
+									{resourcePattern.strPatternId + ".member", resourcePattern.strPatternId, 0u});
+								document.Bundles.push_back(std::move(bundle));
+								resourceStarted = m_pKoukuPresentationPlayer->Begin_BundlePreview(
+									document, resourcePattern.strPatternId, 0u, !resourcePreview.WorldBoxes.empty(),
+									previewRouteStatus, worldSource, true, true);
+							}
+							else if (contextReady)
+								resourceStarted = m_pKoukuPresentationPlayer->Begin_Preview(
+									document, resourcePattern, true, 0u, !resourcePreview.WorldBoxes.empty(),
+									previewRouteStatus);
+							if (resourceStarted)
+							{
+								if (m_pAnimationTool)
+								{
+									std::string stoppedAnimationStatus;
+									(void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus);
+								}
+								ClaimCompositionPreviewOwner(route.owner);
+								m_eDebugInputOwner = route.owner;
+								if ((worldRequiresActor || !m_pKoukuPresentationPlayer->Preview_IsBundle()) &&
+									!Begin_KoukuWorldPreview(document, resourcePattern, previewRouteStatus, worldSource,
+															 !worldRequiresActor &&
+																 resourcePreview.Resource.eKind ==
+																	 KOUKU_SAYDON_PRESENTATION_KIND::WORLD &&
+																 resourcePreview.WorldBoxes.empty()))
+									StopCompositionPreview(route.owner);
+							}
+						}
+						else
+							previewRouteStatus = "Presentation preview requires the KoukuSaydon Arena.";
+					}
+				}
+
+				// 같은 프레임의 preview 시작 뒤 transport를 적용하고 결과 identity·시계를 함께 Workbench로 돌려준다.
+				KOUKU_PREVIEW_TRANSPORT transport = KOUKU_PREVIEW_TRANSPORT::NONE;
+				std::uint32_t seekMs = 0u;
+				if (workbench->Consume_PreviewTransportRequest(transport, seekMs) &&
+					m_eCompositionPreviewOwner == route.owner)
+				{
+					const bool ownClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
+					bool previewResumed = false;
+					if (ownClock)
+					{
+						if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE)
+						{
+							// 이 프레임 Update에서 시계가 진행됐으므로 화면에 표시했던 시각으로 되돌린 뒤 일시 정지한다.
+							m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+							m_pKoukuPresentationPlayer->Pause_Preview(true);
+						}
+						if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
+						{
+							m_pKoukuPresentationPlayer->Pause_Preview(false);
+							previewResumed = m_pKoukuPresentationPlayer->Preview_Playing();
+						}
+						if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK)
+							m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+					}
+					else if (m_pAnimationTool)
+					{
+						if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE &&
+							m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
+						{
+							(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
+							if (m_pKoukuPresentationPlayer)
+								m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+						}
+						if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
+							previewResumed =
+								m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
+						if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK &&
+							m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
+						{
+							if (m_pKoukuPresentationPlayer)
+								m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
+						}
+					}
+					if (previewResumed)
+						notifySequencePlaybackStarted();
+					if (transport == KOUKU_PREVIEW_TRANSPORT::STOP)
+					{
+						StopCompositionPreview(route.owner);
+					}
+				}
+
+				KOUKU_DRAFT_PLAY_REQUEST draftPlay;
+				if (workbench->Consume_DraftServerPlayRequest(draftPlay) && route.owner == DEBUG_TOOL::SEQUENCER)
+				{
+					if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+						arena->Debug_StopCompositionWorldPreview();
+					if (m_pKoukuPresentationPlayer)
+						m_pKoukuPresentationPlayer->Stop_Preview();
+					ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+					if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
+					{
+						(void)m_pKoukuSaydonBossTool->Play_Draft(std::move(draftPlay), m_strToolStatus);
+						workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
+																	m_strToolStatus);
+					}
+					else
+						workbench->Set_ServerPlayPreparationPending(
+							false, "KoukuSaydon Boss Tool could not prepare draft playback.");
+				}
+				std::string serverPatternId;
+				std::uint32_t sourceRevision = 0u;
+				// 제품 presentation 교체는 Server가 승인한 실행 epoch를 따라야 하므로 기존 Server Play 준비 경로로 보낸다.
+				if (workbench->Consume_ServerPlayRequest(serverPatternId, sourceRevision) &&
+					route.owner == DEBUG_TOOL::SEQUENCER)
+				{
+					if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+						arena->Debug_StopCompositionWorldPreview();
+					if (m_pKoukuPresentationPlayer)
+						m_pKoukuPresentationPlayer->Stop_Preview();
+					ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+					if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && nullptr != m_pKoukuSaydonBossTool)
+					{
+						SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
+						(void)m_pKoukuSaydonBossTool->Play_PatternById(serverPatternId, sourceRevision,
+																	   m_strToolStatus);
+						workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(),
+																	m_strToolStatus);
+						m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
+						m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
+					}
+					else
+					{
+						m_strToolStatus = "KoukuSaydon Boss Tool could not open for Server Play.";
+						workbench->Set_ServerPlayPreparationPending(false, m_strToolStatus);
+					}
+				}
+			}
+			// 예약된 시작 요청을 모두 처리한 뒤 공용 transport를 적용한다.
+			// Resources의 Stop이 같은 UI 프레임에 들어온 Pattern·행 시작도 취소할 수 있게 한다.
+			if (nullptr != shell)
+			{
+				CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport =
+					CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE;
+				const bool completeEntryPending =
+					route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK && !m_strKoukuCompletePlayFlowGate.empty();
+				bool hasTransport = shell->Consume_AnimationPreviewTransportRequest(transport);
+				if (hasTransport && shell->Uses_ValtanSession() && m_pAnimationTool)
+				{
+					const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+					if (valtan.bPlaying)
+					{
+						if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
+							m_pAnimationTool->Stop_ValtanCompositionPattern(m_strToolStatus);
+						else if (valtan.bSourceSequencePlaying)
+						{
+							const bool pause = transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE;
+							const uint32_t position =
+								!pause && valtan.bPaused && valtan.iPositionMs >= valtan.iDurationMs
+									? 0u
+									: valtan.iPositionMs;
+							(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(position, pause,
+																						 m_strToolStatus);
+						}
+						else
+							(void)m_pAnimationTool->Seek_ValtanCompositionPattern(
+								valtan.strPatternId, valtan.iPositionMs,
+								transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE, m_strToolStatus);
+						shell->Set_AnimationPreviewStatus(m_strToolStatus);
+						hasTransport = false;
+					}
+				}
+				if (hasTransport &&
+					(m_eCompositionPreviewOwner == route.owner ||
+					 (completeEntryPending && transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)))
+				{
+					if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
+					{
+						if (completeEntryPending)
+							CancelKoukuGateCompletePlay("Complete Play stopped before Pattern Flow.");
+						else
+							StopCompositionPreview(route.owner);
+					}
+					else if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME && workbench)
+					{
+						// 재개 전에 Workbench가 변경 불가능한 snapshot을 검증한다.
+						// 생성된 transport 또는 갱신 요청은 다음 프레임에 소비한다.
+						(void)workbench->Request_PreviewResume();
+					}
+					else if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock())
+					{
+						if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE)
+							m_pKoukuPresentationPlayer->Pause_Preview(true);
+						if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME)
+							m_pKoukuPresentationPlayer->Pause_Preview(false);
+					}
+					else if (nullptr != m_pAnimationTool)
+					{
+						switch (transport)
+						{
+						case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE:
+							(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
+							break;
+						case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME:
+							(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
+							break;
+						case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP:
+						case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE:
+							break;
+						}
+					}
+					else
+						m_strToolStatus = "No animation preview backend is active.";
+					shell->Set_AnimationPreviewStatus(m_strToolStatus);
+				}
+			}
+
+			if (!previewRouteStatus.empty())
+			{
+				auto state = workbench->Get_PreviewState();
+				state.strStatus = previewRouteStatus;
+				workbench->Set_PreviewState(state);
+				if (shell)
+					shell->Set_AnimationPreviewStatus(previewRouteStatus);
+				if (m_eCompositionPreviewOwner == route.owner)
+				{
+					activePreviewRouteStatus = previewRouteStatus;
+					previewStatusOwner = route.owner;
+				}
+			}
+		}
+		if (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsServerClock())
+		{
+			KOUKU_PREVIEW_STATE finalPreview;
+			std::string worldAnchorWaitingStatus;
+			std::string completedPreviewId;
+			bool previewFailed = false;
+			const auto rejectPreview = [&](const std::string &patternId, const std::string &error)
+			{
+				previewFailed = true;
+				completedPreviewId.clear();
+				finalPreview.strPatternId = patternId;
+				finalPreview.bPlaying = finalPreview.bPaused = false;
+				finalPreview.strStatus = error;
+				const auto failedOwner = m_eCompositionPreviewOwner;
+				if (failedOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK && !m_strKoukuCompletePlayFlowGate.empty())
+					CancelKoukuGateCompletePlay(error);
+				else
+					StopCompositionPreview(failedOwner);
+				for (const auto &route : compositionRoutes)
+					if (route.owner == failedOwner)
+					{
+						if (route.workbench)
+						{
+							route.workbench->Notify_SequencePreviewAdmission(false, error);
+							route.workbench->Set_PreviewState(finalPreview);
+						}
+						if (route.shell)
+							route.shell->Set_AnimationPreviewStatus(error);
+					}
+			};
+			if (m_pKoukuPresentationPlayer)
+			{
+				std::string failedPatternId, failureStatus;
+				if (m_pKoukuPresentationPlayer->Consume_FailedPreview(failedPatternId, failureStatus))
+					rejectPreview(failedPatternId, failureStatus);
+				else
+					(void)m_pKoukuPresentationPlayer->Consume_CompletedPreview(completedPreviewId);
+			}
+			const bool ownedClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
+			if (previewFailed)
+			{ /* 실패 처리에서 이미 finalPreview에 종료 오류를 기록했다. */
+			}
+			else if (!completedPreviewId.empty())
+			{
+				finalPreview.strPatternId = completedPreviewId;
+				finalPreview.iClockMs = finalPreview.iDurationMs = m_pKoukuPresentationPlayer->Preview_DurationMs();
+				finalPreview.strStatus = "Sequence preview completed.";
+			}
+			else if (ownedClock)
+			{
+				finalPreview.strPatternId = m_pKoukuPresentationPlayer->Preview_PatternId();
+				finalPreview.bPlaying = m_pKoukuPresentationPlayer->Preview_Playing();
+				finalPreview.bPaused = m_pKoukuPresentationPlayer->Preview_Paused();
+				finalPreview.iClockMs = m_pKoukuPresentationPlayer->Preview_ClockMs();
+				finalPreview.iDurationMs = m_pKoukuPresentationPlayer->Preview_DurationMs();
+				finalPreview.strStatus = m_pKoukuPresentationPlayer->Status();
 			}
 			else if (m_pAnimationTool)
 			{
-				if (transport == KOUKU_PREVIEW_TRANSPORT::PAUSE &&
-					m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
+				const auto sampled = m_pAnimationTool->Get_KoukuCompositionPreviewState();
+				finalPreview.strPatternId = sampled.strPatternId;
+				finalPreview.bPlaying = sampled.bPlaying;
+				finalPreview.bPaused = sampled.bPaused;
+				finalPreview.iClockMs = sampled.iClockMs;
+				finalPreview.iDurationMs = sampled.iDurationMs;
+				finalPreview.strStatus = sampled.strStatus;
+			}
+			if (!previewFailed && finalPreview.bPlaying && m_pKoukuPresentationPlayer &&
+				!m_pKoukuPresentationPlayer->Preview_IsBundle())
+			{
+				std::uint32_t effectiveMs = finalPreview.iClockMs;
+				if (!m_pKoukuPresentationPlayer->Resolve_PreviewCaptureClock(finalPreview.iClockMs, effectiveMs))
 				{
-					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
-					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
-				}
-				if (transport == KOUKU_PREVIEW_TRANSPORT::RESUME)
-                    previewResumed = m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
-				if (transport == KOUKU_PREVIEW_TRANSPORT::SEEK &&
-					m_pAnimationTool->Seek_KoukuCompositionPreview(seekMs, m_strToolStatus))
-				{
-					if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Seek_Preview(seekMs);
-				}
-			}
-            if (previewResumed) notifySequencePlaybackStarted();
-			if (transport == KOUKU_PREVIEW_TRANSPORT::STOP)
-			{
-				StopCompositionPreview(route.owner);
-			}
-		}
-
-        KOUKU_DRAFT_PLAY_REQUEST draftPlay;
-        if (workbench->Consume_DraftServerPlayRequest(draftPlay) && route.owner == DEBUG_TOOL::SEQUENCER)
-        {
-            if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-            if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-            ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
-            if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
-            {
-                (void)m_pKoukuSaydonBossTool->Play_Draft(std::move(draftPlay), m_strToolStatus);
-                workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
-            }
-            else workbench->Set_ServerPlayPreparationPending(false, "KoukuSaydon Boss Tool could not prepare draft playback.");
-        }
-		std::string serverPatternId;
-		std::uint32_t sourceRevision = 0u;
-		// Only the Server-admitted run epoch may replace Product presentation.
-		if (workbench->Consume_ServerPlayRequest(
-				serverPatternId, sourceRevision) && route.owner == DEBUG_TOOL::SEQUENCER)
-		{
-			if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-			if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-			ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) &&
-				nullptr != m_pKoukuSaydonBossTool)
-			{
-				SetDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS, true);
-				(void)m_pKoukuSaydonBossTool->Play_PatternById(
-					serverPatternId, sourceRevision, m_strToolStatus);
-				workbench->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool->Is_PlayPreparationPending(), m_strToolStatus);
-				m_eDebugInputOwner = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
-				m_eDebugWindowFocusPending = DEBUG_TOOL::KOUKU_SAYDON_BOSS;
-			}
-			else
-			{
-				m_strToolStatus =
-					"KoukuSaydon Boss Tool could not open for Server Play.";
-				workbench->Set_ServerPlayPreparationPending(false, m_strToolStatus);
-			}
-		}
-	}
-	// Apply shared transport after every queued start. A Stop in Resources
-	// must also cancel a Pattern/row start submitted during the same UI frame.
-	if (nullptr != shell)
-	{
-		CSequencerTool::ANIMATION_PREVIEW_TRANSPORT transport =
-			CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE;
-		const bool completeEntryPending = route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK &&
-			!m_strKoukuCompletePlayFlowGate.empty();
-		bool hasTransport = shell->Consume_AnimationPreviewTransportRequest(transport);
-		if (hasTransport && shell->Uses_ValtanSession() && m_pAnimationTool)
-		{
-			const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
-			if (valtan.bPlaying)
-			{
-				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
-					m_pAnimationTool->Stop_ValtanCompositionPattern(m_strToolStatus);
-				else if (valtan.bSourceSequencePlaying)
-				{
-					const bool pause = transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE;
-					const uint32_t position = !pause && valtan.bPaused && valtan.iPositionMs >= valtan.iDurationMs ?
-						0u : valtan.iPositionMs;
-					(void)m_pAnimationTool->Seek_ValtanCompositionSourceSequence(position, pause, m_strToolStatus);
+					const std::string captureError = m_pKoukuPresentationPlayer->Status();
+					rejectPreview(finalPreview.strPatternId, captureError);
 				}
 				else
-					(void)m_pAnimationTool->Seek_ValtanCompositionPattern(valtan.strPatternId,
-						valtan.iPositionMs, transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE,
-						m_strToolStatus);
-				shell->Set_AnimationPreviewStatus(m_strToolStatus);
-				hasTransport = false;
+				{
+					// 사용자가 요청한 cursor를 표시하기 전에 WORLD·애니메이션·카메라가 같은 capture 경계를 샘플해야 한다.
+					// 필요하면 animation 시계도 해당 effectiveMs로 맞춘다.
+					if (effectiveMs != finalPreview.iClockMs && !ownedClock && m_pAnimationTool)
+					{
+						std::string captureStatus;
+						if (!m_pAnimationTool->Seek_KoukuCompositionPreview(effectiveMs, captureStatus))
+							rejectPreview(finalPreview.strPatternId, captureStatus);
+					}
+					finalPreview.iClockMs = effectiveMs;
+				}
+			}
+			if (auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+				!previewFailed && arena &&
+				(!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsBundle()))
+			{
+				std::string worldPreviewStatus;
+				if (!arena->Debug_SampleCompositionWorldPreview(finalPreview.strPatternId, finalPreview.bPlaying,
+																finalPreview.iClockMs, worldPreviewStatus))
+				{
+					rejectPreview(finalPreview.strPatternId, worldPreviewStatus);
+				}
+				else
+					worldAnchorWaitingStatus = worldPreviewStatus;
+			}
+			if (!previewFailed && m_pKoukuPresentationPlayer && !m_pKoukuPresentationPlayer->Preview_IsBundle())
+			{
+				float4x4_t pivot{};
+				const bool colliderResource = m_pKoukuPresentationPlayer->Preview_IsColliderResource();
+				auto model =
+					colliderResource ? std::shared_ptr<Engine::CModel>{} : CAnimationTargetService::Resolve_Model();
+				bool pivotReady = !colliderResource && CAnimationTargetService::Resolve_RootTransform(&pivot);
+				if (!pivotReady)
+				{
+					const auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+					const auto character = arena ? arena->Get_LocalCharacter() : nullptr;
+					if (character && character->Get_Transform())
+					{
+						pivot = *character->Get_Transform()->Get_WorldMatrixPtr();
+						model = character->Get_BodyModel();
+						pivotReady = true;
+					}
+				}
+				if (pivotReady && finalPreview.strPatternId == m_pKoukuPresentationPlayer->Preview_PatternId())
+				{
+					m_pKoukuPresentationPlayer->Sample_Preview(finalPreview.iClockMs, finalPreview.bPlaying,
+															   finalPreview.bPaused, pivot, model);
+					if (!m_pKoukuPresentationPlayer->Status().empty())
+						finalPreview.strStatus = m_pKoukuPresentationPlayer->Status();
+				}
+				else if (!pivotReady && finalPreview.bPlaying)
+					finalPreview.strStatus = "Preview requires an active arena character or animation target.";
+			}
+			if (!previewFailed && m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+			{
+				std::string arrivalStatus;
+				if (!SampleKoukuSequenceArrivals(
+						finalPreview.iClockMs,
+						(finalPreview.bPlaying && !finalPreview.bPaused) || !completedPreviewId.empty(), arrivalStatus))
+					rejectPreview(finalPreview.strPatternId, arrivalStatus);
+				else
+				{
+					if (!completedPreviewId.empty())
+						m_strKoukuSequenceArrivalCompletedPreview = completedPreviewId;
+					if (!m_strKoukuSequenceArrivalCompletedPreview.empty())
+					{
+						if (KoukuSequenceArrivalsPending())
+						{
+							completedPreviewId.clear();
+							finalPreview.strStatus = "Sequence finished; waiting for Server player arrival approval.";
+						}
+						else
+							completedPreviewId = std::exchange(m_strKoukuSequenceArrivalCompletedPreview, {});
+					}
+				}
+			}
+			if (previewStatusOwner == m_eCompositionPreviewOwner && !activePreviewRouteStatus.empty())
+				finalPreview.strStatus = activePreviewRouteStatus;
+			if (!previewFailed && !worldAnchorWaitingStatus.empty())
+				finalPreview.strStatus = worldAnchorWaitingStatus;
+			for (const auto &route : compositionRoutes)
+			{
+				if (route.owner != m_eCompositionPreviewOwner)
+					continue;
+				if (route.workbench)
+				{
+					route.workbench->Set_PreviewState(finalPreview);
+					std::string completedGate;
+					if (!completedPreviewId.empty() &&
+						route.workbench->Advance_CompleteSequencePlay(completedPreviewId, &completedGate))
+					{
+						finalPreview.strStatus = route.workbench->Get_Status();
+						if (!route.workbench->Is_CompleteSequencePlaying())
+						{
+							m_bKoukuCompletePreservesArrivalPosition =
+								std::any_of(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
+											[](const auto &cue) { return cue.moved; });
+							StopCompositionPreview(route.owner);
+							if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+								arena->Debug_ReturnToPlayerCamera();
+						}
+						if (!completedGate.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+							FinishKoukuGateCompletePlay(completedGate, finalPreview.strStatus);
+						route.workbench->Set_PreviewState(finalPreview);
+					}
+					else if (!completedPreviewId.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
+					{
+						StopCompositionPreview(route.owner);
+						if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+							arena->Debug_ReturnToPlayerCamera();
+						m_eDebugInputOwner = DEBUG_TOOL::NONE;
+						finalPreview.strStatus = "Sequence finished. Player camera restored; combat was not started.";
+						route.workbench->Set_PreviewState(finalPreview);
+					}
+				}
+				if (!route.shell)
+					continue;
+				CSequencerTool::ANIMATION_PREVIEW_STATE state;
+				state.strPatternId = finalPreview.strPatternId;
+				state.strStatus = finalPreview.strStatus;
+				state.bPlaying = finalPreview.bPlaying;
+				state.bPaused = finalPreview.bPaused;
+				state.iClockMs = finalPreview.iClockMs;
+				state.iDurationMs = finalPreview.iDurationMs;
+				route.shell->Set_AnimationPreviewState(std::move(state));
+			}
+
+			if (m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() && m_pAnimationTool)
+			{
+				const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
+				// Workbench가 공용 리소스 경로를 점유하지 않고 재생했어도 정지 상태를 도구에 전달한다.
+				// 따라서 재생 중인 상태만 골라서 게시하지 않는다.
+				if (valtan.bPlaying || !finalPreview.bPlaying)
+				{
+					CSequencerTool::ANIMATION_PREVIEW_STATE state;
+					state.strPatternId = valtan.strPatternId;
+					state.strStatus = valtan.strStatus;
+					state.bPlaying = valtan.bPlaying;
+					state.bPaused = valtan.bPaused;
+					state.iClockMs = valtan.iPositionMs;
+					state.iDurationMs = valtan.iDurationMs;
+					m_pSequencerTool->Set_AnimationPreviewState(std::move(state));
+				}
 			}
 		}
-		if (hasTransport &&
-			(m_eCompositionPreviewOwner == route.owner ||
-				(completeEntryPending && transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)))
+		// 현재 프레임의 Seek/Stop 이후 모델·환경·카메라를 다시 샘플해 Render 전 시각을 맞춘다.
+		// 소유권을 넘기면 카메라 override도 종료한다.
+		const auto valtanPreview = m_pAnimationTool ? m_pAnimationTool->Get_ValtanCompositionPreviewState()
+													: CAnimation_Tool::COMPOSITION_PREVIEW_STATE{};
+		const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
+										 m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
+										 m_pAnimationTool && valtanPreview.bPlaying;
+		bool valtanCinematicSampleReady = true;
+		std::string cinematicStatus;
+		if (auto *arena = CLevel_ValtanArena::Get_Active())
 		{
-			if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP)
+			if (activeValtanSession)
 			{
-				if (completeEntryPending)
-					CancelKoukuGateCompletePlay("Complete Play stopped before Pattern Flow.");
-				else StopCompositionPreview(route.owner);
-			}
-            else if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME && workbench)
-            {
-                // Workbench validates the immutable snapshot before resuming.
-                // Its transport or refreshed request is consumed next frame.
-                (void)workbench->Request_PreviewResume();
-            }
-			else if (m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock())
-			{
-				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE) m_pKoukuPresentationPlayer->Pause_Preview(true);
-				if (transport == CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME) m_pKoukuPresentationPlayer->Pause_Preview(false);
-			}
-			else if (nullptr != m_pAnimationTool)
-			{
-				switch (transport)
+				std::string wallStatus;
+				const bool wallReady = arena->Debug_SampleActionWorkbenchDestruction(
+					valtanPreview.strPatternId, valtanPreview.iPositionMs, wallStatus);
+				valtanCinematicSampleReady = arena->Debug_SampleActionWorkbenchCinematic(
+					valtanPreview.strPatternId, valtanPreview.iPositionMs, valtanPreview.bPaused,
+					CAnimationTargetService::Resolve_Boss(), cinematicStatus);
+				if (!wallReady)
 				{
-				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::PAUSE:
-					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(true, m_strToolStatus);
-					break;
-				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::RESUME:
-					(void)m_pAnimationTool->Set_KoukuCompositionPreviewPaused(false, m_strToolStatus);
-					break;
-				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::STOP:
-				case CSequencerTool::ANIMATION_PREVIEW_TRANSPORT::NONE:
-					break;
+					cinematicStatus += " | " + wallStatus;
+					m_strToolStatus = wallStatus;
 				}
+				else if (valtanPreview.strPatternId == "VALTAN_ARENA_BREAK_109")
+					cinematicStatus += " | " + wallStatus;
+				if (!valtanCinematicSampleReady && !cinematicStatus.empty())
+					m_strToolStatus = cinematicStatus;
 			}
 			else
-				m_strToolStatus = "No animation preview backend is active.";
-			shell->Set_AnimationPreviewStatus(m_strToolStatus);
-		}
-	}
-
-		if (!previewRouteStatus.empty())
-		{
-			auto state = workbench->Get_PreviewState();
-			state.strStatus = previewRouteStatus;
-			workbench->Set_PreviewState(state);
-			if (shell) shell->Set_AnimationPreviewStatus(previewRouteStatus);
-			if (m_eCompositionPreviewOwner == route.owner)
-			{ activePreviewRouteStatus = previewRouteStatus; previewStatusOwner = route.owner; }
-		}
-	}
-	if (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsServerClock())
-	{
-	KOUKU_PREVIEW_STATE finalPreview;
-	std::string worldAnchorWaitingStatus;
-	std::string completedPreviewId;
-    bool previewFailed = false;
-    const auto rejectPreview = [&](const std::string& patternId, const std::string& error)
-    {
-        previewFailed = true;
-        completedPreviewId.clear();
-        finalPreview.strPatternId = patternId;
-        finalPreview.bPlaying = finalPreview.bPaused = false;
-        finalPreview.strStatus = error;
-        const auto failedOwner = m_eCompositionPreviewOwner;
-        if (failedOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK && !m_strKoukuCompletePlayFlowGate.empty())
-            CancelKoukuGateCompletePlay(error);
-        else StopCompositionPreview(failedOwner);
-        for (const auto& route : compositionRoutes)
-            if (route.owner == failedOwner)
-            {
-                if (route.workbench)
-                {
-                    route.workbench->Notify_SequencePreviewAdmission(false, error);
-                    route.workbench->Set_PreviewState(finalPreview);
-                }
-                if (route.shell) route.shell->Set_AnimationPreviewStatus(error);
-            }
-    };
-    if (m_pKoukuPresentationPlayer)
-    {
-        std::string failedPatternId, failureStatus;
-        if (m_pKoukuPresentationPlayer->Consume_FailedPreview(failedPatternId, failureStatus))
-            rejectPreview(failedPatternId, failureStatus);
-        else (void)m_pKoukuPresentationPlayer->Consume_CompletedPreview(completedPreviewId);
-    }
-	const bool ownedClock = m_pKoukuPresentationPlayer && m_pKoukuPresentationPlayer->Preview_OwnsClock();
-    if (previewFailed) { /* The terminal error already owns finalPreview. */ }
-	else if (!completedPreviewId.empty())
-	{
-		finalPreview.strPatternId = completedPreviewId;
-		finalPreview.iClockMs = finalPreview.iDurationMs = m_pKoukuPresentationPlayer->Preview_DurationMs();
-		finalPreview.strStatus = "Sequence preview completed.";
-	}
-	else if (ownedClock)
-	{
-		finalPreview.strPatternId = m_pKoukuPresentationPlayer->Preview_PatternId();
-		finalPreview.bPlaying = m_pKoukuPresentationPlayer->Preview_Playing();
-		finalPreview.bPaused = m_pKoukuPresentationPlayer->Preview_Paused();
-		finalPreview.iClockMs = m_pKoukuPresentationPlayer->Preview_ClockMs();
-		finalPreview.iDurationMs = m_pKoukuPresentationPlayer->Preview_DurationMs();
-		finalPreview.strStatus = m_pKoukuPresentationPlayer->Status();
-	}
-	else if (m_pAnimationTool)
-	{
-		const auto sampled = m_pAnimationTool->Get_KoukuCompositionPreviewState();
-		finalPreview.strPatternId = sampled.strPatternId; finalPreview.bPlaying = sampled.bPlaying;
-		finalPreview.bPaused = sampled.bPaused; finalPreview.iClockMs = sampled.iClockMs;
-		finalPreview.iDurationMs = sampled.iDurationMs; finalPreview.strStatus = sampled.strStatus;
-	}
-    if (!previewFailed && finalPreview.bPlaying && m_pKoukuPresentationPlayer &&
-        !m_pKoukuPresentationPlayer->Preview_IsBundle())
-    {
-        std::uint32_t effectiveMs = finalPreview.iClockMs;
-        if (!m_pKoukuPresentationPlayer->Resolve_PreviewCaptureClock(finalPreview.iClockMs, effectiveMs))
-        {
-            const std::string captureError = m_pKoukuPresentationPlayer->Status();
-            rejectPreview(finalPreview.strPatternId, captureError);
-        }
-        else
-        {
-            // WORLD, animation and Camera must render the capture boundary
-            // together before the user's requested cursor can be displayed.
-            if (effectiveMs != finalPreview.iClockMs && !ownedClock && m_pAnimationTool)
-            {
-                std::string captureStatus;
-                if (!m_pAnimationTool->Seek_KoukuCompositionPreview(effectiveMs, captureStatus))
-                    rejectPreview(finalPreview.strPatternId, captureStatus);
-            }
-            finalPreview.iClockMs = effectiveMs;
-        }
-    }
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); !previewFailed && arena && (!m_pKoukuPresentationPlayer || !m_pKoukuPresentationPlayer->Preview_IsBundle()))
-	{
-		std::string worldPreviewStatus;
-		if (!arena->Debug_SampleCompositionWorldPreview(finalPreview.strPatternId,
-			finalPreview.bPlaying, finalPreview.iClockMs, worldPreviewStatus))
-		{
-            rejectPreview(finalPreview.strPatternId, worldPreviewStatus);
-		}
-		else worldAnchorWaitingStatus = worldPreviewStatus;
-	}
-	if (!previewFailed && m_pKoukuPresentationPlayer && !m_pKoukuPresentationPlayer->Preview_IsBundle())
-	{
-		float4x4_t pivot{};
-		const bool colliderResource = m_pKoukuPresentationPlayer->Preview_IsColliderResource();
-		auto model = colliderResource ? std::shared_ptr<Engine::CModel>{} : CAnimationTargetService::Resolve_Model();
-		bool pivotReady = !colliderResource && CAnimationTargetService::Resolve_RootTransform(&pivot);
-		if (!pivotReady)
-		{
-			const auto* arena = CLevel_KakulSaydonArena::Get_Active();
-			const auto character = arena ? arena->Get_LocalCharacter() : nullptr;
-			if (character && character->Get_Transform())
 			{
-				pivot = *character->Get_Transform()->Get_WorldMatrixPtr();
-				model = character->Get_BodyModel();
-				pivotReady = true;
+				std::string wallStatus;
+				if (!arena->Debug_StopActionWorkbenchDestruction(wallStatus))
+					m_strToolStatus = wallStatus;
+				arena->Debug_StopActionWorkbenchCinematic();
 			}
 		}
-		if (pivotReady && finalPreview.strPatternId == m_pKoukuPresentationPlayer->Preview_PatternId())
+		if (m_pValtanActionWorkbench)
+			m_pValtanActionWorkbench->Set_CinematicPreviewStatus(cinematicStatus);
+		std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
+		CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
+		if (m_pKoukuPresentationPlayer)
+			m_pKoukuPresentationPlayer->Update_BossStageEnvironments(currentValtanSamples);
+		// 발탄 Workbench의 카메라 preview는 독립 Camera Tool 창을 열지 않아도 동작해야 한다.
+		// 첫 활성 preview에서 문서·sampler 소유자를 지연 생성한다.
+		if (activeValtanSession && nullptr == m_pCameraTool)
+			m_pCameraTool = make_unique<CCameraTool>();
+		if (m_pCameraTool)
 		{
-			m_pKoukuPresentationPlayer->Sample_Preview(finalPreview.iClockMs,
-				finalPreview.bPlaying, finalPreview.bPaused, pivot, model);
-			if (!m_pKoukuPresentationPlayer->Status().empty())
-				finalPreview.strStatus = m_pKoukuPresentationPlayer->Status();
-		}
-		else if (!pivotReady && finalPreview.bPlaying)
-			finalPreview.strStatus = "Preview requires an active arena character or animation target.";
-	}
-	if (!previewFailed && m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-	{
-		std::string arrivalStatus;
-		if (!SampleKoukuSequenceArrivals(finalPreview.iClockMs,
-			(finalPreview.bPlaying && !finalPreview.bPaused) || !completedPreviewId.empty(), arrivalStatus))
-			rejectPreview(finalPreview.strPatternId, arrivalStatus);
-		else
-		{
-			if (!completedPreviewId.empty())
-				m_strKoukuSequenceArrivalCompletedPreview = completedPreviewId;
-			if (!m_strKoukuSequenceArrivalCompletedPreview.empty())
+			const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
+											[](const auto &sample) { return sample.bPreview; });
+			if (activeValtanSession && valtanCinematicSampleReady && local != currentValtanSamples.end())
 			{
-				if (KoukuSequenceArrivalsPending())
-				{
-					completedPreviewId.clear();
-					finalPreview.strStatus = "Sequence finished; waiting for Server player arrival approval.";
-				}
-				else completedPreviewId = std::exchange(m_strKoukuSequenceArrivalCompletedPreview, {});
+				std::string cameraStatus;
+				if (!m_pCameraTool->Sample_CompositionPreview(*local, cameraStatus) && !cameraStatus.empty())
+					m_strToolStatus = std::move(cameraStatus);
 			}
+			else
+				m_pCameraTool->Stop_CompositionPreview();
 		}
-	}
-	if (previewStatusOwner == m_eCompositionPreviewOwner && !activePreviewRouteStatus.empty())
-		finalPreview.strStatus = activePreviewRouteStatus;
-	if (!previewFailed && !worldAnchorWaitingStatus.empty())
-		finalPreview.strStatus = worldAnchorWaitingStatus;
-	for (const auto& route : compositionRoutes)
-	{
-		if (route.owner != m_eCompositionPreviewOwner) continue;
-		if (route.workbench)
-		{
-			route.workbench->Set_PreviewState(finalPreview);
-			std::string completedGate;
-			if (!completedPreviewId.empty() && route.workbench->Advance_CompleteSequencePlay(completedPreviewId, &completedGate))
-			{
-				finalPreview.strStatus = route.workbench->Get_Status();
-				if (!route.workbench->Is_CompleteSequencePlaying())
-				{
-					m_bKoukuCompletePreservesArrivalPosition = std::any_of(m_KoukuSequenceArrivalCues.begin(),
-						m_KoukuSequenceArrivalCues.end(), [](const auto& cue) { return cue.moved; });
-					StopCompositionPreview(route.owner);
-					if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ReturnToPlayerCamera();
-				}
-				if (!completedGate.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-					FinishKoukuGateCompletePlay(completedGate, finalPreview.strStatus);
-				route.workbench->Set_PreviewState(finalPreview);
-			}
-			else if (!completedPreviewId.empty() && route.owner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-			{
-				StopCompositionPreview(route.owner);
-				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ReturnToPlayerCamera();
-				m_eDebugInputOwner = DEBUG_TOOL::NONE;
-				finalPreview.strStatus = "Sequence finished. Player camera restored; combat was not started.";
-				route.workbench->Set_PreviewState(finalPreview);
-			}
-		}
-		if (!route.shell) continue;
-		CSequencerTool::ANIMATION_PREVIEW_STATE state;
-		state.strPatternId = finalPreview.strPatternId; state.strStatus = finalPreview.strStatus;
-		state.bPlaying = finalPreview.bPlaying; state.bPaused = finalPreview.bPaused;
-		state.iClockMs = finalPreview.iClockMs; state.iDurationMs = finalPreview.iDurationMs;
-		route.shell->Set_AnimationPreviewState(std::move(state));
-	}
-
-	if (m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() && m_pAnimationTool)
-	{
-		const auto valtan = m_pAnimationTool->Get_ValtanCompositionPreviewState();
-		// Publish the stopped state too; a direct Workbench preview may never
-		// have claimed the generic resource-preview route above.
-		if (valtan.bPlaying || !finalPreview.bPlaying)
-		{
-			CSequencerTool::ANIMATION_PREVIEW_STATE state;
-			state.strPatternId = valtan.strPatternId;
-			state.strStatus = valtan.strStatus;
-			state.bPlaying = valtan.bPlaying; state.bPaused = valtan.bPaused;
-			state.iClockMs = valtan.iPositionMs; state.iDurationMs = valtan.iDurationMs;
-			m_pSequencerTool->Set_AnimationPreviewState(std::move(state));
-		}
-	}
-	}
-	// Re-sample after this frame's typed Seek/Stop so model, environment and
-	// camera agree before Render. Always retire the camera override on handoff.
-	const auto valtanPreview = m_pAnimationTool ?
-		m_pAnimationTool->Get_ValtanCompositionPreviewState() :
-		CAnimation_Tool::COMPOSITION_PREVIEW_STATE{};
-	const bool activeValtanSession = m_pSequencerTool && m_pSequencerTool->Uses_ValtanSession() &&
-		m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) &&
-		m_pAnimationTool && valtanPreview.bPlaying;
-	bool valtanCinematicSampleReady = true;
-	std::string cinematicStatus;
-	if (auto* arena = CLevel_ValtanArena::Get_Active())
-	{
-		if (activeValtanSession)
-		{
-			std::string wallStatus;
-			const bool wallReady = arena->Debug_SampleActionWorkbenchDestruction(
-				valtanPreview.strPatternId, valtanPreview.iPositionMs, wallStatus);
-			valtanCinematicSampleReady = arena->Debug_SampleActionWorkbenchCinematic(
-				valtanPreview.strPatternId, valtanPreview.iPositionMs, valtanPreview.bPaused,
-				CAnimationTargetService::Resolve_Boss(), cinematicStatus);
-			if (!wallReady)
-			{
-				cinematicStatus += " | " + wallStatus;
-				m_strToolStatus = wallStatus;
-			}
-			else if (valtanPreview.strPatternId == "VALTAN_ARENA_BREAK_109")
-				cinematicStatus += " | " + wallStatus;
-			if (!valtanCinematicSampleReady && !cinematicStatus.empty())
-				m_strToolStatus = cinematicStatus;
-		}
-		else
-		{
-			std::string wallStatus;
-			if (!arena->Debug_StopActionWorkbenchDestruction(wallStatus))
-				m_strToolStatus = wallStatus;
-			arena->Debug_StopActionWorkbenchCinematic();
-		}
-	}
-	if (m_pValtanActionWorkbench)
-		m_pValtanActionWorkbench->Set_CinematicPreviewStatus(cinematicStatus);
-	std::vector<BOSS_STAGE_ENVIRONMENT_SAMPLE> currentValtanSamples;
-	CValtan::Collect_StageEnvironmentSamples(currentValtanSamples);
-	if (m_pKoukuPresentationPlayer)
-		m_pKoukuPresentationPlayer->Update_BossStageEnvironments(currentValtanSamples);
-	/* Action Workbench owns a real camera-preview lane even when the standalone
-	   Camera Tool window has never been opened.  Lazily create its document/
-	   sampler owner on the first active Valtan preview; opening another tool is
-	   not a hidden prerequisite for camera playback. */
-	if (activeValtanSession && nullptr == m_pCameraTool)
-		m_pCameraTool = make_unique<CCameraTool>();
-	if (m_pCameraTool)
-	{
-		const auto local = std::find_if(currentValtanSamples.begin(), currentValtanSamples.end(),
-			[](const auto& sample) { return sample.bPreview; });
-		if (activeValtanSession && valtanCinematicSampleReady && local != currentValtanSamples.end())
-		{
-			std::string cameraStatus;
-			if (!m_pCameraTool->Sample_CompositionPreview(*local, cameraStatus) && !cameraStatus.empty())
-				m_strToolStatus = std::move(cameraStatus);
-		}
-		else m_pCameraTool->Stop_CompositionPreview();
-	}
-    if (m_pCharacterActionWorkbench)
-        m_pCharacterActionWorkbench->Update(fTimeDelta, m_bDeveloperToolsVisible &&
-            IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
-            m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER &&
-            m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER);
-	if (m_pWorldObjectTool)
+		if (m_pCharacterActionWorkbench)
+			m_pCharacterActionWorkbench->Update(
+				fTimeDelta, m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && m_pSequencerTool &&
+								m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER &&
+								m_eDebugInputOwner == DEBUG_TOOL::SEQUENCER);
+		if (m_pWorldObjectTool)
 		{
 			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.WorldObjects.Update");
 			m_pWorldObjectTool->Update(fTimeDelta, m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) && DEBUG_TOOL::WORLD_OBJECT == m_eDebugInputOwner);
+													   IsDebugToolVisible(DEBUG_TOOL::WORLD_OBJECT) &&
+													   DEBUG_TOOL::WORLD_OBJECT == m_eDebugInputOwner);
 		}
-	if (m_pWorldObjectTool)
-	{
-		std::string patternId, status;
-		uint32_t sourceRevision = 0u;
-		if (m_pWorldObjectTool->Consume_ServerPlayRequest(patternId, sourceRevision))
+		if (m_pWorldObjectTool)
 		{
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
+			std::string patternId, status;
+			uint32_t sourceRevision = 0u;
+			if (m_pWorldObjectTool->Consume_ServerPlayRequest(patternId, sourceRevision))
 			{
-				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
-				if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-				ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
-				(void)m_pKoukuSaydonBossTool->Play_PatternById(patternId, sourceRevision, status);
+				if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::KOUKU_SAYDON_BOSS)) && m_pKoukuSaydonBossTool)
+				{
+					if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+						arena->Debug_StopCompositionWorldPreview();
+					if (m_pKoukuPresentationPlayer)
+						m_pKoukuPresentationPlayer->Stop_Preview();
+					ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
+					(void)m_pKoukuSaydonBossTool->Play_PatternById(patternId, sourceRevision, status);
+				}
+				else
+					status = "KoukuSaydon Boss Tool could not prepare Server collision playback.";
+				m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
 			}
-			else status = "KoukuSaydon Boss Tool could not prepare Server collision playback.";
-			m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
+			if (m_pWorldObjectTool->Consume_ServerStopRequest())
+			{
+				if (m_pKoukuSaydonBossTool)
+					(void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(status);
+				(void)CKoukuSaydonPatternAuditionService::Get().Stop(status);
+				m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
+			}
+			m_pWorldObjectTool->Set_ServerPlayPreparationPending(m_pKoukuSaydonBossTool &&
+																 m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
 		}
-		if (m_pWorldObjectTool->Consume_ServerStopRequest())
+		RefreshWorldObjectResources();
+		if (nullptr != m_pCameraTool)
 		{
-			if (m_pKoukuSaydonBossTool) (void)m_pKoukuSaydonBossTool->Cancel_PlayPreparation(status);
-			(void)CKoukuSaydonPatternAuditionService::Get().Stop(status);
-			m_pWorldObjectTool->Set_ServerPlayStatus(std::move(status));
+			{
+				Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Camera.Update");
+				m_pCameraTool->Update(fTimeDelta, m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::CAMERA) &&
+													  DEBUG_TOOL::CAMERA == m_eDebugInputOwner);
+			}
 		}
-		m_pWorldObjectTool->Set_ServerPlayPreparationPending(
-			m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending());
-	}
-	RefreshWorldObjectResources();
-	if (nullptr != m_pCameraTool)
-	{
-		{
-			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Camera.Update");
-			m_pCameraTool->Update(
-			fTimeDelta,
-			m_bDeveloperToolsVisible &&
-			IsDebugToolVisible(DEBUG_TOOL::CAMERA) &&
-			DEBUG_TOOL::CAMERA == m_eDebugInputOwner);
-		}
-	}
 	}
 #endif
 
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "MainApp.LevelAndEnvironment.Update");
-    string environmentStatus;
-    const auto* cinematicArena = CLevel_KakulSaydonArena::Get_Active();
-    const bool_t koukuCinematic = cinematicArena &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-        cinematicArena->Is_CinematicPresentationActive();
-    const auto* valtanArena = CLevel_ValtanArena::Get_Active();
-    const bool_t valtanCinematic = valtanArena &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA) &&
-        valtanArena->Is_CinematicCameraActive();
-    const bool_t marioStage = cinematicArena &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-        cinematicArena->Is_LocalMarioStageActive();
-    /* Riding a ship is the only non-cinematic owner of the presentation fog. The ride's lens
-    sits 40 m back and Bern's fog takes the source-exponential branch, which accumulates over
-    camera-to-pixel distance past startDistance, so the same authored fog that stayed invisible
-    behind the 16 m map camera washes the whole frame. Data/Camera/Bern.camera.json "shipFog"
-    tunes it without a rebuild; with no block the fog is simply off while riding. */
-    const ARENA_SHIP_FOG* pShipFog = CLevel_Bern::Get_ActiveShipFog();
-    PRESENTATION_FOG_TUNING shipFogTuning{};
-    const bool_t shipFogThinned = nullptr != pShipFog && !pShipFog->disable;
-    if (shipFogThinned)
-    {
-        shipFogTuning.fDensityScale = pShipFog->densityScale;
-        shipFogTuning.fStartDistanceMeters = pShipFog->startDistanceMeters;
-        shipFogTuning.fMaximumOpacity = pShipFog->maximumOpacity;
-    }
-    const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
-    float controlsBrightness=1.f;float4_t controlsColor{};
-    const auto selectedCharacter=CAnimationTargetService::Resolve_Character();
-    if(!(selectedCharacter&&selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor)) && localCharacter)
-        localCharacter->Get_PresentationDirectionalControl(controlsBrightness,controlsColor);
-    // Vehicle source cues own their presentation; they must not dim the map
-    // directional light. Keep explicit character presentation controls intact.
-    controlsBrightness=std::clamp(controlsBrightness,0.f,16.f);
-    /* The Lobby's authored scene light is black: it draws no world. While the character-select
-    window stands the roster up, its portraits borrow the creation screen's key light
-    (scene.character-select.customizing-dark.v1 colours), aimed at the characters' faces.
-    It is a per-frame presentation override, so the authored Lobby profile is never touched. */
-    LIGHT_DESC characterSelectLight{};
-    const bool_t characterSelectLit = nullptr != m_pCharacterSelectWindowView &&
-        m_pCharacterSelectWindowView->Is_Open() &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY);
-    if (characterSelectLit)
-    {
-        characterSelectLight.eType = LIGHT::DIRECTIONAL;
-        XMStoreFloat4(&characterSelectLight.vDirection,
-            XMVector3Normalize(XMVectorSet(-0.35f, -0.6f, -0.72f, 0.f)));
-        characterSelectLight.vDiffuse = float4_t(1.3f, 1.3f, 1.35f, 1.f);
-        characterSelectLight.vAmbient = float4_t(0.53f, 0.53f, 0.55f, 1.f);
-        characterSelectLight.vSpecular = float4_t(0.f, 0.f, 0.f, 1.f);
-    }
-    if (!m_RenderingProfiles.Apply_CameraEnvironment(fTimeDelta, environmentStatus,
-        koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog,
-        characterSelectLit ? &characterSelectLight : nullptr,
-        controlsBrightness, &controlsColor, shipFogThinned ? &shipFogTuning : nullptr))
-        OutputDebugStringA((environmentStatus + "\n").c_str());
-	Update_ClassShowcaseShadowFocus();
+		string environmentStatus;
+		const auto *cinematicArena = CLevel_KoukuSaydonArena::Get_Active();
+		const bool_t koukuCinematic = cinematicArena &&
+									  CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
+									  cinematicArena->Is_CinematicPresentationActive();
+		const auto *valtanArena = CLevel_ValtanArena::Get_Active();
+		const bool_t valtanCinematic = valtanArena &&
+									   CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA) &&
+									   valtanArena->Is_CinematicCameraActive();
+		const bool_t marioStage = cinematicArena &&
+								  CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
+								  cinematicArena->Is_LocalMarioStageActive();
+		// 선박 승선 중의 안개 설정은 Bern camera의 shipFog 입력을 presentation 환경에 전달한다.
+		// disable이 아니면 밀도 배율·시작 거리(m)·최대 불투명도를 넘기며 저작 profile 자체를 저장하지 않는다.
+		const ARENA_SHIP_FOG *pShipFog = CLevel_Bern::Get_ActiveShipFog();
+		PRESENTATION_FOG_TUNING shipFogTuning{};
+		const bool_t shipFogThinned = nullptr != pShipFog && !pShipFog->disable;
+		if (shipFogThinned)
+		{
+			shipFogTuning.fDensityScale = pShipFog->densityScale;
+			shipFogTuning.fStartDistanceMeters = pShipFog->startDistanceMeters;
+			shipFogTuning.fMaximumOpacity = pShipFog->maximumOpacity;
+		}
+		const auto localCharacter = CAnimationTargetService::Resolve_SceneCharacter();
+		float controlsBrightness = 1.f;
+		float4_t controlsColor{};
+		const auto selectedCharacter = CAnimationTargetService::Resolve_Character();
+		if (!(selectedCharacter &&
+			  selectedCharacter->Get_PresentationDirectionalControl(controlsBrightness, controlsColor)) &&
+			localCharacter)
+			localCharacter->Get_PresentationDirectionalControl(controlsBrightness, controlsColor);
+		// 탈것 cue의 표시 조정과 별개로 현재 선택 캐릭터 또는 장면 캐릭터의 명시적인 방향광 조정만 사용한다.
+		// 선택한 밝기는 아래에서 0~16 범위로 제한한다.
+		controlsBrightness = std::clamp(controlsBrightness, 0.f, 16.f);
+		// Lobby의 캐릭터 선택 창이 열리면 얼굴을 비추는 방향광 값을 이 프레임의 presentation override로 전달한다.
+		// 저장된 Lobby profile의 조명값을 바꾸지는 않는다.
+		LIGHT_DESC characterSelectLight{};
+		const bool_t characterSelectLit = nullptr != m_pCharacterSelectWindowView &&
+										  m_pCharacterSelectWindowView->Is_Open() &&
+										  CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY);
+		if (characterSelectLit)
+		{
+			characterSelectLight.eType = LIGHT::DIRECTIONAL;
+			XMStoreFloat4(&characterSelectLight.vDirection,
+						  XMVector3Normalize(XMVectorSet(-0.35f, -0.6f, -0.72f, 0.f)));
+			characterSelectLight.vDiffuse = float4_t(1.3f, 1.3f, 1.35f, 1.f);
+			characterSelectLight.vAmbient = float4_t(0.53f, 0.53f, 0.55f, 1.f);
+			characterSelectLight.vSpecular = float4_t(0.f, 0.f, 0.f, 1.f);
+		}
+		if (!m_RenderingProfiles.Apply_CameraEnvironment(
+				fTimeDelta, environmentStatus, koukuCinematic || valtanCinematic || marioStage || nullptr != pShipFog,
+				characterSelectLit ? &characterSelectLight : nullptr, controlsBrightness, &controlsColor,
+				shipFogThinned ? &shipFogTuning : nullptr))
+			OutputDebugStringA((environmentStatus + "\n").c_str());
+		Update_ClassShowcaseShadowFocus();
 	}
 
-	/* Every shown runtime surface now declares where it covers the screen and on which layer,
-	so each text group can be hidden exactly where a surface above it covers it. */
+	// 각 제품 표면의 화면 영역과 layer를 등록해 위쪽 창이 가리는 부분의 글자만 숨긴다.
 	Sync_CinematicUI();
 	Update_WorldHealthBars(fTimeDelta);
 	Update_MechanicBarAnchor();
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) Register_UITextOccluders();
+	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+		Register_UITextOccluders();
 }
 
+// Update 끝에서 현재 제품 창·HUD의 화면 pixel 영역과 layer를 수집한다.
+// Render의 텍스트 pass가 이 목록을 읽으며 닫힌 view의 rect 노출 여부는 각 view가 판단한다.
 void CMainApp::Register_UITextOccluders()
 {
-	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
+	CUITextOcclusion &Occlusion = CUITextOcclusion::Get();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	/* Windows stack in the order CMainApp builds their sprites; each gets its own step. */
+	// sprite 생성 순서와 같은 창 layer를 사용해 화면 rect를 occluder로 등록한다.
 	if (nullptr != m_pInventoryView && m_pInventoryView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_INVENTORY, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pRepairWindowView && m_pRepairWindowView->Get_ScreenRect(fX, fY, fWidth, fHeight))
@@ -4064,17 +4073,15 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_WORLD_MAP, fX, fY, fWidth, fHeight);
 	if (nullptr != m_pSystemOptionView && m_pSystemOptionView->Get_ScreenRect(fX, fY, fWidth, fHeight))
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION, fX, fY, fWidth, fHeight);
-	/* The full window and its wait/result backdrop share this footprint; the center
-	panel alone leaves world nameplates visible over both side lists. */
+	// 재련의 대기·결과 화면도 전체 창 배경 영역을 사용한다. 중앙 panel만 등록하면 양옆 목록 위로 월드 이름표가 보인다.
 	if (m_bItemUpgradePreviewVisible && nullptr != m_pItemUpgradeView)
 		Occlusion.Add_SlotOccluder(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE, *m_pItemUpgradeView, "ItemUpgrade_WindowBg");
-	/* HUD surfaces in the levels that show them. */
+	// 파티 HUD를 표시하는 Level에서만 해당 view의 가림 영역을 등록한다.
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel ||
-		ETOUI(LEVEL::VALTAN_ARENA) == iLevel || ETOUI(LEVEL::KAKULSAYDON_ARENA) == iLevel))
+	if (nullptr != m_pPartyWindowView && (ETOUI(LEVEL::BERN) == iLevel || ETOUI(LEVEL::VALTAN_ARENA) == iLevel ||
+										  ETOUI(LEVEL::KOUKUSAYDON_ARENA) == iLevel))
 		m_pPartyWindowView->Register_TextOccluders();
-	/* Full-screen surfaces: the award page and the customizing screen (Bern registers its
-	   own raid entry window). */
+	// MVP 결과와 캐릭터 생성은 viewport 전체를 가린다. Bern의 입장 창은 해당 Level이 별도로 등록한다.
 	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
 	if (Is_MvpResultPageOpen())
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::PAGE, 0.f, 0.f, vViewport.x, vViewport.y);
@@ -4083,31 +4090,26 @@ void CMainApp::Register_UITextOccluders()
 		Occlusion.Add_Occluder(UI_TEXT_LAYER::MODAL, 0.f, 0.f, vViewport.x, vViewport.y);
 }
 
-/* The Colosseum match loading screen shows the player's own customized 3D character. The Bern
-character only lives until the level change, so on the last frame it is rendered (the transfer
-request is already pending, the switch happens at the next Update) it is drawn once into an owned
-target and the target is handed to the loading screen. Any other transition, or no character, leaves
-nothing behind and the loading screen keeps its 2D class illustration. */
+// Bern에서 Colosseum LOAD 요청이 남아 있는 Render에서 현재 캐릭터를 전용 target으로 그린다.
+// 이후 Level 교체 뒤에도 Loading이 사용할 수 있도록 SRV의 COM 소유 참조를 전환 service에 전달한다.
 void CMainApp::Render_ColosseumTransferPortrait()
 {
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (ETOUI(LEVEL::BERN) != iLevel)
 	{
-		/* Kept while LOADING shows it; dropped once any other level (or the lobby recovery) runs. */
+		// LOADING 동안은 초상화를 유지하고 다른 Level이 활성화되면 service의 참조를 해제한다.
 		if (ETOUI(LEVEL::LOADING) != iLevel)
 			CLevelTransitionService::Set_TransferPortraitSRV(nullptr);
 		return;
 	}
 
 	LEVEL_TRANSITION_REQUEST Request;
-	if (!CLevelTransitionService::Peek_Pending(Request) ||
-		LEVEL_TRANSITION_PHASE::LOAD != Request.ePhase ||
+	if (!CLevelTransitionService::Peek_Pending(Request) || LEVEL_TRANSITION_PHASE::LOAD != Request.ePhase ||
 		LEVEL::COLOSSEUM != Request.eTargetLevel)
 		return;
 
-	CLevel_Bern* pBern = CLevel_Bern::Get_Active();
-	const shared_ptr<CCharacter> pCharacter =
-		nullptr != pBern ? pBern->Get_LocalCharacter() : nullptr;
+	CLevel_Bern *pBern = CLevel_Bern::Get_Active();
+	const shared_ptr<CCharacter> pCharacter = nullptr != pBern ? pBern->Get_LocalCharacter() : nullptr;
 	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
 	if (nullptr == pCharacter || vViewport.x <= 0.f || vViewport.y <= 0.f)
 	{
@@ -4118,18 +4120,13 @@ void CMainApp::Render_ColosseumTransferPortrait()
 	if (nullptr == m_pTransferPortrait)
 		m_pTransferPortrait = std::make_unique<CCharacterPortraitRenderer>(m_pDevice, m_pContext);
 
-	/* MatchLoading_TeamA_Portrait: 373.333 x 324 of the 1280 x 720 layout. */
+	// 1280×720 저작 layout에서 373.333×324인 초상화 슬롯을 현재 viewport pixel 크기로 환산한다.
 	const uint32_t iWidth = static_cast<uint32_t>(std::lround(373.333f * vViewport.x / 1280.f));
 	const uint32_t iHeight = static_cast<uint32_t>(std::lround(324.f * vViewport.y / 720.f));
-	/* Framing measured off the retail loading avatar (capture 171625, panel 499 x 433 px): hair top at
-	   10.5 % and the eyes at 25.4 % of the panel height, the panel spanning 1.03 x the eye height, the
-	   body centred at 72 % of the width and turned about 18 degrees. Everything follows the character's
-	   own eye height because the classes differ (rig eyes: Lance Master 1.04 m, Artist 0.86 m x 1.05);
-	   the earlier fixed 1.3 m span assumed a 1.7 m body and left these 1.2 m characters small and low. */
-	/* Round 3 (capture 052127 retail vs 211807 ours, both measured): the head is 25 % of the name-to-label band
-	   in retail against 17 % here, so the span shrinks to 0.71 x eye height (x1.45 zoom) with the crown at the
-	   slot top; the body is on the view axis (no lateral shift) and the camera no longer orbits, which had turned
-	   the body 18 degrees to the viewer's left. */
+	// 기존 튜닝 기록은 capture 171625의 머리·눈 위치를 기준으로 class별 눈높이에 비례한 화면 span을 사용했다.
+	// 고정 1.3m span 대신 각 캐릭터 크기를 반영한 배경이며 아래 상수는 후속 조정값이다.
+	// 기존 후속 튜닝 기록은 capture 052127/211807 비교 뒤 span을 눈높이의 0.71배로 조정했다.
+	// 아래 상수는 그 후속값을 사용하며 화면 옆 이동과 yaw를 0으로 둔다.
 	constexpr f32_t PORTRAIT_SPAN_PER_EYE = 0.71f;
 	constexpr f32_t PORTRAIT_LOOK_PER_EYE = 0.767f;
 	constexpr f32_t PORTRAIT_FOV_DEGREES = 30.f;
@@ -4139,6 +4136,7 @@ void CMainApp::Render_ColosseumTransferPortrait()
 	f32_t fEyeHeight = 0.f;
 	if (!CCharacterPortraitRenderer::Try_Measure_EyeHeight(*pCharacter, fEyeHeight))
 		fEyeHeight = 1.04f * fScale;
+	// 모델의 눈높이로 세로 span(m)을 정하고 수직 FOV의 반각으로 필요한 카메라 거리(m)를 구한다.
 	const f32_t fSpan = PORTRAIT_SPAN_PER_EYE * fEyeHeight;
 	CCharacterPortraitRenderer::CAMERA Camera{};
 	Camera.fFovDegrees = PORTRAIT_FOV_DEGREES;
@@ -4147,41 +4145,47 @@ void CMainApp::Render_ColosseumTransferPortrait()
 	Camera.fDistance = fSpan / (2.f * std::tan(XMConvertToRadians(Camera.fFovDegrees) * 0.5f));
 	Camera.fYawDegrees = PORTRAIT_YAW_DEGREES;
 	Camera.fLateralOffset = -PORTRAIT_SHIFT_RIGHT * fSpan * static_cast<f32_t>(iWidth) / static_cast<f32_t>(iHeight);
-	/* Retail poses the loading avatar unarmed but in its gear (same as the award page). The
-	   Bern character is destroyed by the level change that follows this frame. */
+	// 장착 외형은 유지하고 무기만 숨긴 뒤 초상화를 그린다. 곧 Level이 바뀌는 경로이며 이 함수에서 무기 표시를 복원하지 않는다.
 	pCharacter->Set_WeaponPartsVisible(false);
 	const HRESULT hResult = m_pTransferPortrait->Render(pCharacter, iWidth, iHeight, Camera, 0u, 0u);
 	{
 		char szLog[256];
-		sprintf_s(szLog, "portrait=3d eyeWorld=%.3f dist=%.2f camH=%.2f look=%.2f fov=%.0f yaw=%.0f lateral=%.3f scale=%.2f rt=%ux%u\n",
-			fEyeHeight, Camera.fDistance, Camera.fEyeHeight, Camera.fLookHeight, Camera.fFovDegrees,
-			Camera.fYawDegrees, Camera.fLateralOffset, fScale, iWidth, iHeight);
+		sprintf_s(
+			szLog,
+			"portrait=3d eyeWorld=%.3f dist=%.2f camH=%.2f look=%.2f fov=%.0f yaw=%.0f lateral=%.3f scale=%.2f rt=%ux%u\n",
+			fEyeHeight, Camera.fDistance, Camera.fEyeHeight, Camera.fLookHeight, Camera.fFovDegrees, Camera.fYawDegrees,
+			Camera.fLateralOffset, fScale, iWidth, iHeight);
 		OutputDebugStringA("[Colosseum.MatchLoading] ");
 		OutputDebugStringA(szLog);
 		Write_EffectFailureDiagnostic("Colosseum.MatchLoading", szLog);
 	}
-	CLevelTransitionService::Set_TransferPortraitSRV(
-		S_OK == hResult ? m_pTransferPortrait->Get_SRV() : nullptr);
+	// 정확히 S_OK인 렌더 결과만 Loading으로 넘긴다. 실패하면 이전 service 이미지를 비워 2D 대체 표시를 허용한다.
+	CLevelTransitionService::Set_TransferPortraitSRV(S_OK == hResult ? m_pTransferPortrait->Get_SRV() : nullptr);
 	if (S_OK != hResult)
 		OutputDebugStringA("[Colosseum.MatchLoading] portrait snapshot failed: render returned not-OK\n");
 }
-
+// 제품 메인 루프가 Update 뒤 호출한다. 초상화 target → 월드·sprite → ImGui → 보스 showcase → 텍스트 순으로 제출한다.
+// begin/world 실패는 진단 후 ImGui frame을 취소하고 원래 HRESULT를 반환하며, 정상 제출 후 Render_End 결과를 그대로 반환한다.
 HRESULT CMainApp::Render()
 {
-    const auto recordRenderFailure = [this](const char* stage, HRESULT result) noexcept
-    {
-        try
-        {
-            CNetworkManager::Get().Record_SessionEvent("render.failed",
-                std::string("stage=") + stage + "; hresult=" +
-                std::to_string(static_cast<unsigned long>(result)) +
-                "; deviceRemovedReason=" + std::to_string(static_cast<unsigned long>(
-                    m_pDevice ? m_pDevice->GetDeviceRemovedReason() : E_POINTER)));
-        }
-        catch (...) { } // Preserve the original rendering failure and transport state.
-    };
+	// 세션 진단에 실패 단계와 장치 제거 사유를 보충한다. 예외는 격리하고 연결 상태를 복구하거나 종료하지 않는다.
+	const auto recordRenderFailure = [this](const char *stage, HRESULT result) noexcept
+	{
+		try
+		{
+			CNetworkManager::Get().Record_SessionEvent(
+				"render.failed",
+				std::string("stage=") + stage + "; hresult=" + std::to_string(static_cast<unsigned long>(result)) +
+					"; deviceRemovedReason=" +
+					std::to_string(
+						static_cast<unsigned long>(m_pDevice ? m_pDevice->GetDeviceRemovedReason() : E_POINTER)));
+		}
+		catch (...)
+		{
+		} // 진단 중 예외가 나도 원래 렌더 실패값과 전송 상태를 바꾸지 않는다.
+	};
 	Sync_CinematicUI();
-	float4_t clearColor = { 0.008f, 0.012f, 0.025f, 1.f };
+	float4_t clearColor = {0.008f, 0.012f, 0.025f, 1.f};
 	HRESULT hBeginResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BeginFrame");
@@ -4190,65 +4194,62 @@ HRESULT CMainApp::Render()
 	}
 	if (FAILED(hBeginResult))
 	{
-        recordRenderFailure("begin-frame", hBeginResult);
+		recordRenderFailure("begin-frame", hBeginResult);
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
 		return hBeginResult;
 	}
 
-	/* The character info window's live portrait draws into its own target here, before the
-	world/UI pass whose CI_Preview sprite samples it. */
+	// 월드/UI가 SRV를 읽기 전에 실행할 초상화 draw를 예약한다. 실제 target 렌더는 뒤의 Engine Renderer가 처리한다.
 	if (!CUIInputRouter::Get().Is_CinematicSuppressed())
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.Portraits");
-	if (nullptr != m_pCharacterInfoView)
-		(void)m_pCharacterInfoView->Render_Portrait();
-	if (nullptr != m_pAvatarBookView)
-		(void)m_pAvatarBookView->Render_Portrait();
-	if (nullptr != m_pCharacterSelectWindowView &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY))
-		m_pCharacterSelectWindowView->Render_Portraits();
-	if (auto* pArena = CLevel_KakulSaydonArena::Get_Active();
-		nullptr != pArena &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
-		pArena->Render_MvpPortraits();
-	if (auto* pValtan = CLevel_ValtanArena::Get_Active();
-		nullptr != pValtan &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
-		pValtan->Render_MvpPortraits();
+		if (nullptr != m_pCharacterInfoView)
+			(void)m_pCharacterInfoView->Render_Portrait();
+		if (nullptr != m_pAvatarBookView)
+			(void)m_pAvatarBookView->Render_Portrait();
+		if (nullptr != m_pCharacterSelectWindowView && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::LOBBY))
+			m_pCharacterSelectWindowView->Render_Portraits();
+		if (auto *pArena = CLevel_KoukuSaydonArena::Get_Active();
+			nullptr != pArena && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
+			pArena->Render_MvpPortraits();
+		if (auto *pValtan = CLevel_ValtanArena::Get_Active();
+			nullptr != pValtan && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+			pValtan->Render_MvpPortraits();
 	}
 	Render_ColosseumTransferPortrait();
-	if (auto* colosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+	if (auto *colosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
 		colosseum->Submit_ColosseumLoadingPortraits();
 
 	CEffectPresentationService::Submit_VisibleLevelPresentations();
 
-	// Composition WORLD/Seek/Stop has committed this frame before choosing the map-light owner.
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	// 이번 프레임 Composition의 WORLD/Seek/Stop을 반영한 뒤 맵 조명의 소유자를 선택한다.
+	if (auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+		arena && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		arena->Submit_MapLightFrame();
 		arena->Trace_CinematicPresentation(m_RenderingProfiles.Get_ActiveProfileId());
 		arena->Submit_EntranceTriggerMarkers();
 	}
-	if (auto* pValtanArena = CLevel_ValtanArena::Get_Active(); pValtanArena &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
+	if (auto *pValtanArena = CLevel_ValtanArena::Get_Active();
+		pValtanArena && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
 		pValtanArena->Submit_TriggerMarkers();
-	if (auto* pMaharaka = CLevel_Development::Get_Active(LEVEL::MAHARAKA); pMaharaka &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
+	if (auto *pMaharaka = CLevel_Development::Get_Active(LEVEL::MAHARAKA);
+		pMaharaka && CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
 		pMaharaka->Submit_TriggerMarkers();
+	if (m_pProfilerTool) m_pProfilerTool->Begin_CutsceneDiagnosticFrame();
 	HRESULT hWorldResult;
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.World");
-		/* Level text (nameplates, chat bubbles) is world text: under every UI surface. */
+		// 이름표·말풍선 같은 Level 글자는 WORLD layer로 처리해 제품 UI 표면 아래에서 가려지게 한다.
 		CUITextOcclusion::Get().Apply(UI_TEXT_LAYER::WORLD);
-		hWorldResult = CGameInstance::Get().Render(
-			CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN));
+		hWorldResult = CGameInstance::Get().Render(CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN));
 	}
+	if (m_pProfilerTool) m_pProfilerTool->End_CutsceneDiagnosticFrame(SUCCEEDED(hWorldResult));
 	if (FAILED(hWorldResult))
 	{
-        recordRenderFailure("world", hWorldResult);
+		recordRenderFailure("world", hWorldResult);
 		if (nullptr != m_pImGuiLayer)
 			m_pImGuiLayer->CancelFrame();
 		return hWorldResult;
@@ -4257,192 +4258,166 @@ HRESULT CMainApp::Render()
 	if (nullptr != m_pImGuiLayer)
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BuildAndSubmit");
-		/* No Lobby draw call here anymore -- Update_LobbyButtons() (called from Update())
-		drives the Lobby's real CUI_Sprite slots. */
-	#ifdef _DEBUG
-		const HUD_PLAYER_STATE& hudPlayer =
-			CCombatHUDViewModel::Get().Get_Player();
-		const uint32_t hudLevel =
-			CGameInstance::Get().Get_CurrentLevelID();
-		const bool_t supportsAuthoredHUD =
-			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel ||
-			ETOUI(LEVEL::DEVELOPMENT) == hudLevel ||
-			ETOUI(LEVEL::BERN) == hudLevel ||
-			ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
-		const bool_t skillWindowOpenForPreview =
-			nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-		/* The O-key raid-entry preview's left info column/panel frame sit in the
-		   same screen region as the class HUD (portrait, skill icons, identity
-		   gauge) -- Update_CombatHUD applies the same gate to the real sprites. */
-		const bool_t isCharSelectDebugPreviewOpen =
-			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
-			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
-		/* The customizing screen is a full-screen product overlay on the same Level: the class
-		HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
-		raid-entry preview above. */
-		const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
-			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel &&
-				nullptr != CLevel_CharacterSelect::Get_Active() &&
-				CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
-		if (!CUIInputRouter::Get().Is_CinematicSuppressed() && nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
-			supportsAuthoredHUD && !skillWindowOpenForPreview &&
-			!isCharSelectOverlayOpen)
-		{
-			m_pHUDLayoutTool->Render_RuntimePreview(
-				GetHUDLayoutClassId(hudPlayer.eCharacterClass));
-		}
-	#endif
-		/* No combat-HUD draw calls here anymore -- Update_CombatHUD() (called from Update())
-		drives the HUD's real CUI_Sprite slots, which render through the normal engine
-		pipeline. */
-		/* Must run after the combat HUD renders above: Render_ValtanEntryModal's
-		   art draws to ImGui::GetForegroundDrawList(), the same shared list
-		   combat HUD draws once used, and that
-		   list composites in real submission order -- calling it earlier let the
-		   always-on combat HUD paint over the full-screen raid-entry panel.
-		   (Update_BossHealthBar's own CUI_Sprite slots render through the normal
-		   engine pipeline instead, so they're not part of this particular
-		   ordering concern anymore.) */
-		if (!CUIInputRouter::Get().Is_CinematicSuppressed())
-		{
-		if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
-		{
-			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
-				pBern->Render_ValtanEntryModal();
-		}
-		else if (CLevel_Development* island = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
-			island->Render_TravelModal();
+		// Lobby 제품 sprite는 Update_LobbyButtons가 갱신하고 앞선 엔진 렌더 경로가 그린다.
 #ifdef _DEBUG
-		/* O-key visual-only preview of the same raid-entry panel from Character
-		   Select -- same foreground-drawlist ordering requirement as Bern's real
-		   one above. See CLevel_CharacterSelect::Update_RaidEntryDebugPreviewKey. */
-		if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+		const HUD_PLAYER_STATE &hudPlayer = CCombatHUDViewModel::Get().Get_Player();
+		const uint32_t hudLevel = CGameInstance::Get().Get_CurrentLevelID();
+		const bool_t supportsAuthoredHUD = ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel ||
+										   ETOUI(LEVEL::DEVELOPMENT) == hudLevel || ETOUI(LEVEL::BERN) == hudLevel ||
+										   ETOUI(LEVEL::VALTAN_ARENA) == hudLevel;
+		const bool_t skillWindowOpenForPreview = nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+		// 캐릭터 선택의 입장 preview가 class HUD와 겹치므로 저작 HUD preview도 제품 sprite와 같은 표시 조건을 적용한다.
+		const bool_t isCharSelectDebugPreviewOpen =
+			ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
+			CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+		// 캐릭터 생성·제품 presentation은 같은 Level 위의 전체 화면이다. 아래 class HUD가 겹치지 않게 공통 표시 조건에 포함한다.
+		const bool_t isCharSelectOverlayOpen =
+			isCharSelectDebugPreviewOpen ||
+			(ETOUI(LEVEL::CHARACTER_SELECT) == hudLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
+			 CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed() && nullptr != m_pHUDLayoutTool && hudPlayer.isValid &&
+			supportsAuthoredHUD && !skillWindowOpenForPreview && !isCharSelectOverlayOpen)
 		{
-			if (CLevel_CharacterSelect* pCharacterSelectDebug = CLevel_CharacterSelect::Get_Active())
-				pCharacterSelectDebug->Render_RaidEntryDebugPreview();
+			m_pHUDLayoutTool->Render_RuntimePreview(GetHUDLayoutClassId(hudPlayer.eCharacterClass));
 		}
 #endif
-		if (nullptr != m_pChatWindowView)
+		// 전투 HUD도 Update_CombatHUD가 실제 CUI_Sprite를 갱신하며 그리기는 앞선 엔진 pass가 담당한다.
+		// 입장 modal의 foreground 목록은 제출 순서대로 합성되므로 HUD preview 이후에 제출한다.
+		// 앞선 엔진 pass에서 그린 보스 bar sprite와 이 ImGui 제출 순서를 구분한다.
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed())
 		{
-			/* Only in actual in-game play (Bern/Valtan), not Character Select -- more levels join
-			this list as real in-game stages are added. Real send needs the active level's own
-			command sink, same reasoning as the party roster fetch just below. */
-			const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
-			/* Received lines, sender included, reach the log through the active level's own
-			replication -- the Server broadcast is the single source, so a line shows the same
-			Server nickname on every client. */
-			std::vector<CClientReplication::CHAT_LINE> chatLines;
-			if (ETOUI(LEVEL::BERN) == chatLevel)
+			if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
 			{
-				CLevel_Bern* pBern = CLevel_Bern::Get_Active();
-				if (nullptr != pBern)
-					pBern->Drain_ChatLines(chatLines);
-				for (const CClientReplication::CHAT_LINE& Line : chatLines)
-					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+				if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
+					pBern->Render_ValtanEntryModal();
+			}
+			else if (CLevel_Development *island = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
+				island->Render_TravelModal();
+#ifdef _DEBUG
+			// 캐릭터 선택의 Debug 입장 preview도 Bern modal과 같은 foreground 제출 순서를 따른다. 실제 입장 요청은 이 표시와 별개다.
+			if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+			{
+				if (CLevel_CharacterSelect *pCharacterSelectDebug = CLevel_CharacterSelect::Get_Active())
+					pCharacterSelectDebug->Render_RaidEntryDebugPreview();
+			}
+#endif
+			if (nullptr != m_pChatWindowView)
+			{
+				// 채팅을 지원하는 Bern·발탄·쿠크·마하라카·콜로세움에서만 현재 Level의 명령 sink를 전달한다.
+				const uint32_t chatLevel = CGameInstance::Get().Get_CurrentLevelID();
+				// 수신 채팅은 현재 Level의 replication에서 가져온다. 발신자 자신의 줄도 Server broadcast의 nickname·본문을 그대로 표시한다.
+				std::vector<CClientReplication::CHAT_LINE> chatLines;
+				if (ETOUI(LEVEL::BERN) == chatLevel)
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
-					m_pChatWindowView->Render(
-					nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+					CLevel_Bern *pBern = CLevel_Bern::Get_Active();
+					if (nullptr != pBern)
+						pBern->Drain_ChatLines(chatLines);
+					for (const CClientReplication::CHAT_LINE &Line : chatLines)
+						m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
+						m_pChatWindowView->Render(nullptr != pBern ? pBern->Get_PlayerCommandSink() : nullptr);
+					}
+				}
+				else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+				{
+					CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active();
+					if (nullptr != pValtanArena)
+						pValtanArena->Drain_ChatLines(chatLines);
+					for (const CClientReplication::CHAT_LINE &Line : chatLines)
+						m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
+						m_pChatWindowView->Render(nullptr != pValtanArena ? pValtanArena->Get_PlayerCommandSink()
+																		  : nullptr);
+					}
+				}
+				else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == chatLevel)
+				{
+					CLevel_KoukuSaydonArena *pKouku = CLevel_KoukuSaydonArena::Get_Active();
+					if (nullptr != pKouku)
+						pKouku->Drain_ChatLines(chatLines);
+					for (const CClientReplication::CHAT_LINE &Line : chatLines)
+						m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
+						m_pChatWindowView->Render(nullptr != pKouku ? pKouku->Get_PlayerCommandSink() : nullptr);
+					}
+				}
+				else if (ETOUI(LEVEL::MAHARAKA) == chatLevel || ETOUI(LEVEL::COLOSSEUM) == chatLevel)
+				{
+					CLevel_Development *social = CLevel_Development::Get_Active(static_cast<LEVEL>(chatLevel));
+					if (social)
+						social->Drain_ChatLines(chatLines);
+					for (const auto &line : chatLines)
+						m_pChatWindowView->Append_ReceivedLine(line.strNickname, line.strText);
+					Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
+					m_pChatWindowView->Render(social ? social->Get_PlayerCommandSink() : nullptr);
 				}
 			}
-			else if (ETOUI(LEVEL::VALTAN_ARENA) == chatLevel)
+			if (nullptr != m_pPartyWindowView)
 			{
-				CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active();
-				if (nullptr != pValtanArena)
-					pValtanArena->Drain_ChatLines(chatLines);
-				for (const CClientReplication::CHAT_LINE& Line : chatLines)
-					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+				// 각 Level이 소유한 replication의 현재 파티 roster·HP를 view로 전달한다. 창이 별도 파티 상태를 생성하지 않는다.
+				const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
+				if (ETOUI(LEVEL::BERN) == partyLevel)
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
-					m_pChatWindowView->Render(
-					nullptr != pValtanArena ?
-						pValtanArena->Get_PlayerCommandSink() : nullptr);
+					if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
+						m_pPartyWindowView->Sync_From_Roster(pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+														 "UI.Runtime.Party.Update");
+						m_pPartyWindowView->Render();
+					}
 				}
-			}
-			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatLevel)
-			{
-				CLevel_KakulSaydonArena* pKouku = CLevel_KakulSaydonArena::Get_Active();
-				if (nullptr != pKouku)
-					pKouku->Drain_ChatLines(chatLines);
-				for (const CClientReplication::CHAT_LINE& Line : chatLines)
-					m_pChatWindowView->Append_ReceivedLine(Line.strNickname, Line.strText);
+				else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
-					m_pChatWindowView->Render(
-						nullptr != pKouku ? pKouku->Get_PlayerCommandSink() : nullptr);
+					if (CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active())
+						m_pPartyWindowView->Sync_From_Roster(pValtanArena->Get_PartyRoster(),
+															 pValtanArena->Get_PlayerHealth());
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+														 "UI.Runtime.Party.Update");
+						m_pPartyWindowView->Render();
+					}
 				}
-			}
-			else if (ETOUI(LEVEL::MAHARAKA) == chatLevel || ETOUI(LEVEL::COLOSSEUM) == chatLevel)
-			{
-				CLevel_Development* social = CLevel_Development::Get_Active(static_cast<LEVEL>(chatLevel));
-				if (social) social->Drain_ChatLines(chatLines);
-				for (const auto& line : chatLines) m_pChatWindowView->Append_ReceivedLine(line.strNickname, line.strText);
-				Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Chat.Update");
-				m_pChatWindowView->Render(social ? social->Get_PlayerCommandSink() : nullptr);
-			}
-		}
-		if (nullptr != m_pPartyWindowView)
-		{
-			/* Same level set as the chat window. Each level owns its own CClientReplication
-			(and therefore its own Server-synced roster), so the active level is asked for its
-			current roster the same way Render_ValtanEntryModalText() reaches CLevel_Bern below. */
-			const uint32_t partyLevel = CGameInstance::Get().Get_CurrentLevelID();
-			if (ETOUI(LEVEL::BERN) == partyLevel)
-			{
-				if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
-					m_pPartyWindowView->Sync_From_Roster(
-						pBern->Get_PartyRoster(), pBern->Get_PlayerHealth());
+				else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == partyLevel)
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
+					if (CLevel_KoukuSaydonArena *pKoukuArena = CLevel_KoukuSaydonArena::Get_Active())
+						m_pPartyWindowView->Sync_From_Roster(pKoukuArena->Get_PartyRoster(),
+															 pKoukuArena->Get_PlayerHealth());
+					{
+						Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+														 "UI.Runtime.Party.Update");
+						m_pPartyWindowView->Render();
+					}
+				}
+				else if (ETOUI(LEVEL::MAHARAKA) == partyLevel || ETOUI(LEVEL::COLOSSEUM) == partyLevel)
+				{
+					if (CLevel_Development *social = CLevel_Development::Get_Active(static_cast<LEVEL>(partyLevel)))
+						m_pPartyWindowView->Sync_From_Roster(social->Get_PartyRoster(), social->Get_PlayerHealth());
+					Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
 					m_pPartyWindowView->Render();
 				}
 			}
-			else if (ETOUI(LEVEL::VALTAN_ARENA) == partyLevel)
-			{
-				if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
-					m_pPartyWindowView->Sync_From_Roster(
-						pValtanArena->Get_PartyRoster(), pValtanArena->Get_PlayerHealth());
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
-					m_pPartyWindowView->Render();
-				}
-			}
-			else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyLevel)
-			{
-				if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
-					m_pPartyWindowView->Sync_From_Roster(
-						pKoukuArena->Get_PartyRoster(), pKoukuArena->Get_PlayerHealth());
-				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
-					m_pPartyWindowView->Render();
-				}
-			}
-			else if (ETOUI(LEVEL::MAHARAKA) == partyLevel || ETOUI(LEVEL::COLOSSEUM) == partyLevel)
-			{
-				if (CLevel_Development* social = CLevel_Development::Get_Active(static_cast<LEVEL>(partyLevel)))
-					m_pPartyWindowView->Sync_From_Roster(social->Get_PartyRoster(), social->Get_PlayerHealth());
-				Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Party.Update");
-				m_pPartyWindowView->Render();
-			}
-		}
 		}
 #ifdef _DEBUG
 		if (!m_pLevelNavigationDebug)
 			m_pLevelNavigationDebug = std::make_unique<CLevelNavigationDebug>();
-		// MapTool owns its selected Area inside the Development editor workspace.
-		m_pLevelNavigationDebug->Sync_Level(CMapEditorWorkspaceService::Is_Active() ?
-			LEVEL::END : static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()));
+		// Development 편집 workspace에서는 MapTool이 선택 Area를 소유하므로 Level 기반 navigation 동기화를 비활성 값으로 보낸다.
+		m_pLevelNavigationDebug->Sync_Level(CMapEditorWorkspaceService::Is_Active()
+												? LEVEL::END
+												: static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID()));
 		m_pLevelNavigationDebug->Render_Overlay();
-		if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Render_Debug();
+		if (m_pKoukuPresentationPlayer)
+			m_pKoukuPresentationPlayer->Render_Debug();
 #endif
 		if (nullptr != m_pRenderingBenchmark)
 			m_pRenderingBenchmark->Update(CGameInstance::Get().Get_Profiler());
 		if (m_bDeveloperToolsVisible)
 		{
-			Engine::CProfilerScope developerToolsScope(
-				CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
+			Engine::CProfilerScope developerToolsScope(CGameInstance::Get().Get_Profiler(), "ImGui.DeveloperTools");
 			RenderDeveloperTools();
+			// 예약된 도구 하나에만 다음 창 focus를 요청하고 즉시 예약을 소비한다.
 			const auto focusNextWindow = [this](const DEBUG_TOOL eTool)
 			{
 				if (m_eDebugWindowFocusPending != eTool)
@@ -4457,41 +4432,60 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::MAHARAKA_AI);
 				m_pMaharakaAITool->Render();
-				if (m_pMaharakaAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::MAHARAKA_AI;
-				if (!m_pMaharakaAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::MAHARAKA_AI, false);
+				if (m_pMaharakaAITool->Consume_InteractionRequest())
+					m_eDebugInputOwner = DEBUG_TOOL::MAHARAKA_AI;
+				if (!m_pMaharakaAITool->Is_Open())
+					SetDebugToolVisible(DEBUG_TOOL::MAHARAKA_AI, false);
 			}
 			if (m_pGuideAITool)
 			{
 				if (IsDebugToolVisible(DEBUG_TOOL::GUIDE_AI))
 				{
-					const LostArk::Shared::S2C_GUIDE_STATE* guideState = nullptr;
+					const LostArk::Shared::S2C_GUIDE_STATE *guideState = nullptr;
 					const auto guideLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
-					if (guideLevel == LEVEL::BERN) { if (auto* level = CLevel_Bern::Get_Active()) guideState = level->Get_GuideState(); }
-					else if (guideLevel == LEVEL::VALTAN_ARENA) { if (auto* level = CLevel_ValtanArena::Get_Active()) guideState = level->Get_GuideState(); }
-					else if (guideLevel == LEVEL::KAKULSAYDON_ARENA) { if (auto* level = CLevel_KakulSaydonArena::Get_Active()) guideState = level->Get_GuideState(); }
+					if (guideLevel == LEVEL::BERN)
+					{
+						if (auto *level = CLevel_Bern::Get_Active())
+							guideState = level->Get_GuideState();
+					}
+					else if (guideLevel == LEVEL::VALTAN_ARENA)
+					{
+						if (auto *level = CLevel_ValtanArena::Get_Active())
+							guideState = level->Get_GuideState();
+					}
+					else if (guideLevel == LEVEL::KOUKUSAYDON_ARENA)
+					{
+						if (auto *level = CLevel_KoukuSaydonArena::Get_Active())
+							guideState = level->Get_GuideState();
+					}
 					m_pGuideAITool->Set_RuntimeState(guideState);
 					m_pGuideAITool->Set_ActiveArea(GetWorldLevelAreaId());
 					focusNextWindow(DEBUG_TOOL::GUIDE_AI);
 					m_pGuideAITool->Render();
-					if (m_pGuideAITool->Consume_InteractionRequest()) m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
-                    if (m_pGuideAITool->Consume_PlacementPickRequest())
-                    {
-                        m_bWorldMeshPickArmed = false;
-                        if (auto* bern = CLevel_Bern::Get_Active()) bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
-                        if (auto* arena = CLevel_ValtanArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
-                        if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
-                        if (auto* select = CLevel_CharacterSelect::Get_Active()) select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
-                        m_eWorldLevelPickOwner = DEBUG_TOOL::GUIDE_AI;
-                        m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
-                        m_bWorldLevelPickArmed = true;
-                        m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
-                        m_bWorldLevelPickLeftDown = true;
-                    }
-					if (!m_pGuideAITool->Is_Open()) SetDebugToolVisible(DEBUG_TOOL::GUIDE_AI, false);
+					if (m_pGuideAITool->Consume_InteractionRequest())
+						m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+					if (m_pGuideAITool->Consume_PlacementPickRequest())
+					{
+						m_bWorldMeshPickArmed = false;
+						if (auto *bern = CLevel_Bern::Get_Active())
+							bern->Get_PlayerController().Cancel_DebugPlayerPlacement();
+						if (auto *arena = CLevel_ValtanArena::Get_Active())
+							arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+						if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+							arena->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+						if (auto *select = CLevel_CharacterSelect::Get_Active())
+							select->Get_DebugPlayerController().Cancel_DebugPlayerPlacement();
+						m_eWorldLevelPickOwner = DEBUG_TOOL::GUIDE_AI;
+						m_eDebugInputOwner = DEBUG_TOOL::GUIDE_AI;
+						m_bWorldLevelPickArmed = true;
+						m_iWorldLevelPickLevel = CGameInstance::Get().Get_CurrentLevelID();
+						m_bWorldLevelPickLeftDown = true;
+					}
+					if (!m_pGuideAITool->Is_Open())
+						SetDebugToolVisible(DEBUG_TOOL::GUIDE_AI, false);
 				}
 			}
-			/* The Workbench shell renders one selected boss session. Other domain
-			   tools remain independent windows; every owner retains its own draft. */
+			// Workbench shell은 선택한 boss session 하나를 표시한다. 다른 도구 창과 각각의 초안 소유권은 독립적으로 유지한다.
 			if (IsDebugToolVisible(DEBUG_TOOL::MAP) && nullptr != m_pMapTool)
 			{
 				focusNextWindow(DEBUG_TOOL::MAP);
@@ -4500,64 +4494,54 @@ HRESULT CMainApp::Render()
 					m_pMapTool->Render();
 				}
 			}
-			/* Report the authoring dirty state the integrated Save button shows,
-			   and run the ask it raised. Source only: no publisher here. */
+			// 통합 Save 버튼에 초안 변경 상태를 전달하고 요청된 저작 저장을 수행한다. 이 경로는 publisher를 실행하지 않는다.
 			if (nullptr != m_pMapTool && m_pMapTool->Is_IntegratedCutsceneViewOpen())
 			{
-				/* The integrated Save owns the KoukuSaydon composition only.
-				   Valtan keeps its own split-source save in its workbench, so
-				   claim nothing here while that Area is hosted. */
-				const bool_t koukuHosted = m_pMapTool->Get_HostedCompositionSession() ==
-					static_cast<ICompositionWorkbenchSession*>(m_pSequenceActionWorkbench.get());
-				const bool_t sequenceDirty = koukuHosted &&
-					m_pSequenceActionWorkbench &&
-					m_pSequenceActionWorkbench->Is_Dirty();
-				/* WorldObjectTool edits the Kouku Area only (its AREA_ID is
-				   fixed), so its draft is saved here only while Kouku is hosted.
-				   A Valtan Save must never write the Kouku object document. */
-				const bool_t objectDirty = koukuHosted && m_pWorldObjectTool &&
-					m_pWorldObjectTool->Is_Dirty();
+				// 이 통합 저장은 현재 host가 쿠크 composition일 때만 소유한다. 발탄은 자체 분할 저작 저장 경로를 사용한다.
+				const bool_t koukuHosted =
+					m_pMapTool->Get_HostedCompositionSession() ==
+					static_cast<ICompositionWorkbenchSession *>(m_pSequenceActionWorkbench.get());
+				const bool_t sequenceDirty =
+					koukuHosted && m_pSequenceActionWorkbench && m_pSequenceActionWorkbench->Is_Dirty();
+				// WorldObjectTool의 Area는 쿠크로 고정되어 있다. 발탄을 host한 저장에서 쿠크 오브젝트 문서를 함께 쓰지 않게 제한한다.
+				const bool_t objectDirty = koukuHosted && m_pWorldObjectTool && m_pWorldObjectTool->Is_Dirty();
 				std::string integratedStatus;
 				if (m_pMapTool->Consume_IntegratedSaveRequest())
 				{
+					// 각 초안을 순서대로 저장한다. 뒤 저장이 실패해도 앞에서 성공한 원본 저장을 이 함수가 되돌리지는 않는다.
 					bool_t saved = true;
 					if (sequenceDirty && m_pSequenceActionWorkbench)
 						saved = m_pSequenceActionWorkbench->Save(integratedStatus) && saved;
 					if (objectDirty && m_pWorldObjectTool && m_pWorldObjectTool->Is_Dirty())
 					{
-						/* false: authoring sources only. The Area publisher and the
-						   linked battle pattern publish stay explicit actions. */
+						// false는 저작 원본 저장만 의미한다. Area 게시와 연결된 전투 패턴 게시는 별도 명시 동작으로 남긴다.
 						saved = m_pWorldObjectTool->Save_Source(false) && saved;
 					}
 					if (integratedStatus.empty())
-						integratedStatus = saved ?
-							"Saved authoring sources. Runtime data was not published." :
-							"Save failed; the existing authoring edits are preserved.";
+						integratedStatus = saved ? "Saved authoring sources. Runtime data was not published."
+												 : "Save failed; the existing authoring edits are preserved.";
 				}
-				m_pMapTool->Set_IntegratedSaveState(sequenceDirty, objectDirty,
-					std::move(integratedStatus));
+				m_pMapTool->Set_IntegratedSaveState(sequenceDirty, objectDirty, std::move(integratedStatus));
 			}
-			/* Map Tool renders first, so the shell learns here whether the
-			   Sequence session frame was already opened this frame. */
+			// MapTool을 먼저 그린 뒤 이번 프레임에 이미 연 session을 shell에 알려 중복 창 생성을 막는다.
 			if (nullptr != m_pSequencerTool)
 			{
-				/* Suppress the session the Map Tool actually opened, which
-				   follows the Area it is editing, not a fixed one. */
+				// 고정 session 대신 현재 편집 Area에서 실제 host한 composition·object session을 넘긴다.
 				m_pSequencerTool->Suppress_SessionFrameThisFrame(
-					nullptr != m_pMapTool ?
-					m_pMapTool->Get_HostedCompositionSession() : nullptr,
+					nullptr != m_pMapTool ? m_pMapTool->Get_HostedCompositionSession() : nullptr,
 					nullptr != m_pMapTool ? m_pMapTool->Get_HostedObjectSession() : nullptr);
 			}
 			if (IsDebugToolVisible(DEBUG_TOOL::SEQUENCER) && nullptr != m_pSequencerTool)
 			{
 				focusNextWindow(DEBUG_TOOL::SEQUENCER);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Composition.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+													 "ImGui.Tool.Composition.Build");
 					m_pSequencerTool->Render();
 				}
-                if (m_pCharacterActionWorkbench && m_pCharacterActionWorkbench->Consume_InteractionRequest() &&
-                    m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER)
-                    m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
+				if (m_pCharacterActionWorkbench && m_pCharacterActionWorkbench->Consume_InteractionRequest() &&
+					m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::CHARACTER)
+					m_eDebugInputOwner = DEBUG_TOOL::SEQUENCER;
 				if (m_pWorldObjectTool && m_pWorldObjectTool->Consume_InteractionRequest() &&
 					m_pSequencerTool->Get_SelectedTarget() == COMPOSITION_WORKBENCH_TARGET::OBJECT &&
 					!m_pSequencerTool->Uses_ValtanSession())
@@ -4565,10 +4549,12 @@ HRESULT CMainApp::Render()
 				if (!m_pSequencerTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::SEQUENCER, false);
 			}
-			for (auto* workbench : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
+			// 두 Workbench의 오브젝트 편집 요청을 실제 WorldObjectTool로 연결한다. 임시 배치는 값으로 변환해 넘기고 결과 상태를 원래 요청자에게 돌려준다.
+			for (auto *workbench : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
 			{
 				KOUKU_WORLD_OBJECT_EDIT_REQUEST request;
-				if (!workbench || !workbench->Consume_WorldObjectEditRequest(request)) continue;
+				if (!workbench || !workbench->Consume_WorldObjectEditRequest(request))
+					continue;
 				std::string status;
 				if (FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT)) || !m_pWorldObjectTool)
 					status = "Object Tool is unavailable. Existing authoring edits are preserved.";
@@ -4577,20 +4563,22 @@ HRESULT CMainApp::Render()
 					std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> placement;
 					if (request.PreviewPlacement)
 					{
-						const auto& value = *request.PreviewPlacement;
+						const auto &value = *request.PreviewPlacement;
 						placement = CWorldSequencePlayer::OBJECT_PLACEMENT{
 							{float(value.Position[0]), float(value.Position[1]), float(value.Position[2])},
-							{float(value.RotationDegrees[0]), float(value.RotationDegrees[1]), float(value.RotationDegrees[2])},
+							{float(value.RotationDegrees[0]), float(value.RotationDegrees[1]),
+							 float(value.RotationDegrees[2])},
 							{float(value.Scale[0]), float(value.Scale[1]), float(value.Scale[2])}};
 					}
-					(void)m_pWorldObjectTool->Open_ObjectMotion(request.strObjectId, request.strMotionInstanceId, status, placement,
-						request.strPatternId, request.strOccurrenceId, request.bSequenceWorkspace, request.bExplicitPlacement, request.bFocusAnimationClips);
+					(void)m_pWorldObjectTool->Open_ObjectMotion(
+						request.strObjectId, request.strMotionInstanceId, status, placement, request.strPatternId,
+						request.strOccurrenceId, request.bSequenceWorkspace, request.bExplicitPlacement,
+						request.bFocusAnimationClips);
 				}
 				workbench->Notify_WorldObjectEditResult(std::move(status));
 			}
 			RenderMapEffectPlacementMarker();
-			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) &&
-				nullptr != m_pAnimationTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) && nullptr != m_pAnimationTool)
 			{
 				focusNextWindow(DEBUG_TOOL::ANIMATION);
 				{
@@ -4598,7 +4586,6 @@ HRESULT CMainApp::Render()
 					m_pAnimationTool->Render();
 				}
 			}
-
 
 			if (IsDebugToolVisible(DEBUG_TOOL::EFFECT) && m_pEffectTool)
 			{
@@ -4625,8 +4612,7 @@ HRESULT CMainApp::Render()
 				focusNextWindow(DEBUG_TOOL::RENDERING);
 				RenderRenderingWorkbench();
 			}
-			/* Skill Window's slots are still authored by their existing UI owner;
-			   rendering it alongside other tools does not create a second UI runtime. */
+			// UI 저작 창도 기존 HUDLayoutTool 소유자를 그린다. 제품 sprite의 생성·갱신 경로를 추가하지 않는다.
 			if (IsDebugToolVisible(DEBUG_TOOL::UI) && nullptr != m_pHUDLayoutTool)
 			{
 				focusNextWindow(DEBUG_TOOL::UI);
@@ -4654,14 +4640,14 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::VALTAN_BOSS);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Build");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+													 "ImGui.Tool.ValtanBoss.Build");
 					m_pValtanBossTool->Render();
 				}
 				if (!m_pValtanBossTool->Is_Open())
 					SetDebugToolVisible(DEBUG_TOOL::VALTAN_BOSS, false);
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS) &&
-				nullptr != m_pKoukuSaydonBossTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::KOUKU_SAYDON_BOSS) && nullptr != m_pKoukuSaydonBossTool)
 			{
 				focusNextWindow(DEBUG_TOOL::KOUKU_SAYDON_BOSS);
 				{
@@ -4676,7 +4662,8 @@ HRESULT CMainApp::Render()
 			{
 				focusNextWindow(DEBUG_TOOL::VALTAN_LOGIC_PATTERN);
 				{
-					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.ValtanBoss.Render_LogicPatternWindow");
+					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+													 "ImGui.Tool.ValtanBoss.Render_LogicPatternWindow");
 					m_pValtanBossTool->Render_LogicPatternWindow();
 				}
 				if (!m_pValtanBossTool->Is_LogicPatternOpen())
@@ -4690,14 +4677,12 @@ HRESULT CMainApp::Render()
 					m_pCameraTool->Render();
 				}
 			}
-			if (IsDebugToolVisible(DEBUG_TOOL::EQUIPMENT) &&
-				nullptr != m_pEquipmentAuthoringTool)
+			if (IsDebugToolVisible(DEBUG_TOOL::EQUIPMENT) && nullptr != m_pEquipmentAuthoringTool)
 			{
 				focusNextWindow(DEBUG_TOOL::EQUIPMENT);
 				{
 					Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Equipment.Build");
-					m_pEquipmentAuthoringTool->Render(
-					DEBUG_TOOL::EQUIPMENT == m_eDebugInputOwner);
+					m_pEquipmentAuthoringTool->Render(DEBUG_TOOL::EQUIPMENT == m_eDebugInputOwner);
 				}
 			}
 
@@ -4708,291 +4693,276 @@ HRESULT CMainApp::Render()
 			}
 #endif
 		}
-        bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
-        profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
-        if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
-        {
-            ImGui::SetNextWindowFocus();
-            m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
-        }
-        if (profilerWindowVisible && m_pProfilerTool)
-        {
-            Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.CompositionProfiler.Build");
-            m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
-            if (!m_pProfilerTool->Is_Open())
-            {
-                m_bRuntimeProfilerVisible = false;
-                SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-            }
-        }
+		bool_t profilerWindowVisible = m_bRuntimeProfilerVisible;
+		profilerWindowVisible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
+		if (profilerWindowVisible && DEBUG_TOOL::PROFILER == m_eDebugWindowFocusPending)
+		{
+			ImGui::SetNextWindowFocus();
+			m_eDebugWindowFocusPending = DEBUG_TOOL::NONE;
+		}
+		if (profilerWindowVisible && m_pProfilerTool)
+		{
+			Engine::CProfilerScope toolScope(CGameInstance::Get().Get_Profiler(),
+											 "ImGui.Tool.CompositionProfiler.Build");
+			m_pProfilerTool->Render(CGameInstance::Get().Get_Profiler());
+			if (!m_pProfilerTool->Is_Open())
+			{
+				m_bRuntimeProfilerVisible = false;
+				SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
+			}
+		}
 		{
 			if (m_bKoukuBingoHammerColliders)
-				if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_DrawBingoHammerColliders();
+				if (auto *arena = CLevel_KoukuSaydonArena::Get_Active())
+					arena->Debug_DrawBingoHammerColliders();
 			Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
-		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
+			Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "ImGui.BackendSubmit");
 			m_pImGuiLayer->EndFrame();
 		}
 	}
-	/* Raid entry popup's live boss: over the popup's own sprites, under the Draw_Text pass
-	   that letters it. */
+	// 입장 popup의 실시간 보스 모델은 popup sprite 위, 해당 글자를 그리는 텍스트 pass 아래에 제출한다.
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.BossShowcase");
-	if (!CUIInputRouter::Get().Is_CinematicSuppressed()) CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
+		if (!CUIInputRouter::Get().Is_CinematicSuppressed())
+			CRaidBossShowcaseService::Render(m_pDevice, m_pContext);
 	}
 	{
 		Engine::CProfilerScope cpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
 		Engine::CProfilerGpuScope gpuPhaseScope(CGameInstance::Get().Get_Profiler(), "Render.UIText");
-	if (!Is_RuntimeUIScreenSuppressed())
-	{
-	/* Same reasoning as the old combat-HUD/boss-bar/charge-gauge
-	   image gate above (isCharSelectDebugPreviewOpen there) -- these are that
-	   HUD's own text counterparts (HP/MP numbers, boss HP text, gauge percent),
-	   drawn from this separate post-EndFrame() text pass, so they need the same
-	   gate here instead of bleeding the resource numbers through the O-key raid-
-	   entry preview. That earlier local is out of scope by this point (declared
-	   inside the now-closed m_pImGuiLayer block), so it is recomputed
-	   Release-safely. */
+		if (!Is_RuntimeUIScreenSuppressed())
+		{
+			// HP·자원·게이지 글자는 ImGui 제출 이후의 별도 pass이므로 제품 HUD와 같은 숨김 조건을 다시 계산한다.
+			// Debug 입장 preview의 지역 변수를 이 범위에서 다시 선언하고 Release에서는 false로 둔다.
 #ifdef _DEBUG
-	const bool_t isCharSelectDebugPreviewOpenForText =
-		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
-		nullptr != CLevel_CharacterSelect::Get_Active() &&
-		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+			const bool_t isCharSelectDebugPreviewOpenForText =
+				ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+				nullptr != CLevel_CharacterSelect::Get_Active() &&
+				CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
 #else
-	const bool_t isCharSelectDebugPreviewOpenForText = false;
+			const bool_t isCharSelectDebugPreviewOpenForText = false;
 #endif
-	/* The customizing screen is a full-screen product overlay on the same Level: the class
-	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
-	raid-entry preview above. */
-	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpenForText ||
-		(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
-			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
-	// Minigames suppress the combat HUD, but their deadline is product UI in both builds.
-	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && m_pDungeonTimerView)
-	{
-		CUITextLayerScope TimerText(UI_TEXT_LAYER::HUD);
-		m_pDungeonTimerView->Render();
-	}
-	if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
-	{
-		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-		RenderCombatHUDText();
-		RenderBossHealthBarText();
+			// 캐릭터 생성·제품 presentation은 같은 Level 위의 전체 화면이다. 아래 class HUD가 겹치지 않게 공통 표시 조건에 포함한다.
+			const bool_t isCharSelectOverlayOpen =
+				isCharSelectDebugPreviewOpenForText ||
+				(ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+				 nullptr != CLevel_CharacterSelect::Get_Active() &&
+				 CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+			// 미니게임이 전투 HUD를 숨겨도 마감 타이머는 Debug/Release 공통 제품 UI로 표시한다.
+			if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && m_pDungeonTimerView)
+			{
+				CUITextLayerScope TimerText(UI_TEXT_LAYER::HUD);
+				m_pDungeonTimerView->Render();
+			}
+			if (!isCharSelectOverlayOpen && !Is_MvpResultPageOpen() && !Is_KoukuMinigameHUDHidden())
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				RenderCombatHUDText();
+				RenderBossHealthBarText();
 
-		RenderChargeGaugeText();
-		RenderSkillCooldownText();
-		/* VALTAN_ARENA-only inside; no CharSelect-preview overlap possible, but grouped with the
-		other combat-HUD text anyway since it is that HUD's own caption. */
-		RenderEstherGaugeText();
-		/* The quick slot key captions belong to that same combat HUD. Left outside this gate
-		they kept drawing over the raid entry preview -- this whole text pass runs after
-		CImGuiLayer::EndFrame(), so it lands on top of every sprite including that popup. */
-		RenderQuickSlotKeyLabels();
-	}
-	{
-		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-		RenderDeadSceneText();
-		RenderRaidClearText();
-		RenderItemAnnounceText();
-	}
-	RenderDamageNumbers();
-	if (m_pWorldHealthBarView) m_pWorldHealthBarView->Render_Text();
-	{
-		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-		if (nullptr != m_pCombatAnalysisView)
-			m_pCombatAnalysisView->Render_Text();
-	}
-	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_INVENTORY);
-		if (nullptr != m_pInventoryView)
-			m_pInventoryView->Render_Text();
-	}
-	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_REPAIR);
-		if (nullptr != m_pRepairWindowView)
-			m_pRepairWindowView->Render_Text();
-	}
-	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_SHOP);
-		if (nullptr != m_pShopWindowView)
-			m_pShopWindowView->Render_Text();
-	}
-	{
-		CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-		RenderLobbyButtonText();
-		RenderCharacterSelectWindowText();
-		if (!Is_MvpResultPageOpen())
-			RenderMinimapText();
-	}
-	{
-		CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE);
-		RenderItemUpgradeButtonText();
-		RenderItemUpgradeLevelText();
-		RenderItemUpgradeMaterialCounts();
-		RenderItemUpgradeGaugePercentText();
-		RenderItemUpgradeResultWaitText();
-		RenderItemUpgradeSuccessDetailText();
-		RenderItemUpgradeFailDetailText();
-		RenderItemUpgradeListText();
-	}
-	if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
-	{
-		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
-		{
-			// Same gate as Update_ArenaSpawnButtons's own image draw -- these are
-			// its text labels, drawn from this separate text pass.
-			if (!isCharSelectOverlayOpen)
+				RenderChargeGaugeText();
+				RenderSkillCooldownText();
+				// 에스더 gauge 글자도 같은 전투 HUD 표시 조건으로 묶는다. 실제 raid 지원 여부는 RenderEstherGaugeText가 검사한다.
+				RenderEstherGaugeText();
+				// 퀵슬롯 키 글자도 HUD의 일부다. popup 위에 남지 않도록 같은 숨김 조건 안에서 그린다.
+				RenderQuickSlotKeyLabels();
+			}
 			{
 				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-				pCharacterSelect->Render_ArenaSpawnLabels();
+				RenderDeadSceneText();
+				RenderRaidClearText();
+				RenderItemAnnounceText();
 			}
-			/* Preview-step buttons and the trial banner: the class is on show then, which is
-			exactly when the gate above is closed. */
+			RenderDamageNumbers();
+			if (m_pWorldHealthBarView)
+				m_pWorldHealthBarView->Render_Text();
 			{
 				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-				pCharacterSelect->Render_BrowseLabels();
+				if (nullptr != m_pCombatAnalysisView)
+					m_pCombatAnalysisView->Render_Text();
 			}
-			/* Outside that gate: the nickname step opens from the customizing screen, so the
-			gate that hides the spawn captions would take every glyph of this modal with it. */
-			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
-			pCharacterSelect->Render_CreateCharacterModalText();
-			pCharacterSelect->Render_CustomizingText();
+			{
+				CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_INVENTORY);
+				if (nullptr != m_pInventoryView)
+					m_pInventoryView->Render_Text();
+			}
+			{
+				CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_REPAIR);
+				if (nullptr != m_pRepairWindowView)
+					m_pRepairWindowView->Render_Text();
+			}
+			{
+				CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_SHOP);
+				if (nullptr != m_pShopWindowView)
+					m_pShopWindowView->Render_Text();
+			}
+			{
+				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+				RenderLobbyButtonText();
+				RenderCharacterSelectWindowText();
+				if (!Is_MvpResultPageOpen())
+					RenderMinimapText();
+			}
+			{
+				CUITextLayerScope WindowText(UI_TEXT_LAYER::WINDOW_ITEM_UPGRADE);
+				RenderItemUpgradeButtonText();
+				RenderItemUpgradeLevelText();
+				RenderItemUpgradeMaterialCounts();
+				RenderItemUpgradeGaugePercentText();
+				RenderItemUpgradeResultWaitText();
+				RenderItemUpgradeSuccessDetailText();
+				RenderItemUpgradeFailDetailText();
+				RenderItemUpgradeListText();
+			}
+			if (ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID())
+			{
+				if (CLevel_CharacterSelect *pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+				{
+					// 아레나 spawn 버튼의 글자는 실제 버튼 이미지와 같은 overlay 조건을 사용한다.
+					// 이 함수에서는 이미지와 분리된 텍스트 pass로 제출한다.
+					if (!isCharSelectOverlayOpen)
+					{
+						CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+						pCharacterSelect->Render_ArenaSpawnLabels();
+					}
+					// 직업 미리보기 단계의 버튼·체험 문구는 위 spawn 버튼 숨김 조건 밖에서 표시 여부를 판단한다.
+					{
+						CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+						pCharacterSelect->Render_BrowseLabels();
+					}
+					// nickname 입력은 생성 화면에서 열리는 modal이므로 spawn 버튼 조건으로 함께 숨기지 않는다.
+					CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
+					pCharacterSelect->Render_CreateCharacterModalText();
+					pCharacterSelect->Render_CustomizingText();
 #ifdef _DEBUG
-			pCharacterSelect->Render_RaidEntryDebugPreviewText();
+					pCharacterSelect->Render_RaidEntryDebugPreviewText();
 #endif
-		}
-	}
-	if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
-	{
-		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
-		{
-			{
-				CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-				pBern->Render_SystemMenuText();
+				}
 			}
-			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
-			pBern->Render_ValtanEntryModalText();
-			pBern->Render_PartyInviteText();
-		}
-	}
-	else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
-	{
-		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
-		{
-			CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
-			pValtanArena->Render_PartyInviteText();
-		}
-	}
-	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
-	{
-		if (CLevel_KakulSaydonArena* kouku = CLevel_KakulSaydonArena::Get_Active())
-		{
-			CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
-			kouku->Render_TransferFailureNotice();
-		}
-	}
-	if (const LEVEL socialLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
-		socialLevel == LEVEL::MAHARAKA || socialLevel == LEVEL::COLOSSEUM)
-	{
-		if (CLevel_Development* social = CLevel_Development::Get_Active(socialLevel))
-		{
-			CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
-			social->Render_PartyInviteText();
-			social->Render_TravelModalText();
-		}
-	}
-	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
-	/* The chat sprites are only driven in the levels that own a chat (see the Render call
-	above); its labels follow them, or the channel label and the last lines sit over the
-	loading screen and the next level. */
-	{
-		const uint32_t chatTextLevel = CGameInstance::Get().Get_CurrentLevelID();
-		const bool_t bChatTextLevel = ETOUI(LEVEL::BERN) == chatTextLevel ||
-			ETOUI(LEVEL::VALTAN_ARENA) == chatTextLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == chatTextLevel ||
-			ETOUI(LEVEL::MAHARAKA) == chatTextLevel || ETOUI(LEVEL::COLOSSEUM) == chatTextLevel;
-		if (nullptr != m_pChatWindowView && bChatTextLevel)
-			m_pChatWindowView->RenderText();
-	}
-	/* The roster sprites only draw in the levels above; the labels follow them, or the
-	   member names of the last room sit over the loading screen and the next level. */
-	{
-		const uint32_t partyTextLevel = CGameInstance::Get().Get_CurrentLevelID();
-		const bool_t bPartyTextLevel = ETOUI(LEVEL::BERN) == partyTextLevel ||
-			ETOUI(LEVEL::VALTAN_ARENA) == partyTextLevel ||
-			ETOUI(LEVEL::KAKULSAYDON_ARENA) == partyTextLevel ||
-			ETOUI(LEVEL::MAHARAKA) == partyTextLevel || ETOUI(LEVEL::COLOSSEUM) == partyTextLevel;
-		if (nullptr != m_pPartyWindowView && bPartyTextLevel)
-			m_pPartyWindowView->RenderText();
-	}
+			if (ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID())
+			{
+				if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
+				{
+					{
+						CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+						pBern->Render_SystemMenuText();
+					}
+					CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
+					pBern->Render_ValtanEntryModalText();
+					pBern->Render_PartyInviteText();
+				}
+			}
+			else if (ETOUI(LEVEL::VALTAN_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+			{
+				if (CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active())
+				{
+					CUITextLayerScope ModalText(UI_TEXT_LAYER::MODAL);
+					pValtanArena->Render_PartyInviteText();
+				}
+			}
+			else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID())
+			{
+				if (CLevel_KoukuSaydonArena *kouku = CLevel_KoukuSaydonArena::Get_Active())
+				{
+					CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
+					kouku->Render_TransferFailureNotice();
+				}
+			}
+			if (const LEVEL socialLevel = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
+				socialLevel == LEVEL::MAHARAKA || socialLevel == LEVEL::COLOSSEUM)
+			{
+				if (CLevel_Development *social = CLevel_Development::Get_Active(socialLevel))
+				{
+					CUITextLayerScope modal(UI_TEXT_LAYER::MODAL);
+					social->Render_PartyInviteText();
+					social->Render_TravelModalText();
+				}
+			}
+			CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
+			// 채팅 sprite를 그리는 Level과 글자의 Level 조건을 맞춘다. 이전 방의 문구가 Loading이나 다른 Level 위에 남지 않게 한다.
+			{
+				const uint32_t chatTextLevel = CGameInstance::Get().Get_CurrentLevelID();
+				const bool_t bChatTextLevel =
+					ETOUI(LEVEL::BERN) == chatTextLevel || ETOUI(LEVEL::VALTAN_ARENA) == chatTextLevel ||
+					ETOUI(LEVEL::KOUKUSAYDON_ARENA) == chatTextLevel || ETOUI(LEVEL::MAHARAKA) == chatTextLevel ||
+					ETOUI(LEVEL::COLOSSEUM) == chatTextLevel;
+				if (nullptr != m_pChatWindowView && bChatTextLevel)
+					m_pChatWindowView->RenderText();
+			}
+			// 파티 글자도 해당 sprite를 그리는 같은 Level에서만 제출한다. 마지막 방의 이름이 전환 화면에 남지 않게 한다.
+			{
+				const uint32_t partyTextLevel = CGameInstance::Get().Get_CurrentLevelID();
+				const bool_t bPartyTextLevel =
+					ETOUI(LEVEL::BERN) == partyTextLevel || ETOUI(LEVEL::VALTAN_ARENA) == partyTextLevel ||
+					ETOUI(LEVEL::KOUKUSAYDON_ARENA) == partyTextLevel || ETOUI(LEVEL::MAHARAKA) == partyTextLevel ||
+					ETOUI(LEVEL::COLOSSEUM) == partyTextLevel;
+				if (nullptr != m_pPartyWindowView && bPartyTextLevel)
+					m_pPartyWindowView->RenderText();
+			}
 
-	/* The runtime windows' labels, each on its own window layer (the steps
-	Register_UITextOccluders gave them): a window's text is hidden exactly where a window
-	stacked above it covers it. None of them draw over the loading screen -- their sprites are
-	hidden there, so their labels would be the only thing left on it. */
-	if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
-	{
-	CUITextOcclusion& Occlusion = CUITextOcclusion::Get();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO);
-	if (nullptr != m_pCharacterInfoView)
-		m_pCharacterInfoView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK);
-	if (nullptr != m_pAvatarBookView)
-		m_pAvatarBookView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_VEHICLE);
-	if (nullptr != m_pVehicleWindowView)
-		m_pVehicleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
-	if (nullptr != m_pHonorTitleWindowView)
-		m_pHonorTitleWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_WORLD_MAP);
-	if (nullptr != m_pWorldMapWindowView)
-		m_pWorldMapWindowView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION);
-	if (nullptr != m_pSystemOptionView)
-		m_pSystemOptionView->Render_Text();
-	Occlusion.Apply(UI_TEXT_LAYER::HUD);
-	if (nullptr != m_pSongCastGaugeView)
-		m_pSongCastGaugeView->Render_Text();
-	}
-
-	}
-	// Cinematic subtitles remain visible while ordinary combat UI is suppressed.
-	RenderCinematicSubtitles();
-	{
-		CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
-		if (!CUIInputRouter::Get().Is_CinematicSuppressed()) RenderFpsText();
-	}
-	// Advance the event cursor even while cinematic UI is hidden; never replay old hits.
-	if (CUIInputRouter::Get().Is_CinematicSuppressed()) RenderDamageNumbers();
-	/* Every CUIInputRouter-based screen's click-edge check has run by this point (both this
-	function's own render pass and the Update() pass earlier this same frame) -- rolls the
-	left-button edge state forward for next frame and applies SetInputBlocked for anything
-	that called Claim_Mouse_This_Frame(). */
-	CUIInputRouter::Get().End_Frame();
-
+			// 제품 창 글자는 Register_UITextOccluders가 사용한 각 창 layer로 그려 위쪽 창이 덮은 영역에서 숨긴다.
+			// Loading에는 sprite가 숨겨지므로 대응하는 창 글자도 제출하지 않는다.
+			if (ETOUI(LEVEL::LOADING) != CGameInstance::Get().Get_CurrentLevelID())
+			{
+				CUITextOcclusion &Occlusion = CUITextOcclusion::Get();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_CHARACTER_INFO);
+				if (nullptr != m_pCharacterInfoView)
+					m_pCharacterInfoView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_AVATAR_BOOK);
+				if (nullptr != m_pAvatarBookView)
+					m_pAvatarBookView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_VEHICLE);
+				if (nullptr != m_pVehicleWindowView)
+					m_pVehicleWindowView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_HONOR_TITLE);
+				if (nullptr != m_pHonorTitleWindowView)
+					m_pHonorTitleWindowView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_WORLD_MAP);
+				if (nullptr != m_pWorldMapWindowView)
+					m_pWorldMapWindowView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::WINDOW_SYSTEM_OPTION);
+				if (nullptr != m_pSystemOptionView)
+					m_pSystemOptionView->Render_Text();
+				Occlusion.Apply(UI_TEXT_LAYER::HUD);
+				if (nullptr != m_pSongCastGaugeView)
+					m_pSongCastGaugeView->Render_Text();
+			}
+		}
+		// 일반 전투 UI를 숨긴 시네마틱 중에도 자막은 별도 경로로 표시한다.
+		RenderCinematicSubtitles();
+		{
+			CUITextLayerScope TopText(UI_TEXT_LAYER::PAGE);
+			if (!CUIInputRouter::Get().Is_CinematicSuppressed() ||
+                (m_pProfilerTool && m_pProfilerTool->Is_CutsceneRecording()))
+				RenderFpsText();
+		}
+		// 시네마틱으로 피해 표시가 숨겨져도 이벤트 cursor는 진행시켜 나중에 이전 피격을 다시 재생하지 않는다.
+		if (CUIInputRouter::Get().Is_CinematicSuppressed())
+			RenderDamageNumbers();
+		// 정상 렌더 경로에서 Update와 Render의 클릭 판정을 모두 마친 뒤 버튼 edge와 마우스 점유를 다음 프레임으로 넘긴다.
+		// 위의 begin/world 실패 조기 반환은 이 지점에 도달하지 않는다.
+		CUIInputRouter::Get().End_Frame();
 	}
 	return CGameInstance::Get().Render_End();
 }
 
 namespace
 {
-	/* Maharaka has no combat HUD of its own. The Waterpang water gun opens the retail pickup-mode
-	HUD there, only while the Server keeps this body armed and on foot (Update_WaterGunHud). */
-	bool_t Is_WaterGunHudLevel(const uint32_t iLevel, const HUD_PLAYER_STATE& player)
-	{
-		return ETOUI(LEVEL::MAHARAKA) == iLevel && player.isValid && player.isWaterpangArmed &&
-			0u == player.iVehicleId;
-	}
+// 마하라카에서는 Server가 물총을 장착한 유효 플레이어가 도보 상태일 때 전용 pickup HUD를 표시한다.
+bool_t Is_WaterGunHudLevel(const uint32_t iLevel, const HUD_PLAYER_STATE &player)
+{
+	return ETOUI(LEVEL::MAHARAKA) == iLevel && player.isValid && player.isWaterpangArmed && 0u == player.iVehicleId;
 }
+} // 이 파일의 보조 구현 범위 끝
 
+// HUD 비지원 Level·overlay 진입이 m_pHUDRuntimeView의 모든 슬롯을 숨긴다. view나 저작 문서의 소유권은 유지한다.
 void CMainApp::Hide_CombatHUD()
 {
 	if (nullptr != m_pHUDRuntimeView)
 		m_pHUDRuntimeView->Set_AllSlotsVisible(false);
 }
-
+// Update가 복제 HUD 상태로 현재 class·자원·장착 표시를 갱신한다. 지원하지 않거나 overlay가 대신 표시되는 화면에서는 STATIC 슬롯도 명시적으로 숨긴다.
+// 장비·구매·수리 요청은 기존 Server 명령 경로로 보내며 이 함수가 권위 인벤토리 값을 직접 확정하지 않는다.
 void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CombatHUD.Update");
@@ -5002,54 +4972,49 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	if (Is_KoukuMinigameHUDHidden())
 	{
 		Hide_CombatHUD();
-		if (m_pCombatAnalysisView) m_pCombatAnalysisView->Hide();
-		if (m_pDurabilityHudView) m_pDurabilityHudView->Hide();
-		if (m_pQuickSlotDragView) { m_pQuickSlotDragView->Cancel(); m_pQuickSlotDragView->Hide(); }
+		if (m_pCombatAnalysisView)
+			m_pCombatAnalysisView->Hide();
+		if (m_pDurabilityHudView)
+			m_pDurabilityHudView->Hide();
+		if (m_pQuickSlotDragView)
+		{
+			m_pQuickSlotDragView->Cancel();
+			m_pQuickSlotDragView->Hide();
+		}
 		return;
 	}
 
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
-		currentLevel == ETOUI(LEVEL::BERN) ||
-		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
-		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
+		currentLevel == ETOUI(LEVEL::BERN) || currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) || currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) || currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ||
 		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
 		Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player());
-	/* The Skill Window (when one exists) and the Debug O-key raid-entry preview both replace
-	this whole screen region -- same gates the old ImGui pass applied at its call sites. */
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	// 스킬 창과 캐릭터 선택의 Debug 입장 preview가 HUD 영역을 대신 사용하므로 동일한 숨김 조건을 적용한다.
+	const bool_t skillWindowOpen = nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
 #ifdef _DEBUG
-	const bool_t isCharSelectDebugPreviewOpen =
-		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
-		nullptr != CLevel_CharacterSelect::Get_Active() &&
-		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+	const bool_t isCharSelectDebugPreviewOpen = ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+												nullptr != CLevel_CharacterSelect::Get_Active() &&
+												CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
 #else
 	const bool_t isCharSelectDebugPreviewOpen = false;
 #endif
-	/* The customizing screen is a full-screen product overlay on the same Level: the class
-	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
-	raid-entry preview above. */
-	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
-		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
-			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+	// 같은 Level 위에서 캐릭터 생성·제품 presentation이 열리면 아래 class HUD를 숨긴다.
+	const bool_t isCharSelectOverlayOpen =
+		isCharSelectDebugPreviewOpen ||
+		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
+		 CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
-	const HUD_PLAYER_STATE& player =
-		CCombatHUDViewModel::Get().Get_Player();
-	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen ||
-		Is_MvpResultPageOpen() ||
-		!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_MvpResultPageOpen() || !player.isValid ||
+		0u == player.iMaximumHp || 0u == player.iMaximumResource)
 	{
 		Hide_CombatHUD();
 		if (nullptr != m_pCombatAnalysisView)
 			m_pCombatAnalysisView->Hide();
-		/* m_pInventoryView's CUI_Sprite slots live under LEVEL::STATIC too (so the panel
-		survives a Bern<->Valtan transition instead of resetting) -- they keep showing their
-		last state across a level change unless told otherwise, same as this HUD's own. */
+		// 인벤토리 등 제품 창도 STATIC sprite를 사용해 Level 전환 뒤 상태가 남는다.
+		// 지원하지 않는 화면에서는 호출을 생략하는 대신 명시적으로 숨긴다.
 		if (nullptr != m_pInventoryView)
 			m_pInventoryView->Hide();
 		if (nullptr != m_pRepairWindowView)
@@ -5075,79 +5040,52 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	}
 
 	{
-		/* Base pass: every neutral slot on, then the ownerClass filter (the old
-		Render(strOwnerClass, 0) pass) picks the active class's own slots. The Update_* helpers
-		below overwrite the dynamic slots' visibility (fills, icons, cooldown overlays) the same
-		frame, before anything renders. Base state only for now -- no gauge/resource-driven
-		stage switching yet. */
+		// 공통 슬롯을 켠 뒤 현재 class의 ownerClass를 선택한다.
+		// 아래 동적 갱신이 같은 프레임에 gauge·icon·cooldown의 실제 표시 상태를 덮어쓴다.
 		const string strOwnerClass = GetHUDOwnerClassName(player.eCharacterClass);
 		m_pHUDRuntimeView->Set_AllSlotsVisible(true);
 		m_pHUDRuntimeView->Set_ActiveOwnerClass(strOwnerClass);
 
-		/* LanceMaster's identity icon is a keyframe-animated Scaleform extraction, not a static
-		layer stack -- it has to be told to play, and only on an actual stance edge (the source
-		asset's own stanceMc.gotoAndPlay("focus"/"wild") trigger, see LanceMasterSkinFrame.as).
-		Every other class's identity art still comes from Slot.Layers and needs nothing here. */
+		// 창술사 stance 아이콘은 label로 시작하는 keyframe animation이다.
+		// 같은 stance를 매 프레임 재생해 시작 시각을 계속 초기화하지 않도록 stance 변경 때만 호출한다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass &&
 			player.eStance != m_ePreviousHudStance)
 		{
-			/* spear01 (used by the "wild" label frame) is visually the straight short spear;
-			spear02 (used by "focus") is the curved glaive blade -- opposite of what the asset's
-			own "spear01/spear02" filenames suggest, confirmed by actually opening both crops. */
-			const char_t* pLabel =
-				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ?
-					"wild" : "focus";
+			// 기존 추출 기록의 label 대응에 따라 짧은 창 stance는 wild, 반대 stance는 focus를 선택한다.
+			const char_t *pLabel =
+				LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR == player.eStance ? "wild" : "focus";
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Lance_Id_Stance", pLabel);
 		}
-		/* Warlord's defense-mode toggle (Z: skill 17800 WARLORD_NORMAL->WARLORD_DEFENSE, 17810
-		reverses it -- confirmed in Data/Balance/PlayerSkills.json, not X) is a real extracted
-		Scaleform clip too (WarLordSkinFrame::defenseMode -> defenseBody/defenseEffect
-		.gotoAndPlay("on"/"off")). protectMode (X: skill 17820, requiredStance/setsStance both
-		NONE) has no server-side stance field in HUD_PLAYER_STATE -- WarL_Id_ProtectBody/
-		ProtectEffect stay defined but untriggered until that data exists, rather than guessing a
-		fake source. */
+		// 워로드의 방어 stance 변경은 방어 body·effect의 on/off label로 표시한다.
+		// protectMode를 위한 별도 활성 상태는 이 분기에서 읽지 않으므로 해당 연출을 추측해 시작하지 않는다.
 		else if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass &&
-			player.eStance != m_ePreviousHudStance)
+				 player.eStance != m_ePreviousHudStance)
 		{
-			const char_t* pLabel =
-				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance ?
-					"on" : "off";
+			const char_t *pLabel = LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance ? "on" : "off";
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_DefenseBody", pLabel);
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_DefenseEffect", pLabel);
 		}
 		m_ePreviousHudStance = player.eStance;
 
-		/* Warlord's gaugeL/gaugeR identity-gauge fill is a real per-percentage reveal, not a
-		time-based clip: the source Scaleform mask (gaugeMask_8, symbol 730) is 100 distinct hand-
-		authored vector frames traced along the badge's own hex border and jumped to directly via
-		gotoAndStop(percentage) (WarLordSkinFrame::refreshGauge). GaugeL.json/GaugeR.json bake that
-		real 100-frame reveal into one real composited texture per percentage and expose each frame
-		under its own integer-string label ("0".."99"), so this reuses Play_KeyframeAnimation
-		exactly as-is -- no separate percentage-driven playback path needed in the engine. */
-		if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass &&
-			player.iMaximumIdentity > 0u)
+		// 워로드 identity 비율을 0~99 frame label로 환산해 좌우 gauge에 같은 값을 적용한다.
+		// 시간에 따른 재생 대신 기존 keyframe label 조회를 그대로 사용한다.
+		if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass && player.iMaximumIdentity > 0u)
 		{
-			const int32_t iGaugeFrame = std::clamp(
-				static_cast<int32_t>(player.iCurrentIdentity * 99u / player.iMaximumIdentity),
-				0, 99);
+			const int32_t iGaugeFrame =
+				std::clamp(static_cast<int32_t>(player.iCurrentIdentity * 99u / player.iMaximumIdentity), 0, 99);
 			const string strGaugeLabel = std::to_string(iGaugeFrame);
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_GaugeR", strGaugeLabel);
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_GaugeL", strGaugeLabel);
 		}
 
-		/* Warlord's real Z/X identity-slot art (WarLordEnableEffectMc, symbol 74) includes a hex
-		glow ring the source only shows while that slot's ability is off cooldown -- the AS3 is
-		`enabledEffect_0.visible = !this._defenseValue && this._slotEnable0` (and the _1/protectMode
-		mirror for X). eStance already gives us the exact "_defenseValue" equivalent for Z; there is
-		no client-side "_protectValue" (protectMode active) field to mirror for X (same gap noted
-		on WarL_Id_ProtectBody/ProtectEffect above), so the X ring only reflects real cooldown
-		readiness, not a "currently protecting" exclusion. */
+		// 워로드 Z/X 테두리는 실제 스킬 준비 상태를 사용한다.
+		// Z는 방어 stance가 아닐 때만 추가로 켜며 X는 별도 보호 활성 상태 없이 cooldown 준비 여부만 반영한다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::WARLORD == player.eCharacterClass)
 		{
 			bool_t bZReady = false, bXReady = false;
-			const HUD_SKILL_STATE* pZSkill = nullptr;
-			const HUD_SKILL_STATE* pXSkill = nullptr;
-			for (const HUD_SKILL_STATE& Skill : player.Skills)
+			const HUD_SKILL_STATE *pZSkill = nullptr;
+			const HUD_SKILL_STATE *pXSkill = nullptr;
+			for (const HUD_SKILL_STATE &Skill : player.Skills)
 			{
 				if ("Z" == Skill.strInputSlot)
 				{
@@ -5160,51 +5098,38 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 					pXSkill = &Skill;
 				}
 			}
-			const bool_t bShowZRing =
-				bZReady && LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE != player.eStance;
+			const bool_t bShowZRing = bZReady && LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE != player.eStance;
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_EnableRingZ", bShowZRing ? "on" : "off");
 			m_pHUDRuntimeView->Play_KeyframeAnimation("WarL_Id_EnableRingX", bXReady ? "on" : "off");
 
-			/* The badge itself is the real cooldown indicator (WarLoardSkillSlot's SlotState.
-			SLOT_STATE_DISABLED instantly swaps depth11's child from the bright shape(589/89) to
-			the dark shape(594/584) -- confirmed frame-by-frame in the source timeline, no gradual
-			reveal baked into that swap). SkillZState.json/SkillXState.json hold both real frames
-			under "ready"/"cooldown" labels. */
+			// ready/cooldown label로 배지의 밝은 그림과 어두운 그림을 고른다.
+			// 배지 교체와 아래 시간에 따른 가림 효과는 별도 슬롯이다.
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Skill_Z", bZReady ? "ready" : "cooldown");
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Skill_X", bXReady ? "ready" : "cooldown");
 
-			/* The real clockwise reveal itself lives in a separate overlay (WarLoardSkillSlot's
-			shared "coolDown" component, symbol 328 -- 240 real hand-authored frames, confirmed by
-			opening the source timeline directly) layered on top of the dark badge, not baked into
-			the badge swap above. Frame index tracks elapsed cooldown fraction: the source shape
-			starts at full coverage right after use and shrinks clockwise to nothing as the real
-			240-frame sequence progresses, so elapsed (not remaining) maps directly to frame. */
-			const auto PlayCooldownWipe = [&](const char* pSlotId, const HUD_SKILL_STATE* pSkill, bool_t bReady)
+			// 전체 cooldown 중 이미 지난 비율을 0~239 frame으로 바꾼다.
+			// 사용 직후 덮인 그림이 시간이 지나며 줄어드는 순서이므로 남은 비율을 그대로 쓰지 않는다.
+			const auto PlayCooldownWipe = [&](const char *pSlotId, const HUD_SKILL_STATE *pSkill, bool_t bReady)
 			{
 				if (bReady || nullptr == pSkill || 0u == pSkill->iCooldownDurationTicks)
 				{
 					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, "ready");
 					return;
 				}
-				const uint32_t remainingTicks = pSkill->iCooldownEndTick > player.iServerTick ?
-					pSkill->iCooldownEndTick - player.iServerTick : 0u;
-				const f32_t fElapsedFraction = std::clamp(1.f -
-					static_cast<f32_t>(remainingTicks) / static_cast<f32_t>(pSkill->iCooldownDurationTicks),
-					0.f, 1.f);
-				const int32_t iWipeFrame = std::clamp(
-					static_cast<int32_t>(fElapsedFraction * 239.f), 0, 239);
+				const uint32_t remainingTicks =
+					pSkill->iCooldownEndTick > player.iServerTick ? pSkill->iCooldownEndTick - player.iServerTick : 0u;
+				const f32_t fElapsedFraction = std::clamp(1.f - static_cast<f32_t>(remainingTicks) /
+																	static_cast<f32_t>(pSkill->iCooldownDurationTicks),
+														  0.f, 1.f);
+				const int32_t iWipeFrame = std::clamp(static_cast<int32_t>(fElapsedFraction * 239.f), 0, 239);
 				m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, std::to_string(iWipeFrame));
 			};
 			PlayCooldownWipe("WarL_Id_CooldownWipeZ", pZSkill, bZReady);
 			PlayCooldownWipe("WarL_Id_CooldownWipeX", pXSkill, bXReady);
 		}
 
-		/* DimensionMaster's identity gauge is configured cyclic (Data/Balance/PlayerProfiles.json
-		identityCyclic=1): it fills 0..100 and wraps back to 0 forever, rather than holding at full
-		like every other class's gauge. The source's own minuteHand is driven the same way, one
-		full clockwise turn per cycle -- confirmed against the real DimensionMasterSkinFrame.as
-		(setMinuteHand writes straight to MovieClip.rotation, no frame-based clip involved), so
-		this maps the gauge fraction straight to degrees with no guessing. */
+		// 차원술사의 현재 identity/최대 identity 비율을 360도 회전으로 표시한다.
+		// Server에서 온 gauge를 읽을 뿐 이 함수가 자원을 증가시키거나 순환시키지는 않는다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER == player.eCharacterClass &&
 			player.iMaximumIdentity > 0u)
 		{
@@ -5213,50 +5138,45 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pHUDRuntimeView->Set_SlotRotation("Dimen_MinuteHand", fIdentityFraction * 360.f);
 		}
 
-		/* DimensionMaster's backplate also holds 6 real independently spinning gear ornaments
-		(source symbols 515/519/523/529/535/545, each wrapping its own multi-frame rotating leaf)
-		-- confirmed by sampling each one's own SWF sub-timeline directly (source frameRate=40, so
-		1 frame = 25ms). None of the 6 map to any server field or DimensionMasterSkinFrame setter;
-		they are pure clockwork idle animation baked into the movieclip timeline itself, so they
-		run on wall-clock phase and loop unconditionally regardless of identity/cooldown state.
-		515/523/529 are true gears; 545 spins a full continuous 360 deg every 80 frames (measured
-		~4.515 deg/frame, 4.515*80=361.2 -- confirmed against the real curve, not assumed). 519/535
-		are small decorative filigree pieces, not circular gears (confirmed visually from the
-		extracted art), with only a brief few-degree real sway near the end of their own cycle;
-		included for completeness since real per-frame timeline data exists for both. */
+		// 차원술사의 여섯 장식은 gameplay gauge와 독립적인 반복 움직임이다.
+		// 기존 추출 곡선의 주기·구간값을 GetTickCount64의 ms 위상에 대응하며 전체 회전과 짧은 흔들림을 각각 계산한다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::DIMENSIONMASTER == player.eCharacterClass)
 		{
 			const uint64_t ullNowMs = GetTickCount64();
 
-			// gear545: continuous full spin, real curve 0 -> 360 deg over 80 frames (2000ms)
+			// gear545는 2000ms 주기의 0→360도 회전이다.
 			{
 				constexpr uint64_t GEAR545_CYCLE_MS = 2000ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR545_CYCLE_MS) / static_cast<f32_t>(GEAR545_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR545_CYCLE_MS) / static_cast<f32_t>(GEAR545_CYCLE_MS);
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_545", fFrac * 360.f);
 			}
 
-			// gear523: real full-cycle linear sweep 0 -> -90 deg over 120 frames (3000ms), snaps
-			// back to 0 at wrap (measured directly, no snap visible mid-cycle)
+			// gear523은 3000ms 동안 0→-90도로 진행한다.
+			// 주기가 바뀌면 0도로 돌아가며 중간 보간은 선형이다.
 			{
 				constexpr uint64_t GEAR523_CYCLE_MS = 3000ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR523_CYCLE_MS) / static_cast<f32_t>(GEAR523_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR523_CYCLE_MS) / static_cast<f32_t>(GEAR523_CYCLE_MS);
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_523", fFrac * -90.f);
 			}
 
-			// gear529: real full-cycle linear sweep 0 -> -60 deg over 80 frames (2000ms), snaps
-			// back to 0 at wrap
+			// gear529는 2000ms 동안 0→-60도로 진행한다.
+			// 주기가 바뀌면 다시 0도로 시작한다.
 			{
 				constexpr uint64_t GEAR529_CYCLE_MS = 2000ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR529_CYCLE_MS) / static_cast<f32_t>(GEAR529_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR529_CYCLE_MS) / static_cast<f32_t>(GEAR529_CYCLE_MS);
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_529", fFrac * -60.f);
 			}
 
-			// gear515: real curve holds at 0 deg through most of the cycle, winds 0->60 deg late
-			// (frac 0.625~0.8, matching source frames50-64 of 80), then holds at 60 deg until
-			// wrap -- measured directly from the source timeline, not a plain sawtooth.
+			// gear515는 주기의 앞부분에서 0도를 유지하다가 뒤쪽 구간에서 회전한다.
+			// 위상 0.625~0.8에서 0→60도로 보간하고 이후 60도를 유지한다.
+			// 다음 주기 시작에 0도로 돌아가므로 전체 구간을 선형 회전으로 바꾸지 않는다.
 			{
 				constexpr uint64_t GEAR515_CYCLE_MS = 2000ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR515_CYCLE_MS) / static_cast<f32_t>(GEAR515_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR515_CYCLE_MS) / static_cast<f32_t>(GEAR515_CYCLE_MS);
 				f32_t fDegrees = 0.f;
 				if (fFrac >= 0.8f)
 					fDegrees = 60.f;
@@ -5265,11 +5185,12 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_515", fDegrees);
 			}
 
-			// gear519: real brief symmetric sway 0->7.5->0 deg near frac 0.80~0.8625 of its
-			// 80-frame (2000ms) cycle, still the rest of the time
+			// gear519는 주기 2000ms 중 위상 0.80~0.8625에서 0→7.5→0도로 흔들린다.
+			// 나머지 구간은 0도를 유지한다.
 			{
 				constexpr uint64_t GEAR519_CYCLE_MS = 2000ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR519_CYCLE_MS) / static_cast<f32_t>(GEAR519_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR519_CYCLE_MS) / static_cast<f32_t>(GEAR519_CYCLE_MS);
 				f32_t fDegrees = 0.f;
 				if (fFrac >= 0.80f && fFrac < 0.825f)
 					fDegrees = 7.5f * (fFrac - 0.80f) / 0.025f;
@@ -5278,11 +5199,12 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				m_pHUDRuntimeView->Set_SlotRotation("Dimen_Gear_519", fDegrees);
 			}
 
-			// gear535: real down-then-up swing (0 -> -8.984 -> 6.015 -> 0 deg) near the end of
-			// its 95-frame (2375ms) cycle, still the rest of the time
+			// gear535는 2375ms 주기의 마지막 구간에서 0→-8.984→6.015→0도로 움직인다.
+			// 각 구간의 길이가 다르므로 아래의 구간별 선형 보간을 사용한다.
 			{
 				constexpr uint64_t GEAR535_CYCLE_MS = 2375ull;
-				const f32_t fFrac = static_cast<f32_t>(ullNowMs % GEAR535_CYCLE_MS) / static_cast<f32_t>(GEAR535_CYCLE_MS);
+				const f32_t fFrac =
+					static_cast<f32_t>(ullNowMs % GEAR535_CYCLE_MS) / static_cast<f32_t>(GEAR535_CYCLE_MS);
 				f32_t fDegrees = 0.f;
 				if (fFrac >= 0.7368f && fFrac < 0.9053f)
 					fDegrees = -8.984f * (fFrac - 0.7368f) / (0.9053f - 0.7368f);
@@ -5294,11 +5216,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			}
 		}
 
-		/* stanceMc's own real timeline (frame labels bubble_0/1/2/3) plays a small idle pulse
-		(depth4/8 pieces breathing/flashing) continuously regardless of gauge state -- baked here
-		as a real 27-frame loop (BrushIdle.json) so Yi_id_brush is never a single static frame.
-		Play_KeyframeAnimation only needs to run once; the engine's own loop wraparound
-		(HUDRuntimeView.cpp) keeps it playing after that. */
+		// 도화가 붓의 idle label을 첫 분기 진입 때 한 번 요청한다. 이후 반복 재생은 CUILayoutRuntime의 문서 규칙에 맡긴다.
+		// 지역 static 플래그는 재생 호출 성공 여부와 무관하게 true가 되며 view나 class 변경에서 여기서 초기화하지 않는다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
 		{
 			static bool_t bBrushLoopStarted = false;
@@ -5309,34 +5228,20 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			}
 		}
 
-		/* Artist's (yinyangshi) real 0..100 identity gauge (identityCyclic=0, holds at max --
-		Server has no separate bubble/stance counter, confirmed absent from PLAYER_STANCE_ID and
-		PLAYER_SNAPSHOT) is split into 3 equal thirds on the client to drive the 3 real
-		positionGuide slots. The current third plays the real per-percentage gauge ring
-		(coolDown_ArtistGauge, "0".."99"); thirds not yet reached stay empty. A third that just
-		completed plays the real one-shot bubble-fill sprite (artistBubbleEffect, real playback
-		order i56/i50/i51/i52/i53/i54/i55) exactly once on the edge into "filled" -- Play_
-		KeyframeAnimation() restarts its window on every call, so re-triggering it every frame
-		would never let the sprite finish -- then the engine's own "hold on last frame" behavior
-		(HUDRuntimeView.h) settles on that window's final key, which is the real persistent glow
-		(shape469) baked in as the sprite's last frame, matching the real play-once-then-stay-lit
-		behavior. This reads only the existing real iCurrentIdentity/iMaximumIdentity fields -- no
-		new server field. */
-		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass &&
-			player.iMaximumIdentity > 0u)
+		// 도화가 identity를 세 구간으로 나눠 완성된 구간은 pop, 아직 도달하지 않은 구간은 empty, 진행 중인 구간은 0~99 label로 표시한다.
+		// 완성 edge만 pop을 요청해 매 프레임 재생 시각이 초기화되지 않게 하며 Server의 기존 현재량·최대량만 소비한다.
+		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass && player.iMaximumIdentity > 0u)
 		{
-			const f32_t fFraction = static_cast<f32_t>(player.iCurrentIdentity) /
-				static_cast<f32_t>(player.iMaximumIdentity);
+			const f32_t fFraction =
+				static_cast<f32_t>(player.iCurrentIdentity) / static_cast<f32_t>(player.iMaximumIdentity);
 			const f32_t fScaled = std::clamp(fFraction, 0.f, 1.f) * 3.f;
-			/* iCompletedCount is how many of the 3 slots are fully done -- 0..3, NOT clamped to 2,
-			so fFraction==1.0 (fScaled==3.0) correctly marks all 3 slots complete instead of
-			leaving the 3rd stuck showing a 99%-full ring forever (the previous std::min(2, ...)
-			clamp made "i < iCurrentSegment" impossible to satisfy for i==2). */
+			// 완료 구간 수는 0~3이다. 전체 gauge가 가득 차면 세 번째 구간도 완료로 처리해야 하므로 2에서 제한하지 않는다.
 			const int32_t iCompletedCount = std::min(3, static_cast<int32_t>(fScaled));
 			const f32_t fSegmentFraction = fScaled - static_cast<f32_t>(iCompletedCount);
 
-			const char* pSlotIds[3] = { "Yi_Id_GaugeRing", "Yi_Id_GaugeSlot_2", "Yi_Id_GaugeSlot_3" };
-			static bool_t bPopped[3] = { false, false, false };
+			const char *pSlotIds[3] = {"Yi_Id_GaugeRing", "Yi_Id_GaugeSlot_2", "Yi_Id_GaugeSlot_3"};
+			// 완료 연출 edge를 기억하는 함수 지역 static 상태다. 도화가 분기가 실행되지 않는 동안에도 값이 남는다.
+			static bool_t bPopped[3] = {false, false, false};
 			for (int32_t i = 0; i < 3; ++i)
 			{
 				if (i < iCompletedCount)
@@ -5355,25 +5260,20 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				else
 				{
 					bPopped[i] = false;
-					const int32_t iGaugeFrame = std::clamp(
-						static_cast<int32_t>(fSegmentFraction * 99.f), 0, 99);
+					const int32_t iGaugeFrame = std::clamp(static_cast<int32_t>(fSegmentFraction * 99.f), 0, 99);
 					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotIds[i], std::to_string(iGaugeFrame));
 				}
 			}
 		}
 
-		/* Artist's Z/X identity slots are real ARKNewSlot instances (yinYangShiSlot, symbol 343,
-		shared by both) -- confirmed real skills (Z=31050, X=31110 in PlayerSkills.json) reacting
-		through the exact same generic mechanism as every other skill slot in the game: keyBind
-		text/icon dims to 30% brightness when not ready (ARKNewSlot.activate's real
-		ColorTransform(0.3,0.3,0.3,1)), and a real 238-frame coolDown wipe (symbol 334, same
-		per-frame vector mask technique as Warlord's 240-frame wipe) sweeps over the icon. */
+		// 도화가 Z/X도 스킬의 실제 준비 여부로 ready/cooldown을 고른다.
+		// 가림 효과는 이미 지난 cooldown 비율을 0~237 frame으로 환산하는 별도 슬롯에 적용한다.
 		if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST == player.eCharacterClass)
 		{
 			bool_t bZReady = false, bXReady = false;
-			const HUD_SKILL_STATE* pZSkill = nullptr;
-			const HUD_SKILL_STATE* pXSkill = nullptr;
-			for (const HUD_SKILL_STATE& Skill : player.Skills)
+			const HUD_SKILL_STATE *pZSkill = nullptr;
+			const HUD_SKILL_STATE *pXSkill = nullptr;
+			for (const HUD_SKILL_STATE &Skill : player.Skills)
 			{
 				if ("Z" == Skill.strInputSlot)
 				{
@@ -5389,20 +5289,19 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Yin_Skill_Z", bZReady ? "ready" : "cooldown");
 			m_pHUDRuntimeView->Play_KeyframeAnimation("Yin_Skill_X", bXReady ? "ready" : "cooldown");
 
-			const auto PlayZXWipe = [&](const char* pSlotId, const HUD_SKILL_STATE* pSkill, bool_t bReady)
+			const auto PlayZXWipe = [&](const char *pSlotId, const HUD_SKILL_STATE *pSkill, bool_t bReady)
 			{
 				if (bReady || nullptr == pSkill || 0u == pSkill->iCooldownDurationTicks)
 				{
 					m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, "ready");
 					return;
 				}
-				const uint32_t remainingTicks = pSkill->iCooldownEndTick > player.iServerTick ?
-					pSkill->iCooldownEndTick - player.iServerTick : 0u;
-				const f32_t fElapsedFraction = std::clamp(1.f -
-					static_cast<f32_t>(remainingTicks) / static_cast<f32_t>(pSkill->iCooldownDurationTicks),
-					0.f, 1.f);
-				const int32_t iWipeFrame = std::clamp(
-					static_cast<int32_t>(fElapsedFraction * 237.f), 0, 237);
+				const uint32_t remainingTicks =
+					pSkill->iCooldownEndTick > player.iServerTick ? pSkill->iCooldownEndTick - player.iServerTick : 0u;
+				const f32_t fElapsedFraction = std::clamp(1.f - static_cast<f32_t>(remainingTicks) /
+																	static_cast<f32_t>(pSkill->iCooldownDurationTicks),
+														  0.f, 1.f);
+				const int32_t iWipeFrame = std::clamp(static_cast<int32_t>(fElapsedFraction * 237.f), 0, 237);
 				m_pHUDRuntimeView->Play_KeyframeAnimation(pSlotId, std::to_string(iWipeFrame));
 			};
 			PlayZXWipe("Yin_Skill_Z_Wipe", pZSkill, bZReady);
@@ -5411,15 +5310,11 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		Update_PlayerHealthManaBar();
 	}
 
-	/* Real gauge0/1/2 fill (target-rotation-masked track) and burn flourish are baked and wired;
-	the 3 segments' screen position (Lance_Id_GaugeBg/Fill/Burn0/1/2 rect in HUD_Layout.json) is
-	still a placeholder shared with Lance_Id_Stance's own rect -- needs live in-game tuning to
-	place left/bottom/right segments at their real offsets. */
+	// 창술사의 세 구간 채움과 완료 연출은 기존 전용 갱신 함수가 처리한다. 화면 배치는 HUD layout의 저작 rect를 따른다.
 	if (LostArk::Shared::CHARACTER_CLASS_ID::LANCE_MASTER == player.eCharacterClass)
 		Update_LanceMasterIdentityGauge();
 
-	/* The class-owned slots are already gated by Set_ActiveOwnerClass; this only drives the
-	dynamic part (orb fill, stance art, socket count) when the class is actually the local one. */
+	// ownerClass가 class별 표시 범위를 고른 뒤 가디언 나이트의 구슬·stance·socket 동적 값을 갱신한다.
 	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass)
 		Update_GuardianKnightIdentity();
 
@@ -5431,11 +5326,10 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	m_HudTimedTexts.clear();
 	Update_ItemQuickSlots();
 	Update_SpecialQuickSlots();
-	/* The combat analyser belongs to the raid arenas: in town and the class-select arena it
-	   has nothing to measure. */
+	// 전투 분석 view는 발탄·쿠크 raid에서만 갱신하고 다른 지원 Level에서는 명시적으로 숨긴다.
 	if (nullptr != m_pCombatAnalysisView)
 	{
-		if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel || ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+		if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel || ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel)
 			m_pCombatAnalysisView->Update(fTimeDelta, player);
 		else
 			m_pCombatAnalysisView->Hide();
@@ -5451,51 +5345,49 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		bool_t bRepairAllSlots = false;
 		if (m_pRepairWindowView->Try_Consume_RepairRequest(bRepairAllSlots))
 		{
-			/* The Server restores the worn gear and answers with the inventory snapshot that
-			carries the repaired percents the durability HUD reads. */
-			CMainApp::Play_UIButtonClickSound();
+			// 수리는 Server에 요청하며 실제 복구된 내구도는 돌아오는 인벤토리 snapshot으로 표시된다.
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 			(void)CNetworkManager::Get().Send_RepairEquipment(m_iNextUseItemSequence++, bRepairAllSlots);
 		}
 	}
 	if (nullptr != m_pShopWindowView)
 	{
 		m_pShopWindowView->Update();
-		/* The Server prices and applies the basket; its inventory answer updates the purse. */
+		// 구매 가격·잔액·아이템 적용은 Server가 판정한다. UI는 NPC ID와 장바구니 값만 요청한다.
 		string strShopNpcId;
 		vector<LostArk::Shared::SHOP_BASKET_ENTRY> BasketEntries;
 		if (m_pShopWindowView->Try_Consume_BuyRequest(strShopNpcId, BasketEntries))
-			(void)CNetworkManager::Get().Send_BuyItems(
-				m_iNextUseItemSequence++, strShopNpcId, BasketEntries);
+			(void)CNetworkManager::Get().Send_BuyItems(m_iNextUseItemSequence++, strShopNpcId, BasketEntries);
 	}
-	/* Part of the combat HUD: shown for as long as this function runs, which is already gated
-	on a valid player in a supported Level. Every part reads NORMAL until a Server message
-	carries item durability, so only the silhouette draws. */
+	// 내구도 view는 유효 플레이어·지원 Level 검사 뒤 실제 장착 아이템의 snapshot을 읽는다.
+	// 아래에서 손상 부품이 하나도 없으면 silhouette까지 숨긴다.
 	if (nullptr != m_pDurabilityHudView)
 	{
-		/* Gear wear shows only in Bern and the two raid arenas; every other Level hides it. */
-		if (currentLevel == ETOUI(LEVEL::BERN) ||
-			currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-			currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		// 내구도 표시는 Bern·발탄·쿠크에서만 켜며 다른 Level에서는 숨긴다.
+		if (currentLevel == ETOUI(LEVEL::BERN) || currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 		{
-			/* Each HUD part reads the gear worn in its slot: below 30% damaged (red), at 0
-			destroyed, an empty slot or a sound piece normal. The silhouette stays hidden until
-			some part turns red. */
+			// 장착 슬롯의 내구도가 0이면 파괴, 30% 미만이면 손상이다. 빈 슬롯이나 정상 장비는 NORMAL이며 손상 부품이 있을 때만 전체 view를 갱신한다.
 			using LostArk::Shared::EQUIPMENT_SLOT;
-			struct HUD_PART_SLOT { CDurabilityHudView::PART ePart; EQUIPMENT_SLOT eSlot; };
-			constexpr HUD_PART_SLOT PART_SLOTS[] = {
-				{ CDurabilityHudView::PART::WEAPON, EQUIPMENT_SLOT::WEAPON },
-				{ CDurabilityHudView::PART::HELMET, EQUIPMENT_SLOT::HELMET },
-				{ CDurabilityHudView::PART::TOP, EQUIPMENT_SLOT::TOP },
-				{ CDurabilityHudView::PART::GLOVES, EQUIPMENT_SLOT::GLOVES },
-				{ CDurabilityHudView::PART::BOTTOMS, EQUIPMENT_SLOT::PANTS },
-				{ CDurabilityHudView::PART::SHOULDER, EQUIPMENT_SLOT::SHOULDER },
+			struct HUD_PART_SLOT
+			{
+				CDurabilityHudView::PART ePart;
+				EQUIPMENT_SLOT eSlot;
 			};
-			const auto& InventoryItems = CCombatHUDViewModel::Get().Get_Inventory().Items;
+			constexpr HUD_PART_SLOT PART_SLOTS[] = {
+				{CDurabilityHudView::PART::WEAPON, EQUIPMENT_SLOT::WEAPON},
+				{CDurabilityHudView::PART::HELMET, EQUIPMENT_SLOT::HELMET},
+				{CDurabilityHudView::PART::TOP, EQUIPMENT_SLOT::TOP},
+				{CDurabilityHudView::PART::GLOVES, EQUIPMENT_SLOT::GLOVES},
+				{CDurabilityHudView::PART::BOTTOMS, EQUIPMENT_SLOT::PANTS},
+				{CDurabilityHudView::PART::SHOULDER, EQUIPMENT_SLOT::SHOULDER},
+			};
+			const auto &InventoryItems = CCombatHUDViewModel::Get().Get_Inventory().Items;
 			bool_t bAnyRed = false;
-			for (const HUD_PART_SLOT& PartSlot : PART_SLOTS)
+			for (const HUD_PART_SLOT &PartSlot : PART_SLOTS)
 			{
 				CDurabilityHudView::PART_STATE eState = CDurabilityHudView::PART_STATE::NORMAL;
-				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item : InventoryItems)
+				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT &Item : InventoryItems)
 				{
 					if (Item.eEquippedSlot != PartSlot.eSlot)
 						continue;
@@ -5519,8 +5411,8 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 	if (nullptr != m_pInventoryView)
 	{
 		m_pInventoryView->Update(CCombatHUDViewModel::Get().Get_Inventory().Items);
-		/* Right-click equip: the first free slot of the item's kind (the two earrings / two
-		   rings), or the first one when both are worn. The Server checks kind and class. */
+		// 장비 종류에 맞는 슬롯 중 첫 빈자리를 우선하고 모두 사용 중이면 첫 슬롯을 고른다.
+		// 실제 종류·class·장착 가능 여부는 Server가 검증한다.
 		string strEquipItemId;
 		bool_t bEquipRequested = m_pInventoryView->Try_Consume_EquipRequest(strEquipItemId);
 		if (!bEquipRequested && nullptr != m_pAvatarBookView)
@@ -5528,18 +5420,18 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		if (bEquipRequested)
 		{
 			using LostArk::Shared::EQUIPMENT_SLOT;
-			const ITEM_DEFINITION* pEquip = CItemCatalog::Find_ById(strEquipItemId);
+			const ITEM_DEFINITION *pEquip = CItemCatalog::Find_ById(strEquipItemId);
 			EQUIPMENT_SLOT eTarget = EQUIPMENT_SLOT::NONE;
 			for (uint32_t iSlot = ETOUI(EQUIPMENT_SLOT::HELMET);
-				nullptr != pEquip && iSlot < ETOUI(EQUIPMENT_SLOT::END); ++iSlot)
+				 nullptr != pEquip && iSlot < ETOUI(EQUIPMENT_SLOT::END); ++iSlot)
 			{
 				const EQUIPMENT_SLOT eSlot = static_cast<EQUIPMENT_SLOT>(iSlot);
-				const char* pKind = LostArk::Shared::Equipment_SlotKind(eSlot);
+				const char *pKind = LostArk::Shared::Equipment_SlotKind(eSlot);
 				if (nullptr == pKind || pEquip->strEquipSlot != pKind)
 					continue;
 				bool_t bWorn = false;
-				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT& Item :
-					CCombatHUDViewModel::Get().Get_Inventory().Items)
+				for (const LostArk::Shared::INVENTORY_ITEM_SNAPSHOT &Item :
+					 CCombatHUDViewModel::Get().Get_Inventory().Items)
 					bWorn = bWorn || Item.eEquippedSlot == eSlot;
 				if (EQUIPMENT_SLOT::NONE == eTarget)
 					eTarget = eSlot;
@@ -5550,51 +5442,47 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 				}
 			}
 			if (EQUIPMENT_SLOT::NONE != eTarget)
-				(void)CNetworkManager::Get().Send_SetEquipment(
-					m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
+				(void)CNetworkManager::Get().Send_SetEquipment(m_iNextUseItemSequence++, eTarget, true, strEquipItemId);
 		}
 		LostArk::Shared::EQUIPMENT_SLOT eAvatarUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 		bool_t bUnequipRequested = m_pInventoryView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
 		if (!bUnequipRequested && nullptr != m_pAvatarBookView)
 			bUnequipRequested = m_pAvatarBookView->Try_Consume_UnequipRequest(eAvatarUnequipSlot);
 		if (bUnequipRequested)
-			(void)CNetworkManager::Get().Send_SetEquipment(
-				m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
+			(void)CNetworkManager::Get().Send_SetEquipment(m_iNextUseItemSequence++, eAvatarUnequipSlot, false, {});
 	}
 	if (nullptr != m_pCharacterInfoView)
 	{
-		/* Each level owns its own CClientReplication, the same way the party window above
-		asks the active level for its roster. */
+		// 현재 지원 Level에서 실제 캐릭터의 shared_ptr를 잠시 받아 정보·외형 view 갱신 동안 수명을 유지한다.
 		shared_ptr<CCharacter> pLocalCharacter;
 		if (ETOUI(LEVEL::BERN) == currentLevel)
 		{
-			if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+			if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
 				pLocalCharacter = pBern->Get_LocalCharacter();
 		}
 		else if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
 		{
-			if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+			if (CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active())
 				pLocalCharacter = pValtanArena->Get_LocalCharacter();
 		}
 		else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
 		{
-			if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+			if (CLevel_CharacterSelect *pCharacterSelect = CLevel_CharacterSelect::Get_Active())
 				pLocalCharacter = pCharacterSelect->Get_CharacterInfoCharacter();
 		}
-		else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+		else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel)
 		{
-			if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
+			if (CLevel_KoukuSaydonArena *pKoukuArena = CLevel_KoukuSaydonArena::Get_Active())
 				pLocalCharacter = pKoukuArena->Get_LocalCharacter();
 		}
 		m_pCharacterInfoView->Update(fTimeDelta, pLocalCharacter, player);
 		LostArk::Shared::EQUIPMENT_SLOT eUnequipSlot = LostArk::Shared::EQUIPMENT_SLOT::NONE;
 		if (m_pCharacterInfoView->Take_UnequipRequest(eUnequipSlot))
-			(void)CNetworkManager::Get().Send_SetEquipment(
-				m_iNextUseItemSequence++, eUnequipSlot, false, {});
+			(void)CNetworkManager::Get().Send_SetEquipment(m_iNextUseItemSequence++, eUnequipSlot, false, {});
 		if (nullptr != m_pAvatarBookView)
 		{
-			/* The avatar-page avatar book button toggles the book; the book lives only while the
-			info window is open (its slot map / avatar item ids come from that window). */
+			// 아바타 도감은 캐릭터 정보 창의 버튼으로 토글하며 정보 창을 닫으면 함께 닫는다.
+			// 도감의 슬롯·아이템 표시 입력은 기존 정보 view에서 가져온다.
 			if (m_pCharacterInfoView->Take_AvatarBookRequest())
 			{
 				if (m_pAvatarBookView->Is_Open())
@@ -5610,47 +5498,45 @@ void CMainApp::Update_CombatHUD(const f32_t fTimeDelta)
 		if (nullptr != m_pVehicleWindowView)
 		{
 			m_pVehicleWindowView->Update(fTimeDelta, pLocalCharacter, player);
-			/* The window only names the vehicle; the level's CPlayerController owns the Server
-			round trip (pending sequence, result log) exactly as for its own H key. Arena levels
-			get the request too -- the Server answers REJECTED_WORLD_NOT_ALLOWED there. */
+			// 탈것 창은 stable vehicle ID를 요청한다. 현재 Level의 PlayerController가 대기 sequence와 Server 응답을 소유한다.
+			// 여기서는 controller 부재·요청 거부·전송 실패를 기록하며 실제 탑승 가능 여부는 기존 Server 왕복 경계에서 판정한다.
 			uint32_t iVehicleId = 0u;
 			if (m_pVehicleWindowView->Take_RidingRequest(iVehicleId))
 			{
-				CPlayerController* pController = Find_ActivePlayerController();
+				CPlayerController *pController = Find_ActivePlayerController();
 				if (nullptr == pController || !pController->Request_VehicleRiding(iVehicleId))
-					OutputDebugStringA("[Client][VehicleWindow] Riding request not sent (no controller, or one is still pending).\n");
+					OutputDebugStringA(
+						"[Client][VehicleWindow] Riding request not sent (no controller, or one is still pending).\n");
 			}
 		}
 		if (nullptr != m_pHonorTitleWindowView)
 		{
-			/* The info window's title row button toggles the title window; the window closes
-			with the info window. The Server round trip is the controller's, as for vehicles. */
+			// 칭호 창도 정보 창 버튼으로 토글하고 정보 창을 닫으면 함께 닫는다. Server 왕복은 현재 PlayerController로 위임한다.
 			if (m_pCharacterInfoView->Take_HonorTitleWindowRequest())
 				m_pHonorTitleWindowView->Toggle();
 			if (!m_pCharacterInfoView->Is_Open())
 				m_pHonorTitleWindowView->Close();
-			/* Same covering rule as the avatar book: the info window's labels under the open
-			title window's rect are skipped so the title window really sits on top. */
+			// 칭호 창이 열렸으면 아래 정보 창 글자를 가리는 표시 상태를 설정한다.
 			if (m_pHonorTitleWindowView->Is_Open())
 				m_pCharacterInfoView->Set_Covered(true);
 			m_pHonorTitleWindowView->Update(fTimeDelta, player);
 			uint32_t iTitleId = 0u;
 			if (m_pHonorTitleWindowView->Take_TitleRequest(iTitleId))
 			{
-				CPlayerController* pController = Find_ActivePlayerController();
+				CPlayerController *pController = Find_ActivePlayerController();
 				if (nullptr == pController || !pController->Request_HonorTitle(iTitleId))
-					OutputDebugStringA("[Client][HonorTitleWindow] Title request not sent (no controller, or one is still pending).\n");
+					OutputDebugStringA(
+						"[Client][HonorTitleWindow] Title request not sent (no controller, or one is still pending).\n");
 			}
 		}
 	}
 	Update_QuickSlotDrag();
 
-	/* Advances every keyframe-animation slot the per-class blocks above played (and any
-	flipbooks, though this document has none) -- must run after them so a Play call issued this
-	frame evaluates into its sprites before this frame renders. */
+	// 이번 프레임에 선택한 animation label을 sprite에 평가한 뒤 Render할 수 있도록 CUILayoutRuntime 갱신을 마지막에 호출한다.
 	m_pHUDRuntimeView->Update(fTimeDelta);
 }
 
+// RenderQuickSlotKeyLabels가 선박 HUD일 때 위임한다. 현재 보급량·속도·키 글자를 기존 저작 기준점에 배치하며 view가 없거나 선박 HUD가 아니면 생략한다.
 void CMainApp::RenderShipHudTexts()
 {
 	if (!m_bShipHudActive || nullptr == m_pHUDRuntimeView)
@@ -5660,45 +5546,45 @@ void CMainApp::RenderShipHudTexts()
 	const f32_t fScaleY = vViewportSize.y / 720.f;
 	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
 
-	/* Text centred on a HUD reference point; the size is in HUD reference pixels. YG760 is the movie's own font. */
-	const auto DrawHudText = [&](const wchar_t* pText, const f32_t fHudX, const f32_t fHudY,
-		const f32_t fHudPx, const fvector_t vColor)
+	// 입력 위치·글자 크기는 HUD 기준 pixel이다. viewport 배율로 변환하고 측정한 글자 크기의 절반을 빼서 중심 정렬한다.
+	const auto DrawHudText =
+		[&](const wchar_t *pText, const f32_t fHudX, const f32_t fHudY, const f32_t fHudPx, const fvector_t vColor)
 	{
 		f32_t fScale = 1.f;
 		const wstring_t strFont = UILabelFont::Resolve(TEXT("Font_YG760"), fHudPx * fUiScale, fScale);
 		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, pText);
 		const float2_t vPosition(std::round(fHudX * fScaleX - vMeasured.x * fScale * 0.5f),
-			std::round(fHudY * fScaleY - vMeasured.y * fScale * 0.5f));
+								 std::round(fHudY * fScaleY - vMeasured.y * fScale * 0.5f));
 		CGameInstance::Get().Draw_Text(strFont, pText, float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
-			XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
+									   XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
 		CGameInstance::Get().Draw_Text(strFont, pText, vPosition, vColor, 0.f, float2_t(0.f, 0.f), fScale);
 	};
-	/* Retail stage px (oceanhud.gfx, 1920x1080) -> HUD reference px: the mapping the ship art uses
-	(retail 960 <-> HUD 673.5, retail 974 <-> HUD 644.702, 2/3 scale). */
+	// 원본 1920×1080 무대 좌표를 HUD 기준 좌표로 2/3 축소해 옮긴다.
+	// 무대 기준점(960,974)을 HUD의(673.5,644.702026)에 대응한다.
 	constexpr f32_t STAGE_SCALE = 2.f / 3.f;
-	const auto DrawStageText = [&](const wchar_t* pText, const f32_t fStageX, const f32_t fStageY,
-		const f32_t fStagePx, const fvector_t vColor)
+	const auto DrawStageText = [&](const wchar_t *pText, const f32_t fStageX, const f32_t fStageY, const f32_t fStagePx,
+								   const fvector_t vColor)
 	{
 		DrawHudText(pText, 673.5f + (fStageX - 960.f) * STAGE_SCALE, 644.702026f + (fStageY - 974.f) * STAGE_SCALE,
-			fStagePx * STAGE_SCALE, vColor);
+					fStagePx * STAGE_SCALE, vColor);
 	};
 	const fvector_t vWhite = XMVectorSet(1.f, 1.f, 1.f, 1.f);
 	const fvector_t vSpeed = XMVectorSet(225.f / 255.f, 210.f / 255.f, 157.f / 255.f, 1.f);
 
-	/* The dome (OceanSupplieGauge.targetText, 86x22 at stage 918,963.5) and the knots line under the ship icon. */
+	// 선박 보급량은 현재/최대로, 속도는 소수 한 자리 knot 문구로 표시한다.
 	if (m_iShipSupplyMax > 0u)
 	{
 		const wstring strSupply = std::to_wstring(m_iShipSupply) + L"/" + std::to_wstring(m_iShipSupplyMax);
 		DrawStageText(strSupply.c_str(), 961.f, 975.f, 17.f, vWhite);
 	}
 	const int32_t iKnotsTenths = static_cast<int32_t>(std::lround(m_fShipKnots * 10.f));
-	const wstring strKnots = std::to_wstring(iKnotsTenths / 10) + L"." + std::to_wstring(iKnotsTenths % 10) +
-		L" \uB178\uD2B8";
+	const wstring strKnots =
+		std::to_wstring(iKnotsTenths / 10) + L"." + std::to_wstring(iKnotsTenths % 10) + L" \uB178\uD2B8";
 	DrawStageText(strKnots.c_str(), 960.f, 1051.f, 16.f, vSpeed);
 
-	/* The eight slot keys sit in the tab at the bottom of each slot (retail keyBind box: slot y + 23.8, 20.6 high). */
-	constexpr const char* SLOT_KEYS[] = { "Q", "W", "E", "R", "A", "S", "D", "F" };
-	constexpr const wchar_t* SLOT_LABELS[] = { L"Q", L"W", L"E", L"R", L"A", L"S", L"D", L"F" };
+	// 8개 슬롯의 기준 rect를 읽어 아래쪽 tab 중심에 키 문자를 배치한다.
+	constexpr const char *SLOT_KEYS[] = {"Q", "W", "E", "R", "A", "S", "D", "F"};
+	constexpr const wchar_t *SLOT_LABELS[] = {L"Q", L"W", L"E", L"R", L"A", L"S", L"D", L"F"};
 	for (size_t i = 0; i < 8u; ++i)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
@@ -5707,8 +5593,7 @@ void CMainApp::RenderShipHudTexts()
 		DrawHudText(SLOT_LABELS[i], fX + fWidth * 0.5f, fY + fHeight * 0.83f, 13.f * STAGE_SCALE, vWhite);
 	}
 
-	/* Button captions (retail cruise_btn T, boatParking_btn Z, booster_btn SPACE, boatHorn_btn C,
-	autoCruiseBtn M), placed where the retail client draws them (stage px measured on the retail screenshot). */
+	// 선박 버튼의 키 문자는 기존 원본 무대 기준 좌표에 놓고 같은 좌표 변환을 사용한다.
 	DrawStageText(L"T", 1109.f, 995.f, 13.f, vWhite);
 	DrawStageText(L"Z", 1064.f, 1053.f, 13.f, vWhite);
 	DrawStageText(L"SPACE", 1141.f, 1053.f, 13.f, vWhite);
@@ -5717,33 +5602,35 @@ void CMainApp::RenderShipHudTexts()
 	DrawStageText(L"\uC790\uB3D9 \uD56D\uB85C", 1316.f, 1057.f, 13.f, vWhite);
 }
 
+// 제품 텍스트 pass가 유효 플레이어의 실제 HUD 모드에 맞는 키 글자를 그린다.
+// 기준 rect가 없는 슬롯은 해당 문자만 건너뛰며 입력이나 스킬 준비 상태를 변경하지 않는다.
 void CMainApp::RenderQuickSlotKeyLabels()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
-		currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) && currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) && currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) && currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
 		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
 	}
-	const HUD_PLAYER_STATE& keyLabelPlayer = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &keyLabelPlayer = CCombatHUDViewModel::Get().Get_Player();
 	if (!keyLabelPlayer.isValid)
 		return;
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 
-	struct KEY_LABEL { const char* pSlotId; const wchar_t* pLabel; };
+	struct KEY_LABEL
+	{
+		const char *pSlotId;
+		const wchar_t *pLabel;
+	};
 	constexpr KEY_LABEL LABELS[] = {
-		{ "Skill_Q", L"Q" }, { "Skill_W", L"W" }, { "Skill_E", L"E" }, { "Skill_R", L"R" },
-		{ "Skill_A", L"A" }, { "Skill_S", L"S" }, { "Skill_D", L"D" }, { "Skill_F", L"F" },
-		{ "Skill_T", L"T" }, { "Skill_V", L"V" },
-		{ "SpecialSkill_1", L"5" }, { "SpecialSkill_2", L"6" }, { "SpecialSkill_3", L"7" },
-		{ "SpecialSkill_4", L"8" }, { "SpecialSkill_5", L"9" }, { "SpecialSkill_6", L"0" },
-		{ "Item_1", L"1" }, { "Item_2", L"2" }, { "Item_3", L"3" }, { "Item_4", L"4" },
+		{"Skill_Q", L"Q"},		  {"Skill_W", L"W"},		{"Skill_E", L"E"},		  {"Skill_R", L"R"},
+		{"Skill_A", L"A"},		  {"Skill_S", L"S"},		{"Skill_D", L"D"},		  {"Skill_F", L"F"},
+		{"Skill_T", L"T"},		  {"Skill_V", L"V"},		{"SpecialSkill_1", L"5"}, {"SpecialSkill_2", L"6"},
+		{"SpecialSkill_3", L"7"}, {"SpecialSkill_4", L"8"}, {"SpecialSkill_5", L"9"}, {"SpecialSkill_6", L"0"},
+		{"Item_1", L"1"},		  {"Item_2", L"2"},			{"Item_3", L"3"},		  {"Item_4", L"4"},
 	};
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -5751,52 +5638,41 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const auto DrawKeyLabel = [&](const char* pSlotId, const wchar_t* pLabel)
+	const auto DrawKeyLabel = [&](const char *pSlotId, const wchar_t *pLabel)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pHUDRuntimeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
 			return;
 
-		/* "Empty Slot.png"/"Empty Slot 2.png" are both 52x52 art with a solid pointed tab
-		filling roughly the bottom 30% (measured directly from the source pixels: transparent
-		above y~35, solid by y~38 of 52) -- this places the label centred in that tab instead
-		of the slot's own centre. */
+		// 슬롯 그림의 하단 tab 중심을 사용하도록 가로50%·세로87% 위치에 키 글자를 배치한다.
 		const f32_t fLabelCenterX = fX + fWidth * 0.5f;
 		const f32_t fLabelCenterY = fY + fHeight * 0.87f;
 
-		/* YoonGasiIIM measured objectively bolder than YG760 (glyph opacity ratio 0.427 vs
-		0.407 for '8', 0.336 vs 0.306 for 'Q') -- same font already used for combat damage
-		numbers because it needs to read clearly at a glance too. */
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
-		const f32_t fScale = (vMeasured.y > 0.f) ?
-			(fHeight * 0.22f / vMeasured.y) : 1.f;
+		// 키 글자는 기존 Font_YoonGasiIIM을 사용한다. 측정 글자 높이와 슬롯 높이의 22%로 배율을 정한다.
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.22f / vMeasured.y) : 1.f;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-			float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+									   float2_t(fLabelCenterX * textScaleX, fLabelCenterY * textScaleY), Colors::White,
+									   0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	/* T/V are hidden by the KoukuSaydon interaction mode (Update_KoukuHudMode); a
-	label over a hidden slot would float on the emblem. */
-	const HUD_KOUKU_GIMMICK_STATE& koukuLabelState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
-	const bool_t bKoukuModeLabels = koukuLabelState.isValid &&
-		HUD_KOUKU_HUD_MODE::NONE != koukuLabelState.eHudMode &&
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
-	/* The mounted-vehicle HUD (Update_VehicleHud) and the water gun HUD (Update_WaterGunHud) drop
-	the T/V column the same way. */
-	const bool_t bMountedLabels = 0u != keyLabelPlayer.iVehicleId ||
-		Is_WaterGunHudLevel(currentLevel, keyLabelPlayer);
-	/* The ocean HUD draws its own captions (RenderShipHudTexts); the class quick-slot labels do not apply. */
+	// 쿠크 상호작용 mode가 T/V 슬롯을 숨길 때 해당 글자도 건너뛴다.
+	const HUD_KOUKU_GIMMICK_STATE &koukuLabelState = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const bool_t bKoukuModeLabels = koukuLabelState.isValid && HUD_KOUKU_HUD_MODE::NONE != koukuLabelState.eHudMode &&
+									ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel;
+	// 탑승 중인 탈것과 워터팡 물총 HUD도 같은 T/V 글자 제외 조건을 사용한다.
+	const bool_t bMountedLabels = 0u != keyLabelPlayer.iVehicleId || Is_WaterGunHudLevel(currentLevel, keyLabelPlayer);
+	// 선박 HUD는 자체 문자 배치를 사용하므로 일반 class 퀵슬롯 글자를 그리기 전에 반환한다.
 	if (m_bShipHudActive)
 	{
 		RenderShipHudTexts();
 		return;
 	}
-	for (const KEY_LABEL& Label : LABELS)
+	for (const KEY_LABEL &Label : LABELS)
 	{
-		/* The ship HUD hides the item row and the class special slots; their captions go with them. */
-		if (m_bShipHudActive && (0 == std::strncmp(Label.pSlotId, "Item_", 5) ||
-			0 == std::strncmp(Label.pSlotId, "SpecialSkill_", 13)))
+		// 선박의 아이템·특수 슬롯 제외 조건이다. 현재 선박 상태는 위에서 이미 전용 글자를 그리고 반환한다.
+		if (m_bShipHudActive &&
+			(0 == std::strncmp(Label.pSlotId, "Item_", 5) || 0 == std::strncmp(Label.pSlotId, "SpecialSkill_", 13)))
 		{
 			continue;
 		}
@@ -5810,129 +5686,141 @@ void CMainApp::RenderQuickSlotKeyLabels()
 	if (m_bHudSpecialSlotShown)
 		DrawKeyLabel("Special_Space", L"Space");
 
-	/* GuardianKnight's identity toggle key. Unlike the Artist/Warlord Z/X cases below, this one
-	does have a real non-keyframe anchor to read -- skillKey_bg is an ordinary slot with its own
-	authored rect -- so the label can be centred on it. Colour follows
-	DragonKnightSkinFrame.draw(): white once the gauge is full or the dragon stance is held,
-	0x686C20 otherwise, which is how retail says "you can press this now". */
+	// 가디언 나이트 Z는 저작된 일반 슬롯 GK_Id_SkillKeyBg의 중심을 기준으로 표시한다.
+	// identity가 가득 찼거나 용 stance이면 흰색, 그 외에는 기존 어두운 색을 사용한다.
 	if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == keyLabelPlayer.eCharacterClass)
 	{
 		f32_t fKeyX = 0.f, fKeyY = 0.f, fKeyWidth = 0.f, fKeyHeight = 0.f;
 		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_SkillKeyBg", fKeyX, fKeyY, fKeyWidth, fKeyHeight))
 		{
 			const bool_t bGaugeFull = 0u != keyLabelPlayer.iMaximumIdentity &&
-				keyLabelPlayer.iCurrentIdentity >= keyLabelPlayer.iMaximumIdentity;
-			const bool_t bUsable = bGaugeFull ||
-				LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == keyLabelPlayer.eStance;
-			const float2_t vKeyMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), L"Z");
-			const f32_t fKeyScale = (vKeyMeasured.y > 0.f) ?
-				(fKeyHeight * 0.82f / vKeyMeasured.y) : 1.f;
-			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), L"Z",
-				float2_t((fKeyX + fKeyWidth * 0.5f) * textScaleX,
-					(fKeyY + fKeyHeight * 0.5f) * textScaleY),
-				bUsable ? Colors::White :
-					XMVectorSet(0x68 / 255.f, 0x6C / 255.f, 0x20 / 255.f, 1.f),
-				0.f, float2_t(0.5f, 0.5f), fKeyScale * textUiScale);
+									  keyLabelPlayer.iCurrentIdentity >= keyLabelPlayer.iMaximumIdentity;
+			const bool_t bUsable =
+				bGaugeFull || LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == keyLabelPlayer.eStance;
+			const float2_t vKeyMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), L"Z");
+			const f32_t fKeyScale = (vKeyMeasured.y > 0.f) ? (fKeyHeight * 0.82f / vKeyMeasured.y) : 1.f;
+			CGameInstance::Get().Draw_Text(
+				TEXT("Font_YoonGasiIIM"), L"Z",
+				float2_t((fKeyX + fKeyWidth * 0.5f) * textScaleX, (fKeyY + fKeyHeight * 0.5f) * textScaleY),
+				bUsable ? Colors::White : XMVectorSet(0x68 / 255.f, 0x6C / 255.f, 0x20 / 255.f, 1.f), 0.f,
+				float2_t(0.5f, 0.5f), fKeyScale * textUiScale);
 		}
 	}
 
-	/* Artist's Z ("저무는 달") and Warlord's X/Z ("전장의 방패"/"방어 태세 전환") are not drawn
-	here. The only "Skill_Z" slot in HUD_Layout.json is Warlord-owned, KEYFRAME_ANIMATION type
-	with a placeholder 1x1 rect (its real on-screen size/position lives in the keyframe document
-	SkillZState.json, not this JSON's rect) -- DrawKeyLabel's slot-width-based centering math
-	doesn't apply to it, so both the Artist and Warlord cases produced a mispositioned label.
-	Skip until there's a real anchor to read (either from the keyframe document's own bounds, or
-	a dedicated non-keyframe slot). */
+	// 도화가·워로드의 Z/X는 일반 슬롯 rect에 맞출 공통 anchor가 없어 이 경로에서 키 글자를 생략한다.
 }
 
 namespace
 {
-	constexpr const char* KOUKU_SLOT_KEYS[HUD_KOUKU_SLOT_COUNT] =
-		{ "Q", "W", "E", "R", "A", "S", "D", "F" };
-	constexpr const char* KOUKU_EMBLEM_SLOTS[] = { "Kouku_Emblem_Npc", "Kouku_Emblem_Pickup" };
-	/* Slots the retail interaction layout drops entirely (no T/V column). */
-	constexpr const char* KOUKU_HIDDEN_SLOTS[] =
-	{
-		"Skill_T", "Skill_T_Icon", "Skill_T_Frame", "Skill_T_Cooldown", "Skill_T_Flash",
-		"Skill_V", "Skill_V_Icon", "Skill_V_Frame", "Skill_V_Cooldown", "Skill_V_Flash",
-		"Skill_V_Edge1", "Skill_V_Edge2",
-	};
+constexpr const char *KOUKU_SLOT_KEYS[HUD_KOUKU_SLOT_COUNT] = {"Q", "W", "E", "R", "A", "S", "D", "F"};
+constexpr const char *KOUKU_EMBLEM_SLOTS[] = {"Kouku_Emblem_Npc", "Kouku_Emblem_Pickup"};
+// 쿠크 상호작용 HUD에서 제외하는 T/V 이미지·가림·flash 슬롯 목록이다.
+constexpr const char *KOUKU_HIDDEN_SLOTS[] = {
+	"Skill_T",		"Skill_T_Icon",	 "Skill_T_Frame",	 "Skill_T_Cooldown", "Skill_T_Flash", "Skill_V",
+	"Skill_V_Icon", "Skill_V_Frame", "Skill_V_Cooldown", "Skill_V_Flash",	 "Skill_V_Edge1", "Skill_V_Edge2",
+};
 
-	/* Slots the retail ocean HUD (oceanhud.gfx) does not have: no HP/mana bar, item row, class
-	special slots or charge gauge while sailing. */
-	constexpr const char* SHIP_HIDDEN_SLOTS[] =
-	{
-		"HealthBar_BG", "HealthBar", "HealthBar_Fill", "HealthBar_Shield_Fill",
-		"ManaBar_BG", "ManaBar", "ManaBar_Fill",
-		"Item_1", "Item_2", "Item_3", "Item_4",
-		"Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon",
-		"SpecialSkill_1", "SpecialSkill_2", "SpecialSkill_3", "SpecialSkill_4", "SpecialSkill_5", "SpecialSkill_6",
-		"SpecialSkill_1_Icon", "SpecialSkill_2_Icon", "SpecialSkill_3_Icon",
-		"SpecialSkill_4_Icon", "SpecialSkill_5_Icon", "SpecialSkill_6_Icon",
-		"ChargeGauge_Bg", "ChargeGauge_Track", "ChargeGauge_Fill",
-	};
+// 선박 HUD가 대신 표시될 때 숨길 HP·자원·아이템·class 특수 슬롯·charge gauge 목록이다.
+constexpr const char *SHIP_HIDDEN_SLOTS[] = {
+	"HealthBar_BG",
+	"HealthBar",
+	"HealthBar_Fill",
+	"HealthBar_Shield_Fill",
+	"ManaBar_BG",
+	"ManaBar",
+	"ManaBar_Fill",
+	"Item_1",
+	"Item_2",
+	"Item_3",
+	"Item_4",
+	"Item_1_Icon",
+	"Item_2_Icon",
+	"Item_3_Icon",
+	"Item_4_Icon",
+	"SpecialSkill_1",
+	"SpecialSkill_2",
+	"SpecialSkill_3",
+	"SpecialSkill_4",
+	"SpecialSkill_5",
+	"SpecialSkill_6",
+	"SpecialSkill_1_Icon",
+	"SpecialSkill_2_Icon",
+	"SpecialSkill_3_Icon",
+	"SpecialSkill_4_Icon",
+	"SpecialSkill_5_Icon",
+	"SpecialSkill_6_Icon",
+	"ChargeGauge_Bg",
+	"ChargeGauge_Track",
+	"ChargeGauge_Fill",
+};
 
-	/* Every slot of the retail ocean HUD (build_ocean_hud_ui.py + build_voyage_hud_ui.py); Update_VehicleHud shows
-	them all while the local player rides a ship and hides them for every other vehicle. */
-	constexpr const char* SHIP_HUD_SLOTS[] =
-	{
-		"Ship_Hud_Plate", "Ship_Hud_Wheel", "Ship_Hud_Bezel", "Ship_Hud_Dome", "Ship_Hud_Icon",
-		"Ship_Slot_Q_Frame", "Ship_Slot_W_Frame", "Ship_Slot_E_Frame", "Ship_Slot_R_Frame",
-		"Ship_Slot_A_Frame", "Ship_Slot_S_Frame", "Ship_Slot_D_Frame", "Ship_Slot_F_Frame",
-		"Ship_Slot_Q_Icon", "Ship_Slot_W_Icon", "Ship_Slot_E_Icon", "Ship_Slot_R_Icon",
-		"Ship_Slot_A_Icon", "Ship_Slot_S_Icon", "Ship_Slot_D_Icon", "Ship_Slot_F_Icon",
-		"Ship_Slot_Q_Cooldown", "Ship_Slot_W_Cooldown", "Ship_Slot_E_Cooldown", "Ship_Slot_R_Cooldown",
-		"Ship_Slot_A_Cooldown", "Ship_Slot_S_Cooldown", "Ship_Slot_D_Cooldown", "Ship_Slot_F_Cooldown",
-		"Ship_Btn_Horn", "Ship_Hud_Bottle", "Ship_Hud_EventSlot", "Ship_Btn_Anchor_Bg", "Ship_Btn_Anchor_Icon",
-		"Ship_Btn_Boost_Dark", "Ship_Btn_Boost_Fill", "Ship_Btn_Boost_Gear", "Ship_Btn_Boost_Arrow",
-		"Ship_Btn_Cruise_Icon", "Ship_Btn_Cruise_Ring", "Ship_Btn_AutoCruise",
-	};
+// Update_VehicleHud가 선박 탑승 상태에 따라 함께 켜고 끄는 선박 전용 슬롯 목록이다.
+constexpr const char *SHIP_HUD_SLOTS[] = {
+	"Ship_Hud_Plate",		"Ship_Hud_Wheel",		"Ship_Hud_Bezel",		"Ship_Hud_Dome",
+	"Ship_Hud_Icon",		"Ship_Slot_Q_Frame",	"Ship_Slot_W_Frame",	"Ship_Slot_E_Frame",
+	"Ship_Slot_R_Frame",	"Ship_Slot_A_Frame",	"Ship_Slot_S_Frame",	"Ship_Slot_D_Frame",
+	"Ship_Slot_F_Frame",	"Ship_Slot_Q_Icon",		"Ship_Slot_W_Icon",		"Ship_Slot_E_Icon",
+	"Ship_Slot_R_Icon",		"Ship_Slot_A_Icon",		"Ship_Slot_S_Icon",		"Ship_Slot_D_Icon",
+	"Ship_Slot_F_Icon",		"Ship_Slot_Q_Cooldown", "Ship_Slot_W_Cooldown", "Ship_Slot_E_Cooldown",
+	"Ship_Slot_R_Cooldown", "Ship_Slot_A_Cooldown", "Ship_Slot_S_Cooldown", "Ship_Slot_D_Cooldown",
+	"Ship_Slot_F_Cooldown", "Ship_Btn_Horn",		"Ship_Hud_Bottle",		"Ship_Hud_EventSlot",
+	"Ship_Btn_Anchor_Bg",	"Ship_Btn_Anchor_Icon", "Ship_Btn_Boost_Dark",	"Ship_Btn_Boost_Fill",
+	"Ship_Btn_Boost_Gear",	"Ship_Btn_Boost_Arrow", "Ship_Btn_Cruise_Icon", "Ship_Btn_Cruise_Ring",
+	"Ship_Btn_AutoCruise",
+};
 
-	const char* KoukuHudModeId(const HUD_KOUKU_HUD_MODE eMode)
+// HUD 문서 조회에 사용할 mode 문자열을 고른다. 지원하지 않는 값은 nullptr로 반환해 조회 실패와 구분한다.
+const char *KoukuHudModeId(const HUD_KOUKU_HUD_MODE eMode)
+{
+	switch (eMode)
 	{
-		switch (eMode)
-		{
-		case HUD_KOUKU_HUD_MODE::POLYMORPH: return "POLYMORPH";
-		case HUD_KOUKU_HUD_MODE::MARIO: return "MARIO";
-		case HUD_KOUKU_HUD_MODE::DANCE: return "DANCE";
-		case HUD_KOUKU_HUD_MODE::MAZE: return "MAZE";
-		default: return nullptr;
-		}
+	case HUD_KOUKU_HUD_MODE::POLYMORPH:
+		return "POLYMORPH";
+	case HUD_KOUKU_HUD_MODE::MARIO:
+		return "MARIO";
+	case HUD_KOUKU_HUD_MODE::DANCE:
+		return "DANCE";
+	case HUD_KOUKU_HUD_MODE::MAZE:
+		return "MAZE";
+	default:
+		return nullptr;
 	}
 }
+} // 이 파일의 보조 구현 범위 끝
 
-CPlayerController* CMainApp::Find_ActivePlayerController() const
+// 탈것·칭호·아이템 UI가 현재 지원 Level의 controller를 차용한다. Level이 교체되면 보관해 재사용하지 않으며 미지원 Level은 nullptr다.
+CPlayerController *CMainApp::Find_ActivePlayerController() const
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	if (ETOUI(LEVEL::BERN) == currentLevel)
 	{
-		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
 			return &pBern->Get_PlayerController();
 	}
 	else if (ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel)
 	{
-		if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active())
+		if (CLevel_CharacterSelect *pCharacterSelect = CLevel_CharacterSelect::Get_Active())
 			return &pCharacterSelect->Get_DebugPlayerController();
 	}
 	else if (ETOUI(LEVEL::VALTAN_ARENA) == currentLevel)
 	{
-		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+		if (CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active())
 			return &pValtanArena->Get_DebugPlayerController();
 	}
-	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+	else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel)
 	{
-		if (CLevel_KakulSaydonArena* pKoukuArena = CLevel_KakulSaydonArena::Get_Active())
+		if (CLevel_KoukuSaydonArena *pKoukuArena = CLevel_KoukuSaydonArena::Get_Active())
 			return &pKoukuArena->Get_DebugPlayerController();
 	}
 	else if (ETOUI(LEVEL::COLOSSEUM) == currentLevel)
 	{
-		if (CLevel_Development* pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+		if (CLevel_Development *pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
 			return &pColosseum->Get_PlayerController();
 	}
 	return nullptr;
 }
-
+// 전투 HUD가 인벤토리·탈것 창에서 고른 값을 운반하고 내려놓은 슬롯에 세션용 단축 연결만 저장한다.
+// 아이템 사용·장착이나 탈것 탑승 요청 자체는 여기서 보내지 않는다.
 void CMainApp::Update_QuickSlotDrag()
 {
 	if (nullptr == m_pQuickSlotDragView || nullptr == m_pHUDRuntimeView)
@@ -5946,56 +5834,57 @@ void CMainApp::Update_QuickSlotDrag()
 	if (!m_pQuickSlotDragView->Update())
 		return;
 
-	/* Drop click: a quick slot of the payload's kind takes it, anywhere else lets go. */
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	// 내려놓은 위치가 운반 종류에 맞는 슬롯이면 세션의 단축 슬롯 값을 바꾸고, 어느 경우든 운반 상태를 끝낸다.
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pHUDRuntimeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pHUDRuntimeView->Get_ResolutionHeight();
-	const auto Hovered = [&](const char* pSlotId)
+	const auto Hovered = [&](const char *pSlotId)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		return m_pHUDRuntimeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight) &&
-			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
+			   Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
 	};
 	if (CQuickSlotDragView::PAYLOAD::ITEM == m_pQuickSlotDragView->Get_Payload())
 	{
-		constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
+		constexpr const char *ITEM_SLOT_IDS[4] = {"Item_1", "Item_2", "Item_3", "Item_4"};
 		for (int32_t i = 0; i < 4; ++i)
 		{
 			if (!Hovered(ITEM_SLOT_IDS[i]))
 				continue;
 			m_strItemQuickSlot[i] = m_pQuickSlotDragView->Get_ItemId();
-			Play_UIButtonClickSound();
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 			break;
 		}
 	}
 	else if (CQuickSlotDragView::PAYLOAD::VEHICLE == m_pQuickSlotDragView->Get_Payload())
 	{
-		constexpr const char* SPECIAL_SLOT_IDS[6] = {
-			"SpecialSkill_1", "SpecialSkill_2", "SpecialSkill_3",
-			"SpecialSkill_4", "SpecialSkill_5", "SpecialSkill_6" };
+		constexpr const char *SPECIAL_SLOT_IDS[6] = {"SpecialSkill_1", "SpecialSkill_2", "SpecialSkill_3",
+													 "SpecialSkill_4", "SpecialSkill_5", "SpecialSkill_6"};
 		for (int32_t i = 0; i < 6; ++i)
 		{
 			if (!Hovered(SPECIAL_SLOT_IDS[i]))
 				continue;
 			m_iSpecialQuickSlotVehicle[i] = m_pQuickSlotDragView->Get_VehicleId();
-			Play_UIButtonClickSound();
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 			break;
 		}
 	}
 	m_pQuickSlotDragView->Cancel();
 }
 
+// 세션의 여섯 vehicle ID를 창의 아이콘 목록에서 조회해 특수 퀵슬롯에 표시한다. 정의가 없으면 해당 아이콘만 숨긴다.
 void CMainApp::Update_SpecialQuickSlots()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	constexpr const char* SPECIAL_ICON_SLOT_IDS[6] = {
-		"SpecialSkill_1_Icon", "SpecialSkill_2_Icon", "SpecialSkill_3_Icon",
-		"SpecialSkill_4_Icon", "SpecialSkill_5_Icon", "SpecialSkill_6_Icon" };
+	constexpr const char *SPECIAL_ICON_SLOT_IDS[6] = {"SpecialSkill_1_Icon", "SpecialSkill_2_Icon",
+													  "SpecialSkill_3_Icon", "SpecialSkill_4_Icon",
+													  "SpecialSkill_5_Icon", "SpecialSkill_6_Icon"};
 	for (int32_t i = 0; i < 6; ++i)
 	{
-		const string* pIcon = (0u != m_iSpecialQuickSlotVehicle[i] && nullptr != m_pVehicleWindowView) ?
-			m_pVehicleWindowView->Find_IconAsset(m_iSpecialQuickSlotVehicle[i]) : nullptr;
+		const string *pIcon = (0u != m_iSpecialQuickSlotVehicle[i] && nullptr != m_pVehicleWindowView)
+								  ? m_pVehicleWindowView->Find_IconAsset(m_iSpecialQuickSlotVehicle[i])
+								  : nullptr;
 		if (nullptr == pIcon || pIcon->empty())
 		{
 			m_pHUDRuntimeView->Set_SlotVisible(SPECIAL_ICON_SLOT_IDS[i], false);
@@ -6008,60 +5897,57 @@ void CMainApp::Update_SpecialQuickSlots()
 
 namespace
 {
-	/* Defined with the skill icon table ahead of Update_SkillIcons below. */
-	const char* Find_HudSkillIcon(LostArk::Shared::SKILL_ID iSkillId);
-}
+// 아래 Update_SkillIcons 앞의 아이콘 표와 함께 정의하는 조회 함수를 먼저 선언한다.
+const char *Find_HudSkillIcon(LostArk::Shared::SKILL_ID iSkillId);
+} // 이 파일의 보조 구현 범위 끝
 
+// 공통 class HUD 갱신 뒤 복제된 탑승 ID로 일반 탈것 또는 선박 표시를 덮어쓴다.
+// 이번 프레임의 선박 표시 플래그를 먼저 초기화하고 catalog·아이콘은 호출 동안만 차용한다.
 void CMainApp::Update_VehicleHud()
 {
 	m_bShipHudActive = false;
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	/* Not mounted: the base ownerClass pass in Update_CombatHUD already hid the
-	VehicleRiding-owned emblem (no class owns that name), nothing to undo. */
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	// 도보 상태의 class별 표시는 앞선 Update_CombatHUD의 ownerClass 선택이 복구한다. 이 함수는 탑승 상태일 때만 덮어쓴다.
 	if (0u == player.iVehicleId)
 		return;
-	const std::vector<VEHICLE_SKILL_UI>* pSkills = nullptr != m_pVehicleWindowView ?
-		m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
+	const std::vector<VEHICLE_SKILL_UI> *pSkills =
+		nullptr != m_pVehicleWindowView ? m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
 
-	/* Same shape as the KoukuSaydon interaction mode: identity block off (no class owns this
-	name), no T/V column, the vehicle emblem in the centre. */
+	// 탈것 전용 ownerClass를 고르고 class identity·T/V 슬롯을 숨긴다.
 	m_pHUDRuntimeView->Set_ActiveOwnerClass("VehicleRiding");
-	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+	for (const char *pHiddenSlot : KOUKU_HIDDEN_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
-	/* A ship swaps the saddle emblem for the retail ocean HUD frame (oceanhud.gfx OceanRudderFrame:
-	the hull plate under the quick slots and the steering wheel on the emblem centre). That frame
-	has no HP/mana bar, item row or class special slots, so those hide with their captions. */
-	const VEHICLE_ACTOR_ENTRY* pMountedVehicle = CActorCatalog::Find_Vehicle(player.iVehicleId);
+	// 선박은 일반 탈것 문양 대신 선박 전용 프레임을 표시한다. HP·자원·아이템·class 특수 슬롯은 선박 숨김 목록을 따른다.
+	const VEHICLE_ACTOR_ENTRY *pMountedVehicle = CActorCatalog::Find_Vehicle(player.iVehicleId);
 	const bool_t bShip = nullptr != pMountedVehicle && pMountedVehicle->isShip;
 	m_bShipHudActive = bShip;
 	m_pHUDRuntimeView->Set_SlotVisible("Vehicle_Hud_Emblem", !bShip);
-	for (const char* pShipSlot : SHIP_HUD_SLOTS)
+	for (const char *pShipSlot : SHIP_HUD_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pShipSlot, bShip);
 	if (bShip)
 	{
-		for (const char* pShipHiddenSlot : SHIP_HIDDEN_SLOTS)
+		for (const char *pShipHiddenSlot : SHIP_HIDDEN_SLOTS)
 			m_pHUDRuntimeView->Set_SlotVisible(pShipHiddenSlot, false);
-		/* The class quick slots give way to the ocean HUD's own eight-slot list (Ship_Slot_*). */
-		for (const char* pKey : KOUKU_SLOT_KEYS)
+		// 선박의 Ship_Slot_*를 사용하므로 class Q~F 슬롯의 이미지·가림·표식을 함께 숨긴다.
+		for (const char *pKey : KOUKU_SLOT_KEYS)
 		{
-			for (const char* pPart : { "", "_Icon", "_Frame", "_Cooldown", "_Flash", "_TypeMark", "_Chain" })
+			for (const char *pPart : {"", "_Icon", "_Frame", "_Cooldown", "_Flash", "_TypeMark", "_Chain"})
 				m_pHUDRuntimeView->Set_SlotVisible(string("Skill_") + pKey + pPart, false);
 		}
-		for (const char* pClassSlot : { "Skill_T_TypeMark", "Skill_T_Chain", "Skill_V_TypeMark", "Skill_V_Chain" })
+		for (const char *pClassSlot : {"Skill_T_TypeMark", "Skill_T_Chain", "Skill_V_TypeMark", "Skill_V_Chain"})
 			m_pHUDRuntimeView->Set_SlotVisible(pClassSlot, false);
 
-		/* Q..F are the retail skillSlotList. Q/W/E carry the vehicle's own actions (the keys the Server
-		binds); R (dismount) and the A/S/D/F row keep the empty slot the retail HUD shows. The pies and the
-		seconds text read the replicated cooldowns of the vehicle skills. */
+		// 선박의 8개 키 중 실제 등록된 VEHICLE_SKILL_UI만 아이콘을 표시한다.
+		// 시간 표시는 해당 탈것 스킬의 Server cooldown을 사용한다.
 		for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 		{
 			const string strKey = KOUKU_SLOT_KEYS[i];
-			const VEHICLE_SKILL_UI* pSkill = nullptr;
+			const VEHICLE_SKILL_UI *pSkill = nullptr;
 			if (nullptr != pSkills)
 			{
-				for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+				for (const VEHICLE_SKILL_UI &Skill : *pSkills)
 				{
 					if (Skill.strSlot == strKey)
 						pSkill = &Skill;
@@ -6073,18 +5959,19 @@ void CMainApp::Update_VehicleHud()
 			if (bHasIcon)
 				m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pSkill->strIconAsset);
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, bHasIcon);
-			const f32_t fRatio = nullptr != pSkill ?
-				Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, strIconSlot) : 0.f;
+			const f32_t fRatio =
+				nullptr != pSkill ? Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, strIconSlot)
+								  : 0.f;
 			m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
 			m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
 			m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
 		}
 
-		/* SPACE (the boost): the yellow ring refills clockwise from 12 o'clock as the boost cooldown runs out. */
+		// 선박 boost의 남은 cooldown 비율을 1에서 빼 준비된 비율로 링을 채운다.
 		f32_t fBoostReady = 1.f;
 		if (nullptr != pSkills)
 		{
-			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			for (const VEHICLE_SKILL_UI &Skill : *pSkills)
 			{
 				if ("SPACE" == Skill.strSlot)
 					fBoostReady = 1.f - Resolve_HudCooldownRatio(player, Skill.iSkillId, Skill.iCooldownMs, string());
@@ -6092,76 +5979,76 @@ void CMainApp::Update_VehicleHud()
 		}
 		m_pHUDRuntimeView->Set_SlotArcRatio("Ship_Btn_Boost_Fill", fBoostReady);
 
-		/* The dome is the retail supply gauge (OceanSupplieGauge, EFTable_VoyageShip.MaxSupply). The project
-		has no supply consumption, so it reads full: capacity / capacity. */
+		// 현재는 보급 소모 상태를 별도 사용하지 않고 catalog 최대량을 현재량에도 대입한다.
+		// 최대량이 0이면 빈 frame, 양수이면 가득 찬 frame을 표시한다.
 		m_iShipSupplyMax = pMountedVehicle->iMaxSupply;
 		m_iShipSupply = m_iShipSupplyMax;
 		constexpr int32_t SHIP_DOME_FRAME_COUNT = 41;
-		const f32_t fSupplyRatio = m_iShipSupplyMax > 0u ?
-			std::clamp(static_cast<f32_t>(m_iShipSupply) / static_cast<f32_t>(m_iShipSupplyMax), 0.f, 1.f) : 0.f;
-		m_pHUDRuntimeView->Set_Animation_Frame("Ship_Hud_Dome",
+		const f32_t fSupplyRatio =
+			m_iShipSupplyMax > 0u
+				? std::clamp(static_cast<f32_t>(m_iShipSupply) / static_cast<f32_t>(m_iShipSupplyMax), 0.f, 1.f)
+				: 0.f;
+		m_pHUDRuntimeView->Set_Animation_Frame(
+			"Ship_Hud_Dome",
 			static_cast<int32_t>(std::lround(fSupplyRatio * static_cast<f32_t>(SHIP_DOME_FRAME_COUNT - 1))));
 
-		/* Knots: ESTIMATE, one retail sample (8200 sailing at 22.3 knots with EFTable_VoyageShip.MoveSpeed 200,
-		i.e. 4.0 m/s here after the x2 ship speed tuning) => 22.3 / 4.0 knots per m/s. 0 while no move goal is pending. */
+		// 노트 표시는 기존 표본에서 정한 추정 배율 22.3/4를 m/s 이동 속도에 곱한다.
+		// 정확한 물리 단위 환산값이 아니며 이동 목표가 없으면 0으로 표시한다.
 		constexpr f32_t SHIP_KNOTS_PER_METER_PER_SECOND = 22.3f / 4.f;
 		m_fShipKnots = player.hasMoveGoal ? player.fMoveSpeed * SHIP_KNOTS_PER_METER_PER_SECOND : 0.f;
 		return;
 	}
 
-	/* Q/W/E carry the vehicle's own actions (VehicleProfiles.json skills[], the keys the Server
-	binds); SPACE goes to the special slot (Update_SpecialSlot). R dismounts and, like the
-	whole A/S/D/F row, shows the retail locked-slot icon. The pies read the vehicle skills'
-	replicated cooldowns -- class cooldowns mean nothing here. */
+	// 일반 탈것은 등록된 키의 아이콘과 cooldown을 사용하고 나머지는 잠금 아이콘을 표시한다.
+	// SPACE는 아래 별도 특수 슬롯에서 처리한다.
 	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 	{
 		const string strKey = KOUKU_SLOT_KEYS[i];
-		const VEHICLE_SKILL_UI* pSkill = nullptr;
+		const VEHICLE_SKILL_UI *pSkill = nullptr;
 		if (nullptr != pSkills)
 		{
-			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			for (const VEHICLE_SKILL_UI &Skill : *pSkills)
 			{
 				if (Skill.strSlot == strKey)
 					pSkill = &Skill;
 			}
 		}
 		const string strIconSlot = "Skill_" + strKey + "_Icon";
-		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
-			nullptr != pSkill ? pSkill->strIconAsset : string("UI/Vehicle/Vehicle_LockIcon.png"));
+		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, nullptr != pSkill ? pSkill->strIconAsset
+																		  : string("UI/Vehicle/Vehicle_LockIcon.png"));
 		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
 		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
-		const f32_t fRatio = nullptr != pSkill ?
-			Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, "Skill_" + strKey) : 0.f;
+		const f32_t fRatio = nullptr != pSkill ? Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs,
+																		  "Skill_" + strKey)
+											   : 0.f;
 		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
 		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
 		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
 	}
 }
 
+// Server가 물총을 장착한 도보 마하라카 플레이어일 때 기존 class HUD를 물총 슬롯으로 바꾼다.
 void CMainApp::Update_WaterGunHud()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 	if (!Is_WaterGunHudLevel(CGameInstance::Get().Get_CurrentLevelID(), player))
 		return;
 
-	/* No class owns this name, so every ownerClass slot (identity blocks) hides; T/V drop and the
-	pickup emblem takes the centre, the same shape as the KoukuSaydon interaction mode. */
+	// 워터팡 전용 ownerClass를 고르고 class identity·T/V를 숨긴 뒤 pickup 문양을 표시한다.
 	m_pHUDRuntimeView->Set_ActiveOwnerClass("WaterpangWaterGun");
-	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+	for (const char *pHiddenSlot : KOUKU_HIDDEN_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
 	m_pHUDRuntimeView->Set_SlotVisible("Kouku_Emblem_Pickup", true);
 
-	/* Q/W/E/R are the water gun's own four skills (the Shared table the Server casts from); their
-	cooldown ends come from the replicated cooldown list the Server fills when a cast starts.
-	A/S/D/F are the plain dark slot the retail interaction layout shows for unused keys. */
+	// Shared의 물총 스킬 표에 있는 키만 아이콘·cooldown을 표시한다. 해당 키가 없으면 아이콘과 가림 슬롯을 함께 숨긴다.
 	for (size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 	{
 		const string strKey = KOUKU_SLOT_KEYS[i];
 		const string strIconSlot = "Skill_" + strKey + "_Icon";
 		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
-		const LostArk::Shared::MAHARAKA_WATERGUN_SKILL* pGun =
+		const LostArk::Shared::MAHARAKA_WATERGUN_SKILL *pGun =
 			LostArk::Shared::Find_MaharakaWaterGunSkillBySlot(strKey.front());
 		if (nullptr == pGun)
 		{
@@ -6171,67 +6058,71 @@ void CMainApp::Update_WaterGunHud()
 			continue;
 		}
 		m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
-			"UI/HUD/Waterpang/skill_" + std::to_string(pGun->iSkillId) + ".png");
+										   "UI/HUD/Waterpang/skill_" + std::to_string(pGun->iSkillId) + ".png");
 		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
-		const f32_t fRatio = pGun->iCooldownMs > 0u ?
-			Resolve_HudCooldownRatio(player, pGun->iSkillId, pGun->iCooldownMs, "Skill_" + strKey) : 0.f;
+		const f32_t fRatio = pGun->iCooldownMs > 0u ? Resolve_HudCooldownRatio(player, pGun->iSkillId,
+																			   pGun->iCooldownMs, "Skill_" + strKey)
+													: 0.f;
 		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, float4_t(0.f, 0.f, 0.f, 150.f / 255.f));
 		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fRatio);
 		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, fRatio > 0.f);
 	}
 }
 
-f32_t CMainApp::Resolve_HudCooldownRatio(const HUD_PLAYER_STATE& player, const uint32_t iSkillId,
-	const uint32_t iCooldownMs, const string& strTextSlotId)
+// 탈것·물총·SPACE 표시가 특정 스킬의 남은 cooldown 비율을 요청한다. 없거나 이미 끝났으면 0이며 일치한 첫 진행 중 행만 소비한다.
+f32_t CMainApp::Resolve_HudCooldownRatio(const HUD_PLAYER_STATE &player, const uint32_t iSkillId,
+										 const uint32_t iCooldownMs, const string &strTextSlotId)
 {
-	/* Remaining share of a replicated cooldown for a skill outside the class quick slots (a
-	vehicle action, the special slot). The duration is the catalog's cooldownMs the Server
-	applied; the end tick is the Server's. Also queues the seconds text over strTextSlotId. */
+	// 복제된 종료 tick에서 현재 Server tick을 뺀 남은 비율이다. 길이는 snapshot duration을 우선하고 없으면 catalog ms를 사용한다.
+	// 텍스트 슬롯이 있으면 남은 초 표시용 종료 tick도 이번 프레임 목록에 추가한다.
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	for (const LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT& Cooldown : player.Cooldowns)
+	for (const LostArk::Shared::SKILL_COOLDOWN_SNAPSHOT &Cooldown : player.Cooldowns)
 	{
 		if (Cooldown.iSkillId != iSkillId || Cooldown.iCooldownEndTick <= player.iServerTick)
 			continue;
 		const f32_t fRemaining = static_cast<f32_t>(Cooldown.iCooldownEndTick - player.iServerTick) / SERVER_TICK_HZ;
-		const f32_t fTotal = Cooldown.iCooldownDurationTicks > 0u ?
-			static_cast<f32_t>(Cooldown.iCooldownDurationTicks) / SERVER_TICK_HZ :
-			(iCooldownMs > 0u ? static_cast<f32_t>(iCooldownMs) / 1000.f : fRemaining);
+		const f32_t fTotal = Cooldown.iCooldownDurationTicks > 0u
+								 ? static_cast<f32_t>(Cooldown.iCooldownDurationTicks) / SERVER_TICK_HZ
+								 : (iCooldownMs > 0u ? static_cast<f32_t>(iCooldownMs) / 1000.f : fRemaining);
 		if (!strTextSlotId.empty())
-			m_HudTimedTexts.push_back({ strTextSlotId, Cooldown.iCooldownEndTick, false, false });
+			m_HudTimedTexts.push_back({strTextSlotId, Cooldown.iCooldownEndTick, false, false});
 		return fTotal > 0.f ? std::clamp(fRemaining / fTotal, 0.f, 1.f) : 0.f;
 	}
 	return 0.f;
 }
 
+// 현재 SPACE 동작의 cooldown 표시를 결정하고 숨기는 경우 예약된 시간 글자까지 정리한다.
 void CMainApp::Update_SpecialSlot()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	/* On a ship the boost is the ocean HUD's own SPACE button (Update_VehicleHud), not this slot. */
+	// 선박의 SPACE는 전용 boost 버튼이 표시하므로 일반 특수 슬롯과 예약된 글자를 숨긴다.
 	if (m_bShipHudActive)
 	{
 		m_bHudSpecialSlotShown = false;
-		for (const char* pSpecial : { "Special_Space", "Special_Space_Frame", "Special_Space_Icon", "Special_Space_Cooldown" })
+		for (const char *pSpecial :
+			 {"Special_Space", "Special_Space_Frame", "Special_Space_Icon", "Special_Space_Cooldown"})
 			m_pHUDRuntimeView->Set_SlotVisible(pSpecial, false);
 		m_HudTimedTexts.erase(std::remove_if(m_HudTimedTexts.begin(), m_HudTimedTexts.end(),
-			[](const HUD_TIMED_TEXT& Text) { return "Special_Space" == Text.strSlotId; }), m_HudTimedTexts.end());
+											 [](const HUD_TIMED_TEXT &Text)
+											 { return "Special_Space" == Text.strSlotId; }),
+							  m_HudTimedTexts.end());
 		return;
 	}
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_KOUKU_GIMMICK_STATE &kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	const bool_t bKoukuMode = kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode;
 
-	/* What Space does right now: the ridden vehicle's SPACE action, else the class move skill
-	for the current stance (Find_BySlot is stance-aware, like the other quick slots). */
-	const char* pIcon = nullptr;
+	// 탑승 중이면 탈것 SPACE 스킬을, 도보이면 현재 class·stance에 맞는 SPACE 스킬을 고른다.
+	const char *pIcon = nullptr;
 	f32_t fRatio = 0.f;
 	if (0u != player.iVehicleId)
 	{
-		const std::vector<VEHICLE_SKILL_UI>* pSkills = nullptr != m_pVehicleWindowView ?
-			m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
+		const std::vector<VEHICLE_SKILL_UI> *pSkills =
+			nullptr != m_pVehicleWindowView ? m_pVehicleWindowView->Find_Skills(player.iVehicleId) : nullptr;
 		if (nullptr != pSkills)
 		{
-			for (const VEHICLE_SKILL_UI& Skill : *pSkills)
+			for (const VEHICLE_SKILL_UI &Skill : *pSkills)
 			{
 				if ("SPACE" != Skill.strSlot)
 					continue;
@@ -6240,15 +6131,15 @@ void CMainApp::Update_SpecialSlot()
 			}
 		}
 	}
-	else if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
-		player.eCharacterClass, "SPACE", player.eStance); nullptr != pSkill)
+	else if (const PLAYER_SKILL_DEFINITION *pSkill =
+				 CPlayerSkillCatalog::Find_BySlot(player.eCharacterClass, "SPACE", player.eStance);
+			 nullptr != pSkill)
 	{
 		pIcon = Find_HudSkillIcon(pSkill->iSkillId);
 		fRatio = Resolve_HudCooldownRatio(player, pSkill->iSkillId, pSkill->iCooldownMs, "Special_Space");
 	}
 
-	/* Retail shows the special slot only while its skill is cooling down
-	(QuickSlotSpecialSlotManager.playingCoolDownLength counts the slots that are). */
+	// 일반 특수 슬롯은 쿠크 상호작용 mode가 아니고 유효 플레이어·아이콘·진행 중 cooldown이 있을 때만 표시한다.
 	m_bHudSpecialSlotShown = !bKoukuMode && nullptr != pIcon && player.isValid && fRatio > 0.f;
 	m_pHUDRuntimeView->Set_SlotVisible("Special_Space", m_bHudSpecialSlotShown);
 	m_pHUDRuntimeView->Set_SlotVisible("Special_Space_Frame", m_bHudSpecialSlotShown);
@@ -6259,43 +6150,53 @@ void CMainApp::Update_SpecialSlot()
 	m_pHUDRuntimeView->Set_SlotVisible("Special_Space_Cooldown", m_bHudSpecialSlotShown);
 	if (!m_bHudSpecialSlotShown)
 	{
-		/* Drop the seconds text Resolve_HudCooldownRatio queued for a hidden slot. */
+		// 숨긴 슬롯에는 앞서 예약한 남은 시간 글자도 남지 않게 제거한다.
 		m_HudTimedTexts.erase(std::remove_if(m_HudTimedTexts.begin(), m_HudTimedTexts.end(),
-			[](const HUD_TIMED_TEXT& Text) { return "Special_Space" == Text.strSlotId; }), m_HudTimedTexts.end());
+											 [](const HUD_TIMED_TEXT &Text)
+											 { return "Special_Space" == Text.strSlotId; }),
+							  m_HudTimedTexts.end());
 	}
 }
 
+// 저작된 source 순서로 최대 네 개씩 buff/debuff 표시 값을 모은 뒤 스킬 buff를 남은 자리에 추가한다.
+// 아이콘 포인터는 멤버 문자열 또는 탈것 목록을 이 호출 동안만 차용하며 실제 buff 적용·만료는 Server가 소유한다.
 void CMainApp::Update_BuffBar()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 	constexpr size_t BUFF_SLOTS = 4;
-	struct BUFF_DRAW { const string* pIcon; uint32_t iEndTick; f32_t fRatio; };
+	struct BUFF_DRAW
+	{
+		const string *pIcon;
+		uint32_t iEndTick;
+		f32_t fRatio;
+	};
 	std::vector<BUFF_DRAW> Buffs, Debuffs;
 	Buffs.reserve(BUFF_SLOTS);
 	Debuffs.reserve(BUFF_SLOTS);
 
-	/* Every entry is a replicated fact; the JSON only says which icon stands for it. */
-	for (const HUD_BUFF_SOURCE& Source : m_HudBuffSources)
+	// 버프 활성 상태는 복제된 플레이어 값으로 판정하고 저작 JSON은 표시 아이콘·분류를 연결한다.
+	for (const HUD_BUFF_SOURCE &Source : m_HudBuffSources)
 	{
 		if (!player.isValid)
 			break;
-		BUFF_DRAW Draw{ &Source.strIconAsset, 0u, 0.f };
+		BUFF_DRAW Draw{&Source.strIconAsset, 0u, 0.f};
 		bool_t bActive = false;
 		if ("vehicle" == Source.strSource)
 		{
-			const string* pVehicleIcon = (0u != player.iVehicleId && nullptr != m_pVehicleWindowView) ?
-				m_pVehicleWindowView->Find_IconAsset(player.iVehicleId) : nullptr;
+			const string *pVehicleIcon = (0u != player.iVehicleId && nullptr != m_pVehicleWindowView)
+											 ? m_pVehicleWindowView->Find_IconAsset(player.iVehicleId)
+											 : nullptr;
 			bActive = nullptr != pVehicleIcon && !pVehicleIcon->empty();
 			Draw.pIcon = pVehicleIcon;
 		}
 		else if ("stance" == Source.strSource)
 		{
 			bActive = ("WARLORD_DEFENSE" == Source.strStance &&
-				LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance) ||
-				("GUARDIANKNIGHT_DRAGON" == Source.strStance &&
-				LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance);
+					   LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE == player.eStance) ||
+					  ("GUARDIANKNIGHT_DRAGON" == Source.strStance &&
+					   LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance);
 		}
 		else if ("silence" == Source.strSource)
 		{
@@ -6304,7 +6205,8 @@ void CMainApp::Update_BuffBar()
 			if (bActive && 0u != player.iSilenceDurationTicks)
 			{
 				Draw.fRatio = std::clamp(static_cast<f32_t>(player.iSilenceEndTick - player.iServerTick) /
-					static_cast<f32_t>(player.iSilenceDurationTicks), 0.f, 1.f);
+											 static_cast<f32_t>(player.iSilenceDurationTicks),
+										 0.f, 1.f);
 			}
 		}
 		else if ("fetter" == Source.strSource)
@@ -6319,19 +6221,15 @@ void CMainApp::Update_BuffBar()
 		}
 		if (!bActive || nullptr == Draw.pIcon || Draw.pIcon->empty())
 			continue;
-		std::vector<BUFF_DRAW>& List = Source.bDebuff ? Debuffs : Buffs;
+		std::vector<BUFF_DRAW> &List = Source.bDebuff ? Debuffs : Buffs;
 		if (List.size() < BUFF_SLOTS)
 			List.push_back(Draw);
 	}
 
-	/* The buffs a skill granted arrive on the snapshot as ids; HudBuffIcons.json is
-	the only thing that says which icon each id draws with. A boss carries the same
-	structure for what a player skill marked it with. */
-	const auto AppendSkillBuffs = [&](
-		const LostArk::Shared::ACTIVE_BUFF* pBuffs,
-		const size_t iCount,
-		const uint32_t iServerTick,
-		std::vector<BUFF_DRAW>& List)
+	// 스킬이 준 활성 buff ID를 아이콘 표에서 찾아 표시한다. 현재 플레이어 buff와 보스에게 적용된 buff를 같은 조회 함수로 처리한다.
+	// snapshot의 buff 배열과 아이콘 문자열을 복사하지 않고 이 호출 동안 조회한다. 만료됐거나 아이콘이 없는 항목은 건너뛴다.
+	const auto AppendSkillBuffs = [&](const LostArk::Shared::ACTIVE_BUFF *pBuffs, const size_t iCount,
+									  const uint32_t iServerTick, std::vector<BUFF_DRAW> &List)
 	{
 		for (size_t i = 0; i < iCount && List.size() < BUFF_SLOTS; ++i)
 		{
@@ -6340,22 +6238,20 @@ void CMainApp::Update_BuffBar()
 				continue;
 			if (!Is_ServerDeadlinePending(iServerTick, pBuffs[i].iEndTick))
 				continue;
-			List.push_back({ &Found->second, pBuffs[i].iEndTick, 0.f });
+			List.push_back({&Found->second, pBuffs[i].iEndTick, 0.f});
 		}
 	};
 	if (player.isValid)
 	{
-		AppendSkillBuffs(player.ActiveBuffs, player.iActiveBuffCount,
-			player.iServerTick, Buffs);
+		AppendSkillBuffs(player.ActiveBuffs, player.iActiveBuffCount, player.iServerTick, Buffs);
 	}
-	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	const HUD_BOSS_STATE &boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (boss.isValid)
 	{
-		AppendSkillBuffs(boss.ActiveBuffs, boss.iActiveBuffCount,
-			player.iServerTick, Debuffs);
+		AppendSkillBuffs(boss.ActiveBuffs, boss.iActiveBuffCount, player.iServerTick, Debuffs);
 	}
 
-	const auto Apply = [&](const char* pPrefix, const std::vector<BUFF_DRAW>& List, const bool_t bDebuff)
+	const auto Apply = [&](const char *pPrefix, const std::vector<BUFF_DRAW> &List, const bool_t bDebuff)
 	{
 		for (size_t i = 0; i < BUFF_SLOTS; ++i)
 		{
@@ -6369,45 +6265,48 @@ void CMainApp::Update_BuffBar()
 				m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Cooldown", false);
 				continue;
 			}
-			const BUFF_DRAW& Draw = List[i];
+			const BUFF_DRAW &Draw = List[i];
 			m_pHUDRuntimeView->Set_SlotTexture(strBase + "_Icon", *Draw.pIcon);
 			m_pHUDRuntimeView->Set_SlotArcRatio(strBase + "_Cooldown", Draw.fRatio);
 			m_pHUDRuntimeView->Set_SlotVisible(strBase + "_Cooldown", Draw.fRatio > 0.f);
 			if (0u != Draw.iEndTick)
-				m_HudTimedTexts.push_back({ strBase + "_Icon", Draw.iEndTick, bDebuff, true });
+				m_HudTimedTexts.push_back({strBase + "_Icon", Draw.iEndTick, bDebuff, true});
 		}
 	};
 	Apply("Buff", Buffs, false);
 	Apply("Debuff", Debuffs, true);
 }
 
+// class 스킬의 종류 표식과 현재 combo 입력 window를 sprite에 표시한다.
+// Server 입력 허용 판정은 바꾸지 않으며 탈것·쿠크 mode에서는 class 표식을 숨긴다.
 void CMainApp::Update_SkillSlotMarks()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
-	const bool_t bClassSlots = 0u == player.iVehicleId &&
-		!(kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode);
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_KOUKU_GIMMICK_STATE &kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const bool_t bClassSlots =
+		0u == player.iVehicleId && !(kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode);
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
+	constexpr const char *INPUT_SLOTS[] = {"Q", "W", "E", "R", "A", "S", "D", "F", "T", "V"};
 
-	for (const char* pInputSlot : INPUT_SLOTS)
+	for (const char *pInputSlot : INPUT_SLOTS)
 	{
 		const string strMarkSlot = string("Skill_") + pInputSlot + "_TypeMark";
 		const string strChainSlot = string("Skill_") + pInputSlot + "_Chain";
-		const PLAYER_SKILL_DEFINITION* pSkill = bClassSlots ? CPlayerSkillCatalog::Find_BySlot(
-			player.eCharacterClass, pInputSlot, player.eStance) : nullptr;
+		const PLAYER_SKILL_DEFINITION *pSkill =
+			bClassSlots ? CPlayerSkillCatalog::Find_BySlot(player.eCharacterClass, pInputSlot, player.eStance)
+						: nullptr;
 
-		/* Type mark (SkillSlotTypeMark frames 2 / 3 / 13): which skills carry one is data. */
-		const string* pMarkAsset = nullptr;
+		// 스킬별 표식 종류는 m_HudSkillMarks, 종류별 이미지는 m_HudSkillMarkAssets에서 연결한다.
+		const string *pMarkAsset = nullptr;
 		if (nullptr != pSkill)
 		{
-			for (const HUD_SKILL_MARK& Mark : m_HudSkillMarks)
+			for (const HUD_SKILL_MARK &Mark : m_HudSkillMarks)
 			{
 				if (Mark.iSkillId != pSkill->iSkillId)
 					continue;
-				for (const auto& Asset : m_HudSkillMarkAssets)
+				for (const auto &Asset : m_HudSkillMarkAssets)
 				{
 					if (Asset.first == Mark.strMark)
 						pMarkAsset = &Asset.second;
@@ -6418,23 +6317,22 @@ void CMainApp::Update_SkillSlotMarks()
 			m_pHUDRuntimeView->Set_SlotTexture(strMarkSlot, *pMarkAsset);
 		m_pHUDRuntimeView->Set_SlotVisible(strMarkSlot, nullptr != pMarkAsset);
 
-		/* Chain time (chainSkillTimeEffectMc): while this slot's skill is the running action
-		and the Server's current combo stage has an input window, the pie is the share of that
-		window still open -- all four numbers are the Server's (stage table, action start tick). */
+		// 현재 시전 스킬·combo stage가 일치할 때만 입력 window의 남은 비율을 계산한다.
+		// 시작/현재 tick은 복제 상태이고 window의 열림·닫힘 ms는 같은 스킬 catalog의 stage 값이다.
 		f32_t fChain = 0.f;
-		if (nullptr != pSkill && pSkill->iSkillId == player.iCurrentSkillId &&
-			player.iComboStage > 0u && player.iComboStage <= pSkill->ComboStages.size())
+		if (nullptr != pSkill && pSkill->iSkillId == player.iCurrentSkillId && player.iComboStage > 0u &&
+			player.iComboStage <= pSkill->ComboStages.size())
 		{
-			const PLAYER_COMBO_STAGE_TIMING& Stage = pSkill->ComboStages[player.iComboStage - 1u];
+			const PLAYER_COMBO_STAGE_TIMING &Stage = pSkill->ComboStages[player.iComboStage - 1u];
 			if (Stage.iInputCloseMs > Stage.iInputOpenMs && player.iServerTick >= player.iActionStartTick)
 			{
-				const f32_t fElapsedMs = static_cast<f32_t>(player.iServerTick - player.iActionStartTick) *
-					1000.f / SERVER_TICK_HZ;
+				const f32_t fElapsedMs =
+					static_cast<f32_t>(player.iServerTick - player.iActionStartTick) * 1000.f / SERVER_TICK_HZ;
 				if (fElapsedMs >= static_cast<f32_t>(Stage.iInputOpenMs) &&
 					fElapsedMs <= static_cast<f32_t>(Stage.iInputCloseMs))
 				{
 					fChain = (static_cast<f32_t>(Stage.iInputCloseMs) - fElapsedMs) /
-						static_cast<f32_t>(Stage.iInputCloseMs - Stage.iInputOpenMs);
+							 static_cast<f32_t>(Stage.iInputCloseMs - Stage.iInputOpenMs);
 				}
 			}
 		}
@@ -6443,13 +6341,16 @@ void CMainApp::Update_SkillSlotMarks()
 	}
 }
 
+// 초기화가 스킬 표식·버프 source·buff ID 아이콘의 저작 JSON을 읽는다. 먼저 기존 목록을 비우므로 실패가 이전 값을 보존하는 reload 계약은 아니다.
+// 세 문서는 각각 지역 값으로 검증한 뒤 해당 목록만 확정하며 숫자 ID는 타입 검사 뒤 기존 정수 변환을 사용한다.
 void CMainApp::Load_HudQuickSlotData()
 {
 	m_HudSkillMarks.clear();
 	m_HudSkillMarkAssets.clear();
 	m_HudBuffSources.clear();
 	m_HudSkillBuffIcons.clear();
-	const auto ReadObject = [](const wchar_t* pRelative, DATA_JSON_VALUE& Root) -> bool_t
+	// Data 상대 파일의 byte를 읽고 JSON object인지 확인한다. 오류 문자열은 이 helper 밖으로 전달하지 않는다.
+	const auto ReadObject = [](const wchar_t *pRelative, DATA_JSON_VALUE &Root) -> bool_t
 	{
 		ifstream Stream(CProjectDataRoot::Resolve(pRelative), ios::binary);
 		if (!Stream.is_open())
@@ -6465,9 +6366,9 @@ void CMainApp::Load_HudQuickSlotData()
 		vector<HUD_SKILL_MARK> StagedMarks;
 		vector<pair<string, string>> StagedAssets;
 		bool_t bValid = true;
-		if (const DATA_JSON_VALUE* pAssets = Marks.Find("assets"); nullptr != pAssets && pAssets->Is_Object())
+		if (const DATA_JSON_VALUE *pAssets = Marks.Find("assets"); nullptr != pAssets && pAssets->Is_Object())
 		{
-			for (const auto& Entry : pAssets->Get_Object())
+			for (const auto &Entry : pAssets->Get_Object())
 			{
 				if (!Entry.second.Is_String())
 				{
@@ -6477,21 +6378,21 @@ void CMainApp::Load_HudQuickSlotData()
 				StagedAssets.emplace_back(Entry.first, Entry.second.Get_String());
 			}
 		}
-		const DATA_JSON_VALUE* pMarks = Marks.Find("marks");
+		const DATA_JSON_VALUE *pMarks = Marks.Find("marks");
 		if (nullptr == pMarks || !pMarks->Is_Array())
 			bValid = false;
 		else
 		{
-			for (const DATA_JSON_VALUE& Value : pMarks->Get_Array())
+			for (const DATA_JSON_VALUE &Value : pMarks->Get_Array())
 			{
-				const DATA_JSON_VALUE* pId = Value.Is_Object() ? Value.Find("skillId") : nullptr;
-				const DATA_JSON_VALUE* pMark = Value.Is_Object() ? Value.Find("mark") : nullptr;
+				const DATA_JSON_VALUE *pId = Value.Is_Object() ? Value.Find("skillId") : nullptr;
+				const DATA_JSON_VALUE *pMark = Value.Is_Object() ? Value.Find("mark") : nullptr;
 				if (nullptr == pId || !pId->Is_Number() || nullptr == pMark || !pMark->Is_String())
 				{
 					bValid = false;
 					break;
 				}
-				StagedMarks.push_back({ static_cast<uint32_t>(pId->Get_Number()), pMark->Get_String() });
+				StagedMarks.push_back({static_cast<uint32_t>(pId->Get_Number()), pMark->Get_String()});
 			}
 		}
 		if (bValid)
@@ -6508,15 +6409,15 @@ void CMainApp::Load_HudQuickSlotData()
 	{
 		vector<HUD_BUFF_SOURCE> Staged;
 		bool_t bValid = true;
-		const DATA_JSON_VALUE* pSources = Buffs.Find("sources");
+		const DATA_JSON_VALUE *pSources = Buffs.Find("sources");
 		if (nullptr == pSources || !pSources->Is_Array())
 			bValid = false;
 		else
 		{
-			for (const DATA_JSON_VALUE& Value : pSources->Get_Array())
+			for (const DATA_JSON_VALUE &Value : pSources->Get_Array())
 			{
-				const DATA_JSON_VALUE* pSource = Value.Is_Object() ? Value.Find("source") : nullptr;
-				const DATA_JSON_VALUE* pKind = Value.Is_Object() ? Value.Find("kind") : nullptr;
+				const DATA_JSON_VALUE *pSource = Value.Is_Object() ? Value.Find("source") : nullptr;
+				const DATA_JSON_VALUE *pKind = Value.Is_Object() ? Value.Find("kind") : nullptr;
 				if (nullptr == pSource || !pSource->Is_String() || nullptr == pKind || !pKind->Is_String())
 				{
 					bValid = false;
@@ -6525,9 +6426,9 @@ void CMainApp::Load_HudQuickSlotData()
 				HUD_BUFF_SOURCE Source{};
 				Source.strSource = pSource->Get_String();
 				Source.bDebuff = "debuff" == pKind->Get_String();
-				if (const DATA_JSON_VALUE* pStance = Value.Find("stance"); nullptr != pStance && pStance->Is_String())
+				if (const DATA_JSON_VALUE *pStance = Value.Find("stance"); nullptr != pStance && pStance->Is_String())
 					Source.strStance = pStance->Get_String();
-				if (const DATA_JSON_VALUE* pIcon = Value.Find("iconAsset"); nullptr != pIcon && pIcon->Is_String())
+				if (const DATA_JSON_VALUE *pIcon = Value.Find("iconAsset"); nullptr != pIcon && pIcon->Is_String())
 					Source.strIconAsset = pIcon->Get_String();
 				Staged.push_back(std::move(Source));
 			}
@@ -6543,17 +6444,17 @@ void CMainApp::Load_HudQuickSlotData()
 	{
 		unordered_map<uint32_t, string> Staged;
 		bool_t bValid = true;
-		const DATA_JSON_VALUE* pIcons = BuffIcons.Find("icons");
+		const DATA_JSON_VALUE *pIcons = BuffIcons.Find("icons");
 		if (nullptr == pIcons || !pIcons->Is_Array())
 			bValid = false;
 		else
 		{
-			for (const DATA_JSON_VALUE& Value : pIcons->Get_Array())
+			for (const DATA_JSON_VALUE &Value : pIcons->Get_Array())
 			{
-				const DATA_JSON_VALUE* pBuffId = Value.Is_Object() ? Value.Find("buffId") : nullptr;
-				const DATA_JSON_VALUE* pAsset = Value.Is_Object() ? Value.Find("iconAsset") : nullptr;
-				if (nullptr == pBuffId || !pBuffId->Is_Number() ||
-					nullptr == pAsset || !pAsset->Is_String() || pAsset->Get_String().empty())
+				const DATA_JSON_VALUE *pBuffId = Value.Is_Object() ? Value.Find("buffId") : nullptr;
+				const DATA_JSON_VALUE *pAsset = Value.Is_Object() ? Value.Find("iconAsset") : nullptr;
+				if (nullptr == pBuffId || !pBuffId->Is_Number() || nullptr == pAsset || !pAsset->Is_String() ||
+					pAsset->Get_String().empty())
 				{
 					bValid = false;
 					break;
@@ -6568,11 +6469,11 @@ void CMainApp::Load_HudQuickSlotData()
 	}
 }
 
+// 초기화가 쿠크 mode의 emblem·icon 목록을 값으로 읽는다. 기존 목록을 먼저 비우고 전체 mode 검증 성공 뒤 교체하므로 실패하면 빈 목록이다.
 void CMainApp::Load_KoukuHudModes()
 {
 	m_KoukuHudModes.clear();
-	const filesystem::path DataPath =
-		CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
+	const filesystem::path DataPath = CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
 	ifstream Stream(DataPath, ios::binary);
 	if (!Stream.is_open())
 	{
@@ -6587,22 +6488,21 @@ void CMainApp::Load_KoukuHudModes()
 		OutputDebugStringA(("[KoukuHudMode] KoukuHudModes.json parse failed: " + Error + "\n").c_str());
 		return;
 	}
-	const DATA_JSON_VALUE* pModes = Root.Find("modes");
+	const DATA_JSON_VALUE *pModes = Root.Find("modes");
 	if (nullptr == pModes || !pModes->Is_Array())
 		return;
 
 	vector<KOUKU_HUD_MODE_DEF> Staged;
-	for (const DATA_JSON_VALUE& Value : pModes->Get_Array())
+	for (const DATA_JSON_VALUE &Value : pModes->Get_Array())
 	{
 		if (!Value.Is_Object())
 			return;
 		KOUKU_HUD_MODE_DEF Mode{};
-		const DATA_JSON_VALUE* pId = Value.Find("id");
-		const DATA_JSON_VALUE* pEmblem = Value.Find("emblemSlot");
-		const DATA_JSON_VALUE* pSkills = Value.Find("skills");
-		if (nullptr == pId || !pId->Is_String() || pId->Get_String().empty() ||
-			nullptr == pEmblem || !pEmblem->Is_String() ||
-			nullptr == pSkills || !pSkills->Is_Array() ||
+		const DATA_JSON_VALUE *pId = Value.Find("id");
+		const DATA_JSON_VALUE *pEmblem = Value.Find("emblemSlot");
+		const DATA_JSON_VALUE *pSkills = Value.Find("skills");
+		if (nullptr == pId || !pId->Is_String() || pId->Get_String().empty() || nullptr == pEmblem ||
+			!pEmblem->Is_String() || nullptr == pSkills || !pSkills->Is_Array() ||
 			pSkills->Get_Array().size() > HUD_KOUKU_SLOT_COUNT)
 		{
 			OutputDebugStringA("[KoukuHudMode] KoukuHudModes.json has an invalid mode entry -- file rejected.\n");
@@ -6610,14 +6510,13 @@ void CMainApp::Load_KoukuHudModes()
 		}
 		Mode.strId = pId->Get_String();
 		Mode.strEmblemSlot = pEmblem->Get_String();
-		if (const DATA_JSON_VALUE* pRandom = Value.Find("randomOrder");
-			nullptr != pRandom && pRandom->Is_Boolean())
+		if (const DATA_JSON_VALUE *pRandom = Value.Find("randomOrder"); nullptr != pRandom && pRandom->Is_Boolean())
 		{
 			Mode.bRandomOrder = pRandom->Get_Boolean();
 		}
-		for (const DATA_JSON_VALUE& Skill : pSkills->Get_Array())
+		for (const DATA_JSON_VALUE &Skill : pSkills->Get_Array())
 		{
-			const DATA_JSON_VALUE* pIcon = Skill.Is_Object() ? Skill.Find("iconPath") : nullptr;
+			const DATA_JSON_VALUE *pIcon = Skill.Is_Object() ? Skill.Find("iconPath") : nullptr;
 			if (nullptr == pIcon || !pIcon->Is_String() || pIcon->Get_String().empty())
 			{
 				OutputDebugStringA("[KoukuHudMode] KoukuHudModes.json skill without iconPath -- file rejected.\n");
@@ -6625,8 +6524,7 @@ void CMainApp::Load_KoukuHudModes()
 			}
 			KOUKU_HUD_MODE_SKILL Entry{};
 			Entry.strIconPath = pIcon->Get_String();
-			if (const DATA_JSON_VALUE* pName = Skill.Find("displayName");
-				nullptr != pName && pName->Is_String())
+			if (const DATA_JSON_VALUE *pName = Skill.Find("displayName"); nullptr != pName && pName->Is_String())
 			{
 				Entry.strDisplayName = pName->Get_String();
 			}
@@ -6637,21 +6535,22 @@ void CMainApp::Load_KoukuHudModes()
 	m_KoukuHudModes = std::move(Staged);
 }
 
+// Update_CombatHUD가 준비한 view에 Server의 mode·슬롯 index·cooldown을 표시한다.
+// 호출자는 유효한 m_pHUDRuntimeView를 보장하며 mode 정의가 없으면 문양을 숨긴 상태로 반환한다.
 void CMainApp::Update_KoukuHudMode()
 {
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
 	const float4_t vCooldownTint = float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
 
-	const HUD_KOUKU_GIMMICK_STATE& kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const bool_t bActive = kouku.isValid &&
-		HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode &&
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID();
-	const KOUKU_HUD_MODE_DEF* pMode = nullptr;
+	const HUD_KOUKU_GIMMICK_STATE &kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	const bool_t bActive = kouku.isValid && HUD_KOUKU_HUD_MODE::NONE != kouku.eHudMode &&
+						   ETOUI(LEVEL::KOUKUSAYDON_ARENA) == CGameInstance::Get().Get_CurrentLevelID();
+	const KOUKU_HUD_MODE_DEF *pMode = nullptr;
 	if (bActive)
 	{
-		const char* pModeId = KoukuHudModeId(kouku.eHudMode);
-		for (const KOUKU_HUD_MODE_DEF& Mode : m_KoukuHudModes)
+		const char *pModeId = KoukuHudModeId(kouku.eHudMode);
+		for (const KOUKU_HUD_MODE_DEF &Mode : m_KoukuHudModes)
 		{
 			if (nullptr != pModeId && Mode.strId == pModeId)
 			{
@@ -6661,16 +6560,15 @@ void CMainApp::Update_KoukuHudMode()
 		}
 	}
 
-	/* Update_CombatHUD turns every slot on first, so the appended emblem slots
-	must be re-hidden every frame the mode is off. */
-	for (const char* pEmblemSlot : KOUKU_EMBLEM_SLOTS)
+	// 공통 HUD 갱신이 슬롯을 먼저 켜므로 쿠크 mode가 꺼진 프레임에도 전용 문양을 다시 숨긴다.
+	for (const char *pEmblemSlot : KOUKU_EMBLEM_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pEmblemSlot, false);
 	if (nullptr == pMode)
 		return;
 
-	/* No class owns this name, so every ownerClass slot (identity blocks) hides. */
+	// 쿠크 전용 ownerClass를 골라 class identity 표시를 제외한다.
 	m_pHUDRuntimeView->Set_ActiveOwnerClass("KoukuSaydonInteraction");
-	for (const char* pHiddenSlot : KOUKU_HIDDEN_SLOTS)
+	for (const char *pHiddenSlot : KOUKU_HIDDEN_SLOTS)
 		m_pHUDRuntimeView->Set_SlotVisible(pHiddenSlot, false);
 	m_pHUDRuntimeView->Set_SlotVisible(pMode->strEmblemSlot, true);
 
@@ -6681,21 +6579,19 @@ void CMainApp::Update_KoukuHudMode()
 		const string strCooldownSlot = "Skill_" + strKey + "_Cooldown";
 
 		const int32_t iSkillIndex = kouku.ModeSkillIndexBySlot[i];
-		/* The mouse hammer remains an input action, but the maze HUD presents Q only. */
-		const bool_t bHasSkill = kouku.Has_VisibleSkillSlot(i) &&
-			static_cast<size_t>(iSkillIndex) < pMode->Skills.size();
+		// 카드 미로의 mouse 망치는 입력 동작으로 남고 HUD의 표시 가능 슬롯은 Has_VisibleSkillSlot이 제한한다.
+		const bool_t bHasSkill =
+			kouku.Has_VisibleSkillSlot(i) && static_cast<size_t>(iSkillIndex) < pMode->Skills.size();
 		if (bHasSkill)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot,
-				pMode->Skills[static_cast<size_t>(iSkillIndex)].strIconPath);
+											   pMode->Skills[static_cast<size_t>(iSkillIndex)].strIconPath);
 		}
-		/* No skill = the plain dark slot, exactly what the retail interaction layout
-		shows for its unused keys. */
+		// 해당 칸에 표시할 스킬이 없으면 아이콘을 숨겨 기본 어두운 슬롯만 남긴다.
 		m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, bHasSkill);
 
 		const uint32_t iEndTick = kouku.CooldownEndTicks[i];
-		const uint32_t iRemaining = (bHasSkill && iEndTick > player.iServerTick) ?
-			iEndTick - player.iServerTick : 0u;
+		const uint32_t iRemaining = (bHasSkill && iEndTick > player.iServerTick) ? iEndTick - player.iServerTick : 0u;
 		if (0u == iRemaining)
 		{
 			m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, 0.f);
@@ -6703,16 +6599,18 @@ void CMainApp::Update_KoukuHudMode()
 			continue;
 		}
 		const f32_t fRemainingSeconds = static_cast<f32_t>(iRemaining) / SERVER_TICK_HZ;
-		const f32_t fTotalSeconds = kouku.CooldownDurationTicks[i] > 0u ?
-			static_cast<f32_t>(kouku.CooldownDurationTicks[i]) / SERVER_TICK_HZ : fRemainingSeconds;
-		const f32_t fFraction = fTotalSeconds > 0.f ?
-			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
+		const f32_t fTotalSeconds = kouku.CooldownDurationTicks[i] > 0u
+										? static_cast<f32_t>(kouku.CooldownDurationTicks[i]) / SERVER_TICK_HZ
+										: fRemainingSeconds;
+		const f32_t fFraction =
+			fTotalSeconds > 0.f ? (std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
 		m_pHUDRuntimeView->Set_SlotTint(strCooldownSlot, vCooldownTint);
 		m_pHUDRuntimeView->Set_SlotArcRatio(strCooldownSlot, fFraction);
 		m_pHUDRuntimeView->Set_SlotVisible(strCooldownSlot, true);
 	}
 }
-
+// 일반 UI가 허용된 Update에서 로비의 버튼 입력·서버 선택·로고 표시를 갱신한다.
+// 서버 목록은 표시용 값이며 이 함수가 네트워크 endpoint를 교체하거나 접속을 시작하지는 않는다.
 void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.LobbyButtons.Update");
@@ -6725,18 +6623,16 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		return;
 	}
 
-	/* The character-select window is modal over the Lobby: while it is open the Lobby
-	backdrop/buttons hide and skip their own hover/click pass entirely --
-	Update_CharacterSelectWindow owns the frame's pointer. */
-	if (nullptr != m_pCharacterSelectWindowView &&
-		m_pCharacterSelectWindowView->Is_Open())
+	// 캐릭터 선택 창이 열려 있으면 로비 배경·버튼을 숨기고 입력 조회를 생략한다.
+	// 선택 창의 입력과 화면 갱신은 뒤에 호출되는 Update_CharacterSelectWindow가 맡는다.
+	if (nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open())
 	{
 		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 		return;
 	}
 
-	/* Entering the Lobby (first run, or back from a stage) replays the retail logo reveal once;
-	closing the character-select window does not (retail keeps the settled logo). */
+	// 로비가 비활성이었다가 다시 갱신될 때 로고 등장 시간을 초기화한다.
+	// 선택 창을 닫는 것만으로는 m_bLobbyWasActive를 초기화하지 않으므로 로고를 다시 시작하지 않는다.
 	if (!m_bLobbyWasActive)
 	{
 		m_bLobbyWasActive = true;
@@ -6750,25 +6646,23 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 	m_pLobbyBackgroundView->Set_SlotVisible("Lobby_LogoIntro", !bLogoIntroDone);
 	m_pLobbyBackgroundView->Set_SlotVisible("Lobby_Logo", bLogoIntroDone);
 
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pLobbyBackgroundView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pLobbyBackgroundView->Get_ResolutionHeight();
-	const auto HoverAndClick = [&](const LOBBY_PRODUCT_RECT& Rect, bool_t& outClicked)
+	// view 기준 해상도의 rect를 router에 전달한다. 포인터가 올라오면 이번 프레임 마우스를 점유하고 클릭 여부를 별도로 반환한다.
+	const auto HoverAndClick = [&](const LOBBY_PRODUCT_RECT &Rect, bool_t &outClicked)
 	{
 		outClicked = false;
-		const bool_t bHovered = Router.Is_Hovered(
-			Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
+		const bool_t bHovered = Router.Is_Hovered(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
 		if (bHovered)
 		{
 			Router.Claim_Mouse_This_Frame();
-			outClicked = Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight,
-				fRefWidth, fRefHeight);
+			outClicked = Router.Is_Clicked(Rect.fX, Rect.fY, Rect.fWidth, Rect.fHeight, fRefWidth, fRefHeight);
 		}
 		return bHovered;
 	};
 
-	/* Server rows (retail ServerRenderer: 'over' skin under the pointer, 'selected_up' skin on
-	the chosen row; a click selects). Rows past the authored list stay hidden. */
+	// 저작된 서버 목록 크기와 표시 행 상한 중 작은 개수만 표시한다. 선택 행·포인터 행의 문양을 구분하고 나머지 행은 숨긴다.
 	const size_t iRowCount = (std::min)(m_LobbyServers.size(), LOBBY_SERVER_ROW_COUNT);
 	if (m_iLobbySelectedServer >= static_cast<int32_t>(iRowCount))
 		m_iLobbySelectedServer = iRowCount > 0 ? 0 : -1;
@@ -6784,119 +6678,130 @@ void CMainApp::Update_LobbyButtons(const f32_t fTimeDelta)
 		}
 		LOBBY_PRODUCT_RECT Rect{};
 		bool_t bClicked = false;
-		const bool_t bHovered = Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
-			strRowId.c_str(), Rect) && HoverAndClick(Rect, bClicked);
+		const bool_t bHovered =
+			Get_LobbySlotRect(m_pLobbyBackgroundView.get(), strRowId.c_str(), Rect) && HoverAndClick(Rect, bClicked);
 		if (bClicked)
 		{
 			m_iLobbySelectedServer = static_cast<int32_t>(i);
-			Play_UIButtonClickSound();
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 		}
 		const bool_t bSelected = static_cast<int32_t>(i) == m_iLobbySelectedServer;
-		m_pLobbyBackgroundView->Set_SlotTexture(strRowId, bSelected ?
-			"UI/Lobby/ServerSelect/row_selected.png" :
-			bHovered ? "UI/Lobby/ServerSelect/row_over.png" : "");
-		/* Retail shows the head-count icon only for a server that still accepts characters;
-		otherwise the row's characterState text ("생성 불가") takes that column. */
+		m_pLobbyBackgroundView->Set_SlotTexture(strRowId, bSelected	 ? "UI/Lobby/ServerSelect/row_selected.png"
+														  : bHovered ? "UI/Lobby/ServerSelect/row_over.png"
+																	 : "");
+		// 생성 가능한 서버 행에는 인원 아이콘을, 불가능한 행에는 텍스트 단계에서 "생성 불가" 상태를 표시한다.
 		m_pLobbyBackgroundView->Set_SlotVisible(strCountId, m_LobbyServers[i].bCreatable);
 	}
 
-	/* 접속(서버 선택) -- the old 게임 시작 button: opens the character-select window for the
-	selected server. The window's own card still submits CHARACTER_SELECT. */
+	// 접속(서버 선택)은 선택 창만 연다. 선택 창의 intent를 받아 실제 월드 입장 명령을 제출하는 곳은 Update_CharacterSelectWindow다.
 	{
 		LOBBY_PRODUCT_RECT Rect{};
 		bool_t bClicked = false;
-		const bool_t bHovered = Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
-			"Lobby_JoinButton", Rect) && HoverAndClick(Rect, bClicked);
-		const bool_t bEnabled = m_iLobbySelectedServer >= 0 &&
-			nullptr != m_pCharacterSelectWindowView &&
-			CLevel_Lobby::Can_SubmitProductCommand();
+		const bool_t bHovered =
+			Get_LobbySlotRect(m_pLobbyBackgroundView.get(), "Lobby_JoinButton", Rect) && HoverAndClick(Rect, bClicked);
+		const bool_t bEnabled = m_iLobbySelectedServer >= 0 && nullptr != m_pCharacterSelectWindowView &&
+								CLevel_Lobby::Can_SubmitProductCommand();
 		m_pLobbyBackgroundView->Set_SlotTexture("Lobby_JoinButton",
-			bHovered && bEnabled ? "UI/Lobby/ServerSelect/btn_join_over.png" : "");
+												bHovered && bEnabled ? "UI/Lobby/ServerSelect/btn_join_over.png" : "");
 		if (bClicked && bEnabled)
 		{
 			m_pCharacterSelectWindowView->Open();
-			Play_UIButtonClickSound();
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 		}
 	}
 
-	/* Bottom icon buttons. 종료 closes the game (WM_CLOSE -> WM_DESTROY -> quit, the same
-	path as the title-bar X); 환경설정 has no
-	product target here yet, so they only show their hover art. */
+	// 종료 아이콘은 WM_CLOSE를 보내 기존 창 종료 흐름을 따른다. 로비의 환경설정 아이콘은 현재 hover 그림만 바꾼다.
 	struct LOBBY_ICON_BUTTON
 	{
-		const char* pSlotId;
-		const char* pOverTexture;
+		const char *pSlotId;
+		const char *pOverTexture;
 		bool_t bExit;
 	};
-	constexpr LOBBY_ICON_BUTTON IconButtons[2] =
-	{
-		{ "Lobby_ExitIcon", "UI/Lobby/ServerSelect/btn_exit_over.png", true },
-		{ "Lobby_OptionIcon", "UI/Lobby/ServerSelect/btn_option_over.png", false },
+	constexpr LOBBY_ICON_BUTTON IconButtons[2] = {
+		{"Lobby_ExitIcon", "UI/Lobby/ServerSelect/btn_exit_over.png", true},
+		{"Lobby_OptionIcon", "UI/Lobby/ServerSelect/btn_option_over.png", false},
 	};
-	for (const LOBBY_ICON_BUTTON& Icon : IconButtons)
+	for (const LOBBY_ICON_BUTTON &Icon : IconButtons)
 	{
 		LOBBY_PRODUCT_RECT Rect{};
 		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), Icon.pSlotId, Rect))
 			continue;
-		/* Retail's hit area is the 118x82 button group (icon + caption), not just the icon. */
-		const LOBBY_PRODUCT_RECT HitRect{ Rect.fX - 26.f, Rect.fY - 6.f, Rect.fWidth + 52.f, 54.f };
+		// 아이콘보다 넓은 입력 사각형을 별도로 만든다. 현재 폭은 원래 폭+52, 높이는 54이며 위치를 왼쪽26·위6만큼 옮긴다.
+		const LOBBY_PRODUCT_RECT HitRect{Rect.fX - 26.f, Rect.fY - 6.f, Rect.fWidth + 52.f, 54.f};
 		bool_t bClicked = false;
 		const bool_t bHovered = HoverAndClick(HitRect, bClicked);
 		m_pLobbyBackgroundView->Set_SlotTexture(Icon.pSlotId, bHovered ? Icon.pOverTexture : "");
 		if (bClicked && Icon.bExit)
 		{
-			Play_UIButtonClickSound();
+			Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 			PostMessage(g_hWnd, WM_CLOSE, 0, 0);
 		}
 	}
 
-	/* TitleBackground's looping movie flipbook and the one-shot logo reveal. */
+	// 로비 배경 반복 flipbook과 로고 등장 animation의 표시 시간을 진행한다.
 	m_pLobbyBackgroundView->Update(fTimeDelta);
 }
 
+// 미니맵·일반 HUD가 쿠크 미로 mode의 숨김 여부를 조회한다. 다른 Level이나 유효하지 않은 gimmick은 숨기지 않는다.
 bool_t CMainApp::Is_KoukuMinigameHUDHidden() const
 {
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return false;
 	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	return gimmick.isValid && gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE;
 }
 
+// 보스 체력바는 미로와 댄스 두 mode에서 숨긴다. 일반 HUD의 미로 전용 조건과 별도로 유지한다.
 bool_t CMainApp::Is_KoukuBossHealthBarHidden() const
 {
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return false;
 	const auto gimmick = CCombatHUDViewModel::Get().Get_KoukuGimmick();
 	return gimmick.isValid &&
-		(gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE ||
-		 gimmick.eHudMode == HUD_KOUKU_HUD_MODE::DANCE);
+		   (gimmick.eHudMode == HUD_KOUKU_HUD_MODE::MAZE || gimmick.eHudMode == HUD_KOUKU_HUD_MODE::DANCE);
 }
 
+// 일반 제품 UI의 Update/Render가 cinematic 숨김 또는 Loading 여부를 함께 확인한다.
 bool_t CMainApp::Is_RuntimeUIScreenSuppressed() const
 {
 	return CUIInputRouter::Get().Is_CinematicSuppressed() ||
-		ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
+		   ETOUI(LEVEL::LOADING) == CGameInstance::Get().Get_CurrentLevelID();
 }
 
+// Loading 진입을 관찰한 첫 Update가 열려 있던 창과 임시 입력 상태를 정리한다.
+// 각 view의 Close/Hide 정책을 호출하고 Escape 순서 목록을 비우며 view 소유 포인터는 유지한다.
 void CMainApp::Close_RuntimeWindowsForLoading()
 {
-	// Loading suppresses normal UI updates, including the Lobby visibility gate.
-	// STATIC sprites survive Level teardown and must be hidden before it.
-	if (nullptr != m_pLobbyBackgroundView) m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
+	// Loading 첫 Update에서 일반 창의 갱신을 생략하기 전에 호출한다. STATIC sprite는 Level 교체 뒤에도 남으므로 명시적으로 숨긴다.
+	// 이 함수에 나열된 view의 닫기·숨김과 운반 취소를 수행하며, 모든 UI 객체를 파괴하는 정리는 아니다.
+	if (nullptr != m_pLobbyBackgroundView)
+		m_pLobbyBackgroundView->Set_AllSlotsVisible(false);
 	m_bLobbyWasActive = false;
-	if (nullptr != m_pCharacterSelectWindowView) m_pCharacterSelectWindowView->Close();
-	if (nullptr != m_pInventoryView) m_pInventoryView->Close();
-	if (nullptr != m_pRepairWindowView) m_pRepairWindowView->Close();
-	if (nullptr != m_pShopWindowView) m_pShopWindowView->Close();
-	/* Not a window, but its STATIC sprites would keep drawing over the loading screen. */
-	if (nullptr != m_pDurabilityHudView) m_pDurabilityHudView->Hide();
-	if (nullptr != m_pCharacterInfoView) m_pCharacterInfoView->Close();
-	if (nullptr != m_pAvatarBookView) m_pAvatarBookView->Close();
-	if (nullptr != m_pVehicleWindowView) m_pVehicleWindowView->Close();
-	if (nullptr != m_pHonorTitleWindowView) m_pHonorTitleWindowView->Close();
-	if (nullptr != m_pWorldMapWindowView) m_pWorldMapWindowView->Close();
-	if (nullptr != m_pSystemOptionView) m_pSystemOptionView->Close();
-	if (nullptr != m_pQuickSlotDragView) m_pQuickSlotDragView->Cancel();
+	if (nullptr != m_pCharacterSelectWindowView)
+		m_pCharacterSelectWindowView->Close();
+	if (nullptr != m_pInventoryView)
+		m_pInventoryView->Close();
+	if (nullptr != m_pRepairWindowView)
+		m_pRepairWindowView->Close();
+	if (nullptr != m_pShopWindowView)
+		m_pShopWindowView->Close();
+	// 내구도 HUD는 창은 아니지만 STATIC sprite가 로딩 화면에 남지 않게 숨긴다.
+	if (nullptr != m_pDurabilityHudView)
+		m_pDurabilityHudView->Hide();
+	if (nullptr != m_pCharacterInfoView)
+		m_pCharacterInfoView->Close();
+	if (nullptr != m_pAvatarBookView)
+		m_pAvatarBookView->Close();
+	if (nullptr != m_pVehicleWindowView)
+		m_pVehicleWindowView->Close();
+	if (nullptr != m_pHonorTitleWindowView)
+		m_pHonorTitleWindowView->Close();
+	if (nullptr != m_pWorldMapWindowView)
+		m_pWorldMapWindowView->Close();
+	if (nullptr != m_pSystemOptionView)
+		m_pSystemOptionView->Close();
+	if (nullptr != m_pQuickSlotDragView)
+		m_pQuickSlotDragView->Cancel();
 	if (nullptr != m_pChatWindowView)
 	{
 		m_pChatWindowView->Close_Input();
@@ -6905,42 +6810,53 @@ void CMainApp::Close_RuntimeWindowsForLoading()
 	m_iEscapeWindowCount = 0u;
 }
 
+// 환경설정 창을 새로 열기 전에 다른 제품 화면이 Escape를 사용할 가능성이 있는지 조회한다.
 bool_t CMainApp::Is_AnyRuntimeWindowOpen() const
 {
-	/* Every runtime window that answers Escape with "close me". The system option window
-	itself is deliberately not in this list: Update_SystemOptionWindow owns its Escape edge. */
-	const bool_t bOpen =
-		(nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
-		(nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
-		(nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open()) ||
-		(nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
-		(nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
-		(nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
-		(nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open()) ||
-		(nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open()) ||
-		(nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
-		(nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open()) ||
-		(nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open()) ||
-		m_bItemUpgradePreviewVisible || Is_MvpResultPageOpen();
+	// 환경설정 창 외에 열린 제품 창·미리보기·결과 화면이 있는지 조회한다.
+	// 이 목록과 아래 ESCAPE_WINDOW 순서 배열은 범위가 다르며 환경설정 창 자체의 Escape는 호출자가 먼저 처리한다.
+	const bool_t bOpen = (nullptr != m_pInventoryView && m_pInventoryView->Is_Open()) ||
+						 (nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open()) ||
+						 (nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open()) ||
+						 (nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open()) ||
+						 (nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open()) ||
+						 (nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open()) ||
+						 (nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open()) ||
+						 (nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open()) ||
+						 (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
+						 (nullptr != m_pChatWindowView && m_pChatWindowView->Is_Open()) ||
+						 (nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open()) ||
+						 m_bItemUpgradePreviewVisible || Is_MvpResultPageOpen();
 	return bOpen;
 }
 
+// Escape 순서 배열이 관리하는 여덟 종류만 조회한다. 지원하지 않는 enum은 닫힌 것으로 반환한다.
 bool_t CMainApp::Is_EscapeWindowOpen(const ESCAPE_WINDOW eWindow) const
 {
 	switch (eWindow)
 	{
-	case ESCAPE_WINDOW::INVENTORY: return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
-	case ESCAPE_WINDOW::REPAIR: return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
-	case ESCAPE_WINDOW::SHOP: return nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open();
-	case ESCAPE_WINDOW::CHARACTER_INFO: return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
-	case ESCAPE_WINDOW::AVATAR_BOOK: return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
-	case ESCAPE_WINDOW::HONOR_TITLE: return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
-	case ESCAPE_WINDOW::VEHICLE: return nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open();
-	case ESCAPE_WINDOW::WORLD_MAP: return nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open();
-	default: return false;
+	case ESCAPE_WINDOW::INVENTORY:
+		return nullptr != m_pInventoryView && m_pInventoryView->Is_Open();
+	case ESCAPE_WINDOW::REPAIR:
+		return nullptr != m_pRepairWindowView && m_pRepairWindowView->Is_Open();
+	case ESCAPE_WINDOW::SHOP:
+		return nullptr != m_pShopWindowView && m_pShopWindowView->Is_Open();
+	case ESCAPE_WINDOW::CHARACTER_INFO:
+		return nullptr != m_pCharacterInfoView && m_pCharacterInfoView->Is_Open();
+	case ESCAPE_WINDOW::AVATAR_BOOK:
+		return nullptr != m_pAvatarBookView && m_pAvatarBookView->Is_Open();
+	case ESCAPE_WINDOW::HONOR_TITLE:
+		return nullptr != m_pHonorTitleWindowView && m_pHonorTitleWindowView->Is_Open();
+	case ESCAPE_WINDOW::VEHICLE:
+		return nullptr != m_pVehicleWindowView && m_pVehicleWindowView->Is_Open();
+	case ESCAPE_WINDOW::WORLD_MAP:
+		return nullptr != m_pWorldMapWindowView && m_pWorldMapWindowView->Is_Open();
+	default:
+		return false;
 	}
 }
 
+// 닫힌 항목을 제거하고 새로 관찰한 창을 뒤에 추가한다. 클릭에 의한 시각적 포커스 순서를 추적하는 배열은 아니다.
 void CMainApp::Sync_EscapeWindowOrder()
 {
 	uint32_t iKept = 0u;
@@ -6950,8 +6866,7 @@ void CMainApp::Sync_EscapeWindowOrder()
 			m_EscapeWindowOrder[iKept++] = m_EscapeWindowOrder[i];
 	}
 	m_iEscapeWindowCount = iKept;
-	/* Enum order breaks a same-frame tie, so the avatar book / title window land above the info
-	window they open over. */
+	// 같은 갱신에서 처음 발견한 창은 enum 순서대로 뒤에 추가한다. 기존에 열린 창의 상대 순서는 유지한다.
 	for (uint32_t iWindow = 0u; iWindow < ETOUI(ESCAPE_WINDOW::END); ++iWindow)
 	{
 		const ESCAPE_WINDOW eWindow = static_cast<ESCAPE_WINDOW>(iWindow);
@@ -6965,6 +6880,7 @@ void CMainApp::Sync_EscapeWindowOrder()
 	}
 }
 
+// 정리한 순서 배열의 마지막 창에 Escape를 전달한다. true는 입력을 맡겼다는 뜻이며 내부 dialog만 닫혀 창이 남을 수도 있다.
 bool_t CMainApp::Close_TopEscapeWindow()
 {
 	Sync_EscapeWindowOrder();
@@ -6973,76 +6889,86 @@ bool_t CMainApp::Close_TopEscapeWindow()
 	const ESCAPE_WINDOW eTop = m_EscapeWindowOrder[--m_iEscapeWindowCount];
 	switch (eTop)
 	{
-	case ESCAPE_WINDOW::INVENTORY: m_pInventoryView->Close(); break;
-	case ESCAPE_WINDOW::REPAIR: m_pRepairWindowView->Close(); break;
-	case ESCAPE_WINDOW::SHOP: m_pShopWindowView->Close(); break;
-	case ESCAPE_WINDOW::CHARACTER_INFO: m_pCharacterInfoView->Close(); break;
-	case ESCAPE_WINDOW::AVATAR_BOOK: m_pAvatarBookView->Close(); break;
-	case ESCAPE_WINDOW::HONOR_TITLE: m_pHonorTitleWindowView->Close(); break;
-	case ESCAPE_WINDOW::VEHICLE: m_pVehicleWindowView->Close(); break;
+	case ESCAPE_WINDOW::INVENTORY:
+		m_pInventoryView->Close();
+		break;
+	case ESCAPE_WINDOW::REPAIR:
+		m_pRepairWindowView->Close();
+		break;
+	case ESCAPE_WINDOW::SHOP:
+		m_pShopWindowView->Close();
+		break;
+	case ESCAPE_WINDOW::CHARACTER_INFO:
+		m_pCharacterInfoView->Close();
+		break;
+	case ESCAPE_WINDOW::AVATAR_BOOK:
+		m_pAvatarBookView->Close();
+		break;
+	case ESCAPE_WINDOW::HONOR_TITLE:
+		m_pHonorTitleWindowView->Close();
+		break;
+	case ESCAPE_WINDOW::VEHICLE:
+		m_pVehicleWindowView->Close();
+		break;
 	case ESCAPE_WINDOW::WORLD_MAP:
-		/* Its hole dialog takes the press first; the window stays on top until it closes. */
+		// 월드맵 내부의 이동 확인 창이 먼저 Escape를 받는다. 월드맵이 여전히 열려 있으면 순서 배열의 맨 위 자리를 유지한다.
 		m_pWorldMapWindowView->Handle_EscapeEdge();
 		if (m_pWorldMapWindowView->Is_Open())
 			++m_iEscapeWindowCount;
 		break;
-	default: break;
+	default:
+		break;
 	}
 	return true;
 }
 
+// 섬 이동·물건 운반·레이드 입장 팝업이 Escape를 별도로 처리하는지 읽는다. 여기서는 대상 상태를 변경하지 않는다.
 bool_t CMainApp::Is_EscapeOwnedElsewhere() const
 {
-	if (const auto* island = CLevel_Development::Get_Active(LEVEL::MAHARAKA);
-		island && island->Is_TravelModalOpen()) return true;
-	/* These read the same press in their own Update, which runs later this frame. */
+	if (const auto *island = CLevel_Development::Get_Active(LEVEL::MAHARAKA); island && island->Is_TravelModalOpen())
+		return true;
+	// 운반 중인 값과 입장 팝업은 각자의 입력 처리에서 Escape를 소비하므로 일반 창을 함께 닫지 않는다.
 	if (nullptr != m_pQuickSlotDragView && m_pQuickSlotDragView->Is_Carrying())
 		return true;
-	if (CLevel_Bern* pBern = CLevel_Bern::Get_Active();
+	if (CLevel_Bern *pBern = CLevel_Bern::Get_Active();
 		nullptr != pBern && ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID() &&
 		pBern->Is_ValtanEntryModalOpen())
 		return true;
 #ifdef _DEBUG
-	if (CLevel_CharacterSelect* pCharacterSelect = CLevel_CharacterSelect::Get_Active();
-		nullptr != pCharacterSelect &&
-		ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
+	if (CLevel_CharacterSelect *pCharacterSelect = CLevel_CharacterSelect::Get_Active();
+		nullptr != pCharacterSelect && ETOUI(LEVEL::CHARACTER_SELECT) == CGameInstance::Get().Get_CurrentLevelID() &&
 		pCharacterSelect->Is_DebugRaidEntryPreviewOpen())
 		return true;
 #endif
 	return false;
 }
 
+// Update의 제품 창 순서에서 먼저 Escape를 배분하고 환경설정 자체의 입력·화면을 갱신한다.
+// 텍스트 입력 중에는 이 키 추적을 갱신하지 않으며, foreground가 같은 process인지도 검사한다.
 void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 {
-	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(),
-		"UI.Runtime.SystemOptionWindow.Update");
+	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SystemOptionWindow.Update");
 	if (nullptr == m_pSystemOptionView)
 		return;
 
-	/* Read the other windows before their own Update runs this frame: an Escape that closes
-	one of them must not fall through to opening this. This one Escape edge, read here from
-	the same key source every frame, both opens and closes the window -- the view polling
-	DirectInput on its own lagged a frame behind and closed what this had just opened. The same
-	edge closes the toggle windows (inventory, info, vehicle, map...) one per press. */
+	// 다른 창의 이번 프레임 Update 전에 열린 상태를 읽고 Escape의 눌림 전환을 한 곳에서 판정한다.
+	// 환경설정→결과 화면→강화 화면→별도 입력 소유자→순서 배열의 창 순으로 처리하며, 다른 창이 없을 때만 환경설정을 연다.
 	const bool_t bOtherWindowOpen = Is_AnyRuntimeWindowOpen();
 	Sync_EscapeWindowOrder();
 	if (!ImGui::GetIO().WantTextInput && !CUIInputRouter::Get().Is_TextInputActive())
 	{
-		const bool_t bWindowFocused =
-			IsWindowOwnedByCurrentProcess(GetForegroundWindow());
-		const bool_t bKeyDown = bWindowFocused &&
-			0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
+		const bool_t bWindowFocused = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
+		const bool_t bKeyDown = bWindowFocused && 0 != (GetAsyncKeyState(VK_ESCAPE) & 0x8000);
 		if (bKeyDown && !m_bSystemOptionKeyDown)
 		{
 			if (m_pSystemOptionView->Is_Open())
 				m_pSystemOptionView->Handle_EscapeEdge();
 			else if (Is_MvpResultPageOpen())
 			{
-				/* The award page is the topmost modal: Escape closes it, and nothing
-				   (least of all this window) opens under it on the same press. */
-				if (CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active())
+				// 결과 화면이 열려 있으면 해당 아레나의 결과 표시만 닫는다. 같은 Escape로 환경설정을 여는 분기는 실행하지 않는다.
+				if (CLevel_KoukuSaydonArena *pArena = CLevel_KoukuSaydonArena::Get_Active())
 					pArena->Debug_Hide_MvpResult();
-				if (CLevel_ValtanArena* pValtan = CLevel_ValtanArena::Get_Active())
+				if (CLevel_ValtanArena *pValtan = CLevel_ValtanArena::Get_Active())
 					pValtan->Hide_MvpResult();
 			}
 			else if (m_bItemUpgradePreviewVisible)
@@ -7052,16 +6978,16 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 			}
 			else if (Is_EscapeOwnedElsewhere())
 			{
-				/* The carry / popup closes itself on this press; nothing else does. */
+				// 운반·팝업 쪽이 이 입력을 처리하므로 여기서는 추가 창 동작을 하지 않는다.
 			}
 			else if (Close_TopEscapeWindow())
 			{
-				/* One press, one window: the newest open one. */
+				// 이번 눌림은 순서 배열에서 마지막으로 등록된 열린 창 하나에만 전달했다.
 			}
 			else if (!bOtherWindowOpen)
 			{
 				m_pSystemOptionView->Open();
-				Play_UIButtonClickSound();
+				Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 			}
 		}
 		m_bSystemOptionKeyDown = bKeyDown;
@@ -7069,22 +6995,21 @@ void CMainApp::Update_SystemOptionWindow(const f32_t fTimeDelta)
 
 	m_pSystemOptionView->Update(fTimeDelta);
 
-	/* A brightness / post-process edit only reaches the renderer when quality is resolved
-	again, which normally happens on a Level or region change. Re-activating the profile that
-	is already active runs that same path now. */
+	// 화면 설정 변경 표시는 Take_VideoDirty에서 한 번 소비한다. 현재 활성 렌더링 프로필을 다시 적용해 설정을 반영한다.
+	// 활성 ID가 없으면 별도 적용하지 않고, 재적용 실패는 로그로 남기며 이 함수에서 변경을 재시도하지 않는다.
 	if (m_pSystemOptionView->Take_VideoDirty())
 	{
 		const string strActiveProfileId = m_RenderingProfiles.Get_ActiveProfileId();
 		string strStatus;
-		if (!strActiveProfileId.empty() &&
-			!m_RenderingProfiles.Activate_Profile(strActiveProfileId, strStatus))
+		if (!strActiveProfileId.empty() && !m_RenderingProfiles.Activate_Profile(strActiveProfileId, strStatus))
 		{
-			OutputDebugStringA(("[MainApp] System option video re-apply failed: " +
-				strStatus + "\n").c_str());
+			OutputDebugStringA(("[MainApp] System option video re-apply failed: " + strStatus + "\n").c_str());
 		}
 	}
 }
 
+// 로비의 선택창 intent를 기존 identity stage와 Lobby typed 명령으로 연결한다.
+// 선택창은 roster 표시·입력을 소유하고 MainApp은 Level 및 다른 창과의 전환 순서를 조율한다.
 void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.CharacterSelectWindow.Update");
@@ -7092,9 +7017,7 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		return;
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 	{
-		/* A level change while open (the submitted CHARACTER_SELECT approval landing) must
-		not leave the window's sprites showing under the next level -- they live on
-		LEVEL::STATIC. */
+		// 로비 밖에서는 STATIC 선택창을 닫는다. 입장 준비가 이 창을 차용 중이면 stage 해제를 미루고, 아니면 현재 stage를 정리한다.
 		if (m_pCharacterSelectWindowView->Is_Open())
 			m_pCharacterSelectWindowView->Close();
 		if (!m_pCharacterSelectWindowView->Is_PreparingEntry())
@@ -7102,25 +7025,22 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 		return;
 	}
 
-	/* Coming back from a world by the character select icon: this is the screen it asked for. */
+	// 월드에서 선택창 복귀를 요청한 상태라면 로비 명령 제출이 가능한 시점에 창을 열고 예약 플래그를 소비한다.
 	if (m_bOpenCharacterSelectOnLobby && !m_pCharacterSelectWindowView->Is_Open() &&
 		CLevel_Lobby::Can_SubmitProductCommand())
 	{
 		m_pCharacterSelectWindowView->Open();
 		m_bOpenCharacterSelectOnLobby = false;
 	}
-	/* The options window opens over this one from its own icon; while it is up this window
-	keeps drawing but leaves the pointer and Escape to it. */
-	m_pCharacterSelectWindowView->Update(fTimeDelta,
-		nullptr != m_pSystemOptionView && m_pSystemOptionView->Is_Open());
+	// 환경설정이 열려 있으면 선택창은 표시를 유지하되 입력 차단 인자를 받아 포인터·Escape 처리를 넘긴다.
+	m_pCharacterSelectWindowView->Update(fTimeDelta, nullptr != m_pSystemOptionView && m_pSystemOptionView->Is_Open());
 
 	switch (m_pCharacterSelectWindowView->Consume_Intent())
 	{
 	case CCharacterSelectWindowView::INTENT::START_CHARACTER:
 	{
-		/* The same identity path Character Select's Create Character confirm uses: stage the
-		card's class and nickname as the pending creation, then ask the Server for Bern. The
-		Lobby commits it once Bern is entered and cancels it if the entry fails. */
+		// 현재 roster의 ID·class·nickname·외형과 일치하는 기존 캐릭터 입장을 pending으로 보관한 뒤 Bern 입장을 요청한다.
+		// 새 캐릭터 생성으로 기록하지 않으며, 명령 제출 실패 시 pending만 취소한다. 실제 입장 확정은 이후 전환 흐름이 맡는다.
 		LostArk::Shared::CHARACTER_CLASS_ID eClass = LostArk::Shared::CHARACTER_CLASS_ID::END;
 		string strNickname;
 		string strAppearance;
@@ -7136,12 +7056,10 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 			m_pSystemOptionView->Open();
 		break;
 	case CCharacterSelectWindowView::INTENT::NEW_CHARACTER:
-		/* The same product command the Lobby button used to submit directly. The window
-		stays open while the Server approval runs -- success changes the level (the branch
-		above closes it), a rejection leaves the window up and the user can ESC back to the
-		Lobby's status line. */
+		// 빈 생성 슬롯이 아직 유효할 때 Character Select 입장 명령을 제출한다.
+		// 승인 대기에는 선택창을 유지하며 Level이 바뀌면 함수 앞의 로비 밖 분기가 창을 닫는다.
 		if (CCharacterSelectionState::Select_CreationSlot(
-			static_cast<size_t>(m_pCharacterSelectWindowView->Get_CreationSlot())))
+				static_cast<size_t>(m_pCharacterSelectWindowView->Get_CreationSlot())))
 			(void)CLevel_Lobby::Submit_ProductCommand(LOBBY_STAGE::CHARACTER_SELECT);
 		break;
 	case CCharacterSelectWindowView::INTENT::CLOSE:
@@ -7152,6 +7070,7 @@ void CMainApp::Update_CharacterSelectWindow(const f32_t fTimeDelta)
 	}
 }
 
+// Render의 텍스트 단계에서 로비 선택창에 글자 출력을 위임한다. 열린 상태와 실제 표시 자료는 view가 검사한다.
 void CMainApp::RenderCharacterSelectWindowText()
 {
 	if (nullptr == m_pCharacterSelectWindowView)
@@ -7161,20 +7080,22 @@ void CMainApp::RenderCharacterSelectWindowText()
 	m_pCharacterSelectWindowView->RenderText();
 }
 
+// 지원하는 네 Level의 marker snapshot 하나로 미니맵과 월드맵을 갱신한다.
+// 지역 값의 포인터는 이 호출 동안만 전달하며, 월드맵 요청과 Bern 시전 게이지 갱신도 같은 UI 순서에서 처리한다.
 void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.Minimap.Update");
 	if (nullptr == m_pMinimapView)
 		return;
-	/* Each level owns its own CClientReplication, so the active one is asked for the marker
-	snapshot the same way the party window reaches Get_PartyRoster(). */
+	// 현재 지원 Level의 replication 소유자에게 지역 marker snapshot 값을 수집한다.
+	// 이 함수는 복제 객체를 교체하거나 마커 위치를 Server로 보내지 않는다.
 	const uint32_t iLevel = CGameInstance::Get().Get_CurrentLevelID();
 	CClientReplication::MINIMAP_MARKER_SNAPSHOT Snapshot{};
 	LEVEL eLevel = LEVEL::END;
 	bool_t bHasSnapshot = false;
 	if (ETOUI(LEVEL::BERN) == iLevel)
 	{
-		if (CLevel_Bern* pBern = CLevel_Bern::Get_Active())
+		if (CLevel_Bern *pBern = CLevel_Bern::Get_Active())
 		{
 			pBern->Collect_MinimapMarkers(Snapshot);
 			eLevel = LEVEL::BERN;
@@ -7183,90 +7104,94 @@ void CMainApp::Update_Minimap(const f32_t fTimeDelta)
 	}
 	else if (ETOUI(LEVEL::VALTAN_ARENA) == iLevel)
 	{
-		if (CLevel_ValtanArena* pValtanArena = CLevel_ValtanArena::Get_Active())
+		if (CLevel_ValtanArena *pValtanArena = CLevel_ValtanArena::Get_Active())
 		{
 			pValtanArena->Collect_MinimapMarkers(Snapshot);
 			eLevel = LEVEL::VALTAN_ARENA;
 			bHasSnapshot = true;
 		}
 	}
-	else if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == iLevel)
+	else if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == iLevel)
 	{
-		if (CLevel_KakulSaydonArena* pKakulSaydonArena = CLevel_KakulSaydonArena::Get_Active())
+		if (CLevel_KoukuSaydonArena *pKoukuSaydonArena = CLevel_KoukuSaydonArena::Get_Active())
 		{
-			pKakulSaydonArena->Collect_MinimapMarkers(Snapshot);
-			eLevel = LEVEL::KAKULSAYDON_ARENA;
+			pKoukuSaydonArena->Collect_MinimapMarkers(Snapshot);
+			eLevel = LEVEL::KOUKUSAYDON_ARENA;
 			bHasSnapshot = true;
 		}
 	}
 	else if (ETOUI(LEVEL::COLOSSEUM) == iLevel)
 	{
-		if (CLevel_Development* pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
+		if (CLevel_Development *pColosseum = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
 		{
 			pColosseum->Collect_MinimapMarkers(Snapshot);
 			eLevel = LEVEL::COLOSSEUM;
 			bHasSnapshot = true;
 		}
 	}
-	/* Part of the in-game HUD, so it clears for the award page like the rest.
-	   A null snapshot is this view's own documented "hide every slot". */
+	// 결과 화면이나 쿠크 미로 mode에서는 snapshot 전달을 막는다. MinimapView는 nullptr 입력이면 모든 슬롯을 숨긴다.
 	if (Is_MvpResultPageOpen() || Is_KoukuMinigameHUDHidden())
 		bHasSnapshot = false;
 	m_pMinimapView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
-	/* The world map window reads the same marker snapshot; it hides itself without one. */
+	// 같은 지역 snapshot을 월드맵에도 전달한다. 유효 지역·로컬 위치가 없으면 월드맵은 자기 표시를 숨긴다.
 	if (nullptr != m_pWorldMapWindowView)
 	{
 		m_pWorldMapWindowView->Update(fTimeDelta, eLevel, bHasSnapshot ? &Snapshot : nullptr);
-		/* A square-hole click: the level's controller owns the Server round trip, as for
-		vehicles and titles; the Server's SQUAREHOLE_SONG action drives the gauge below. */
+		// 월드맵이 보관한 이동 intent를 한 번 꺼내 현재 controller의 typed 요청으로 넘긴다.
+		// controller 부재·입력 거부·전송 실패는 로그로만 남기며, 실제 이동과 시전 상태 확정은 Server가 맡는다.
 		uint16_t iHoleId = 0u;
 		if (m_pWorldMapWindowView->Take_SquareHoleRequest(iHoleId))
 		{
-			CPlayerController* pController = Find_ActivePlayerController();
+			CPlayerController *pController = Find_ActivePlayerController();
+			// 콜로세움 종료 후 참가자 복귀인지 복제된 match·local entity로 확인한다. 이 값은 controller의 현재 action 제한 예외에 쓰인다.
 			bool_t finishedColosseumReturn = false;
 			if (const auto arena = CLevel_Development::Get_Active(LEVEL::COLOSSEUM))
 			{
-				const auto& match = arena->Get_Replication().Get_ColosseumMatchState();
+				const auto &match = arena->Get_Replication().Get_ColosseumMatchState();
 				const auto local = CNetworkManager::Get().Get_LocalEntityId();
-				finishedColosseumReturn = match.iMatchId != 0u &&
-					match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED &&
-					std::any_of(match.Players.begin(), match.Players.end(), [local](const auto& row)
-						{ return row.iNetEntityId == local && row.bParticipant && row.iTeam < 2u; });
+				finishedColosseumReturn =
+					match.iMatchId != 0u && match.ePhase == LostArk::Shared::COLOSSEUM_MATCH_PHASE::FINISHED &&
+					std::any_of(match.Players.begin(), match.Players.end(), [local](const auto &row)
+								{ return row.iNetEntityId == local && row.bParticipant && row.iTeam < 2u; });
 			}
 			if (nullptr == pController || !pController->Request_UseSquareHole(iHoleId, finishedColosseumReturn))
-				OutputDebugStringA("[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
+				OutputDebugStringA(
+					"[Client][WorldMapWindow] Square hole request not sent (no controller, or the player is busy).\n");
 		}
+		// 선박 출발도 별도 local 이동 대신 예약 destination ID를 같은 SquareHole 요청으로 보낸다.
 		if (m_pWorldMapWindowView->Take_ShipTravelRequest())
 		{
-			CPlayerController* pController = Find_ActivePlayerController();
-			if (nullptr == pController || !pController->Request_UseSquareHole(
-				LostArk::Shared::WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID))
+			CPlayerController *pController = Find_ActivePlayerController();
+			if (nullptr == pController ||
+				!pController->Request_UseSquareHole(LostArk::Shared::WORLD_MAP_SHIP_TRAVEL_DESTINATION_ID))
 			{
-				OutputDebugStringA("[Client][WorldMapWindow] Ship travel request not sent (no controller, or the player is busy).\n");
+				OutputDebugStringA(
+					"[Client][WorldMapWindow] Ship travel request not sent (no controller, or the player is busy).\n");
 			}
 		}
 	}
 	if (nullptr != m_pSongCastGaugeView)
 		m_pSongCastGaugeView->Update(fTimeDelta, CCombatHUDViewModel::Get().Get_Player(),
-			ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID());
+									 ETOUI(LEVEL::BERN) == CGameInstance::Get().Get_CurrentLevelID());
 }
 
+// Render의 텍스트 단계가 미니맵 view에 출력을 위임한다. 대상 view가 없으면 건너뛴다.
 void CMainApp::RenderMinimapText()
 {
 	if (nullptr != m_pMinimapView)
 		m_pMinimapView->RenderText();
 }
 
+// Render의 텍스트 단계에서 서버 목록과 로비 버튼의 글자를 출력한다.
+// 이미지 슬롯의 기준 rect를 조회하고 현재 viewport에 맞춰 위치·배율을 계산한다.
 void CMainApp::RenderLobbyButtonText()
 {
 	if (ETOUI(LEVEL::LOBBY) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	if (nullptr == m_pLobbyBackgroundView)
 		return;
-	/* The Lobby's sprites are hidden while the character-select window is open -- their
-	labels (and the Release status line) must not float over it either. */
-	if (nullptr != m_pCharacterSelectWindowView &&
-		m_pCharacterSelectWindowView->Is_Open())
+	// 캐릭터 선택 창이 열렸으면 로비 sprite와 함께 서버 목록의 글자도 그리지 않는다.
+	if (nullptr != m_pCharacterSelectWindowView && m_pCharacterSelectWindowView->Is_Open())
 		return;
 
 	const float2_t vTextViewportSize = CGameInstance::Get().Get_ViewportSize();
@@ -7274,10 +7199,10 @@ void CMainApp::RenderLobbyButtonText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* Retail font sizes are 1920x1080 pixels; fFontPx is that x 2/3 (1280 reference units).
-	fAlign: 0 = left edge at fX, 0.5 = centered on fX, 1 = right edge at fX. */
-	const auto DrawAt = [&](const wchar_t* pText, const wstring& strFont, f32_t fFontPx,
-		f32_t fX, f32_t fCenterY, f32_t fAlign, f32_t fMaxWidth, fvector_t vColor)
+	// 위치는 1280×720 기준 좌표에서 viewport 축별로 변환하고 글자 크기는 두 축 중 작은 배율을 사용한다.
+	// fAlign은 0=왼쪽, 0.5=가운데, 1=오른쪽 기준이며, 최대 폭을 넘으면 글자 배율을 줄인다.
+	const auto DrawAt = [&](const wchar_t *pText, const wstring &strFont, f32_t fFontPx, f32_t fX, f32_t fCenterY,
+							f32_t fAlign, f32_t fMaxWidth, fvector_t vColor)
 	{
 		if (nullptr == pText || 0 == pText[0])
 			return;
@@ -7285,108 +7210,103 @@ void CMainApp::RenderLobbyButtonText()
 		f32_t fScale = (vMeasured.y > 0.f) ? (fFontPx / vMeasured.y) : 1.f;
 		if (fMaxWidth > 0.f && vMeasured.x * fScale > fMaxWidth)
 			fScale = fMaxWidth / vMeasured.x;
-		CGameInstance::Get().Draw_Text(strFont, pText,
-			float2_t(fX * textScaleX, fCenterY * textScaleY),
-			vColor, 0.f, float2_t(fAlign, 0.5f), fScale * textUiScale);
+		CGameInstance::Get().Draw_Text(strFont, pText, float2_t(fX * textScaleX, fCenterY * textScaleY), vColor, 0.f,
+									   float2_t(fAlign, 0.5f), fScale * textUiScale);
 	};
-	const auto DrawInSlot = [&](const char* pSlotId, const wchar_t* pText,
-		const wstring& strFont, f32_t fFontPx, fvector_t vColor)
+	// 슬롯의 rect가 없는 글자는 생략한다. 위치·최대 폭은 해당 슬롯을 사용하고 가운데 정렬로 그린다.
+	const auto DrawInSlot =
+		[&](const char *pSlotId, const wchar_t *pText, const wstring &strFont, f32_t fFontPx, fvector_t vColor)
 	{
 		LOBBY_PRODUCT_RECT Rect{};
 		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), pSlotId, Rect))
 			return;
-		DrawAt(pText, strFont, fFontPx, Rect.fX + Rect.fWidth * 0.5f,
-			Rect.fY + Rect.fHeight * 0.5f, 0.5f, Rect.fWidth, vColor);
+		DrawAt(pText, strFont, fFontPx, Rect.fX + Rect.fWidth * 0.5f, Rect.fY + Rect.fHeight * 0.5f, 0.5f, Rect.fWidth,
+			   vColor);
 	};
 	const auto Rgb = [](uint32_t iHex)
-	{
-		return XMVectorSet(((iHex >> 16) & 0xFF) / 255.f, ((iHex >> 8) & 0xFF) / 255.f,
-			(iHex & 0xFF) / 255.f, 1.f);
-	};
+	{ return XMVectorSet(((iHex >> 16) & 0xFF) / 255.f, ((iHex >> 8) & 0xFF) / 255.f, (iHex & 0xFF) / 255.f, 1.f); };
 	const wstring strYoon = TEXT("Font_YoonGasiIIM");
 	const wstring strYG760 = TEXT("Font_YG760");
 
-	/* Panel title ($YoonGasiIIM 22 #fff7e2) and the list header row ($YoonGasiIIM 18 #d5ac66):
-	서버 / 상태 / 캐릭터. */
+	// 서버 / 상태 / 캐릭터 제목은 각 저작 텍스트 슬롯의 가운데에 맞춘다.
 	DrawInSlot("Lobby_ServerTitleText", L"\xC11C\xBC84 \xC120\xD0DD", strYoon, 20.f, Rgb(0xfff7e2));
 	DrawInSlot("Lobby_ServerHeaderName", L"\xC11C\xBC84", strYoon, 18.f, Rgb(0xd5ac66));
 	DrawInSlot("Lobby_ServerHeaderState", L"\xC0C1\xD0DC", strYoon, 18.f, Rgb(0xd5ac66));
 	DrawInSlot("Lobby_ServerHeaderChar", L"\xCE90\xB9AD\xD130", strYoon, 18.f, Rgb(0xd5ac66));
 
-	/* Rows (retail ServerRenderer, 626x37 at 1920 -> x 2/3): typeMc tag at x+10 ($YoonGasiIIM
-	16, 신규 #ffd43e / 추천 #00aeff / else #22facf), serverName centered in 238 at x+62,
-	serverState centered in 137 at x+314, then either the head-count icon + number ($YG760 14,
-	left at x+548) or the characterState text centered in 124 at x+476. The state colours are
-	this project's reading of the retail palette (원활 green / 보통 amber / 혼잡 red). */
+	// 서버 행 rect에 tag·이름·상태를 배치하고 생성 가능 여부에 따라 인원수 또는 생성 불가 문구를 고른다.
+	// 신규·추천 tag와 원활·보통·혼잡 상태는 각각 아래 색을 사용한다.
 	const size_t iRowCount = (std::min)(m_LobbyServers.size(), LOBBY_SERVER_ROW_COUNT);
 	for (size_t i = 0; i < iRowCount; ++i)
 	{
-		const LOBBY_SERVER_ENTRY& Entry = m_LobbyServers[i];
+		const LOBBY_SERVER_ENTRY &Entry = m_LobbyServers[i];
 		LOBBY_PRODUCT_RECT Rect{};
-		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(),
-			("Lobby_ServerRow_" + std::to_string(i)).c_str(), Rect))
+		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), ("Lobby_ServerRow_" + std::to_string(i)).c_str(), Rect))
 			continue;
 		const f32_t fCenterY = Rect.fY + 12.333f;
 		if (!Entry.strTag.empty())
 		{
-			const fvector_t vTagColor = Entry.strTag == L"\xC2E0\xADDC" ? Rgb(0xffd43e) :
-				Entry.strTag == L"\xCD94\xCC9C" ? Rgb(0x00aeff) : Rgb(0x22facf);
-			DrawAt(Entry.strTag.c_str(), strYoon, 16.f, Rect.fX + 6.667f, fCenterY,
-				0.f, 52.f, vTagColor);
+			const fvector_t vTagColor = Entry.strTag == L"\xC2E0\xADDC"	  ? Rgb(0xffd43e)
+										: Entry.strTag == L"\xCD94\xCC9C" ? Rgb(0x00aeff)
+																		  : Rgb(0x22facf);
+			DrawAt(Entry.strTag.c_str(), strYoon, 16.f, Rect.fX + 6.667f, fCenterY, 0.f, 52.f, vTagColor);
 		}
-		DrawAt(Entry.strName.c_str(), strYG760, 16.f, Rect.fX + 41.333f + 79.333f,
-			fCenterY, 0.5f, 158.667f, Colors::White);
-		const fvector_t vStateColor = Entry.strState == L"\xC6D0\xD65C" ? Rgb(0x7ed957) :
-			Entry.strState == L"\xBCF4\xD1B5" ? Rgb(0xffd43e) :
-			Entry.strState == L"\xD63C\xC7A1" ? Rgb(0xff6a5a) : Colors::White;
-		DrawAt(Entry.strState.c_str(), strYG760, 16.f, Rect.fX + 209.333f + 45.667f,
-			fCenterY, 0.5f, 91.333f, vStateColor);
+		DrawAt(Entry.strName.c_str(), strYG760, 16.f, Rect.fX + 41.333f + 79.333f, fCenterY, 0.5f, 158.667f,
+			   Colors::White);
+		const fvector_t vStateColor = Entry.strState == L"\xC6D0\xD65C"	  ? Rgb(0x7ed957)
+									  : Entry.strState == L"\xBCF4\xD1B5" ? Rgb(0xffd43e)
+									  : Entry.strState == L"\xD63C\xC7A1" ? Rgb(0xff6a5a)
+																		  : Colors::White;
+		DrawAt(Entry.strState.c_str(), strYG760, 16.f, Rect.fX + 209.333f + 45.667f, fCenterY, 0.5f, 91.333f,
+			   vStateColor);
 		if (Entry.bCreatable)
 		{
-			const uint32_t iShownCount = Entry.bCountsSavedCharacters ?
-				static_cast<uint32_t>(CCharacterRoster::Get_CharacterCount()) : Entry.iCharacterCount;
+			// 현재 process roster를 세도록 지정한 행만 세션 캐릭터 수를 표시하고, 나머지는 JSON의 수를 표시한다.
+			const uint32_t iShownCount = Entry.bCountsSavedCharacters
+											 ? static_cast<uint32_t>(CCharacterRoster::Get_CharacterCount())
+											 : Entry.iCharacterCount;
 			const wstring strCount = std::to_wstring(iShownCount);
-			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY,
-				0.f, 33.333f, Colors::White);
+			DrawAt(strCount.c_str(), strYG760, 16.f, Rect.fX + 365.333f, fCenterY, 0.f, 33.333f, Colors::White);
 		}
 		else
 		{
-			DrawAt(L"\xC0DD\xC131 \xBD88\xAC00", strYG760, 16.f, Rect.fX + 317.333f + 41.333f,
-				fCenterY, 0.5f, 82.667f, Rgb(0xb0b0b0));
+			DrawAt(L"\xC0DD\xC131 \xBD88\xAC00", strYG760, 16.f, Rect.fX + 317.333f + 41.333f, fCenterY, 0.5f, 82.667f,
+				   Rgb(0xb0b0b0));
 		}
 	}
 
-	/* 접속(서버 선택) button caption ($YG760 16 x 1.278 button scale), the three icon-button
-	captions ($YG760 14, 45px under the button top at 1920), and the copyright line. */
+	// 접속(서버 선택)·종료·환경설정 글자를 저작 슬롯에 맞춘다. 버튼 활성 색은 선택 index를 보고 실제 클릭 허용은 Update_LobbyButtons가 판단한다.
 	{
 		LOBBY_PRODUCT_RECT Rect{};
 		if (Get_LobbySlotRect(m_pLobbyBackgroundView.get(), "Lobby_JoinButton", Rect))
 		{
 			const bool_t bEnabled = m_iLobbySelectedServer >= 0;
-			DrawAt(L"\xC11C\xBC84 \xC120\xD0DD", strYG760, 13.6f, Rect.fX + Rect.fWidth * 0.5f,
-				Rect.fY + 16.2f, 0.5f, Rect.fWidth - 8.f,
-				bEnabled ? Colors::White : Rgb(0x787878));
+			DrawAt(L"\xC11C\xBC84 \xC120\xD0DD", strYG760, 13.6f, Rect.fX + Rect.fWidth * 0.5f, Rect.fY + 16.2f, 0.5f,
+				   Rect.fWidth - 8.f, bEnabled ? Colors::White : Rgb(0x787878));
 		}
 	}
-	struct LOBBY_ICON_CAPTION { const char* pSlotId; const wchar_t* pLabel; f32_t fCenterX; };
-	const LOBBY_ICON_CAPTION IconCaptions[2] =
+	struct LOBBY_ICON_CAPTION
 	{
-		{ "Lobby_ExitIcon", L"\xC885\xB8CC", 54.667f },
-		{ "Lobby_OptionIcon", L"\xD658\xACBD\xC124\xC815", 1226.667f },
+		const char *pSlotId;
+		const wchar_t *pLabel;
+		f32_t fCenterX;
 	};
-	for (const LOBBY_ICON_CAPTION& Caption : IconCaptions)
+	const LOBBY_ICON_CAPTION IconCaptions[2] = {
+		{"Lobby_ExitIcon", L"\xC885\xB8CC", 54.667f},
+		{"Lobby_OptionIcon", L"\xD658\xACBD\xC124\xC815", 1226.667f},
+	};
+	for (const LOBBY_ICON_CAPTION &Caption : IconCaptions)
 	{
 		LOBBY_PRODUCT_RECT Rect{};
 		if (!Get_LobbySlotRect(m_pLobbyBackgroundView.get(), Caption.pSlotId, Rect))
 			continue;
-		DrawAt(Caption.pLabel, strYG760, 9.333f, Caption.fCenterX, 672.f, 0.5f, 100.f,
-			Colors::White);
+		DrawAt(Caption.pLabel, strYG760, 9.333f, Caption.fCenterX, 672.f, 0.5f, 100.f, Colors::White);
 	}
-	DrawAt(L"(C) Smilegate RPG, Inc. All rights reserved.", strYG760, 9.333f, 640.f,
-		711.f, 0.5f, 800.f, Rgb(0xeeeeee));
-
+	DrawAt(L"(C) Smilegate RPG, Inc. All rights reserved.", strYG760, 9.333f, 640.f, 711.f, 0.5f, 800.f, Rgb(0xeeeeee));
 }
 
+// 초기화가 UI/Lobby/LobbyServers.json의 표시용 행을 읽는다. 기존 목록·선택을 먼저 비우므로 실패하면 빈 목록이 남는다.
+// 행별 타입을 확인하고 이름 없는 행을 건너뛰며, 유효한 첫 행을 기본 선택한다. 네트워크 endpoint 로더는 아니다.
 void CMainApp::Load_LobbyServers()
 {
 	m_LobbyServers.clear();
@@ -7406,30 +7326,31 @@ void CMainApp::Load_LobbyServers()
 		OutputDebugStringA(("[Lobby] LobbyServers.json parse failed: " + Error + "\n").c_str());
 		return;
 	}
-	const DATA_JSON_VALUE* pServers = Root.Find("servers");
+	const DATA_JSON_VALUE *pServers = Root.Find("servers");
 	if (nullptr == pServers || !pServers->Is_Array())
 		return;
-	for (const DATA_JSON_VALUE& Value : pServers->Get_Array())
+	for (const DATA_JSON_VALUE &Value : pServers->Get_Array())
 	{
 		if (!Value.Is_Object())
 			continue;
 		LOBBY_SERVER_ENTRY Entry{};
-		const auto ReadText = [&](const char* pKey, wstring& outText)
+		// 문자열 필드만 UTF-8에서 wide 값으로 변환한다. 변환 성공 여부는 별도 진단하지 않고 아래 이름 검사로 빈 행을 제외한다.
+		const auto ReadText = [&](const char *pKey, wstring &outText)
 		{
-			const DATA_JSON_VALUE* pText = Value.Find(pKey);
+			const DATA_JSON_VALUE *pText = Value.Find(pKey);
 			if (nullptr != pText && pText->Is_String())
 				(void)ConvertUtf8ToWide(pText->Get_String(), outText);
 		};
 		ReadText("name", Entry.strName);
 		ReadText("state", Entry.strState);
 		ReadText("tag", Entry.strTag);
-		if (const DATA_JSON_VALUE* pCount = Value.Find("characterCount"))
+		if (const DATA_JSON_VALUE *pCount = Value.Find("characterCount"))
 			if (pCount->Is_Number() && pCount->Get_Number() >= 0.0)
 				Entry.iCharacterCount = static_cast<uint32_t>(pCount->Get_Number());
-		if (const DATA_JSON_VALUE* pCounts = Value.Find("countsSavedCharacters"))
+		if (const DATA_JSON_VALUE *pCounts = Value.Find("countsSavedCharacters"))
 			if (pCounts->Is_Boolean())
 				Entry.bCountsSavedCharacters = pCounts->Get_Boolean();
-		if (const DATA_JSON_VALUE* pCreatable = Value.Find("creatable"))
+		if (const DATA_JSON_VALUE *pCreatable = Value.Find("creatable"))
 			if (pCreatable->Is_Boolean())
 				Entry.bCreatable = pCreatable->Get_Boolean();
 		if (Entry.strName.empty())
@@ -7441,7 +7362,8 @@ void CMainApp::Load_LobbyServers()
 	if (!m_LobbyServers.empty())
 		m_iLobbySelectedServer = 0;
 }
-
+// Render의 텍스트 단계에서 일반 재련 화면의 재련·성장 버튼 문구를 슬롯 크기에 맞춰 그린다.
+// 좌표는 1280×720 기준에서 축별 변환하고 글자 크기는 작은 축 배율로 통일한다.
 void CMainApp::RenderItemUpgradeButtonText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -7451,8 +7373,7 @@ void CMainApp::RenderItemUpgradeButtonText()
 	}
 
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-	if (!m_pItemUpgradeView->Get_SlotRect(
-		"ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
 	{
 		return;
 	}
@@ -7465,33 +7386,33 @@ void CMainApp::RenderItemUpgradeButtonText()
 	const f32_t fCenterX = fX + fWidth * 0.5f;
 	const f32_t fCenterY = fY + fHeight * 0.5f;
 
-	const wchar_t* pLabel = L"\xC7A5\xBE44 \xC7AC\xB828"; // "장비 재련"
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+	const wchar_t *pLabel = L"\xC7A5\xBE44 \xC7AC\xB828"; // "장비 재련"
+	const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.32f / vMeasured.y) : 1.f;
 	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.8f / vMeasured.x) : 1.f;
 	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-		float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+								   float2_t(fCenterX * textScaleX, fCenterY * textScaleY), Colors::White, 0.f,
+								   float2_t(0.5f, 0.5f), fScale * textUiScale);
 
-	// "성장" label for ItemUpgrade_LevelUpBtn, same pattern as the button above.
+	// 성장 글자는 재련 버튼과 같은 슬롯 측정·가운데 정렬을 사용한다.
 	f32_t fGrowX = 0.f, fGrowY = 0.f, fGrowWidth = 0.f, fGrowHeight = 0.f;
-	if (m_pItemUpgradeView->Get_SlotRect(
-		"ItemUpgrade_LevelUpBtn", fGrowX, fGrowY, fGrowWidth, fGrowHeight))
+	if (m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LevelUpBtn", fGrowX, fGrowY, fGrowWidth, fGrowHeight))
 	{
-		const wchar_t* pGrowLabel = L"\xC131\xC7A5"; // "성장"
-		const float2_t vGrowMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pGrowLabel);
-		const f32_t fGrowScaleByHeight = (vGrowMeasured.y > 0.f) ? (fGrowHeight * 0.35f / vGrowMeasured.y) : 1.f; // 0.5 * 0.7
+		const wchar_t *pGrowLabel = L"\xC131\xC7A5"; // "성장"
+		const float2_t vGrowMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pGrowLabel);
+		const f32_t fGrowScaleByHeight =
+			(vGrowMeasured.y > 0.f) ? (fGrowHeight * 0.35f / vGrowMeasured.y) : 1.f; // 0.5 * 0.7
 		const f32_t fGrowScaleByWidth = (vGrowMeasured.x > 0.f) ? (fGrowWidth * 0.8f / vGrowMeasured.x) : 1.f;
 		const f32_t fGrowScale = (std::min)(fGrowScaleByHeight, fGrowScaleByWidth);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pGrowLabel,
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), pGrowLabel,
 			float2_t((fGrowX + fGrowWidth * 0.5f) * textScaleX, (fGrowY + fGrowHeight * 0.5f) * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fGrowScale * textUiScale);
 	}
 }
 
+// 보유 장비의 목록과 선택 장비의 현재·예상 단계 표를 그린다. 인벤토리를 복사해 표시할 뿐 강화 요청이나 상태 변경은 하지 않는다.
 void CMainApp::RenderItemUpgradeListText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -7505,7 +7426,7 @@ void CMainApp::RenderItemUpgradeListText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	auto DrawFit = [&](const char* pSlotId, const wchar_t* pLabel, f32_t fHeightRatio, fvector_t vColor)
+	auto DrawFit = [&](const char *pSlotId, const wchar_t *pLabel, f32_t fHeightRatio, fvector_t vColor)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
@@ -7516,46 +7437,38 @@ void CMainApp::RenderItemUpgradeListText()
 		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-			float2_t(fX * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-			vColor, 0.f, float2_t(0.f, 0.5f), fScale * textUiScale);
+									   float2_t(fX * textScaleX, (fY + fHeight * 0.5f) * textScaleY), vColor, 0.f,
+									   float2_t(0.f, 0.5f), fScale * textUiScale);
 	};
 
-	/* Left equipment list: level + item name per row, real slot/text field names
-	(buildUpGrade_txt / itemName_txt) confirmed in ItemBuildUpListRendererMc's own trace, though
-	this renderer is instantiated per-row purely by AS3 (no static per-row placement to trace an
-	exact position from), so the anchor rects here are a reasonable icon-relative placement for
-	the user to nudge in the Tool rather than an exact traced position. Rows only draw for items
-	actually present in the owned Honor Whisper set (BuildItemUpgradeSlots) -- fewer than
-	6 owned items just leaves the remaining ItemUpgrade_ListLevel/ItemUpgrade_ListItemName slots
-	blank, same as any other real inventory-backed list. */
+	// 복제 인벤토리에서 강화 가능한 보유 장비를 모아 최대 여섯 행의 단계·이름을 그린다.
+	// 각 글자의 위치는 저작된 슬롯 rect를 사용하며 여기에 없는 장비의 행은 출력하지 않는다.
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
-	// real sampled reference pixels (list row level text):
-	// level = (255,189,74) same gold as curLevel_lb; name = (227,199,161) warm cream, not white.
-	const fvector_t vLevelColor = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
-	const fvector_t vNameColor = XMVectorSet(0.8902f, 0.7804f, 0.6314f, 1.f); // #E3C7A1
+	// 단계 글자는 금색 #FFBD4A, 이름은 크림색 #E3C7A1을 사용한다.
+	const fvector_t vLevelColor = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f);	  // 색상 #FFBD4A
+	const fvector_t vNameColor = XMVectorSet(0.8902f, 0.7804f, 0.6314f, 1.f); // 색상 #E3C7A1
 	for (int32_t i = 0; i < 6 && i < static_cast<int32_t>(upgradeSlots.size()); ++i)
 	{
 		const string strLevelSlot = "ItemUpgrade_ListLevel" + to_string(i);
 		const string strNameSlot = "ItemUpgrade_ListItemName" + to_string(i);
-		const wstring strLevel =
-			to_wstring(upgradeSlots[i].iUpgradeLevel) + L"\xB2E8\xACC4"; // "N단계"
-		DrawFit(strLevelSlot.c_str(), strLevel.c_str(), 0.765f, vLevelColor); // "18단계" (0.85 * 0.9)
-		DrawFit(strNameSlot.c_str(), upgradeSlots[i].strName.c_str(), 0.72f, vNameColor); // 0.8 * 0.9
+		const wstring strLevel = to_wstring(upgradeSlots[i].iUpgradeLevel) + L"\xB2E8\xACC4"; // "N단계"
+		DrawFit(strLevelSlot.c_str(), strLevel.c_str(), 0.765f, vLevelColor);				  // "18단계" (0.85 * 0.9)
+		DrawFit(strNameSlot.c_str(), upgradeSlots[i].strName.c_str(), 0.72f, vNameColor);	  // 0.8 * 0.9
 	}
 
-	// The ladder reads the selected Server inventory level. Reforging has a 50% chance;
-	// no per-level attack bonus is defined by the current gameplay balance.
-	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f); // #676767
-	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // #FFBD4A
+	// 선택 장비의 Server 인벤토리 단계를 기준으로 최대 일곱 단계 행을 표시한다.
+	// 현재 Server 재련 정책의 성공률은 50%이며 이 표는 별도 공격력 보너스를 계산하지 않는다.
+	const fvector_t vRowGray = XMVectorSet(0.4039f, 0.4039f, 0.4039f, 1.f);	  // #676767
+	const fvector_t vSelectedGold = XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f); // 색상 #FFBD4A
 	const int32_t ROW_COUNT = 7;
-	const int32_t iSelectedForLadder = upgradeSlots.empty() ? -1 : std::clamp(
-		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
-	const int32_t iCurrentLevel = (iSelectedForLadder >= 0) ?
-		upgradeSlots[iSelectedForLadder].iUpgradeLevel : 0;
+	const int32_t iSelectedForLadder =
+		upgradeSlots.empty() ? -1
+							 : std::clamp(m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
+	const int32_t iCurrentLevel = (iSelectedForLadder >= 0) ? upgradeSlots[iSelectedForLadder].iUpgradeLevel : 0;
 	int32_t ROW_LEVELS[ROW_COUNT];
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
 		ROW_LEVELS[i] = (std::min)(iCurrentLevel + (ROW_COUNT - 1 - i),
-			static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL));
+								   static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL));
 	for (int32_t i = 0; i < ROW_COUNT; ++i)
 	{
 		const string strSlot = "ItemUpgrade_GradeRowText" + to_string(i);
@@ -7568,28 +7481,31 @@ void CMainApp::RenderItemUpgradeListText()
 		const fvector_t vStatTextColor = bSelected ? Colors::White : vRowGray;
 
 		const wstring strNum = to_wstring(ROW_LEVELS[i]);
-		const wchar_t* pDanggye = L"\xB2E8\xACC4"; // "단계"
-		const wstring strStat = L"\xC131\xACF5\xB960 50%"; // Server success rate, no invented attack bonus.
+		const wchar_t *pDanggye = L"\xB2E8\xACC4";		   // "단계"
+		const wstring strStat = L"\xC131\xACF5\xB960 50%"; // 현재 Server 재련 성공률 표시다.
 
 		const float2_t vNumMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strNum.c_str());
-		const f32_t fNumScale = (std::min)(
-			(vNumMeasured.y > 0.f) ? fHeight * 0.24f / vNumMeasured.y : 1.f,
-			(vNumMeasured.x > 0.f) ? fWidth * 0.3f / vNumMeasured.x : 1.f);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strNum.c_str(),
-			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.35f) * textScaleY),
-			vNumColor, 0.f, float2_t(0.5f, 0.5f), fNumScale * textUiScale);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pDanggye,
-			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.65f) * textScaleY),
-			vNumColor, 0.f, float2_t(0.5f, 0.5f), fNumScale * textUiScale);
+		const f32_t fNumScale = (std::min)((vNumMeasured.y > 0.f) ? fHeight * 0.24f / vNumMeasured.y : 1.f,
+										   (vNumMeasured.x > 0.f) ? fWidth * 0.3f / vNumMeasured.x : 1.f);
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), strNum.c_str(),
+			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.35f) * textScaleY), vNumColor, 0.f,
+			float2_t(0.5f, 0.5f), fNumScale * textUiScale);
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YoonGasiIIM"), pDanggye,
+			float2_t((fX + fWidth * 0.15f) * textScaleX, (fY + fHeight * 0.65f) * textScaleY), vNumColor, 0.f,
+			float2_t(0.5f, 0.5f), fNumScale * textUiScale);
 
 		const float2_t vStatMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strStat.c_str());
 		const f32_t fStatScale = (vStatMeasured.y > 0.f) ? (fHeight * 0.18f / vStatMeasured.y) : 1.f;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strStat.c_str(),
-			float2_t((fX + fWidth * 0.35f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-			vStatTextColor, 0.f, float2_t(0.f, 0.5f), fStatScale * textUiScale);
+									   float2_t((fX + fWidth * 0.35f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+									   vStatTextColor, 0.f, float2_t(0.f, 0.5f), fStatScale * textUiScale);
 	}
 }
 
+// 일반 재련 화면의 장비 행 클릭을 선택 index와 표시 아이콘에 반영한다.
+// 목록을 복제 인벤토리에서 다시 구성해 사라진 항목을 제외하고 최대 여섯 행의 sprite와 선택 범위를 맞춘다.
 void CMainApp::Update_ItemUpgradeSelection()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -7601,13 +7517,12 @@ void CMainApp::Update_ItemUpgradeSelection()
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 	SyncItemUpgradeSlotSprites(*m_pItemUpgradeView, upgradeSlots, m_iItemUpgradeSelectedSlot);
 	f32_t fListX = 0.f, fListY = 0.f, fListWidth = 0.f, fListHeight = 0.f;
-	if (!m_pItemUpgradeView->Get_SlotRect(
-		"ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
+	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LeftListBg", fListX, fListY, fListWidth, fListHeight))
 	{
 		return;
 	}
 
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 
@@ -7615,38 +7530,33 @@ void CMainApp::Update_ItemUpgradeSelection()
 	{
 		const string strGradeBgSlot = "ItemUpgrade_ListGradeBg" + to_string(i);
 		f32_t fRowX = 0.f, fRowY = 0.f, fRowWidth = 0.f, fRowHeight = 0.f;
-		if (!m_pItemUpgradeView->Get_SlotRect(
-			strGradeBgSlot.c_str(), fRowX, fRowY, fRowWidth, fRowHeight))
+		if (!m_pItemUpgradeView->Get_SlotRect(strGradeBgSlot.c_str(), fRowX, fRowY, fRowWidth, fRowHeight))
 		{
 			continue;
 		}
 
-		/* Full row width (LeftListBg's own x/width), not just the icon/grade-glow's own narrower
-		rect, so clicking anywhere across the name text also selects this row. */
-		const bool_t bHovered = Router.Is_Hovered(
-			fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight);
+		// 아이콘의 좁은 rect 대신 목록 배경의 X·폭과 각 행의 Y·높이로 판정해 이름 부분을 눌러도 같은 행을 선택한다.
+		const bool_t bHovered = Router.Is_Hovered(fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight);
 		if (!bHovered)
 			continue;
 		Router.Claim_Mouse_This_Frame();
 		if (!Router.Is_Clicked(fListX, fRowY, fListWidth, fRowHeight, fRefWidth, fRefHeight))
 			continue;
 
-		Play_UIButtonClickSound();
+		Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 		m_iItemUpgradeSelectedSlot = i;
 
 		f32_t fTargetX = 0.f, fTargetY = 0.f, fTargetWidth = 0.f, fTargetHeight = 0.f;
-		if (m_pItemUpgradeView->Get_SlotRect(
-			strGradeBgSlot.c_str(), fTargetX, fTargetY, fTargetWidth, fTargetHeight))
+		if (m_pItemUpgradeView->Get_SlotRect(strGradeBgSlot.c_str(), fTargetX, fTargetY, fTargetWidth, fTargetHeight))
 		{
-			m_pItemUpgradeView->Set_SlotPosition(
-				"ItemUpgrade_ListSelectedExample", fTargetX, fTargetY);
+			m_pItemUpgradeView->Set_SlotPosition("ItemUpgrade_ListSelectedExample", fTargetX, fTargetY);
 		}
-		m_pItemUpgradeView->Set_SlotTexture(
-			"ItemUpgrade_SelectedItemIcon", upgradeSlots[i].strIconPath);
+		m_pItemUpgradeView->Set_SlotTexture("ItemUpgrade_SelectedItemIcon", upgradeSlots[i].strIconPath);
 		break;
 	}
 }
 
+// 성장 버튼 클릭은 Client의 게이지 연출만 다시 시작한다. Server 재련 요청은 100% 이후 별도 재련 버튼이 제출한다.
 void CMainApp::Update_ItemUpgradeGrowButton()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -7659,7 +7569,7 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_LevelUpBtn", fX, fY, fWidth, fHeight))
 		return;
 
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -7668,11 +7578,9 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
-	Play_UIButtonClickSound();
+	Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 
-	/* (Re)starts the fill from 0 even if a previous run already completed -- a debug preview
-	button is expected to be repeatable. Hides the 100%-only art immediately so a re-click during
-	the held-100 state doesn't leave it showing through the new fill. */
+	// 성장 표시를 매번 0에서 다시 시작한다. 완료 상태의 장식·alpha·예약 시간을 함께 초기화해 이전 100% 표시가 남지 않게 한다.
 	m_iItemUpgradePreviousPercent = 0;
 	m_bItemUpgradeGrowing = true;
 	m_dItemUpgradeGrowStartSeconds = Product_Now_Seconds();
@@ -7685,16 +7593,18 @@ void CMainApp::Update_ItemUpgradeGrowButton()
 	m_pItemUpgradeView->Set_SlotAlpha("ItemUpgrade_LevelUpMotion2Big", 0.f);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 
-	const filesystem::path growSoundPath = CRuntimeAssetRoot::Resolve(
-		L"Sound/UI/Enhancement/sys_enhance_levelup_growup_full1__465402134.wav");
+	const filesystem::path growSoundPath =
+		CRuntimeAssetRoot::Resolve(L"Sound/UI/Enhancement/sys_enhance_levelup_growup_full1__465402134.wav");
 	CGameInstance::Get().Play_Sound(growSoundPath.wstring(), 1.f);
 }
 
+// 성장 완료 화면의 클릭을 Bern command sink에 재련 요청으로 제출한다.
+// 아이템 ID·장착 슬롯·예상 단계를 요청에 넣고 결과 표시용 이름·아이콘을 값으로 보관한다. 실제 단계 변경은 Server 응답을 따른다.
 void CMainApp::Update_ItemUpgradeReforgeButton()
 {
-	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
-		m_bItemUpgradeGrowing || 100 != m_iItemUpgradePreviousPercent ||
-		ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult || BuildItemUpgradeSlots().empty())
+	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible || m_bItemUpgradeGrowing ||
+		100 != m_iItemUpgradePreviousPercent || ITEM_UPGRADE_ATTEMPT_RESULT::NONE != m_eItemUpgradeAttemptResult ||
+		BuildItemUpgradeSlots().empty())
 	{
 		return;
 	}
@@ -7703,7 +7613,7 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	if (!m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ReforgeButton", fX, fY, fWidth, fHeight))
 		return;
 
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -7712,13 +7622,14 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
-	Play_UIButtonClickSound();
+	Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 
+	// 요청 직전 목록을 다시 읽고 캐릭터 저장·복원 대기 중에는 명령을 만들지 않는다. sequence가 0으로 소진된 경우도 제출하지 않는다.
 	const vector<ITEM_UPGRADE_SLOT_INFO> slots = BuildItemUpgradeSlots();
 	if (slots.empty() || !m_iNextItemUpgradeRequest || CCharacterSelectionState::Is_WorldStateSyncPending())
 		return;
-	const auto& item = slots[std::clamp(m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(slots.size()) - 1)];
-	auto* bern = CLevel_Bern::Get_Active();
+	const auto &item = slots[std::clamp(m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(slots.size()) - 1)];
+	auto *bern = CLevel_Bern::Get_Active();
 	const auto sink = bern ? bern->Get_PlayerCommandSink() : nullptr;
 	LostArk::Shared::C2S_UPGRADE_EQUIPMENT request{};
 	request.iRequestSequence = m_iNextItemUpgradeRequest++;
@@ -7731,48 +7642,54 @@ void CMainApp::Update_ItemUpgradeReforgeButton()
 	m_eItemUpgradeAttemptSlot = item.eSlot;
 	m_iItemUpgradeConfirmedLevel = item.iUpgradeLevel;
 	m_bItemUpgradePendingAttemptSuccess = false;
-	const bool submitted = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) &&
-		sink && sink->Request_UpgradeEquipment(request);
+	// 요청 번호는 제출 시도 전에 이미 증가한다. 실제 제출 성공 때만 pending sequence를 보관하며 실패도 대기 화면의 확인 불가 상태로 보여준다.
+	const bool submitted = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) && sink &&
+						   sink->Request_UpgradeEquipment(request);
 	m_iPendingItemUpgradeRequest = submitted ? request.iRequestSequence : 0;
 	m_dItemUpgradeRequestDeadline = Product_Now_Seconds() + 5.0;
 	m_bItemUpgradeResultUnavailable = !submitted;
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::WAITING;
-	// The wait screen replaces the whole window's content, not just the reforge button --
-	// snap the gauge back to idle 0% now instead of leaving the old 100% fill visible behind it,
-	// and hide the base window's own icon/gauge/button content so it doesn't bleed through
-	// (real Lost Ark's wait/result screens read as their own separate screen).
+	// 대기 화면을 준비하면서 성장 게이지를 0으로 되돌리고 중앙 기본 패널의 아이콘·버튼을 숨긴다.
+	// 전송 실패도 WAITING 상태로 들어가지만 대기 문양·반복 사운드는 켜지 않고 결과 확인 불가 문구를 표시한다.
 	Reset_ItemUpgradeIdleGauge();
 	Set_ItemUpgradeCenterPanelVisible(false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", true);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", submitted);
 	m_pItemUpgradeView->Restart_Animation("ItemUpgrade_ResultWaitEmblem");
 
-	/* UI owns this loop independently; level/encounter BGM keeps playing. */
-	const filesystem::path waitSoundPath = CRuntimeAssetRoot::Resolve(
-		L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
+	// 이 UI 반복 사운드 경로는 Level BGM과 분리되어 있다. 실제 제출에 성공한 경우에만 재생을 시작한다.
+	const filesystem::path waitSoundPath =
+		CRuntimeAssetRoot::Resolve(L"Sound/UI/Enhancement/sys_enhance_3_waiting1__95424590.wav");
 	if (submitted)
 		CGameInstance::Get().Play_LoopingSound(waitSoundPath.wstring(), 1.f);
 }
 
+// Update_ItemUpgrade가 pending sequence와 Bern world가 일치하는 응답을 현재 인벤토리와 대조한다.
+// 일치하는 응답의 거절·항목 부재·단계 불일치는 확인 불가로 처리한다. 일치하는 응답이 없을 때 Bern 이탈·기한 도달을 검사하며 시간 초과가 서버 명령 취소를 뜻하지는 않는다.
 void CMainApp::Update_ItemUpgradeServerResult()
 {
-	if (!m_iPendingItemUpgradeRequest) return;
+	if (!m_iPendingItemUpgradeRequest)
+		return;
 	using namespace LostArk::Shared;
-	const auto& hud = CCombatHUDViewModel::Get();
-	const auto& result = hud.Get_UpgradeEquipmentResult();
-	const bool inBern = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) &&
-		CLevel_Bern::Get_Active() && hud.Get_Player().isValid;
+	const auto &hud = CCombatHUDViewModel::Get();
+	const auto &result = hud.Get_UpgradeEquipmentResult();
+	const bool inBern = CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::BERN) && CLevel_Bern::Get_Active() &&
+						hud.Get_Player().isValid;
+	// Server는 인벤토리 snapshot을 결과보다 먼저 같은 reliable 묶음에 담는다.
+	// 여기서는 해당 장비의 현재 복제 단계가 응답 단계와 맞는지 확인하고, 거절과 정상 실패를 구분한다.
 	if (inBern && result.iRequestSequence == m_iPendingItemUpgradeRequest && result.eWorldId == WORLD_ID::BERN)
 	{
-		const auto& items = hud.Get_Inventory().Items;
-		const auto item = std::find_if(items.begin(), items.end(), [this](const INVENTORY_ITEM_SNAPSHOT& entry)
-		{
-			return entry.strItemId == m_strItemUpgradeAttemptItemId && entry.eEquippedSlot == m_eItemUpgradeAttemptSlot;
-		});
-		m_bItemUpgradeResultUnavailable = result.eResult == EQUIPMENT_UPGRADE_RESULT::REJECTED ||
-			item == items.end() || item->iUpgradeLevel != result.iUpgradeLevel;
-		m_bItemUpgradePendingAttemptSuccess = !m_bItemUpgradeResultUnavailable &&
-			result.eResult == EQUIPMENT_UPGRADE_RESULT::SUCCEEDED;
+		const auto &items = hud.Get_Inventory().Items;
+		const auto item = std::find_if(items.begin(), items.end(),
+									   [this](const INVENTORY_ITEM_SNAPSHOT &entry)
+									   {
+										   return entry.strItemId == m_strItemUpgradeAttemptItemId &&
+												  entry.eEquippedSlot == m_eItemUpgradeAttemptSlot;
+									   });
+		m_bItemUpgradeResultUnavailable = result.eResult == EQUIPMENT_UPGRADE_RESULT::REJECTED || item == items.end() ||
+										  item->iUpgradeLevel != result.iUpgradeLevel;
+		m_bItemUpgradePendingAttemptSuccess =
+			!m_bItemUpgradeResultUnavailable && result.eResult == EQUIPMENT_UPGRADE_RESULT::SUCCEEDED;
 		m_iItemUpgradeConfirmedLevel = result.iUpgradeLevel;
 		m_iPendingItemUpgradeRequest = 0;
 	}
@@ -7788,19 +7705,18 @@ void CMainApp::Update_ItemUpgradeServerResult()
 	}
 }
 
+// 응답 대기가 끝난 WAITING 화면을 누르면 확인 불가는 기본 창을 다시 열고, 유효 결과는 성공/실패 연출로 넘어간다.
+// 이 함수는 저장된 결과를 공개하며 재련 성공 여부를 다시 추첨하지 않는다.
 void CMainApp::Update_ItemUpgradeResultWaitClick()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
-		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult ||
-		m_iPendingItemUpgradeRequest ||
+		ITEM_UPGRADE_ATTEMPT_RESULT::WAITING != m_eItemUpgradeAttemptResult || m_iPendingItemUpgradeRequest ||
 		!CUIInputRouter::Get().Is_LeftClickEdge())
 	{
 		return;
 	}
-	// This screen already owns the whole frame's input while WAITING is showing (no other
-	// ItemUpgrade widget's Is_Hovered/Is_Clicked can be true at the same time -- the base
-	// window's own buttons are hidden by Set_ItemUpgradeCenterPanelVisible(false)), so claiming
-	// the mouse here is a formality for consistency with every other real click this router sees.
+	// 응답이 끝난 WAITING 화면의 왼쪽 클릭 edge를 확인하고 이번 프레임 마우스를 점유한다.
+	// 이 경로는 rect 기반 Is_Clicked를 호출하지 않으며, 다른 재련 버튼은 각자의 상태 조건으로 입력을 건너뛴다.
 	CUIInputRouter::Get().Claim_Mouse_This_Frame();
 	if (m_bItemUpgradeResultUnavailable)
 	{
@@ -7810,29 +7726,15 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		return;
 	}
 
-	// ItemUpgrade_ResultWaitBg (the same solid-black backdrop already showing behind the wait
-	// circle) stays visible all the way through burst-playing and the settled result -- it's the
-	// one background for this whole screen, not something to swap out mid-flow. Only the dismiss
-	// (OK button) turns it off, back to the normal reforge window.
-	// While the burst plays, ONLY the SmeltSuccess/Fail burst shows (the SmeltLoding wait loop is
-	// switched off below as the burst starts) -- no icon/name/result text/OK button yet (those
-	// would sit on top of the burst otherwise). Once the burst's own real one-shot duration
-	// finishes, the per-frame settle check in Update() hides the burst and reveals the
-	// icon/name/result content in its place.
-	/* Real smelt_SWeffect / smelt_FailEffectComp movies (ItemUpgradeUI.json SmeltSuccess/
-	SmeltFail flipbooks) are 120 frames at 30 fps -- must match the JSON frame count so the
-	result content reveals exactly when the burst's last frame lands. */
+	// 대기 배경을 유지한 채 성공/실패 연출을 시작하고 4초 뒤 상세 표시 전환을 예약한다.
+	// 현재 ItemUpgradeUI.json의 두 결과 flipbook은 각각 120장·30fps이며, 상세 전환은 Update_ItemUpgrade의 시계 검사에서 수행한다.
+	// 이 상수는 실제 animation 완료 통지를 기다리는 값이 아니므로 JSON 재생 길이와 함께 유지해야 한다.
 	constexpr f64_t RESULT_BURST_DURATION_SECONDS = 120.0 / 30.0;
 	m_dItemUpgradeResultSettleAt = Product_Now_Seconds() + RESULT_BURST_DURATION_SECONDS;
 
 	const bool_t bSuccess = m_bItemUpgradePendingAttemptSuccess;
-	m_eItemUpgradeAttemptResult = bSuccess ?
-		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
-	// Real reforge result screens dim the reforge window itself (drawn above, in Update()) instead
-	// of an opaque bounded panel image -- SuccessModalBg/FailModalBg are never shown.
-	// The wait loop (SmeltLoding) stops the moment the result burst starts -- the real
-	// smelt_SWeffect / smelt_FailEffectComp clips are distinct art from the loading loop, so
-	// leaving it additively underneath would double-expose the burst.
+	m_eItemUpgradeAttemptResult = bSuccess ? ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS : ITEM_UPGRADE_ATTEMPT_RESULT::FAIL;
+	// 대기 문양을 숨기고 성공/실패 효과 중 하나만 켠 뒤 처음부터 재생한다. 넓은 SuccessModalBg/FailModalBg는 여기서 켜지 않는다.
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitEmblem", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_SuccessEffect", bSuccess);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailEffect", !bSuccess);
@@ -7842,53 +7744,52 @@ void CMainApp::Update_ItemUpgradeResultWaitClick()
 		m_pItemUpgradeView->Restart_Animation("ItemUpgrade_FailEffect");
 
 	CGameInstance::Get().Stop_LoopingSound();
-	// Equally-weighted variants (the same real success/fail vox recorded several times),
-	// same pattern CSoundCueCatalog already documents for Character/Valtan cues.
-	static std::mt19937 s_itemUpgradeResultSoundRng{ std::random_device{}() };
+	// 성공은 세 파일 중 난수 나머지값, 실패는 두 파일 중 난수 나머지값으로 사운드를 고른다.
+	// 함수 static 난수 상태는 메인 UI 호출 흐름에서 사용하며 이번 사운드 선택은 Server 재련 결과와 무관하다.
+	static std::mt19937 s_itemUpgradeResultSoundRng{std::random_device{}()};
 	if (bSuccess)
 	{
-		static const wchar_t* const SUCCESS_SOUNDS[] = {
+		static const wchar_t *const SUCCESS_SOUNDS[] = {
 			L"Sound/UI/Enhancement/sys_enhance_1_success1__168050678.wav",
 			L"Sound/UI/Enhancement/sys_enhance_2_success1__225949772.wav",
 			L"Sound/UI/Enhancement/sys_enhance_4_success1__596670890.wav",
 		};
-		const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-			SUCCESS_SOUNDS[s_itemUpgradeResultSoundRng() % 3u]);
+		const filesystem::path soundPath =
+			CRuntimeAssetRoot::Resolve(SUCCESS_SOUNDS[s_itemUpgradeResultSoundRng() % 3u]);
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 	else
 	{
-		static const wchar_t* const FAIL_SOUNDS[] = {
+		static const wchar_t *const FAIL_SOUNDS[] = {
 			L"Sound/UI/Enhancement/sys_enhance_3_casting_fail1__668013724.wav",
 			L"Sound/UI/Enhancement/sys_enhance_4_casting_fail1__490424786.wav",
 		};
-		const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-			FAIL_SOUNDS[s_itemUpgradeResultSoundRng() % 2u]);
+		const filesystem::path soundPath = CRuntimeAssetRoot::Resolve(FAIL_SOUNDS[s_itemUpgradeResultSoundRng() % 2u]);
 		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
 	}
 }
 
+// 결과 연출이 끝난 SUCCESS/FAIL 화면의 확인 버튼을 처리해 기본 재련 화면으로 복귀한다.
 void CMainApp::Update_ItemUpgradeResultOkButton()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		(ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS != m_eItemUpgradeAttemptResult &&
 		 ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult) ||
-		// Not settled yet (burst still playing) -- the OK button isn't shown yet either, so a click
-		// landing on its still-unrevealed rect must not dismiss early.
+		// 결과 연출 종료 시각이 아직 예약되어 있으면 확인 버튼의 입력을 받지 않는다.
 		m_dItemUpgradeResultSettleAt >= 0.0)
 	{
 		return;
 	}
 
-	const char_t* pOkButtonSlotId =
-		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS == m_eItemUpgradeAttemptResult ?
-		"ItemUpgrade_SuccessOkBtn" : "ItemUpgrade_FailOkBtn";
+	const char_t *pOkButtonSlotId = ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS == m_eItemUpgradeAttemptResult
+										? "ItemUpgrade_SuccessOkBtn"
+										: "ItemUpgrade_FailOkBtn";
 
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (!m_pItemUpgradeView->Get_SlotRect(pOkButtonSlotId, fX, fY, fWidth, fHeight))
 		return;
 
-	CUIInputRouter& Router = CUIInputRouter::Get();
+	CUIInputRouter &Router = CUIInputRouter::Get();
 	const f32_t fRefWidth = m_pItemUpgradeView->Get_ResolutionWidth();
 	const f32_t fRefHeight = m_pItemUpgradeView->Get_ResolutionHeight();
 	if (!Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
@@ -7897,7 +7798,7 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 	if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		return;
 
-	Play_UIButtonClickSound();
+	Play_UISound(UI_SOUND_CUE::BUTTON_CLICK);
 
 	m_eItemUpgradeAttemptResult = ITEM_UPGRADE_ATTEMPT_RESULT::NONE;
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_ResultWaitBg", false);
@@ -7914,12 +7815,13 @@ void CMainApp::Update_ItemUpgradeResultOkButton()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailDiamondFrame", false);
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_FailItemIconMarker", false);
 
-	// Dismissing a result always returns the gauge to a clean idle (0%) state so "성장" can be
-	// tried again, and brings the base window's own content back now that no modal covers it.
+	// 결과 확인 뒤 성장 게이지를 0으로 돌리고 가려 둔 기본 재련 패널을 다시 연다. Server 장비 단계는 응답으로 확정된 값을 유지한다.
 	Reset_ItemUpgradeIdleGauge();
 	Set_ItemUpgradeCenterPanelVisible(true);
 }
 
+// 성장·연출 예약 시간을 초기화하고 완료 장식을 숨긴다. 호출자가 유효한 m_pItemUpgradeView를 보장한다.
+// 요청 sequence·확정 장비 단계·결과 enum 자체를 취소하는 함수는 아니다.
 void CMainApp::Reset_ItemUpgradeIdleGauge()
 {
 	m_iItemUpgradePreviousPercent = 0;
@@ -7936,39 +7838,51 @@ void CMainApp::Reset_ItemUpgradeIdleGauge()
 	m_pItemUpgradeView->Set_SlotVisible("ItemUpgrade_CompleteEffect", false);
 }
 
+// 기본 중앙 패널의 지정 슬롯만 같은 visible 값으로 바꾼다. 목록·결과 배경 등 이 배열 밖 슬롯은 각 화면 전환이 관리한다.
 void CMainApp::Set_ItemUpgradeCenterPanelVisible(bool_t bVisible)
 {
 	if (nullptr == m_pItemUpgradeView)
 		return;
 
-	constexpr const char_t* CENTER_PANEL_SLOTS[] =
-	{
-		"ItemUpgrade_WindowBg", "ItemUpgrade_PanelBg",
-		"ItemUpgrade_RecipeIconBgExample", "ItemUpgrade_RecipeMaterial0", "ItemUpgrade_RecipeAmount0",
-		"ItemUpgrade_RecipeIconBg1", "ItemUpgrade_RecipeMaterial1", "ItemUpgrade_RecipeAmount1",
-		"ItemUpgrade_RecipeIconBg2", "ItemUpgrade_RecipeMaterial2", "ItemUpgrade_RecipeAmount2",
-		"ItemUpgrade_DecoIcon", "ItemUpgrade_GaugeFill", "ItemUpgrade_SelectedItemIconBounds",
-		"ItemUpgrade_SelectedItemIcon", "ItemUpgrade_LevelUpBtn", "ItemUpgrade_EquipExpPageLine",
-		"ItemUpgrade_ReforgeButton", "ItemUpgrade_LevelArrowBase", "ItemUpgrade_LevelArrow",
+	constexpr const char_t *CENTER_PANEL_SLOTS[] = {
+		"ItemUpgrade_WindowBg",
+		"ItemUpgrade_PanelBg",
+		"ItemUpgrade_RecipeIconBgExample",
+		"ItemUpgrade_RecipeMaterial0",
+		"ItemUpgrade_RecipeAmount0",
+		"ItemUpgrade_RecipeIconBg1",
+		"ItemUpgrade_RecipeMaterial1",
+		"ItemUpgrade_RecipeAmount1",
+		"ItemUpgrade_RecipeIconBg2",
+		"ItemUpgrade_RecipeMaterial2",
+		"ItemUpgrade_RecipeAmount2",
+		"ItemUpgrade_DecoIcon",
+		"ItemUpgrade_GaugeFill",
+		"ItemUpgrade_SelectedItemIconBounds",
+		"ItemUpgrade_SelectedItemIcon",
+		"ItemUpgrade_LevelUpBtn",
+		"ItemUpgrade_EquipExpPageLine",
+		"ItemUpgrade_ReforgeButton",
+		"ItemUpgrade_LevelArrowBase",
+		"ItemUpgrade_LevelArrow",
 	};
-	for (const char_t* pSlotId : CENTER_PANEL_SLOTS)
+	for (const char_t *pSlotId : CENTER_PANEL_SLOTS)
 		m_pItemUpgradeView->Set_SlotVisible(pSlotId, bVisible);
 
-	// Completion-effect slots only ever get hidden here (entering a result), never force-restored --
-	// Reset_ItemUpgradeIdleGauge/Update_ItemUpgradeGrowButton own when these come back on.
+	// 숨길 때만 완료 효과 목록도 함께 내린다. 다시 보일 시점은 성장 입력과 Update_ItemUpgrade의 시간 처리가 결정한다.
 	if (!bVisible)
 	{
-		constexpr const char_t* CENTER_PANEL_EFFECT_SLOTS[] =
-		{
+		constexpr const char_t *CENTER_PANEL_EFFECT_SLOTS[] = {
 			"ItemUpgrade_WingedRingGold", "ItemUpgrade_LevelUpMotion2Big", "ItemUpgrade_SmeltGlow",
-			"ItemUpgrade_CoreFlash", "ItemUpgrade_ShockwaveRing", "ItemUpgrade_CompleteEffect",
+			"ItemUpgrade_CoreFlash",	  "ItemUpgrade_ShockwaveRing",	   "ItemUpgrade_CompleteEffect",
 			"ItemUpgrade_WingDecoFade",
 		};
-		for (const char_t* pSlotId : CENTER_PANEL_EFFECT_SLOTS)
+		for (const char_t *pSlotId : CENTER_PANEL_EFFECT_SLOTS)
 			m_pItemUpgradeView->Set_SlotVisible(pSlotId, false);
 	}
 }
 
+// 기본 화면에서 선택한 보유 장비의 이름·현재 단계·다음 단계 문구를 그린다. 목록 문자열 참조는 이 함수 호출 동안만 사용한다.
 void CMainApp::RenderItemUpgradeLevelText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -7982,53 +7896,48 @@ void CMainApp::RenderItemUpgradeLevelText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	// colors are the real ItemBuildUpLevelWndContent/ItemBuildUpLevelGroupMc .as
-	// itemName_lb.color=13769983(0xD21CFF), curLevel_lb.color=16760138(0xFFBD4A),
-	// nextLevel_lb.color=12057344(0xB7FB00). The ">>>" arrow is a real animated
-	// flourish icon (ItemUpgrade_LevelArrow AnimationFrames), not text.
-	// The item name/level tracks m_iItemUpgradeSelectedSlot (Update_ItemUpgradeSelection) into the
-	// owned Honor Whisper set (BuildItemUpgradeSlots) -- nothing to show while empty.
+	// 선택 index를 현재 보유 장비 목록 범위로 제한한 뒤 이름과 단계를 표시한다. 목록이 비었으면 출력하지 않는다.
+	// 이름은 아래 금주황색, 현재 단계는 금색, 다음 단계는 연두색 인자를 사용하며 화살표는 별도 animation 슬롯이다.
 	const vector<ITEM_UPGRADE_SLOT_INFO> upgradeSlots = BuildItemUpgradeSlots();
 	if (upgradeSlots.empty())
 		return;
-	const int32_t iSelectedSlot = std::clamp(
-		m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
+	const int32_t iSelectedSlot =
+		std::clamp(m_iItemUpgradeSelectedSlot, 0, static_cast<int32_t>(upgradeSlots.size()) - 1);
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (m_pItemUpgradeView->Get_SlotRect("ItemUpgrade_ItemNameLabel", fX, fY, fWidth, fHeight))
 		{
-			const wchar_t* pLabel = upgradeSlots[iSelectedSlot].strName.c_str();
-			const float2_t vMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+			const wchar_t *pLabel = upgradeSlots[iSelectedSlot].strName.c_str();
+			const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 			const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.95f / vMeasured.y) : 1.f;
 			const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 			const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
-			CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
+			CGameInstance::Get().Draw_Text(
+				TEXT("Font_YoonGasiIIM"), pLabel,
 				float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
 				XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f), 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 		}
 	}
 
-	// Current and next levels consume the Server inventory snapshot.
+	// 현재 단계는 Server 인벤토리 값이며 다음 단계 표시는 현재+1을 Shared의 최대 강화 단계로 제한한다.
 	const int32_t iLevel = upgradeSlots[iSelectedSlot].iUpgradeLevel;
 	const wstring strCurLevel = to_wstring(iLevel) + L"\xB2E8\xACC4";
-	const wstring strNextLevel = to_wstring((std::min)(iLevel + 1, static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL))) + L"\xB2E8\xACC4";
+	const wstring strNextLevel =
+		to_wstring((std::min)(iLevel + 1, static_cast<int32_t>(LostArk::Shared::MAX_EQUIPMENT_UPGRADE_LEVEL))) +
+		L"\xB2E8\xACC4";
 	struct LEVEL_TEXT_ENTRY
 	{
-		const char* pSlotId;
-		const wstring& strLabel;
+		const char *pSlotId;
+		const wstring &strLabel;
 		f32_t fHeightRatio;
 		fvector_t vColor;
 	};
-	const LEVEL_TEXT_ENTRY SLOTS[] =
-	{
-		{ "ItemUpgrade_CurLevelLabel", strCurLevel, 0.95f,
-			XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f) },
-		{ "ItemUpgrade_NextLevelLabel", strNextLevel, 0.95f,
-			XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f) },
+	const LEVEL_TEXT_ENTRY SLOTS[] = {
+		{"ItemUpgrade_CurLevelLabel", strCurLevel, 0.95f, XMVectorSet(1.0f, 0.7412f, 0.2902f, 1.f)},
+		{"ItemUpgrade_NextLevelLabel", strNextLevel, 0.95f, XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f)},
 	};
 
-	for (const LEVEL_TEXT_ENTRY& Slot : SLOTS)
+	for (const LEVEL_TEXT_ENTRY &Slot : SLOTS)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pItemUpgradeView->Get_SlotRect(Slot.pSlotId, fX, fY, fWidth, fHeight))
@@ -8037,17 +7946,17 @@ void CMainApp::RenderItemUpgradeLevelText()
 		const f32_t fCenterX = fX + fWidth * 0.5f;
 		const f32_t fCenterY = fY + fHeight * 0.5f;
 
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.strLabel.c_str());
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Slot.strLabel.c_str());
 		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * Slot.fHeightRatio / vMeasured.y) : 1.f;
 		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Slot.strLabel.c_str(),
-			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-			Slot.vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+									   float2_t(fCenterX * textScaleX, fCenterY * textScaleY), Slot.vColor, 0.f,
+									   float2_t(0.5f, 0.5f), fScale * textUiScale);
 	}
 }
 
+// 기본 재련 화면의 재료 칸에 현재 무료 정책을 표시한다. 슬롯 세 개가 같은 글자 배율을 쓰도록 먼저 공통 크기를 구한다.
 void CMainApp::RenderItemUpgradeMaterialCounts()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -8061,12 +7970,12 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	// The current Server policy charges no materials or currency.
+	// 현재 Server 재련 경로가 재료·재화를 차감하지 않으므로 세 재료 칸에 무료 문구를 표시한다.
 	const wstring strAmount = L"\xBB34\xB8CC";
-	const char* SLOT_IDS[3] = { "ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeAmount2" };
-	const fvector_t vSufficientColor = XMVectorSet(0.7176f, 0.9843f, 0.0f, 1.f); // #B7FB00
-
-	// Use one scale across the three recipe labels.
+	const char *SLOT_IDS[3] = {"ItemUpgrade_RecipeAmount0", "ItemUpgrade_RecipeAmount1", "ItemUpgrade_RecipeAmount2"};
+	const fvector_t vSufficientColor =
+		XMVectorSet(0.7176f, 0.9843f, 0.0f,
+					1.f); // #B7FB00 색을 사용하며 세 재료 슬롯에 들어가는 배율 중 최솟값을 모든 문구에 공통 적용한다.
 	f32_t fSharedScale = 1.f;
 	{
 		bool_t bAny = false;
@@ -8076,8 +7985,7 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 			if (!m_pItemUpgradeView->Get_SlotRect(SLOT_IDS[i], fX, fY, fW, fH))
 				continue;
 
-			const float2_t vMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str());
+			const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str());
 			if (vMeasured.y <= 0.f || vMeasured.x <= 0.f)
 				continue;
 
@@ -8098,11 +8006,12 @@ void CMainApp::RenderItemUpgradeMaterialCounts()
 
 		const fvector_t vColor = vSufficientColor;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strAmount.c_str(),
-			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
+									   float2_t(fCenterX * textScaleX, fCenterY * textScaleY), vColor, 0.f,
+									   float2_t(0.5f, 0.5f), fSharedScale * textUiScale);
 	}
 }
 
+// Client 성장 표시 상태의 정수 퍼센트를 게이지 가운데 그린다. Server 재련 확률·진행률을 나타내는 값은 아니다.
 void CMainApp::RenderItemUpgradeGaugePercentText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -8121,17 +8030,17 @@ void CMainApp::RenderItemUpgradeGaugePercentText()
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
 	const wstring strPercent = to_wstring(m_iItemUpgradePreviousPercent) + L"%";
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str());
+	const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str());
 	const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.2f / vMeasured.y) : 1.f;
 
-	// bright glowing gold/yellow, matching the ring's own fire-flourish palette.
-	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // #FFD959
+	// 게이지 퍼센트와 결과 안내 문구에 같은 금노랑색 #FFD959를 사용한다.
+	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // 색상 #FFD959
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strPercent.c_str(),
-		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-		vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+								   float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+								   vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
+// WAITING 화면의 현재 요청 상태를 문구로 표시한다. 전송 실패나 시간 초과도 결과 확인 불가 안내를 통해 기본 창으로 돌아갈 수 있다.
 void CMainApp::RenderItemUpgradeResultWaitText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
@@ -8149,33 +8058,29 @@ void CMainApp::RenderItemUpgradeResultWaitText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* "화면을 클릭하여 결과 즉시 확인" -- real suspense-screen prompt, sits near the bottom of
-	the wait panel under the SmeltLoding circle (matches the real reference screenshot layout).
-	The real flow has this as a second stage (a first white "버튼을 클릭해 재련 결과를 확인하세요"
-	+ its own confirm button, only after which this yellow prompt appears) -- simplified here to
-	just this one yellow line per instruction, skipping the first stage/button entirely. */
-	const wstring strPrompt = m_iPendingItemUpgradeRequest ?
-		L"\xC11C\xBC84 \xACB0\xACFC\xB97C \xAE30\xB2E4\xB9AC\xB294 \xC911\xC785\xB2C8\xB2E4" :
-		(m_bItemUpgradeResultUnavailable ?
-		L"\xACB0\xACFC\xB97C \xD655\xC778\xD558\xC9C0 \xBABB\xD588\xC2B5\xB2C8\xB2E4. \xD074\xB9AD\xD558\xC5EC \xB3CC\xC544\xAC00\xAE30" :
-		L"\xD654\xBA74\xC744 \xD074\xB9AD\xD558\xC5EC \xACB0\xACFC \xC989\xC2DC \xD655\xC778");
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str());
+	// WAITING 안내 한 줄이 서버 응답 대기·확인 불가·결과 공개 가능 상태를 구분한다. pending sequence가 남으면 결과 공개 클릭을 받지 않는다.
+	const wstring strPrompt =
+		m_iPendingItemUpgradeRequest
+			? L"\xC11C\xBC84 \xACB0\xACFC\xB97C \xAE30\xB2E4\xB9AC\xB294 \xC911\xC785\xB2C8\xB2E4"
+			: (m_bItemUpgradeResultUnavailable
+				   ? L"\xACB0\xACFC\xB97C \xD655\xC778\xD558\xC9C0 \xBABB\xD588\xC2B5\xB2C8\xB2E4. \xD074\xB9AD\xD558\xC5EC \xB3CC\xC544\xAC00\xAE30"
+				   : L"\xD654\xBA74\xC744 \xD074\xB9AD\xD558\xC5EC \xACB0\xACFC \xC989\xC2DC \xD655\xC778");
+	const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str());
 	const f32_t fScale = (vMeasured.y > 0.f) ? (fHeight * 0.045f / vMeasured.y) : 1.f;
 
-	// bright glowing gold/yellow, same tone as RenderItemUpgradeGaugePercentText's percent number.
-	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // #FFD959
+	// 게이지 퍼센트와 결과 안내 문구에 같은 금노랑색 #FFD959를 사용한다.
+	const fvector_t vColor = XMVectorSet(1.0f, 0.851f, 0.353f, 1.f); // 색상 #FFD959
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strPrompt.c_str(),
-		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.88f) * textScaleY),
-		vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+								   float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.88f) * textScaleY),
+								   vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
 
+// 성공 연출이 끝난 뒤 요청 당시 이름과 Server가 확정한 단계·성공 문구·확인 버튼 글자를 표시한다.
 void CMainApp::RenderItemUpgradeSuccessDetailText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		ITEM_UPGRADE_ATTEMPT_RESULT::SUCCESS != m_eItemUpgradeAttemptResult ||
-		// Not settled yet (burst still playing) -- real in-game capture shows only the circle+burst
-		// during this phase, not the icon/name/result text on top of it.
+		// 결과 연출 중에는 상세 글자를 그리지 않는다. Update_ItemUpgrade가 전환 예약을 비운 다음부터 표시한다.
 		m_dItemUpgradeResultSettleAt >= 0.0)
 	{
 		return;
@@ -8186,49 +8091,43 @@ void CMainApp::RenderItemUpgradeSuccessDetailText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const auto DrawCentered = [&](const char_t* pSlotId, const wchar_t* pLabel,
-		f32_t fHeightRatio, const fvector_t& vColor)
+	const auto DrawCentered =
+		[&](const char_t *pSlotId, const wchar_t *pLabel, f32_t fHeightRatio, const fvector_t &vColor)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
 			return;
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * fHeightRatio / vMeasured.y) : 1.f;
 		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-			float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+									   float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+									   vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	// Item name -- same selected-item name/gold-orange tone AND same real size (rect height 19.2,
-	// 0.95f ratio) as RenderItemUpgradeLevelText already draws over the base window's own
-	// ItemUpgrade_ItemNameLabel, directly under the icon.
+	// 요청 당시 보관한 장비 이름을 현재 레이아웃의 성공 아이콘 아래 슬롯에 표시한다. 기본 화면과 같은 금주황색·높이 비율을 사용한다.
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
-	DrawCentered("ItemUpgrade_SuccessItemNameMarker",
-		m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
+	DrawCentered("ItemUpgrade_SuccessItemNameMarker", m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
 
-	// The matching Server reply confirms this level after its inventory snapshot.
-	const wstring strReachedLevel =
-		to_wstring(m_iItemUpgradeConfirmedLevel) + L"\xB2E8\xACC4";
+	// sequence·world가 일치하고 인벤토리 단계와 대조한 Server 응답의 확정 단계를 표시한다.
+	const wstring strReachedLevel = to_wstring(m_iItemUpgradeConfirmedLevel) + L"\xB2E8\xACC4";
 	DrawCentered("ItemUpgrade_SuccessGradeMarker", strReachedLevel.c_str(), 0.9f, vGoldOrange);
 
-	// "재련 성공" -- light green (연두), by explicit user request.
-	const fvector_t vLightGreen = XMVectorSet(0.5647f, 0.9333f, 0.5647f, 1.f); // #90EE90
+	// "재련 성공"은 지정된 연두색 #90EE90으로 표시한다.
+	const fvector_t vLightGreen = XMVectorSet(0.5647f, 0.9333f, 0.5647f, 1.f); // 색상 #90EE90
 	DrawCentered("ItemUpgrade_SuccessStatusMarker", L"\xC7AC\xB828 \xC131\xACF5", 0.9f, vLightGreen);
 
-	// "확인" -- same label style as RenderItemUpgradeButtonText's other button labels (0.32 height
-	// ratio, white). SuccessOkBtn only shows once settled, same as this whole function.
+	// 결과 연출이 끝난 뒤 SuccessOkBtn에 "확인"을 그린다. 기본 버튼과 같은 흰색·높이 0.32 비율을 사용한다.
 	DrawCentered("ItemUpgrade_SuccessOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
 }
 
+// 유효한 실패 결과의 연출이 끝난 뒤 요청 당시 이름과 실패 문구·확인 버튼 글자를 표시한다. 거절/확인 불가 상태는 이 화면으로 보내지 않는다.
 void CMainApp::RenderItemUpgradeFailDetailText()
 {
 	if (nullptr == m_pItemUpgradeView || !m_bItemUpgradePreviewVisible ||
 		ITEM_UPGRADE_ATTEMPT_RESULT::FAIL != m_eItemUpgradeAttemptResult ||
-		// Not settled yet (burst still playing) -- real in-game capture shows only the circle+burst
-		// during this phase, not the icon/name/result text on top of it.
+		// 결과 연출 중에는 상세 글자를 그리지 않는다. Update_ItemUpgrade가 전환 예약을 비운 다음부터 표시한다.
 		m_dItemUpgradeResultSettleAt >= 0.0)
 	{
 		return;
@@ -8239,56 +8138,49 @@ void CMainApp::RenderItemUpgradeFailDetailText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const auto DrawCentered = [&](const char_t* pSlotId, const wchar_t* pLabel,
-		f32_t fHeightRatio, const fvector_t& vColor)
+	const auto DrawCentered =
+		[&](const char_t *pSlotId, const wchar_t *pLabel, f32_t fHeightRatio, const fvector_t &vColor)
 	{
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pItemUpgradeView->Get_SlotRect(pSlotId, fX, fY, fWidth, fHeight))
 			return;
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), pLabel);
 		const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * fHeightRatio / vMeasured.y) : 1.f;
 		const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.95f / vMeasured.x) : 1.f;
 		const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), pLabel,
-			float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-			vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+									   float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+									   vColor, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	// Item name -- same gold/orange tone AND same real size (rect height 19.2, 0.95f ratio) as
-	// RenderItemUpgradeLevelText already draws over the base window's own ItemUpgrade_ItemNameLabel,
-	// directly under the icon (real failItemName_lb placement traced from fail_mc's timeline; no
-	// distinct color was recoverable for it, so this reuses success's confirmed tone).
+	// 실패 화면도 요청 당시 장비 이름과 기본 화면의 금주황색·높이 비율을 사용한다.
 	const fvector_t vGoldOrange = XMVectorSet(1.0f, 0.5686f, 0.0f, 1.f);
-	DrawCentered("ItemUpgrade_FailItemNameMarker",
-		m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
+	DrawCentered("ItemUpgrade_FailItemNameMarker", m_strItemUpgradeAttemptName.c_str(), 0.95f, vGoldOrange);
 
-	// "재련 실패" -- red, by explicit user request. A failed reforge does not change level, so unlike
-	// the success screen there is no grade/level marker here -- this sits directly under the name.
-	const fvector_t vRed = XMVectorSet(0.9098f, 0.1608f, 0.1608f, 1.f); // #E82929
+	// "재련 실패"는 지정된 빨간색 #E82929로 표시한다. 실패 응답은 장비 단계를 올리지 않으므로 도달 단계 문구를 붙이지 않는다.
+	const fvector_t vRed = XMVectorSet(0.9098f, 0.1608f, 0.1608f, 1.f); // 색상 #E82929
 	DrawCentered("ItemUpgrade_FailStatusMarker", L"\xC7AC\xB828 \xC2E4\xD328", 0.9f, vRed);
 
-	// "확인" -- same label style as RenderItemUpgradeButtonText's other button labels.
+	// 결과 연출이 끝난 뒤 FailOkBtn의 "확인"을 기본 버튼과 같은 흰색·높이 0.32 비율로 표시한다.
 	DrawCentered("ItemUpgrade_FailOkBtn", L"\xD655\xC778", 0.32f, Colors::White);
 }
-
+// Update_CombatHUD가 보장한 HUD view에 인벤토리 드롭과 아이템 아이콘 상태를 반영한다.
+// 드롭은 한 번 소비하며 어느 HUD 슬롯에도 맞지 않으면 배치를 바꾸지 않는다. 보관되는 item ID는 Client 표시 배치이고 사용 가능 여부·수량은 복제 인벤토리로 확인한다.
 void CMainApp::Update_ItemQuickSlots()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ItemQuickSlots.Update");
 	if (nullptr == m_pInventoryView)
 		return;
 
-	constexpr const char* ITEM_SLOT_IDS[4] = { "Item_1", "Item_2", "Item_3", "Item_4" };
-	constexpr const char* ITEM_ICON_SLOT_IDS[4] =
-		{ "Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon" };
+	constexpr const char *ITEM_SLOT_IDS[4] = {"Item_1", "Item_2", "Item_3", "Item_4"};
+	constexpr const char *ITEM_ICON_SLOT_IDS[4] = {"Item_1_Icon", "Item_2_Icon", "Item_3_Icon", "Item_4_Icon"};
 
 	string strDroppedItemId;
 	float fDropX = 0.f, fDropY = 0.f;
 	if (m_pInventoryView->Try_Consume_ItemDrop(strDroppedItemId, fDropX, fDropY))
 	{
-		/* The drop position is a real client-area pixel (CUIInputRouter's
-		Get_ClientCursorPosition); slot rects are reference-resolution -- same viewport scale
-		Get_SlotRect callers always apply, just without ImGui in the middle. */
+		// 드롭 위치는 InventoryView가 UIInputRouter에서 얻은 Client 영역의 실제 픽셀 좌표다.
+		// Get_SlotRect는 1280×720 기준 좌표를 주므로 viewport의 축별 배율을 적용한 뒤 같은 좌표계에서 비교한다.
 		const float2_t vViewportSize = CGameInstance::Get().Get_ViewportSize();
 		const float scaleX = vViewportSize.x / 1280.f;
 		const float scaleY = vViewportSize.y / 720.f;
@@ -8311,8 +8203,8 @@ void CMainApp::Update_ItemQuickSlots()
 
 	for (int32_t i = 0; i < 4; ++i)
 	{
-		const ITEM_DEFINITION* pDefinition = m_strItemQuickSlot[i].empty() ?
-			nullptr : CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		const ITEM_DEFINITION *pDefinition =
+			m_strItemQuickSlot[i].empty() ? nullptr : CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
 		if (nullptr == pDefinition || pDefinition->strIconPath.empty())
 		{
 			m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], false);
@@ -8320,35 +8212,38 @@ void CMainApp::Update_ItemQuickSlots()
 		}
 		m_pHUDRuntimeView->Set_SlotTexture(ITEM_ICON_SLOT_IDS[i], pDefinition->strIconPath);
 		m_pHUDRuntimeView->Set_SlotVisible(ITEM_ICON_SLOT_IDS[i], true);
-		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
-		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
-		{
-			return item.strItemId == m_strItemQuickSlot[i] &&
-				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE && item.iQuantity > 0u;
-		});
-		const f32_t cooldown = Resolve_HudCooldownRatio(CCombatHUDViewModel::Get().Get_Player(),
-			pDefinition->iBattleSkillId, pDefinition->iCooldownMs, ITEM_SLOT_IDS[i]);
+		const auto &inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(),
+										[&](const auto &item)
+										{
+											return item.strItemId == m_strItemQuickSlot[i] &&
+												   item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE &&
+												   item.iQuantity > 0u;
+										});
+		const f32_t cooldown =
+			Resolve_HudCooldownRatio(CCombatHUDViewModel::Get().Get_Player(), pDefinition->iBattleSkillId,
+									 pDefinition->iCooldownMs, ITEM_SLOT_IDS[i]);
 		const f32_t brightness = owned == inventory.end() ? 0.25f : cooldown > 0.f ? 0.45f : 1.f;
 		m_pHUDRuntimeView->Set_SlotTint(ITEM_ICON_SLOT_IDS[i], float4_t(brightness, brightness, brightness, 1.f));
 	}
 }
 
+// 복제된 HP·보호막·자원을 표시 비율로 바꾸어 공통 HUD 막대에 적용한다. 실제 전투 수치의 소유자는 Server다.
 void CMainApp::Update_PlayerHealthManaBar()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.PlayerHealthManaBar.Update");
-	/* Only reached from Update_CombatHUD's own show path, which already validated the player
-	snapshot and this view. */
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	// Update_CombatHUD가 유효한 player snapshot·view와 0이 아닌 최대 HP·자원을 확인한 뒤 호출한다.
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 
-	const float healthRatio = (std::clamp)(
-		static_cast<float>(player.iCurrentHp) / static_cast<float>(player.iMaximumHp), 0.f, 1.f);
-	const float manaRatio = (std::clamp)(
-		static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f, 1.f);
+	const float healthRatio =
+		(std::clamp)(static_cast<float>(player.iCurrentHp) / static_cast<float>(player.iMaximumHp), 0.f, 1.f);
+	const float manaRatio =
+		(std::clamp)(static_cast<float>(player.iCurrentResource) / static_cast<float>(player.iMaximumResource), 0.f,
+					 1.f);
 
-	/* ark.controls:Progress.updateShieldTargetSize. Below the maximum the shield is
-	its own share of the maximum and sits past the health fill; at or over it the
-	original grows the track "from the right" by shield / (shield + hp), which is why
-	the red share climbs back as the shield drains. */
+	// 현재 HP와 보호막 합이 최대 HP보다 작으면 보호막은 최대 HP에 대한 비율로 체력 끝에 붙는다.
+	// 합이 최대 HP 이상이면 전체 폭을 HP와 보호막의 합으로 나누어 두 영역을 배치한다.
+	// 따라서 보호막이 줄어들 때 빨간 체력 영역이 다시 넓어질 수 있으며 Server HP 자체를 바꾸는 계산은 아니다.
 	const double shield = static_cast<double>(player.iShield);
 	const double currentHp = static_cast<double>(player.iCurrentHp);
 	const double maximumHp = static_cast<double>(player.iMaximumHp);
@@ -8369,29 +8264,26 @@ void CMainApp::Update_PlayerHealthManaBar()
 
 	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Fill", healthTrackRatio);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Fill", healthTrackRatio > 0.f);
-	// Both authored slots start at the left edge; move the white segment to the HP endpoint.
+	// 두 슬롯의 저작 기준은 왼쪽 시작점이므로 흰 보호막 구간을 현재 체력 표시의 끝으로 옮긴다.
 	f32_t healthX = 0.f, healthY = 0.f, healthWidth = 0.f, healthHeight = 0.f;
 	if (m_pHUDRuntimeView->Get_SlotRect("HealthBar_Fill", healthX, healthY, healthWidth, healthHeight))
-		m_pHUDRuntimeView->Set_SlotRect("HealthBar_Shield_Fill",
-			healthX + healthWidth * healthTrackRatio, healthY, healthWidth * shieldRatio, healthHeight);
+		m_pHUDRuntimeView->Set_SlotRect("HealthBar_Shield_Fill", healthX + healthWidth * healthTrackRatio, healthY,
+										healthWidth * shieldRatio, healthHeight);
 	m_pHUDRuntimeView->Set_SlotFillRatio("HealthBar_Shield_Fill", 1.f);
 	m_pHUDRuntimeView->Set_SlotVisible("HealthBar_Shield_Fill", shieldRatio > 0.f);
 	m_pHUDRuntimeView->Set_SlotFillRatio("ManaBar_Fill", manaRatio);
-	/* A class with an ember pool runs on ember, not mana: the mana fill stays
-	hidden and the readout below the bar shows the orb gauge instead. */
-	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill",
-		manaRatio > 0.f && 0u == player.iEmberMaximumSockets);
+	// Ember 자원을 사용하는 직업은 마나 채움 영역을 숨긴다. 가디언 나이트의 socket과 구슬 표시는 별도 갱신 함수가 맡는다.
+	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", manaRatio > 0.f && 0u == player.iEmberMaximumSockets);
 }
 
+// 창술사 HUD의 세 구간 채움과 점화→반복 효과를 갱신한다. 유효하지 않은 snapshot·최대치·view이면 기존 표시를 건드리지 않고 반환한다.
+// 점화 시작 시각과 직전 full 상태는 이 MainApp이 보관하며 Server identity 수치에는 쓰지 않는다.
 void CMainApp::Update_LanceMasterIdentityGauge()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.LanceMasterIdentityGauge.Update");
-	/* Same real formula as ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress():
-	each of the 3 segments independently tracks 0..100, and only fills once every segment
-	before it is already full (LanceMasterStance.as's bubbleEffect cascade). Degrees come from
-	the real gauge0/1/2.maxDegree constants (-80/-82/-76); sign only decided sweep direction in
-	Flash's own rotation convention, so the sweep magnitude is what is real about it. */
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	// 최대 identity를 세 구간으로 나눈 뒤 앞 구간부터 0~100 값으로 채운다.
+	// 이 함수는 복제된 수치를 표시용 구간 값으로 바꾸며 identity를 소비하거나 증가시키지 않는다.
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || 0u == player.iMaximumIdentity || nullptr == m_pHUDRuntimeView)
 		return;
 
@@ -8405,146 +8297,112 @@ void CMainApp::Update_LanceMasterIdentityGauge()
 		fRemaining -= SEGMENT_MAX;
 	}
 
-	/* target.rotation = maxDegree * (value/100) confirmed straight from the decompiled
-	ark.ui.identityLanceMaster.LanceMasterProgress::updateProgress() -- target (depth3, clipDepth=7)
-	is a rotating mask that reveals track (depth5, the real white fill bitmap) as it turns. Rather
-	than reproduce that mask at runtime, Gauge0/1/2Fill.json bakes the real target-rotated-mask x
-	track composite for every integer percentage (same pattern as Warlord's GaugeL/R 100-frame
-	reveal), so this only has to pick the frame for the current percentage. */
+	// 채움 모양은 Gauge0/1/2Fill.json의 정수 이름 keyframe으로 표현한다.
+	// 각 구간 값을 0~99의 frame 이름으로 제한하므로 100%도 마지막 99번 frame을 사용한다.
 	for (int32_t i = 0; i < 3; ++i)
 	{
 		const int32_t iFillFrame = std::clamp(static_cast<int32_t>(fSegmentValue[i]), 0, 99);
-		m_pHUDRuntimeView->Play_KeyframeAnimation(
-			string("Lance_Id_GaugeFill") + std::to_string(i), std::to_string(iFillFrame));
+		m_pHUDRuntimeView->Play_KeyframeAnimation(string("Lance_Id_GaugeFill") + std::to_string(i),
+												  std::to_string(iFillFrame));
 
-		/* Real extracted gauge0/1/2 highLightMc flourish -- a one-shot dim->bright ignite
-		(Lance_Id_GaugeBurn0/1/2, Gauge0/1/2Burn.json) followed by a continuous sustain loop
-		(Lance_Id_GaugeBurnLoop0/1/2, Gauge0/1/2BurnLoop.json) once ignite finishes, so the flame
-		keeps burning instead of restarting its dim intro every loop. Each ignite doc's own
-		[startFrame,frameCount) span at 40fps gives its real playback duration. */
-		constexpr f32_t BURN_IGNITE_SECONDS[3] = { 36.f / 40.f, 32.f / 40.f, 36.f / 40.f };
+		// 구간이 가득 찬 순간 점화 animation을 한 번 시작하고 고정 대기 0.9/0.8/0.9초 뒤 반복 animation으로 바꾼다.
+		// 아래 상수는 40으로 나누지만 실제 Burn/BurnLoop JSON은 24fps다. 문서의 animation 완료 통지를 기다리는 전환은 아니다.
+		constexpr f32_t BURN_IGNITE_SECONDS[3] = {36.f / 40.f, 32.f / 40.f, 36.f / 40.f};
 		const bool_t bIsFull = fSegmentValue[i] >= SEGMENT_MAX;
 		if (bIsFull && !m_bLanceGaugeSegmentWasFull[i])
 		{
-			m_pHUDRuntimeView->Play_KeyframeAnimation(
-				string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
+			m_pHUDRuntimeView->Play_KeyframeAnimation(string("Lance_Id_GaugeBurn") + std::to_string(i), "burn");
 			m_dLanceGaugeIgniteStartSeconds[i] = Product_Now_Seconds();
 			m_bLanceGaugeLoopStarted[i] = false;
 		}
 		m_bLanceGaugeSegmentWasFull[i] = bIsFull;
 
-		const bool_t bIgniteDone = bIsFull && m_dLanceGaugeIgniteStartSeconds[i] >= 0.0 &&
+		const bool_t bIgniteDone =
+			bIsFull && m_dLanceGaugeIgniteStartSeconds[i] >= 0.0 &&
 			(Product_Now_Seconds() - m_dLanceGaugeIgniteStartSeconds[i]) >= BURN_IGNITE_SECONDS[i];
 		if (bIgniteDone && !m_bLanceGaugeLoopStarted[i])
 		{
-			m_pHUDRuntimeView->Play_KeyframeAnimation(
-				string("Lance_Id_GaugeBurnLoop") + std::to_string(i), "burn");
+			m_pHUDRuntimeView->Play_KeyframeAnimation(string("Lance_Id_GaugeBurnLoop") + std::to_string(i), "burn");
 			m_bLanceGaugeLoopStarted[i] = true;
 		}
 
-		/* The burn flourish only makes sense while a segment is actually full -- Fill's own
-		frame 99 already swaps to the orange "charged" art once full, so no separate glow
-		slot is needed on top of it. */
+		// 점화와 반복 불꽃 중 현재 단계에 맞는 것만 켠다. 구간이 가득 차 있지 않으면 두 효과를 모두 숨긴다.
 		m_pHUDRuntimeView->Set_SlotVisible(string("Lance_Id_GaugeBurn") + std::to_string(i), bIsFull && !bIgniteDone);
-		m_pHUDRuntimeView->Set_SlotVisible(string("Lance_Id_GaugeBurnLoop") + std::to_string(i), bIsFull && bIgniteDone);
+		m_pHUDRuntimeView->Set_SlotVisible(string("Lance_Id_GaugeBurnLoop") + std::to_string(i),
+										   bIsFull && bIgniteDone);
 	}
 }
 
+// 가디언 나이트의 stance 이미지·identity 구슬·Ember socket을 복제 상태에 맞춘다.
+// 이 함수는 표시 rect·UV·animation만 바꾸며 자원의 잠금 해제·소모·stance 변경 요청은 하지 않는다.
 void CMainApp::Update_GuardianKnightIdentity()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.GuardianKnightIdentity.Update");
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || nullptr == m_pHUDRuntimeView)
 		return;
 
-	/* Retail replaces the mana bar outright with the Embereth socket bar, which is authored at
-	the same place; leaving both on would stack two bars in one strip. */
+	// Ember socket 막대가 같은 영역을 사용하므로 기본 마나 배경·테두리·채움을 함께 숨긴다.
 	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_BG", false);
 	m_pHUDRuntimeView->Set_SlotVisible("ManaBar", false);
 	m_pHUDRuntimeView->Set_SlotVisible("ManaBar_Fill", false);
 
-	const bool_t bDragon =
-		LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance;
+	const bool_t bDragon = LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON == player.eStance;
 
-	/* ark.controls.Progress fills by target.width, but the orb is placed rotated: orbGauge's
-	own matrix is (scaleX/Y ~0, rotateSkew0 -1, rotateSkew1 1), which maps local +X to screen
-	-Y, and the track inside carries the opposite turn so its art still stands upright. So the
-	gauge rises from the bottom and drains downward on screen, not left to right. Reproduced
-	here by revealing the bottom slice of the orb -- rect shrunk to it and the texture window
-	moved with it, so the art keeps its own scale instead of squashing. The fill art itself is
-	Gauge_Track's per-stance frame (1 human / 2 dragon), which is what
-	DragonKnightSkinFrame.inMarkGaugeState() switches. */
-	const f32_t fIdentityRatio = 0u != player.iMaximumIdentity ?
-		std::clamp(static_cast<f32_t>(player.iCurrentIdentity) /
-			static_cast<f32_t>(player.iMaximumIdentity), 0.f, 1.f) : 0.f;
-	m_pHUDRuntimeView->Set_SlotTexture("GK_Id_OrbFill", bDragon ?
-		"UI/HUD/GuardianKnight/Orb_Fill_Dragon.png" :
-		"UI/HUD/GuardianKnight/Orb_Fill_Human.png");
+	// 구슬은 아래에서 위로 차오르도록 채움 rect와 UV 창을 같은 비율로 잘라 표시한다.
+	// 텍스처 전체를 작은 rect에 눌러 넣지 않도록 UV의 시작점과 높이도 함께 바꾸며 인간·용 stance별 이미지를 고른다.
+	const f32_t fIdentityRatio =
+		0u != player.iMaximumIdentity
+			? std::clamp(static_cast<f32_t>(player.iCurrentIdentity) / static_cast<f32_t>(player.iMaximumIdentity), 0.f,
+						 1.f)
+			: 0.f;
+	m_pHUDRuntimeView->Set_SlotTexture("GK_Id_OrbFill", bDragon ? "UI/HUD/GuardianKnight/Orb_Fill_Dragon.png"
+																: "UI/HUD/GuardianKnight/Orb_Fill_Human.png");
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbFill", fIdentityRatio > 0.f);
 
-	/* The empty orb is never moved, so it stays the reference both the fill slice and the mark
-	are measured against -- reading the fill's own rect back would compound each frame. */
+	// 움직이지 않는 빈 구슬의 rect를 매번 기준으로 읽는다. 이미 줄인 채움 rect를 다시 기준으로 삼으면 크기가 누적해서 줄어든다.
 	f32_t fOrbX = 0.f, fOrbY = 0.f, fOrbWidth = 0.f, fOrbHeight = 0.f;
-	if (fIdentityRatio > 0.f &&
-		m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight))
+	if (fIdentityRatio > 0.f && m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbEmpty", fOrbX, fOrbY, fOrbWidth, fOrbHeight))
 	{
 		const f32_t fFillHeight = fOrbHeight * fIdentityRatio;
-		m_pHUDRuntimeView->Set_SlotRect("GK_Id_OrbFill",
-			fOrbX, fOrbY + fOrbHeight - fFillHeight, fOrbWidth, fFillHeight);
-		m_pHUDRuntimeView->Set_SlotUVWindow("GK_Id_OrbFill",
-			0.f, 1.f - fIdentityRatio, 1.f, fIdentityRatio);
+		m_pHUDRuntimeView->Set_SlotRect("GK_Id_OrbFill", fOrbX, fOrbY + fOrbHeight - fFillHeight, fOrbWidth,
+										fFillHeight);
+		m_pHUDRuntimeView->Set_SlotUVWindow("GK_Id_OrbFill", 0.f, 1.f - fIdentityRatio, 1.f, fIdentityRatio);
 
-		/* Progress::updateMark rides the fill edge and useAutoHideMark hides it at exactly
-		empty and exactly full. After the rotation above that edge is the liquid level, so the
-		mark travels vertically and stays centred across the orb. */
+		// 채움 위쪽 경계에 표시선을 배치한다. 빈 상태·가득 찬 상태에서 숨기는 판정은 아래에서 별도로 수행한다.
 		f32_t fMarkX = 0.f, fMarkY = 0.f, fMarkWidth = 0.f, fMarkHeight = 0.f;
 		if (m_pHUDRuntimeView->Get_SlotRect("GK_Id_OrbMark", fMarkX, fMarkY, fMarkWidth, fMarkHeight))
 		{
-			/* Centred on the level line, but kept inside the orb: at the very top the line is
-			the orb's own rim, and a mark centred there would hang half of itself above the
-			sphere. */
+			// 표시선의 중심을 수면 높이에 맞추되 구슬 위·아래 경계 안으로 제한한다.
 			const f32_t fLevelY = fOrbY + fOrbHeight - fFillHeight - fMarkHeight * 0.5f;
-			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark",
-				fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
-				std::clamp(fLevelY, fOrbY, fOrbY + fOrbHeight - fMarkHeight));
+			m_pHUDRuntimeView->Set_SlotPosition("GK_Id_OrbMark", fOrbX + fOrbWidth * 0.5f - fMarkWidth * 0.5f,
+												std::clamp(fLevelY, fOrbY, fOrbY + fOrbHeight - fMarkHeight));
 		}
 	}
-	/* useAutoHideMark hides it at the two ends. The ratio is a float division, so "full" is
-	tested with a tolerance rather than an exact 1 -- otherwise a gauge sitting at its maximum
-	leaves the mark drawn on the rim. */
+	// 표시선은 채움 비율의 양 끝에서 숨긴다. 0과 1의 완전 일치 대신 0.001 여유를 두므로 아주 작거나 거의 가득 찬 구간도 숨겨진다.
 	constexpr f32_t MARK_END_EPSILON = 0.001f;
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_OrbMark",
-		fIdentityRatio > MARK_END_EPSILON && fIdentityRatio < 1.f - MARK_END_EPSILON);
+									   fIdentityRatio > MARK_END_EPSILON && fIdentityRatio < 1.f - MARK_END_EPSILON);
 
-	/* skillKey_bg carries the Z label drawn in the text pass; the label's own colour rule lives
-	there (DragonKnightSkinFrame.draw(): white while full or transformed, 0x686C20 otherwise). */
+	// Z 글자는 별도 텍스트 단계가 그린다. 여기서는 글자 뒤 배경 슬롯만 켠다.
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_SkillKeyBg", true);
 
-	/* skillStatusList is visible in both stances this project has (its own visibility rule is
-	_localStance < NORMAL_AP13). The 8 dots are the class's skill slots, and a red one marks a
-	slot carrying an awakening skill -- DragonKnightSkillStatusList just does
-	_useList[i].visible = isUse over a plain dark plate, so a slot without one shows the plate
-	through. Which slots those are has no source in this project's data, so the set is the
-	user's own call: the bottom row's 1st, 2nd and 4th. Index 0..3 is the top row. */
-	constexpr bool_t AWAKENING_SLOT_DOTS[8] =
-		{ false, false, false, false, true, true, false, true };
+	// 여덟 점은 현재 상수 배열대로 표시하며 복제된 스킬 종류로 다시 계산하지 않는다.
+	// 위쪽 네 칸은 숨기고 아래쪽 첫째·둘째·넷째 점을 켜는 현재 표시 설정을 두 stance에서 공통 사용한다.
+	constexpr bool_t AWAKENING_SLOT_DOTS[8] = {false, false, false, false, true, true, false, true};
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Id_StatusPlate", true);
 	for (int32_t i = 0; i < 8; ++i)
 	{
-		m_pHUDRuntimeView->Set_SlotVisible(
-			string("GK_Id_StatusDot") + std::to_string(i), AWAKENING_SLOT_DOTS[i]);
+		m_pHUDRuntimeView->Set_SlotVisible(string("GK_Id_StatusDot") + std::to_string(i), AWAKENING_SLOT_DOTS[i]);
 	}
 
-	/* invokeDragonKnightBloodGauge(filled, unlocked) walks all 10 sockets: those below `unlocked`
-	are lit or empty by the filled count, and the rest wear the padlock. `unlocked` is the very
-	capacity expression the server already spends against (iMaximumSockets - locked), so this
-	reads the ember pool rather than deriving a count of its own. */
+	// 최대 socket에서 잠긴 수를 뺀 값을 0~10으로 제한해 열린 칸 수를 구한다.
+	// 복제된 Ember 구슬 수 중 열린 칸에 들어가는 만큼 채우고 나머지는 빈 칸 또는 잠금 상태로 표시한다.
 	constexpr int32_t SOCKET_COUNT = 10;
-	const int32_t iUnlockedSockets = std::clamp(
-		static_cast<int32_t>(player.iEmberMaximumSockets) -
-		static_cast<int32_t>(player.iEmberLockedSockets), 0, SOCKET_COUNT);
-	const int32_t iFilledSockets =
-		(std::min)(static_cast<int32_t>(player.iEmberOrbs), iUnlockedSockets);
+	const int32_t iUnlockedSockets =
+		std::clamp(static_cast<int32_t>(player.iEmberMaximumSockets) - static_cast<int32_t>(player.iEmberLockedSockets),
+				   0, SOCKET_COUNT);
+	const int32_t iFilledSockets = (std::min)(static_cast<int32_t>(player.iEmberOrbs), iUnlockedSockets);
 	const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
 	m_pHUDRuntimeView->Set_SlotVisible("GK_Embereth_Frame", bHasEmberPool);
 	for (int32_t i = 0; i < SOCKET_COUNT; ++i)
@@ -8559,11 +8417,9 @@ void CMainApp::Update_GuardianKnightIdentity()
 			m_EmberSocketStates[i].clear();
 			continue;
 		}
-		/* invokeDragonKnightBloodGauge's own branch: a socket whose state changed plays that
-		label's transition -- the gem's pop, the ember rising away, the padlock settling -- and
-		one that did not change holds the label's end frame instead of replaying it. */
-		const string strState = i >= iUnlockedSockets ? "lock" :
-			(i < iFilledSockets ? "show" : "hide");
+		// 이전 표시 상태와 달라진 socket만 lock/show/hide keyframe을 시작한다.
+		// 같은 상태의 animation을 매 프레임 처음부터 재생하지 않도록 마지막 요청한 상태를 Client에 보관한다.
+		const string strState = i >= iUnlockedSockets ? "lock" : (i < iFilledSockets ? "show" : "hide");
 		if (m_EmberSocketStates[i] != strState)
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(strStateSlot, strState);
@@ -8572,101 +8428,78 @@ void CMainApp::Update_GuardianKnightIdentity()
 	}
 }
 
+// 일반 스킬 칸의 침묵·남은 쿨다운 마스크를 갱신한다. player와 HUD view의 유효성은 호출한 Update_CombatHUD의 진입 검사를 따른다.
 void CMainApp::Update_SkillCooldowns()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillCooldowns.Update");
-	/* Only reached from Update_CombatHUD's own show path. Matches the fixed server tick rate
-	other Client files already redeclare locally (CombatHUDViewModel.cpp, Character.cpp) rather
-	than exposing a Shared constant for it. */
+	// Update_CombatHUD의 표시 경로에서 호출한다. Server tick 차이를 초로 바꾸는 이 표시 계산은 초당 30 tick을 사용한다.
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
+	constexpr const char *INPUT_SLOTS[] = {"Q", "W", "E", "R", "A", "S", "D", "F", "T", "V"};
 
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	const float4_t vCooldownTint =
-		float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
-	const float4_t vSilenceTint =
-		float4_t(0.85f, 0.f, 0.f, 150.f / 255.f);
-	const bool_t bSilenced =
-		Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	const float4_t vCooldownTint = float4_t(0.f, 0.f, 0.f, 150.f / 255.f);
+	const float4_t vSilenceTint = float4_t(0.85f, 0.f, 0.f, 150.f / 255.f);
+	const bool_t bSilenced = Is_ServerDeadlinePending(player.iServerTick, player.iSilenceEndTick);
 
-	/* Default every overlay to either the exact Server-owned silence mask or off;
-	then the cooldown loop below turns on just the ordinary cooldowns when silence
-	is not active.  Silence reuses the same White1x1 arc mask with only its R value
-	raised.  It never changes an icon or any replicated cooldown value.  Restrict
-	the full red mask to slots actually present in the current class/stance.
-	Sweeps clockwise from 12 o'clock as the *remaining* cooldown, shrinking back to nothing as
-	it expires -- the icon starts fully covered right after use and is revealed clockwise,
-	matching the reference cooldown swipe. The pie itself is the appended Skill_<X>_Cooldown
-	overlay slot (black 150/255 White1x1) with the g_ArcRatio shader clip; angle-testing the
-	square quad reproduces the old "radius past the corners, clipped to the rect" construction
-	exactly. The "Ns" numbers moved to RenderSkillCooldownText (post-EndFrame text pass). */
-	for (const char* pInputSlot : INPUT_SLOTS)
+	// Q~F·T·V의 기존 overlay를 먼저 초기화한다. 침묵 중에는 현재 player.Skills에 있는 칸만 빨간 전체 마스크로 덮고 아래 일반 쿨다운 계산은 건너뛴다.
+	// 침묵이 아니면 남은 시간 비율을 arc mask로 표시하며 아이콘과 Server 쿨다운 값은 바꾸지 않는다. 초 단위 글자는 RenderSkillCooldownText가 따로 그린다.
+	for (const char *pInputSlot : INPUT_SLOTS)
 	{
 		const string strOverlaySlot = string("Skill_") + pInputSlot + "_Cooldown";
-		const bool_t bActiveSlot = std::any_of(
-			player.Skills.begin(), player.Skills.end(),
-			[pInputSlot](const HUD_SKILL_STATE& Skill)
-			{
-				return Skill.strInputSlot == pInputSlot;
-			});
-		m_pHUDRuntimeView->Set_SlotTint(
-			strOverlaySlot, bSilenced ? vSilenceTint : vCooldownTint);
-		m_pHUDRuntimeView->Set_SlotArcRatio(
-			strOverlaySlot, bSilenced && bActiveSlot ? 1.f : 0.f);
-		m_pHUDRuntimeView->Set_SlotVisible(
-			strOverlaySlot, bSilenced && bActiveSlot);
+		const bool_t bActiveSlot =
+			std::any_of(player.Skills.begin(), player.Skills.end(),
+						[pInputSlot](const HUD_SKILL_STATE &Skill) { return Skill.strInputSlot == pInputSlot; });
+		m_pHUDRuntimeView->Set_SlotTint(strOverlaySlot, bSilenced ? vSilenceTint : vCooldownTint);
+		m_pHUDRuntimeView->Set_SlotArcRatio(strOverlaySlot, bSilenced && bActiveSlot ? 1.f : 0.f);
+		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, bSilenced && bActiveSlot);
 	}
 	if (bSilenced)
 		return;
 
-	for (const HUD_SKILL_STATE& Skill : player.Skills)
+	for (const HUD_SKILL_STATE &Skill : player.Skills)
 	{
 		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
 			continue;
 
-		/* Warlord's Z/X badges have their own real extracted cooldown visual (WarLordSkinFrame's
-		SkillSlot "disabled" state swaps the whole icon to a real dark variant, see the Skill_Z/X
-		keyframe wiring in Update_CombatHUD), and Artist's Z/X use their own real keyframed wipe
-		-- the generic pie was built for Q-F/T/V only. */
+		// Z/X는 일반 arc overlay를 사용하지 않는다. 워로드의 아이콘 상태 전환과 도화가의 전용 keyframe 표현은 Update_CombatHUD가 처리한다.
 		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
 			continue;
 
-		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
-			Skill.iCooldownEndTick - player.iServerTick : 0u;
+		// 종료 tick이 현재보다 큰 경우만 차이를 사용한다. 총 지속 tick이 없으면 남은 시간을 전체 시간으로 삼아 마스크를 가득 채운다.
+		const uint32_t remainingTicks =
+			Skill.iCooldownEndTick > player.iServerTick ? Skill.iCooldownEndTick - player.iServerTick : 0u;
 		if (0u == remainingTicks)
 			continue;
 
 		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
-		const f32_t fTotalSeconds = Skill.iCooldownDurationTicks > 0u ?
-			static_cast<f32_t>(Skill.iCooldownDurationTicks) / SERVER_TICK_HZ : fRemainingSeconds;
-		const f32_t fFraction = fTotalSeconds > 0.f ?
-			(std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
+		const f32_t fTotalSeconds = Skill.iCooldownDurationTicks > 0u
+										? static_cast<f32_t>(Skill.iCooldownDurationTicks) / SERVER_TICK_HZ
+										: fRemainingSeconds;
+		const f32_t fFraction =
+			fTotalSeconds > 0.f ? (std::min)(1.f, (std::max)(0.f, fRemainingSeconds / fTotalSeconds)) : 0.f;
 
 		const string strOverlaySlot = "Skill_" + Skill.strInputSlot + "_Cooldown";
 		m_pHUDRuntimeView->Set_SlotArcRatio(strOverlaySlot, fFraction);
 		m_pHUDRuntimeView->Set_SlotVisible(strOverlaySlot, true);
 	}
-
 }
 
+// Render의 텍스트 단계에서 아이템 수량과 남은 쿨다운 숫자를 표시한다.
+// 지원 Level·유효 snapshot·HUD view를 확인하고 스킬 창이 열렸으면 생략한다. 모든 tick과 수량은 표시용으로 읽으며 명령을 전송하지 않는다.
 void CMainApp::RenderSkillCooldownText()
 {
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
-		currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) && currentLevel != ETOUI(LEVEL::BERN) &&
+		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) && currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) && currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
 		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
 	}
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 	if (!player.isValid || 0u == player.iMaximumHp || 0u == player.iMaximumResource)
 		return;
-	if ((nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) ||
-		nullptr == m_pHUDRuntimeView)
+	if ((nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open()) || nullptr == m_pHUDRuntimeView)
 	{
 		return;
 	}
@@ -8677,63 +8510,65 @@ void CMainApp::RenderSkillCooldownText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	const auto DrawCooldownLabel = [&](f32_t fCenterX, f32_t fCenterY, f32_t fTargetHeight,
-		const wstring& strLabel)
+	const auto DrawCooldownLabel = [&](f32_t fCenterX, f32_t fCenterY, f32_t fTargetHeight, const wstring &strLabel)
 	{
-		const float2_t vMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
+		const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
 		const f32_t fScale = (vMeasured.y > 0.f) ? (fTargetHeight / vMeasured.y) : 1.f;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
-			float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
-			XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
-			fScale * textUiScale);
+									   float2_t(fCenterX * textScaleX + 1.f, fCenterY * textScaleY + 1.f),
+									   XMVectorSet(0.f, 0.f, 0.f, 220.f / 255.f), 0.f, float2_t(0.5f, 0.5f),
+									   fScale * textUiScale);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
-			float2_t(fCenterX * textScaleX, fCenterY * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+									   float2_t(fCenterX * textScaleX, fCenterY * textScaleY), Colors::White, 0.f,
+									   float2_t(0.5f, 0.5f), fScale * textUiScale);
 	};
 
-	/* Item assignment is stable; quantity is always the latest server inventory stack. */
+	// 슬롯에 보관한 item ID로 현재 Server 인벤토리를 조회한다. 장착하지 않은 첫 일치 항목의 수량을 쓰고 항목이 사라졌으면 0을 표시한다.
 	for (int32_t i = 0; i < 4; ++i)
 	{
-		if (m_strItemQuickSlot[i].empty()) continue;
-		const auto* definition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
-		if (!definition || definition->strIconPath.empty()) continue;
-		const auto& inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
-		const auto owned = std::find_if(inventory.begin(), inventory.end(), [&](const auto& item)
-		{
-			return item.strItemId == m_strItemQuickSlot[i] &&
-				item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE;
-		});
+		if (m_strItemQuickSlot[i].empty())
+			continue;
+		const auto *definition = CItemCatalog::Find_ById(m_strItemQuickSlot[i]);
+		if (!definition || definition->strIconPath.empty())
+			continue;
+		const auto &inventory = CCombatHUDViewModel::Get().Get_Inventory().Items;
+		const auto owned = std::find_if(inventory.begin(), inventory.end(),
+										[&](const auto &item)
+										{
+											return item.strItemId == m_strItemQuickSlot[i] &&
+												   item.eEquippedSlot == LostArk::Shared::EQUIPMENT_SLOT::NONE;
+										});
 		const wstring quantity = std::to_wstring(owned != inventory.end() ? owned->iQuantity : 0u);
 		f32_t x, y, width, height;
-		if (!m_pHUDRuntimeView->Get_SlotRect("Item_" + std::to_string(i + 1), x, y, width, height)) continue;
+		if (!m_pHUDRuntimeView->Get_SlotRect("Item_" + std::to_string(i + 1), x, y, width, height))
+			continue;
 		const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YG330"), quantity.c_str());
-		if (measured.y <= 0.f) continue;
+		if (measured.y <= 0.f)
+			continue;
 		const f32_t scale = (11.f / measured.y) * textUiScale;
 		const float2_t position((x + width - 2.f) * textScaleX, (y + height - 2.f) * textScaleY);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(),
-			float2_t(position.x + 1.f, position.y + 1.f), XMVectorSet(0.f, 0.f, 0.f, 0.85f),
-			0.f, float2_t(1.f, 1.f), scale);
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(), position,
-			Colors::White, 0.f, float2_t(1.f, 1.f), scale);
+									   float2_t(position.x + 1.f, position.y + 1.f), XMVectorSet(0.f, 0.f, 0.f, 0.85f),
+									   0.f, float2_t(1.f, 1.f), scale);
+		CGameInstance::Get().Draw_Text(TEXT("Font_YG330"), quantity.c_str(), position, Colors::White, 0.f,
+									   float2_t(1.f, 1.f), scale);
 	}
 
-	/* Texts the HUD update pass queued this frame: item/special slot cooldown seconds and
-	the vehicle Q/W/E, remaining seconds under each buff / debuff (Shared_BuffSlot_Common
-	cooldownText: YG760 10 px, #9BD979 for a buff, #E2C87A for a debuff, centred under the
-	icon). Vehicle-mode slots are excluded from the class loop above, so nothing doubles. */
+	// 이번 HUD 갱신에서 모은 아이템·특수 슬롯·탈것·버프의 종료 tick을 초로 올림해 표시한다.
+	// bUnderSlot은 아이콘 아래 숫자만 그리며 버프/디버프 색을 나누고, 나머지는 중앙에 s 접미사를 붙인다.
+	// 이 목록을 그린 뒤에도 아래 별도 분기의 쿠크 또는 직업 스킬 글자 처리가 이어진다.
 	constexpr f32_t BUFF_TEXT_PX = 10.f * (2.f / 3.f);
 	const fvector_t vBuffText = XMVectorSet(155.f / 255.f, 217.f / 255.f, 121.f / 255.f, 1.f);
 	const fvector_t vDebuffText = XMVectorSet(226.f / 255.f, 200.f / 255.f, 122.f / 255.f, 1.f);
-	for (const HUD_TIMED_TEXT& Text : m_HudTimedTexts)
+	for (const HUD_TIMED_TEXT &Text : m_HudTimedTexts)
 	{
 		if (Text.iEndTick <= player.iServerTick)
 			continue;
 		f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 		if (!m_pHUDRuntimeView->Get_SlotRect(Text.strSlotId, fX, fY, fWidth, fHeight))
 			continue;
-		const int32_t iSeconds = static_cast<int32_t>(std::ceil(
-			static_cast<f32_t>(Text.iEndTick - player.iServerTick) / SERVER_TICK_HZ));
+		const int32_t iSeconds =
+			static_cast<int32_t>(std::ceil(static_cast<f32_t>(Text.iEndTick - player.iServerTick) / SERVER_TICK_HZ));
 		const wstring strSeconds = std::to_wstring(iSeconds) + (Text.bUnderSlot ? L"" : L"s");
 		if (!Text.bUnderSlot)
 		{
@@ -8743,38 +8578,40 @@ void CMainApp::RenderSkillCooldownText()
 		f32_t fScale = 1.f;
 		const wstring_t strFont = UILabelFont::Resolve(TEXT("Font_YG760"), BUFF_TEXT_PX * textUiScale, fScale);
 		const float2_t vMeasured = CGameInstance::Get().Measure_Text(strFont, strSeconds.c_str());
-		const float2_t vPosition(
-			std::round((fX + fWidth * 0.5f) * textScaleX - vMeasured.x * fScale * 0.5f),
-			std::round((fY + fHeight) * textScaleY + 1.f));
+		const float2_t vPosition(std::round((fX + fWidth * 0.5f) * textScaleX - vMeasured.x * fScale * 0.5f),
+								 std::round((fY + fHeight) * textScaleY + 1.f));
 		CGameInstance::Get().Draw_Text(strFont, strSeconds.c_str(), float2_t(vPosition.x + 1.f, vPosition.y + 1.f),
-			XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
-		CGameInstance::Get().Draw_Text(strFont, strSeconds.c_str(), vPosition,
-			Text.bDebuff ? vDebuffText : vBuffText, 0.f, float2_t(0.f, 0.f), fScale);
+									   XMVectorSet(0.f, 0.f, 0.f, 0.75f), 0.f, float2_t(0.f, 0.f), fScale);
+		CGameInstance::Get().Draw_Text(strFont, strSeconds.c_str(), vPosition, Text.bDebuff ? vDebuffText : vBuffText,
+									   0.f, float2_t(0.f, 0.f), fScale);
 	}
 
+	// 쿠크 특수 HUD가 유효하면 해당 모드에서 보이는 칸만 표시한 뒤 반환해 일반 직업 스킬 숫자를 생략한다.
 	const auto kouku = CCombatHUDViewModel::Get().Get_KoukuGimmick();
-	if (kouku.isValid && kouku.eHudMode != HUD_KOUKU_HUD_MODE::NONE &&
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (kouku.isValid && kouku.eHudMode != HUD_KOUKU_HUD_MODE::NONE && currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		for (std::size_t i = 0; i < HUD_KOUKU_SLOT_COUNT; ++i)
 		{
-			if (!kouku.Has_VisibleSkillSlot(i) || kouku.CooldownEndTicks[i] <= player.iServerTick) continue;
+			if (!kouku.Has_VisibleSkillSlot(i) || kouku.CooldownEndTicks[i] <= player.iServerTick)
+				continue;
 			float x, y, width, height;
-			if (m_pHUDRuntimeView->Get_SlotRect(std::string("Skill_") + KOUKU_SLOT_KEYS[i] + "_Icon", x, y, width, height))
+			if (m_pHUDRuntimeView->Get_SlotRect(std::string("Skill_") + KOUKU_SLOT_KEYS[i] + "_Icon", x, y, width,
+												height))
 			{
-				const auto seconds = static_cast<unsigned>(std::ceil((kouku.CooldownEndTicks[i] - player.iServerTick) / SERVER_TICK_HZ));
+				const auto seconds =
+					static_cast<unsigned>(std::ceil((kouku.CooldownEndTicks[i] - player.iServerTick) / SERVER_TICK_HZ));
 				DrawCooldownLabel(x + width * .5f, y + height * .5f, height * .34f, std::to_wstring(seconds) + L"s");
 			}
 		}
 		return;
 	}
 
-	for (const HUD_SKILL_STATE& Skill : player.Skills)
+	for (const HUD_SKILL_STATE &Skill : player.Skills)
 	{
 		if (Skill.strInputSlot.empty() || Skill.Is_Ready(player.iServerTick))
 			continue;
-		const uint32_t remainingTicks = Skill.iCooldownEndTick > player.iServerTick ?
-			Skill.iCooldownEndTick - player.iServerTick : 0u;
+		const uint32_t remainingTicks =
+			Skill.iCooldownEndTick > player.iServerTick ? Skill.iCooldownEndTick - player.iServerTick : 0u;
 		if (0u == remainingTicks)
 			continue;
 		const f32_t fRemainingSeconds = static_cast<f32_t>(remainingTicks) / SERVER_TICK_HZ;
@@ -8783,20 +8620,15 @@ void CMainApp::RenderSkillCooldownText()
 
 		if ("Z" == Skill.strInputSlot || "X" == Skill.strInputSlot)
 		{
-			/* Artist's Z/X slots are real ARKNewSlot instances with a real cooldownText
-			TextField sub-component (yinYangShiSlot symbol 343, depth15, "cooldownText") -- just
-			the countdown number, no generic pie (Artist's own keyframed wipe already covers
-			that). Warlord's Z/X badge swap has no number in the source, same as before. */
+			// Z/X의 숫자는 도화가만 표시한다. 워로드 등 다른 직업은 이 분기에서 숫자를 건너뛰며 일반 arc overlay도 추가하지 않는다.
 			if (LostArk::Shared::CHARACTER_CLASS_ID::ARTIST != player.eCharacterClass)
 				continue;
 			f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
-			if (!m_pHUDRuntimeView->Get_SlotRect(
-				"Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
+			if (!m_pHUDRuntimeView->Get_SlotRect("Yin_Skill_" + Skill.strInputSlot, fX, fY, fWidth, fHeight))
 			{
 				continue;
 			}
-			/* Same 22.5-reference-px anchor box the old draw used (the slot's own rect is a
-			placeholder; the real art size lives in the keyframe document). */
+			// 도화가의 숫자 위치는 슬롯 시작점에 22.5 기준 픽셀 상자를 적용한다. 슬롯의 width·height 대신 기존 전용 표시 크기를 사용한다.
 			DrawCooldownLabel(fX + 22.5f * 0.5f, fY + 22.5f * 0.5f, 22.5f * 0.34f, strLabel);
 			continue;
 		}
@@ -8807,155 +8639,190 @@ void CMainApp::RenderSkillCooldownText()
 		DrawCooldownLabel(fX + fWidth * 0.5f, fY + fHeight * 0.5f, fHeight * 0.34f, strLabel);
 	}
 }
-
+// 보스 HUD를 닫을 때 mechanic 표시 허용·머리 anchor를 먼저 해제하고 지정된 보스 슬롯을 숨긴다.
+// WorldHealthBarView의 개별 배우 체력바나 다른 HUD의 visible 상태까지 바꾸는 함수는 아니다.
 void CMainApp::Hide_BossHealthBar()
 {
 	m_bMechanicBarUIAllowed = false;
 	m_bMechanicBarHasHeadAnchor = false;
 	if (nullptr == m_pBossUIView)
 		return;
-	constexpr const char_t* BOSS_UI_ALL_SLOTS[] = {
-		"Boss_Frame", "Boss_FillBehind", "Boss_Fill", "Boss_StaggerBg", "Boss_StaggerFill",
-		"Boss_StaggerTrack", "Boss_Separator", "Boss_TickFlash", "Boss_HitGlow",
-		/* Position-only markers for the labels RenderBossHealthBarText draws. They carry real
-		boss_text_placeholder.png art that the old manual draw path never submitted, so unlike a
-		marker with no layer they have a CUI_Sprite of their own and would otherwise sit on
-		screen permanently -- LEVEL::STATIC keeps them across every Level, including Character
-		Select and Lobby. Nothing ever shows these. */
-		"Boss_TitleText", "Boss_HPText", "Boss_BarCountText",
+	constexpr const char_t *BOSS_UI_ALL_SLOTS[] = {
+		"Boss_Frame",
+		"Boss_FillBehind",
+		"Boss_Fill",
+		"Boss_StaggerBg",
+		"Boss_StaggerFill",
+		"Boss_StaggerTrack",
+		"Boss_Separator",
+		"Boss_TickFlash",
+		"Boss_HitGlow",
+		// 텍스트 위치용 슬롯도 이미지가 연결되어 있으면 자체 sprite를 가진다.
+		// STATIC Layer에 남는 이 슬롯들을 함께 숨겨 Lobby 등 다음 화면에 placeholder 이미지가 남지 않게 한다. 글자는 별도 텍스트 함수가 그린다.
+		"Boss_TitleText",
+		"Boss_HPText",
+		"Boss_BarCountText",
 	};
-	for (const char_t* pSlotId : BOSS_UI_ALL_SLOTS)
+	for (const char_t *pSlotId : BOSS_UI_ALL_SLOTS)
 		m_pBossUIView->Set_SlotVisible(pSlotId, false);
 }
 
-
+// Debug 위치 편집기가 현재 미리보기 offset을 값으로 받는다. 저장 완료 기준은 별도의 Saved 배열이 보관한다.
 std::array<f32_t, 12> CMainApp::Get_HealthBarPositions() const
 {
 	return m_HealthBarOffsets;
 }
 
-bool_t CMainApp::Set_HealthBarPositions(const std::array<f32_t, 12>& offsets)
+// 공통 mechanic X/Y와 아군·적·쿠크세이튼·쿠크·발탄의 X/Y offset을 검사해 미리보기에 적용한다.
+// 모든 값은 HUD 기준 좌표이며 유한한 ±1280 범위만 받는다. 입력 실패는 기존 배열을 유지하고 파일 저장은 별도 Save가 수행한다.
+bool_t CMainApp::Set_HealthBarPositions(const std::array<f32_t, 12> &offsets)
 {
 	for (const f32_t value : offsets)
-		if (!std::isfinite(value) || std::abs(value) > 1280.f) return false;
+		if (!std::isfinite(value) || std::abs(value) > 1280.f)
+			return false;
+	// 배열0/1은 mechanic용이며 뒤의 다섯 X/Y 쌍을 월드 체력바 view에 전달한다. 두 계층은 같은 finite·범위 검사를 사용한다.
 	m_HealthBarOffsets = offsets;
 	if (m_pWorldHealthBarView)
 	{
 		std::array<float2_t, 5> groups{};
-		for (size_t i = 0u; i < groups.size(); ++i) groups[i] = float2_t(offsets[2u + i * 2u], offsets[3u + i * 2u]);
+		for (size_t i = 0u; i < groups.size(); ++i)
+			groups[i] = float2_t(offsets[2u + i * 2u], offsets[3u + i * 2u]);
 		(void)m_pWorldHealthBarView->Set_Offsets(groups);
 	}
 	Apply_MechanicBarRect();
 	return true;
 }
 
+// 위치 편집기에 공통 mechanic의 가로·세로 배율을 값으로 반환한다. 발탄 전용 배율은 별도 tuning 배열에 있다.
 std::array<f32_t, 2> CMainApp::Get_MechanicBarScale() const
 {
 	return m_MechanicBarScale;
 }
 
-bool_t CMainApp::Set_MechanicBarScale(const std::array<f32_t, 2>& scale)
+// 공통 mechanic의 두 축 배율을 0.1~3 범위에서 적용한다. 발탄 보스일 때 실제 rect는 발탄 전용 tuning을 사용한다.
+bool_t CMainApp::Set_MechanicBarScale(const std::array<f32_t, 2> &scale)
 {
 	for (const f32_t value : scale)
-		if (!std::isfinite(value) || value < 0.1f || value > 3.f) return false;
+		if (!std::isfinite(value) || value < 0.1f || value > 3.f)
+			return false;
 	m_MechanicBarScale = scale;
 	Apply_MechanicBarRect();
 	return true;
 }
 
-bool_t CMainApp::Set_ValtanMechanicTuning(const std::array<f32_t, 8>& tuning)
+// 발탄 무력화와 갑옷 파괴 표시의 offset X/Y·배율 X/Y 두 묶음을 검사해 보관한다.
+// 무력화 rect는 즉시 갱신하고 갑옷 파괴 값은 Update_WorldHealthBars가 별도 view에 전달한다.
+bool_t CMainApp::Set_ValtanMechanicTuning(const std::array<f32_t, 8> &tuning)
 {
 	for (size_t i = 0u; i < tuning.size(); ++i)
 		if (!std::isfinite(tuning[i]) ||
-			(i % 4u < 2u ? std::abs(tuning[i]) > 1280.f : tuning[i] < 0.1f || tuning[i] > 3.f)) return false;
+			(i % 4u < 2u ? std::abs(tuning[i]) > 1280.f : tuning[i] < 0.1f || tuning[i] > 3.f))
+			return false;
 	m_ValtanMechanicTuning = tuning;
 	Apply_MechanicBarRect();
 	return true;
 }
 
+// 현재 보스가 발탄인지에 따라 배치 값을 골라 보관한 기본 rect에서 mechanic 슬롯을 재계산한다.
+// view 또는 기본 rect가 없으면 표시를 바꾸지 않는다. 이 함수는 배치만 갱신하며 visible 여부는 anchor 갱신이 결정한다.
 void CMainApp::Apply_MechanicBarRect()
 {
-	if (!m_pBossUIView) return;
+	if (!m_pBossUIView)
+		return;
 	const bool valtan = IsValtanBossArchetype(CCombatHUDViewModel::Get().Get_Boss().strArchetypeId);
-	const std::array<f32_t, 2> scale = valtan ?
-		std::array<f32_t, 2>{ m_ValtanMechanicTuning[2], m_ValtanMechanicTuning[3] } : m_MechanicBarScale;
-	const float2_t offset = valtan ? float2_t(m_ValtanMechanicTuning[0], m_ValtanMechanicTuning[1]) :
-		float2_t(m_HealthBarOffsets[0], m_HealthBarOffsets[1]);
+	const std::array<f32_t, 2> scale =
+		valtan ? std::array<f32_t, 2>{m_ValtanMechanicTuning[2], m_ValtanMechanicTuning[3]} : m_MechanicBarScale;
+	const float2_t offset = valtan ? float2_t(m_ValtanMechanicTuning[0], m_ValtanMechanicTuning[1])
+								   : float2_t(m_HealthBarOffsets[0], m_HealthBarOffsets[1]);
 	float2_t center{}, placementCenter{};
 	bool hasCenter = false;
 	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
 		if (m_MechanicBarHasBase[i])
 		{
-			const auto& base = m_MechanicBarBaseRects[i];
+			const auto &base = m_MechanicBarBaseRects[i];
 			center = float2_t(base.x + base.z * 0.5f, base.y + base.w * 0.5f);
-			// Like the health bar, keep the complete frame 3 reference pixels above the head.
-			placementCenter = m_bMechanicBarHasHeadAnchor ? float2_t(m_MechanicBarHeadAnchor.x,
-				m_MechanicBarHeadAnchor.y - 3.f - base.w * scale[1] * 0.5f) : center;
+			// 머리 anchor가 있으면 확대 후 frame 전체가 머리보다 기준 좌표 3만큼 위에 오도록 중심을 배치한다.
+			placementCenter =
+				m_bMechanicBarHasHeadAnchor
+					? float2_t(m_MechanicBarHeadAnchor.x, m_MechanicBarHeadAnchor.y - 3.f - base.w * scale[1] * 0.5f)
+					: center;
 			hasCenter = true;
 			break;
 		}
-	if (!hasCenter) return;
-	// Scale the authored group about its frame center; never reuse a resized runtime rect.
+	if (!hasCenter)
+		return;
+	// 보관한 저작 rect를 첫 유효 frame의 중심 주위로 확대한다. 이미 조절한 runtime rect를 재사용해 크기가 누적되지 않게 한다.
 	for (size_t i = 0u; i < m_MechanicBarBaseRects.size(); ++i)
 		if (m_MechanicBarHasBase[i])
 		{
-			const auto& base = m_MechanicBarBaseRects[i];
-			m_pBossUIView->Set_SlotRect(HUD_MECHANIC_SLOTS[i],
-				placementCenter.x + (base.x - center.x) * scale[0] + offset.x,
-				placementCenter.y + (base.y - center.y) * scale[1] + offset.y,
-				base.z * scale[0], base.w * scale[1]);
+			const auto &base = m_MechanicBarBaseRects[i];
+			m_pBossUIView->Set_SlotRect(
+				HUD_MECHANIC_SLOTS[i], placementCenter.x + (base.x - center.x) * scale[0] + offset.x,
+				placementCenter.y + (base.y - center.y) * scale[1] + offset.y, base.z * scale[0], base.w * scale[1]);
 		}
 }
 
+// Update 끝에서 현재 카메라와 배우 presentation으로 mechanic 막대의 머리 기준 위치를 다시 구한다.
+// 먼저 세 슬롯을 숨겨 투영·상태 검사 실패 시 이전 위치의 막대가 남지 않게 한다. 위치 정보가 없는 보스는 저작 배치를 사용한다.
 void CMainApp::Update_MechanicBarAnchor()
 {
-	if (!m_pBossUIView) return;
-	const auto hide = [&]() {
-		for (const auto* slot : HUD_MECHANIC_SLOTS) m_pBossUIView->Set_SlotVisible(slot, false);
+	if (!m_pBossUIView)
+		return;
+	const auto hide = [&]()
+	{
+		for (const auto *slot : HUD_MECHANIC_SLOTS)
+			m_pBossUIView->Set_SlotVisible(slot, false);
 	};
 	m_bMechanicBarHasHeadAnchor = false;
 	hide();
-	const auto& hud = CCombatHUDViewModel::Get();
-	const auto& boss = hud.Get_Boss();
+	const auto &hud = CCombatHUDViewModel::Get();
+	const auto &boss = hud.Get_Boss();
 	using KIND = LostArk::Shared::BOSS_MECHANIC_GAUGE_KIND;
+	// 발탄 Debug 미리보기는 유효하고 살아 있는 보스가 필요하지만 mechanic 종류·최대치 검사는 생략하고 비율0.65를 사용한다.
 	const bool preview = m_bValtanStaggerDebug && IsValtanBossArchetype(boss.strArchetypeId) &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA);
+						 CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA);
 	if (!m_bMechanicBarUIAllowed || Is_RuntimeUIScreenSuppressed() || Is_KoukuMinigameHUDHidden() ||
 		Is_MvpResultPageOpen() || !boss.isValid || !boss.iCurrentHp ||
 		(!preview && (!boss.iMaximumMechanicGauge ||
-		(boss.eMechanicGaugeKind != KIND::STAGGER && boss.eMechanicGaugeKind != KIND::BOSS_HP))))
+					  (boss.eMechanicGaugeKind != KIND::STAGGER && boss.eMechanicGaugeKind != KIND::BOSS_HP))))
 		return;
+	// 위치가 있는 보스는 같은 entity의 살아 있는 비player 표시 상태를 찾는다. weak presentation으로 머리 위치를 구하지 못하면 숨긴 상태를 유지한다.
 	if (boss.hasPosition)
 	{
-		const auto& states = hud.Get_WorldHealthBars();
-		const auto state = std::find_if(states.begin(), states.end(), [&](const auto& value) {
-			return !value.isPlayer && value.iNetEntityId == boss.iNetEntityId && value.iCurrentHp > 0u;
-		});
-		if (state == states.end() || boss.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID) return;
-		auto& game = CGameInstance::Get();
-		const auto* view = game.Get_Transform(D3DTS::VIEW);
-		const auto* projection = game.Get_Transform(D3DTS::PROJ);
+		const auto &states = hud.Get_WorldHealthBars();
+		const auto state = std::find_if(
+			states.begin(), states.end(), [&](const auto &value)
+			{ return !value.isPlayer && value.iNetEntityId == boss.iNetEntityId && value.iCurrentHp > 0u; });
+		if (state == states.end() || boss.iNetEntityId == LostArk::Shared::INVALID_NET_ENTITY_ID)
+			return;
+		auto &game = CGameInstance::Get();
+		const auto *view = game.Get_Transform(D3DTS::VIEW);
+		const auto *projection = game.Get_Transform(D3DTS::PROJ);
 		const auto viewport = game.Get_ViewportSize();
 		float3_t head{};
 		float2_t screen{};
 		if (!view || !projection || !CWorldHealthBarView::Try_GetHeadAnchor(*state, head) ||
 			!CWorldPlayerNameplateView::Try_ProjectWorldPosition(head, *view, *projection, viewport, screen))
 			return;
+		// 투영 결과의 화면 픽셀 좌표를 Boss UI 문서의 기준 해상도로 바꾸어 저장한다.
 		m_MechanicBarHeadAnchor = float2_t(screen.x * m_pBossUIView->Get_ResolutionWidth() / viewport.x,
-			screen.y * m_pBossUIView->Get_ResolutionHeight() / viewport.y);
+										   screen.y * m_pBossUIView->Get_ResolutionHeight() / viewport.y);
 		m_bMechanicBarHasHeadAnchor = true;
 	}
 	Apply_MechanicBarRect();
-	const f32_t ratio = preview ? 0.65f :
-		static_cast<f32_t>((std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
-		static_cast<f32_t>(boss.iMaximumMechanicGauge);
+	const f32_t ratio = preview
+							? 0.65f
+							: static_cast<f32_t>((std::min)(boss.iCurrentMechanicGauge, boss.iMaximumMechanicGauge)) /
+								  static_cast<f32_t>(boss.iMaximumMechanicGauge);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerBg", true);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerTrack", false);
 	m_pBossUIView->Set_SlotFillRatio("Boss_StaggerFill", ratio);
 	m_pBossUIView->Set_SlotVisible("Boss_StaggerFill", ratio > 0.f);
 }
 
-bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
+// Debug 편집기가 디스크의 공통·발탄 체력바 배치를 다시 읽는다. 세 배열을 함께 검증한 뒤 미리보기와 Saved 기준을 갱신한다.
+// 읽기·파싱·검증 실패는 현재 미리보기와 저장 기준을 유지하며 status로 이유를 반환한다.
+bool_t CMainApp::Reload_HealthBarPositions(std::string &status)
 {
 	std::string text, error;
 	DATA_JSON_VALUE root;
@@ -8964,7 +8831,10 @@ bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
 	std::array<f32_t, 8> stagedValtan{};
 	if (!ReadHudBarText(CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json"), text) ||
 		!CDataJson::Parse(text, root, error) || !ReadHudBarPositions(root, staged, stagedScale, stagedValtan))
-	{ status = "Invalid health bar positions; current preview preserved. " + error; return false; }
+	{
+		status = "Invalid health bar positions; current preview preserved. " + error;
+		return false;
+	}
 	(void)Set_HealthBarPositions(staged);
 	(void)Set_MechanicBarScale(stagedScale);
 	m_SavedHealthBarOffsets = staged;
@@ -8975,22 +8845,41 @@ bool_t CMainApp::Reload_HealthBarPositions(std::string& status)
 	return true;
 }
 
-bool_t CMainApp::Save_HealthBarPositions(std::string& status)
+// Debug 저장 명령이 현재 미리보기에서 바꾼 field만 최신 디스크 문서에 병합한다.
+// 같은 field의 외부 변경은 거절하고 무관한 값은 최신 문서에서 보존한다. 성공 뒤에만 미리보기·Saved 기준을 갱신한다.
+// 교체 뒤 경합 감지는 자기 저장본이 남아 있을 때 복구를 시도하지만 복구 API의 성공을 보장하지 않는다.
+bool_t CMainApp::Save_HealthBarPositions(std::string &status)
 {
 	const std::filesystem::path path = CProjectDataRoot::Resolve(L"UI/KoukuSaydon/KoukuHudModes.json");
-	// Share the document's existing madness-position lock, including saves from other clients.
+	// 다른 Client의 광기 위치 저장과 같은 문서 잠금 파일을 사용한다. 공유 모드0으로 연 handle을 함수 끝까지 유지한다.
 	const std::filesystem::path lockPath = path.wstring() + L".madness-position.lock";
-	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0u, nullptr,
-		OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
-	if (lock == INVALID_HANDLE_VALUE) { status = "HUD position save is already in progress."; return false; }
-	struct LOCK_GUARD { HANDLE handle; ~LOCK_GUARD() { CloseHandle(handle); } } guard{ lock };
+	const HANDLE lock = CreateFileW(lockPath.c_str(), GENERIC_READ | GENERIC_WRITE, 0u, nullptr, OPEN_ALWAYS,
+									FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+	if (lock == INVALID_HANDLE_VALUE)
+	{
+		status = "HUD position save is already in progress.";
+		return false;
+	}
+	struct LOCK_GUARD
+	{
+		HANDLE handle;
+		~LOCK_GUARD()
+		{
+			CloseHandle(handle);
+		}
+	} guard{lock};
 	std::string before, error;
 	DATA_JSON_VALUE root;
 	std::array<f32_t, 12> saved{};
 	std::array<f32_t, 2> savedScale{};
 	std::array<f32_t, 8> savedValtan{};
-	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) || !ReadHudBarPositions(root, saved, savedScale, savedValtan))
-	{ status = "HUD configuration could not be read; disk and preview preserved. " + error; return false; }
+	if (!ReadHudBarText(path, before) || !CDataJson::Parse(before, root, error) ||
+		!ReadHudBarPositions(root, saved, savedScale, savedValtan))
+	{
+		status = "HUD configuration could not be read; disk and preview preserved. " + error;
+		return false;
+	}
+	// 저장 기준과 미리보기를 비교해 사용자가 바꾼 field를 찾는다. 해당 field의 디스크 값도 저장 기준과 달라졌으면 충돌로 중단한다.
 	std::array<bool, 12> changed{};
 	bool anyChanged = false;
 	for (size_t i = 0u; i < changed.size(); ++i)
@@ -8998,7 +8887,10 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 		changed[i] = m_HealthBarOffsets[i] != m_SavedHealthBarOffsets[i];
 		anyChanged |= changed[i];
 		if (changed[i] && saved[i] != m_SavedHealthBarOffsets[i])
-		{ status = "Edited position field changed on disk. Reload saved positions before saving; preview preserved."; return false; }
+		{
+			status = "Edited position field changed on disk. Reload saved positions before saving; preview preserved.";
+			return false;
+		}
 	}
 	std::array<bool, 2> scaleChanged{};
 	for (size_t i = 0u; i < scaleChanged.size(); ++i)
@@ -9006,7 +8898,10 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 		scaleChanged[i] = m_MechanicBarScale[i] != m_SavedMechanicBarScale[i];
 		anyChanged |= scaleChanged[i];
 		if (scaleChanged[i] && savedScale[i] != m_SavedMechanicBarScale[i])
-		{ status = "Edited stagger size field changed on disk. Reload before saving; preview preserved."; return false; }
+		{
+			status = "Edited stagger size field changed on disk. Reload before saving; preview preserved.";
+			return false;
+		}
 	}
 	std::array<bool, 8> valtanChanged{};
 	for (size_t i = 0u; i < valtanChanged.size(); ++i)
@@ -9014,50 +8909,83 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 		valtanChanged[i] = m_ValtanMechanicTuning[i] != m_SavedValtanMechanicTuning[i];
 		anyChanged |= valtanChanged[i];
 		if (valtanChanged[i] && savedValtan[i] != m_SavedValtanMechanicTuning[i])
-		{ status = "Edited Valtan HUD field changed on disk. Reload before saving; preview preserved."; return false; }
+		{
+			status = "Edited Valtan HUD field changed on disk. Reload before saving; preview preserved.";
+			return false;
+		}
 	}
+	// 로컬 편집이 없으면 파일을 쓰지 않고 현재 디스크의 배치를 미리보기와 저장 기준으로 받아들인다.
 	if (!anyChanged)
 	{
-		(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
-		(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
-		(void)Set_ValtanMechanicTuning(savedValtan); m_SavedValtanMechanicTuning = savedValtan;
+		(void)Set_HealthBarPositions(saved);
+		m_SavedHealthBarOffsets = saved;
+		(void)Set_MechanicBarScale(savedScale);
+		m_SavedMechanicBarScale = savedScale;
+		(void)Set_ValtanMechanicTuning(savedValtan);
+		m_SavedValtanMechanicTuning = savedValtan;
 		status = "No edits; refreshed health bar positions and stagger size from disk.";
 		return true;
 	}
+	// 최신 문서의 전체 object를 복사하고 변경한 배치 field만 교체한다. 빠진 알려진 key에는 검증된 기본값을 채운다.
 	auto fields = root.Get_Object();
-	const auto* previous = root.Find("healthBarPositions");
+	const auto *previous = root.Find("healthBarPositions");
 	auto positions = previous ? previous->Get_Object() : DATA_JSON_VALUE::OBJECT{};
 	for (size_t i = 0u; i < changed.size(); ++i)
 		if (changed[i] || !positions.contains(HUD_BAR_POSITION_KEYS[i]))
-			positions[HUD_BAR_POSITION_KEYS[i]] = DATA_JSON_VALUE::Number(changed[i] ? m_HealthBarOffsets[i] : saved[i]);
+			positions[HUD_BAR_POSITION_KEYS[i]] =
+				DATA_JSON_VALUE::Number(changed[i] ? m_HealthBarOffsets[i] : saved[i]);
 	for (size_t i = 0u; i < scaleChanged.size(); ++i)
 		if (scaleChanged[i] || !positions.contains(HUD_MECHANIC_SCALE_KEYS[i]))
-			positions[HUD_MECHANIC_SCALE_KEYS[i]] = DATA_JSON_VALUE::Number(scaleChanged[i] ? m_MechanicBarScale[i] : savedScale[i]);
+			positions[HUD_MECHANIC_SCALE_KEYS[i]] =
+				DATA_JSON_VALUE::Number(scaleChanged[i] ? m_MechanicBarScale[i] : savedScale[i]);
 	for (size_t i = 0u; i < valtanChanged.size(); ++i)
 		if (valtanChanged[i] || !positions.contains(HUD_VALTAN_MECHANIC_KEYS[i]))
-			positions[HUD_VALTAN_MECHANIC_KEYS[i]] = DATA_JSON_VALUE::Number(valtanChanged[i] ? m_ValtanMechanicTuning[i] : savedValtan[i]);
+			positions[HUD_VALTAN_MECHANIC_KEYS[i]] =
+				DATA_JSON_VALUE::Number(valtanChanged[i] ? m_ValtanMechanicTuning[i] : savedValtan[i]);
 	fields["healthBarPositions"] = DATA_JSON_VALUE::Object(std::move(positions));
 	std::ostringstream serialized;
 	serialized.imbue(std::locale::classic());
 	WriteHudBarJson(serialized, DATA_JSON_VALUE::Object(std::move(fields)));
 	const std::string after = serialized.str() + "\n";
+	// 직렬화한 문서를 다시 파싱·범위 검사한다. 검증된 세 배열은 저장 성공 뒤 반영할 최종 값이 된다.
 	DATA_JSON_VALUE verified;
 	if (!CDataJson::Parse(after, verified, error) || !ReadHudBarPositions(verified, saved, savedScale, savedValtan))
-	{ status = "Position serialization rejected; disk and preview preserved."; return false; }
+	{
+		status = "Position serialization rejected; disk and preview preserved.";
+		return false;
+	}
+	// 원본 옆에 process·시각 접미사의 임시 파일과 백업 경로를 만든다. 이 코드는 파일 교체 전에 임시 본문을 flush하고 다시 읽는다.
 	const auto suffix = std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(GetTickCount64());
 	const std::filesystem::path temporary = path.wstring() + L".tmp." + suffix;
 	const std::filesystem::path backup = path.wstring() + L".backup." + suffix;
 	{
 		std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
-		stream.write(after.data(), static_cast<std::streamsize>(after.size())); stream.flush();
+		stream.write(after.data(), static_cast<std::streamsize>(after.size()));
+		stream.flush();
 		if (!stream.good())
-		{ stream.close(); DeleteFileW(temporary.c_str()); status = "Position temporary write failed; source preserved."; return false; }
+		{
+			stream.close();
+			DeleteFileW(temporary.c_str());
+			status = "Position temporary write failed; source preserved.";
+			return false;
+		}
 	}
+	// 임시 파일 byte가 예상과 같은지 확인하고 원본도 최초 읽은 byte와 대조한 뒤 ReplaceFileW로 교체한다.
+	// 잠금 규칙을 따르지 않는 외부 writer와의 경합은 교체 뒤 백업 대조로 한 번 더 검사한다.
 	std::string current;
 	if (!ReadHudBarText(temporary, current) || current != after || !ReadHudBarText(path, current) || current != before)
-	{ DeleteFileW(temporary.c_str()); status = "HUD source changed during save; disk and preview preserved."; return false; }
+	{
+		DeleteFileW(temporary.c_str());
+		status = "HUD source changed during save; disk and preview preserved.";
+		return false;
+	}
 	if (!ReplaceFileW(path.c_str(), temporary.c_str(), backup.c_str(), 0u, nullptr, nullptr))
-	{ DeleteFileW(temporary.c_str()); status = "Position atomic replace failed; backup preserved at " + backup.string(); return false; }
+	{
+		DeleteFileW(temporary.c_str());
+		status = "Position atomic replace failed; backup preserved at " + backup.string();
+		return false;
+	}
+	// 교체로 밀려난 백업이 최초 본문과 다르면 동시 저장으로 판단한다. 원본이 아직 자기 after인 경우에만 백업 복구를 시도하고 복구 자료를 남긴다.
 	std::string displaced;
 	if (!ReadHudBarText(backup, displaced) || displaced != before)
 	{
@@ -9069,48 +8997,57 @@ bool_t CMainApp::Save_HealthBarPositions(std::string& status)
 		status = "Concurrent HUD save detected; recovery files preserved beside source. Reload before retrying.";
 		return false;
 	}
-	(void)Set_HealthBarPositions(saved); m_SavedHealthBarOffsets = saved;
-	(void)Set_MechanicBarScale(savedScale); m_SavedMechanicBarScale = savedScale;
-	(void)Set_ValtanMechanicTuning(savedValtan); m_SavedValtanMechanicTuning = savedValtan;
+	(void)Set_HealthBarPositions(saved);
+	m_SavedHealthBarOffsets = saved;
+	(void)Set_MechanicBarScale(savedScale);
+	m_SavedMechanicBarScale = savedScale;
+	(void)Set_ValtanMechanicTuning(savedValtan);
+	m_SavedValtanMechanicTuning = savedValtan;
 	status = "Saved health bar positions and stagger size. Backup: " + backup.string();
 	return true;
 }
 
+// Update 끝에서 복제된 월드 체력바 목록을 값으로 복사해 view에 전달한다.
+// 쿠크 관전/연출 정책에 따라 숨길 player만 복사본에서 제거하고 실제 HUD snapshot이나 Server 상태는 바꾸지 않는다.
 void CMainApp::Update_WorldHealthBars(const f32_t fTimeDelta)
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.WorldHealthBars.Update");
 	if (nullptr == m_pWorldHealthBarView)
 		return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	const bool_t isSupportedLevel =
-		currentLevel == ETOUI(LEVEL::BERN) ||
-		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-		currentLevel == ETOUI(LEVEL::MAHARAKA) ||
-		currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
+	const bool_t isSupportedLevel = currentLevel == ETOUI(LEVEL::BERN) || currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+									currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+									currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
+									currentLevel == ETOUI(LEVEL::MAHARAKA) || currentLevel == ETOUI(LEVEL::COLOSSEUM) ||
+									currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA);
 	const bool_t characterPresentation = currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) &&
-		CLevel_CharacterSelect::Get_Active() && CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
-	const auto& hud = CCombatHUDViewModel::Get();
+										 CLevel_CharacterSelect::Get_Active() &&
+										 CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen();
+	const auto &hud = CCombatHUDViewModel::Get();
 	const auto gimmick = hud.Get_KoukuGimmick();
-	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
-	const auto* subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
-	const bool cardMazeActive = subject ? subject->eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE :
-		(LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
-		 LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode);
+	const auto *arena =
+		currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ? CLevel_KoukuSaydonArena::Get_Active() : nullptr;
+	const auto *subject = arena ? arena->Get_CameraPlayerSnapshot() : nullptr;
+	const bool cardMazeActive = subject ? subject->eKoukuHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE
+										: (LostArk::Shared::CARD_MAZE_ROLE::NONE != gimmick.eCardMazeRole ||
+										   LostArk::Shared::KOUKU_HUD_MODE::MAZE == hud.Get_Player().eKoukuHudMode);
+	// 표시할 목록은 복사본이다. camera subject가 있으면 그 subject의 쿠크 모드를 우선해 카드 미로 상태를 판단한다.
 	auto worldBars = hud.Get_WorldHealthBars();
-	if (arena) std::erase_if(worldBars, [arena](const auto& state) {
-		return state.isPlayer && !arena->Should_ShowPlayerWorldUI(state.iNetEntityId);
-	});
+	if (arena)
+		std::erase_if(worldBars, [arena](const auto &state)
+					  { return state.isPlayer && !arena->Should_ShowPlayerWorldUI(state.iNetEntityId); });
+	// 발탄 tuning의 뒤 네 값은 갑옷 파괴 표시가 소비한다. 화면 허용 여부와 카드 미로 상태는 view의 Update에 따로 전달한다.
 	(void)m_pWorldHealthBarView->Set_ValtanArmorBreakTuning(
 		float2_t(m_ValtanMechanicTuning[4], m_ValtanMechanicTuning[5]),
 		float2_t(m_ValtanMechanicTuning[6], m_ValtanMechanicTuning[7]),
 		m_bValtanArmorBreakDebug && currentLevel == ETOUI(LEVEL::VALTAN_ARENA));
 	m_pWorldHealthBarView->Update(fTimeDelta, worldBars,
-		isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation && !Is_MvpResultPageOpen(), cardMazeActive);
+								  isSupportedLevel && !Is_RuntimeUIScreenSuppressed() && !characterPresentation &&
+									  !Is_MvpResultPageOpen(),
+								  cardMazeActive);
 }
-
+// Update가 복제 보스 상태를 읽어 화면 고정 HP 막대와 피격 효과의 표시 값을 갱신한다.
+// 지원 Level·창 상태·snapshot 검사를 통과하지 못하면 보스 슬롯을 숨기고 mechanic 표시 허용도 해제한다. Server HP와 줄 수는 읽기만 한다.
 void CMainApp::Update_BossHealthBar()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.BossHealthBar.Update");
@@ -9121,68 +9058,49 @@ void CMainApp::Update_BossHealthBar()
 
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isSupportedLevel =
-		currentLevel == ETOUI(LEVEL::BERN) ||
-		currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
-		currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
-		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) ||
-		currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA);
-	const bool_t skillWindowOpen =
-		nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
-	/* Same reasoning as Update_ClassList's own gate -- the O-key raid-entry preview's left info
-	column/panel frame occupy this same screen region in Debug builds. */
+		currentLevel == ETOUI(LEVEL::BERN) || currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+		currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) || currentLevel == ETOUI(LEVEL::DEVELOPMENT) ||
+		currentLevel == ETOUI(LEVEL::CHARACTER_SELECT) || currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA);
+	const bool_t skillWindowOpen = nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open();
+	// Debug 레이드 입장 preview의 정보 패널이 보스 HUD 영역과 겹치므로 해당 화면의 열림 상태를 표시 조건에 포함한다.
 #ifdef _DEBUG
-	const bool_t isCharSelectDebugPreviewOpen =
-		ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
-		nullptr != CLevel_CharacterSelect::Get_Active() &&
-		CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
+	const bool_t isCharSelectDebugPreviewOpen = ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
+												nullptr != CLevel_CharacterSelect::Get_Active() &&
+												CLevel_CharacterSelect::Get_Active()->Is_DebugRaidEntryPreviewOpen();
 #else
 	const bool_t isCharSelectDebugPreviewOpen = false;
 #endif
-	/* The customizing screen is a full-screen product overlay on the same Level: the class
-	HUD chrome underneath has to stop drawing for it exactly the way it does for the Debug
-	raid-entry preview above. */
-	const bool_t isCharSelectOverlayOpen = isCharSelectDebugPreviewOpen ||
-		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel &&
-			nullptr != CLevel_CharacterSelect::Get_Active() &&
-			CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
+	// 캐릭터 생성·제품 presentation도 같은 Level 위의 화면이므로 보스 HUD를 함께 숨기는 조건에 포함한다.
+	const bool_t isCharSelectOverlayOpen =
+		isCharSelectDebugPreviewOpen ||
+		(ETOUI(LEVEL::CHARACTER_SELECT) == currentLevel && nullptr != CLevel_CharacterSelect::Get_Active() &&
+		 CLevel_CharacterSelect::Get_Active()->Is_ProductPresentationOpen());
 
-	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	const HUD_BOSS_STATE &boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!isSupportedLevel || skillWindowOpen || isCharSelectOverlayOpen || Is_KoukuBossHealthBarHidden() ||
-		Is_MvpResultPageOpen() ||
-		!boss.isValid || 0u == boss.iMaximumHp)
+		Is_MvpResultPageOpen() || !boss.isValid || 0u == boss.iMaximumHp)
 	{
 		Hide_BossHealthBar();
 		return;
 	}
 
-	/* Real Lost Ark raid bosses (Valtan: Data/Balance/BossProfiles.json maximumHealthBars=160)
-	don't show current/max HP as one continuous 0..100% bar -- total HP is split into
-	iMaximumHealthBars equal segments ("줄"), the single visible bar only ever shows the CURRENT
-	segment's own fill, and it resets to full and the count ticks down by one every time a segment
-	fully drains. iMaximumHp/iMaximumHealthBars segments of iCurrentHp is exact server data, not a
-	client guess -- this is just choosing how to lay the same numbers out visually. */
+	// Server의 최대 HP를 체력 줄 수로 나눠 현재 줄의 채움과 남은 줄 수를 구한다. 전투 HP는 바꾸지 않고 한 줄씩 줄어드는 보스 HUD로 표현한다.
 	const uint32_t iMaximumBars = (std::max)(1u, boss.iMaximumHealthBars);
-	const double segmentHp =
-		static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
+	const double segmentHp = static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
 	float healthRatio = 0.f;
 	uint32_t iBarsRemaining = 0u;
 	if (boss.iCurrentHp > 0u && segmentHp > 0.0)
 	{
 		const double scaledHp = static_cast<double>(boss.iCurrentHp) / segmentHp;
 		const double fraction = scaledHp - std::floor(scaledHp);
-		/* Exactly on a segment boundary (fraction == 0) means that segment is untouched and full,
-		not freshly emptied -- e.g. iCurrentHp == iMaximumHp must render as a full bar. */
+		// 줄 경계에 정확히 도달한 양수 HP는 다음 남은 줄이 가득 찬 상태다. 최대 HP일 때도 비율1로 표시한다.
 		healthRatio = static_cast<float>(0.0 == fraction ? 1.0 : fraction);
-		iBarsRemaining = (std::clamp)(
-			static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
+		iBarsRemaining = (std::clamp)(static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
 	}
 
-	/* Edge-detect against the previous frame's bars-remaining/HP to trigger the two real effects
-	below -- reset instead of comparing on a target swap, or the new boss's lower HP/bar-count would
-	read as damage taken against the old one. */
-	if (boss.strArchetypeId != m_strPreviousBossArchetypeId ||
-		boss.iMaximumHp != m_iPreviousBossMaximumHp)
+	// 직전 표시와 비교해 줄 감소·HP 감소 시각을 기록한다. archetype 또는 최대 HP가 바뀌면 비교 기준과 효과 시각을 초기화한다.
+	// 여기서는 entity ID까지 비교하지 않으므로 같은 archetype·최대 HP를 가진 다른 대상의 교체를 별도로 구분하지 않는다.
+	if (boss.strArchetypeId != m_strPreviousBossArchetypeId || boss.iMaximumHp != m_iPreviousBossMaximumHp)
 	{
 		m_strPreviousBossArchetypeId = boss.strArchetypeId;
 		m_iPreviousBossMaximumHp = boss.iMaximumHp;
@@ -9204,54 +9122,33 @@ void CMainApp::Update_BossHealthBar()
 		m_iPreviousBossCurrentHp = boss.iCurrentHp;
 	}
 
-	/* Position/size come from the HUD Layout Tool (F1) now, not derived SWF-trace math or any
-	combined/shared rect this code computes on its own -- every raw piece (frame, fill, stagger
-	background, stagger track) is its own independent slot in the "Boss UI" document
-	(m_pBossUIView), each defaulting to that resource's native pixel size, so the user places and
-	resizes each one by hand without this function deciding how they relate to each other. Nothing
-	to draw if the fill slot -- the one piece that actually needs to exist for the bar to mean
-	anything -- hasn't loaded. */
+	// Boss UI 문서의 슬롯별 위치·크기를 사용한다. HP 채움 슬롯을 찾지 못하면 보스 HUD를 숨긴다.
+	// 이 함수의 separator/flash/glow는 채움 rect에서 계산하며, mechanic 슬롯의 머리 배치는 별도 anchor 갱신이 맡는다.
 	f32_t fFillRectX = 0.f, fFillRectY = 0.f, fFillRectWidth = 0.f, fFillRectHeight = 0.f;
-	if (!m_pBossUIView->Get_SlotRect(
-		"Boss_Fill", fFillRectX, fFillRectY, fFillRectWidth, fFillRectHeight))
+	if (!m_pBossUIView->Get_SlotRect("Boss_Fill", fFillRectX, fFillRectY, fFillRectWidth, fFillRectHeight))
 	{
 		Hide_BossHealthBar();
 		return;
 	}
-	/* The HP frame stays visible while a live boss owns the health bar. The
-	mechanic frame has a separate Server gate below. */
+	// 위 표시 조건을 통과하면 HP frame을 켠다. 이 경로 자체는 현재 HP0을 거절하지 않으며 mechanic 막대는 별도 상태 검사를 거친다.
 	m_pBossUIView->Set_SlotVisible("Boss_Frame", true);
 
-	/* Real EFUI_STATUS pieces -- see Resources/UI/BossUI. The boss_bar_fill_* set are solid-color
-	bar rows cropped directly from targetstatus_loc_int_i2.dds's top cluster (square left edge,
-	tapered right point -- the same silhouette the real bar's shapeBounds gives, 485x28); drawn
-	inset and UV-clipped by healthRatio instead of stretched, so a partial bar shows the real art's
-	left portion, not a squished copy. Fill color cycles per bar segment, matching the real
-	ProgressMultiTrack.trackValue formula (trackValue % trackColorLength, 1-based, wrapping to the
-	length instead of 0) but with the 6 colors picked by hand from i2.dds's cluster --
-	teal/blue/purple/orange/red/green -- instead of the real SWF's own 7-color cycle
-	(white/translucent-red/black/gray rows explicitly excluded per direct instruction). */
-	constexpr const char* FILL_COLOR_CYCLE[] = {
-		"UI/BossUI/boss_bar_fill_teal.png",
-		"UI/BossUI/boss_bar_fill_blue.png",
-		"UI/BossUI/boss_bar_fill_purple.png",
-		"UI/BossUI/boss_bar_fill_orange.png",
-		"UI/BossUI/boss_bar_fill_red.png",
-		"UI/BossUI/boss_bar_fill_green.png",
+	// 현재 줄 수를 1부터 시작하는 여섯 색 순환 index로 바꾼다.
+	// 목록은 청록·파랑·보라·주황·빨강·초록이며 현재 줄의 이미지만 채움 비율로 자른다.
+	constexpr const char *FILL_COLOR_CYCLE[] = {
+		"UI/BossUI/boss_bar_fill_teal.png",	  "UI/BossUI/boss_bar_fill_blue.png", "UI/BossUI/boss_bar_fill_purple.png",
+		"UI/BossUI/boss_bar_fill_orange.png", "UI/BossUI/boss_bar_fill_red.png",  "UI/BossUI/boss_bar_fill_green.png",
 	};
-	constexpr uint32_t FILL_COLOR_COUNT =
-		static_cast<uint32_t>(sizeof(FILL_COLOR_CYCLE) / sizeof(FILL_COLOR_CYCLE[0]));
+	constexpr uint32_t FILL_COLOR_COUNT = static_cast<uint32_t>(sizeof(FILL_COLOR_CYCLE) / sizeof(FILL_COLOR_CYCLE[0]));
 	const uint32_t iColorCycleValue = (std::max)(1u, iBarsRemaining);
-	const uint32_t iColorIndex = ((iColorCycleValue % FILL_COLOR_COUNT == 0) ?
-		FILL_COLOR_COUNT : (iColorCycleValue % FILL_COLOR_COUNT)) - 1u;
+	const uint32_t iColorIndex =
+		((iColorCycleValue % FILL_COLOR_COUNT == 0) ? FILL_COLOR_COUNT : (iColorCycleValue % FILL_COLOR_COUNT)) - 1u;
 
 	m_pBossUIView->Set_SlotTexture("Boss_Fill", FILL_COLOR_CYCLE[iColorIndex]);
 	m_pBossUIView->Set_SlotFillRatio("Boss_Fill", healthRatio > 0.f ? healthRatio : 0.f);
 	m_pBossUIView->Set_SlotVisible("Boss_Fill", healthRatio > 0.f);
 
-	/* Reference-resolution equivalent of the old fillInset/fillMin/fillMax screen-pixel math --
-	CUILayoutRuntime's Set_SlotPosition/Set_SlotRect already apply m_fScaleX/Y themselves, so
-	these stay in the document's own units instead of re-deriving a viewport scale here. */
+	// separator와 효과 배치는 문서 기준 좌표에서 계산한다. 실제 화면 배율은 UI sprite 표시 경로가 처리하므로 여기서 다시 곱하지 않는다.
 	const f32_t fFillInset = 2.f;
 	const f32_t fFillMinX = fFillRectX + fFillInset;
 	const f32_t fFillMinY = fFillRectY + fFillInset;
@@ -9259,16 +9156,15 @@ void CMainApp::Update_BossHealthBar()
 	const f32_t fFillMaxY = fFillRectY + fFillRectHeight - fFillInset;
 	const f32_t fFillBoundaryX = fFillMinX + (fFillMaxX - fFillMinX) * healthRatio;
 
-	/* The area the current segment's fill hasn't reached yet isn't empty -- it's the next bar
-	segment's own color already sitting behind it, so draining the current segment reveals the
-	next one's color instead of a gap. Only the current segment (iColorIndex) is fill-ratio
-	clipped; this background is the (iBarsRemaining - 1) segment drawn full-width underneath. No
-	"next" color once the last bar is draining (iBarsRemaining == 1). */
+	// 두 줄 이상 남아 있으면 다음 줄의 색을 뒤쪽 슬롯으로 켠다. 마지막 한 줄과 HP0에서는 뒤쪽 슬롯을 숨긴다.
+	// 뒤쪽 슬롯의 위치·크기·채움 비율을 여기서 다시 설정하지는 않는다.
 	if (iBarsRemaining > 1u)
 	{
 		const uint32_t iNextColorCycleValue = iBarsRemaining - 1u;
-		const uint32_t iNextColorIndex = ((iNextColorCycleValue % FILL_COLOR_COUNT == 0) ?
-			FILL_COLOR_COUNT : (iNextColorCycleValue % FILL_COLOR_COUNT)) - 1u;
+		const uint32_t iNextColorIndex =
+			((iNextColorCycleValue % FILL_COLOR_COUNT == 0) ? FILL_COLOR_COUNT
+															: (iNextColorCycleValue % FILL_COLOR_COUNT)) -
+			1u;
 		m_pBossUIView->Set_SlotTexture("Boss_FillBehind", FILL_COLOR_CYCLE[iNextColorIndex]);
 		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", true);
 	}
@@ -9277,31 +9173,22 @@ void CMainApp::Update_BossHealthBar()
 		m_pBossUIView->Set_SlotVisible("Boss_FillBehind", false);
 	}
 
-	// The mechanic row samples its exact boss and final camera after the Level update.
-	// Its Server gauge values stay independent from this screen-fixed HP bar.
+	// mechanic 막대 갱신을 허용한다. 실제 보스 머리 위치·최종 카메라·Server mechanic 값은 Update 끝의 anchor 갱신에서 다시 검사한다.
+	// 화면에 고정된 HP 막대와 머리를 따라가는 mechanic 막대는 별도 배치 경로를 사용한다.
 	m_bMechanicBarUIAllowed = true;
 
-	/* User-supplied boundary marker (HP seperate Bar.png -- a tiny 3x15 soft cream vertical glow
-	line, not an EFUI_STATUS extraction) drawn at the current fill/empty edge, matching the real
-	Progress::mark concept (an edge indicator repositioned every update) this session couldn't
-	trace real art for earlier. Hidden exactly at 0%/100%, same as the real useAutoHideMark
-	behaviour, since there's no boundary to mark once the bar is fully empty or full. */
+	// 현재 줄이 일부만 찼을 때 채움 경계에 폭6의 separator를 놓는다. 비율0과1에서는 경계 표시를 숨긴다.
 	const bool_t bShowSeparator = healthRatio > 0.f && healthRatio < 1.f;
 	m_pBossUIView->Set_SlotVisible("Boss_Separator", bShowSeparator);
 	if (bShowSeparator)
 	{
 		constexpr f32_t SEPARATOR_HALF_WIDTH = 3.f;
-		m_pBossUIView->Set_SlotRect("Boss_Separator",
-			fFillBoundaryX - SEPARATOR_HALF_WIDTH, fFillMinY,
-			SEPARATOR_HALF_WIDTH * 2.f, fFillMaxY - fFillMinY);
+		m_pBossUIView->Set_SlotRect("Boss_Separator", fFillBoundaryX - SEPARATOR_HALF_WIDTH, fFillMinY,
+									SEPARATOR_HALF_WIDTH * 2.f, fFillMaxY - fFillMinY);
 	}
 
-	/* Real ProgressMultiTrack::updateTarget cross-fades a second "cloneTarget" fill instance --
-	same shape as the fill, colorTransform forced to solid white -- over the real fill whenever a
-	bar segment ticks over, instead of hard-cutting back to full. Approximated with a flat white
-	rect (no separate white-silhouette asset was extracted, same as before this migration) over
-	the same now-full fill area, fading out over the tween window real gaugeComplete() uses
-	(0.1-0.23s -- rounded up here since a flash reads as more of a blip at the real duration). */
+	// 줄 수가 감소한 뒤 0.3초 동안 채움 내부 rect의 흰 flash alpha를 선형으로 줄인다.
+	// 아래 분기는 색과 rect를 갱신하며 visible을 true로 되돌리는 호출은 포함하지 않는다.
 	bool_t bShowTickFlash = false;
 	if (m_dBossBarTickFlashStartSeconds >= 0.0)
 	{
@@ -9311,21 +9198,17 @@ void CMainApp::Update_BossHealthBar()
 		{
 			bShowTickFlash = true;
 			const f32_t fFlashAlpha = 1.f - static_cast<f32_t>(fFlashAge / BAR_TICK_FLASH_SECONDS);
-			m_pBossUIView->Set_SlotRect("Boss_TickFlash",
-				fFillMinX, fFillMinY, fFillMaxX - fFillMinX, fFillMaxY - fFillMinY);
-			/* This alpha IS the visibility while flashing -- Set_SlotVisible(true) would
-			clobber it back to fully opaque (it resets the tint to solid white). */
+			m_pBossUIView->Set_SlotRect("Boss_TickFlash", fFillMinX, fFillMinY, fFillMaxX - fFillMinX,
+										fFillMaxY - fFillMinY);
+			// Set_SlotAlpha는 RGB를 흰색으로 맞추고 alpha를 기록한다. 현재 CUI_Sprite의 Set_Visible과는 별개이므로 이미 숨긴 sprite를 이 호출만으로 다시 켜지지는 않는다.
 			m_pBossUIView->Set_SlotAlpha("Boss_TickFlash", (220.f / 255.f) * fFlashAlpha);
 		}
 	}
 	if (!bShowTickFlash)
 		m_pBossUIView->Set_SlotVisible("Boss_TickFlash", false);
 
-	/* Real Progress::updateMark positions a "mark" clip at the fill's own edge every update; its
-	symbol (character 732) is a 39-frame animated additive glow (grows ~1.0->1.5/3.0 scale, fades
-	~256->92 alpha) rather than a static line. No source art was traced for it, so this reuses
-	click_move_glow.dds (the ground click-move indicator's own soft radial glow) resized/faded to
-	approximate the same motion -- a real dedicated hit-glow asset would still be a closer match. */
+	// HP 감소 순간 저장한 채움 경계에서 0.35초 동안 반경을6에서16으로 늘리고 glow alpha를 줄인다.
+	// 위치는 현재 HP가 아닌 피격 순간의 비율을 사용하며, 이 분기도 visible을 true로 바꾸지 않는다.
 	bool_t bShowHitGlow = false;
 	if (m_dBossHitGlowStartSeconds >= 0.0)
 	{
@@ -9339,42 +9222,36 @@ void CMainApp::Update_BossHealthBar()
 			const f32_t fGlowRadius = 6.f + 10.f * fGlowT;
 			const f32_t fGlowCenterX = fFillMinX + (fFillMaxX - fFillMinX) * m_fBossHitGlowFillRatio;
 			const f32_t fGlowCenterY = (fFillMinY + fFillMaxY) * 0.5f;
-			m_pBossUIView->Set_SlotRect("Boss_HitGlow",
-				fGlowCenterX - fGlowRadius, fGlowCenterY - fGlowRadius,
-				fGlowRadius * 2.f, fGlowRadius * 2.f);
-			/* Same warm near-white (255,250,230) the original IM_COL32 glow used, not
-			Set_SlotAlpha's plain white -- that would wash out the warm tint. This tint IS
-			the visibility while glowing, same as Boss_TickFlash's alpha above. */
+			m_pBossUIView->Set_SlotRect("Boss_HitGlow", fGlowCenterX - fGlowRadius, fGlowCenterY - fGlowRadius,
+										fGlowRadius * 2.f, fGlowRadius * 2.f);
+			// glow는 따뜻한 흰색 RGB를 유지하도록 Set_SlotTint로 alpha까지 함께 쓴다. 이 API는 tint만 바꾸며 숨김 여부는 별도 상태다.
 			m_pBossUIView->Set_SlotTint("Boss_HitGlow",
-				float4_t(1.f, 250.f / 255.f, 230.f / 255.f, (200.f / 255.f) * fGlowAlpha));
+										float4_t(1.f, 250.f / 255.f, 230.f / 255.f, (200.f / 255.f) * fGlowAlpha));
 		}
 	}
 	if (!bShowHitGlow)
 		m_pBossUIView->Set_SlotVisible("Boss_HitGlow", false);
 }
 
-/* Split from Update_BossHealthBar() -- see the declaration comment in MainApp.h for why this
-uses ImGui's own font/foreground draw list (CGameInstance::Draw_Text, called after
-CImGuiLayer::EndFrame()) instead of anything driven from that CUI_Sprite state. Re-derives
-healthRatio/iBarsRemaining from the same boss snapshot Update_BossHealthBar already used this
-frame; cheap pure arithmetic, safer than threading the values out as member state. */
+// Render의 텍스트 단계가 보스 이름·HP·남은 줄 수를 그린다. 같은 HUD snapshot에서 줄 수를 다시 계산해 별도 캐시 상태를 만들지 않는다.
+// 문자열은 CGameInstance::Draw_Text로 제출하며 sprite의 visible 상태 자체를 텍스트 표시 조건으로 읽지는 않는다.
+// 호출한 Render가 전체 화면·MVP·미니게임 숨김을 먼저 검사하며, 이 함수도 Level·스킬 창·보스 값·view를 확인한다.
+// 텍스트 슬롯 하나가 없으면 해당 글자만 생략하고 나머지 글자는 계속 그린다.
 void CMainApp::RenderBossHealthBarText()
 {
-	if (Is_KoukuBossHealthBarHidden()) return;
+	if (Is_KoukuBossHealthBarHidden())
+		return;
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (currentLevel != ETOUI(LEVEL::BERN) &&
-		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
-		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (currentLevel != ETOUI(LEVEL::BERN) && currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
+		currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA) && currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
+		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) && currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		return;
 	}
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	const HUD_BOSS_STATE& boss = CCombatHUDViewModel::Get().Get_Boss();
+	const HUD_BOSS_STATE &boss = CCombatHUDViewModel::Get().Get_Boss();
 	if (!boss.isValid || 0u == boss.iMaximumHp)
 		return;
 	if (nullptr == m_pBossUIView)
@@ -9386,100 +9263,76 @@ void CMainApp::RenderBossHealthBarText()
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
 	const uint32_t iMaximumBars = (std::max)(1u, boss.iMaximumHealthBars);
-	const double segmentHp =
-		static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
+	const double segmentHp = static_cast<double>(boss.iMaximumHp) / static_cast<double>(iMaximumBars);
 	uint32_t iBarsRemaining = 0u;
 	if (boss.iCurrentHp > 0u && segmentHp > 0.0)
 	{
 		const double scaledHp = static_cast<double>(boss.iCurrentHp) / segmentHp;
-		iBarsRemaining = (std::clamp)(
-			static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
+		iBarsRemaining = (std::clamp)(static_cast<uint32_t>(std::ceil(scaledHp)), 1u, iMaximumBars);
 	}
 	const bool_t isMultiBar = boss.iMaximumHealthBars > 1u;
 
-	/* Boss title, positioned via its own hand-placed slot ("Boss_TitleText"). Valtan keeps the
-	full on-screen title ("마수군단장 발탄") because no title field exists in BossProfiles.json;
-	every other boss shows its BossProfiles.json displayName, which is what HUD_BOSS_STATE
-	already carries (KoukuSaydon gate bosses: "세이튼", "쿠크", "앵콜을 외친 쿠크세이튼"). */
+	// Boss_TitleText에 BOSS_VALTAN은 "마수군단장 발탄", 다른 보스는 HUD의 displayName을 쓴다. 이름 변환 실패·빈 이름은 BOSS로 표시한다.
 	f32_t fTitleX = 0.f, fTitleY = 0.f, fTitleWidth = 0.f, fTitleHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_TitleText", fTitleX, fTitleY, fTitleWidth, fTitleHeight))
+	if (m_pBossUIView->Get_SlotRect("Boss_TitleText", fTitleX, fTitleY, fTitleWidth, fTitleHeight))
 	{
 		wstring strBossTitle;
 		if ("BOSS_VALTAN" == boss.strArchetypeId)
 			strBossTitle = L"\xB9C8\xC218\xAD70\xB2E8\xC7A5 \xBC1C\xD0C4";
-		else if (!ConvertUtf8ToWide(boss.strDisplayName, strBossTitle) ||
-			strBossTitle.empty())
+		else if (!ConvertUtf8ToWide(boss.strDisplayName, strBossTitle) || strBossTitle.empty())
 			strBossTitle = L"BOSS";
-		/* Text draw scale is derived from the slot's own box height (measured at scale=1 via
-		Measure_Text) instead of a hand-picked constant, so resizing the slot in the HUD Layout
-		Tool is what actually controls the rendered text size -- no more guessing pixel scales. */
-		const float2_t vTitleMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBossTitle.c_str());
+		// 측정한 글자 높이와 제목 슬롯 높이의 비율로 배율을 구한다. 위치는 축별 viewport 배율, 글자 크기는 작은 축 배율을 사용한다.
+		const float2_t vTitleMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBossTitle.c_str());
 		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ? (fTitleHeight / vTitleMeasured.y) : 1.f;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strBossTitle.c_str(),
-			float2_t(
-				(fTitleX + fTitleWidth * 0.5f) * textScaleX,
-				(fTitleY + fTitleHeight * 0.5f) * textScaleY),
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YG760"), strBossTitle.c_str(),
+			float2_t((fTitleX + fTitleWidth * 0.5f) * textScaleX, (fTitleY + fTitleHeight * 0.5f) * textScaleY),
 			XMVectorSet(1.f, 0.31f, 0.24f, 1.f), 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 	}
 
-	/* HP number and bar-count text now come from their own hand-placed slots
-	("Boss_HPText"/"Boss_BarCountText") instead of coordinates derived from the SWF trace -- the
-	fury/enrage timer (icon + "광폭화까지" countdown) is dropped per direct instruction; that
-	feature isn't being used. Text format itself is still real: "cur / max" and "X " + count (the
-	latter from the decompiled ProgressMultiTrack::hpCount setter -- capital X, one space, hidden
-	once only 1 bar is left, not just at 0). */
+	// Boss_HPText는 현재 / 최대 HP, Boss_BarCountText는 두 줄 이상 남은 다중 체력 보스의 X 줄 수를 표시한다.
 	f32_t fHpTextX = 0.f, fHpTextY = 0.f, fHpTextWidth = 0.f, fHpTextHeight = 0.f;
-	if (m_pBossUIView->Get_SlotRect(
-		"Boss_HPText", fHpTextX, fHpTextY, fHpTextWidth, fHpTextHeight))
+	if (m_pBossUIView->Get_SlotRect("Boss_HPText", fHpTextX, fHpTextY, fHpTextWidth, fHpTextHeight))
 	{
-		const wstring strHpNumbers = std::to_wstring(boss.iCurrentHp) +
-			L" / " + std::to_wstring(boss.iMaximumHp);
-		/* Same box-height-fit approach as the title: the slot's own height (set in the HUD
-		Layout Tool) is what determines the rendered digit height, not a hardcoded constant. */
-		const float2_t vHpMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strHpNumbers.c_str());
+		const wstring strHpNumbers = std::to_wstring(boss.iCurrentHp) + L" / " + std::to_wstring(boss.iMaximumHp);
+		// HP 숫자도 글자 측정 높이에 대한 슬롯 높이 비율을 사용한다. 측정 높이가0 이하이면 배율1을 기본으로 쓴다.
+		const float2_t vHpMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strHpNumbers.c_str());
 		const f32_t fHpScale = (vHpMeasured.y > 0.f) ? (fHpTextHeight / vHpMeasured.y) : 1.f;
-		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strHpNumbers.c_str(),
-			float2_t(
-				(fHpTextX + fHpTextWidth * 0.5f) * textScaleX,
-				(fHpTextY + fHpTextHeight * 0.5f) * textScaleY),
+		CGameInstance::Get().Draw_Text(
+			TEXT("Font_YG760"), strHpNumbers.c_str(),
+			float2_t((fHpTextX + fHpTextWidth * 0.5f) * textScaleX, (fHpTextY + fHpTextHeight * 0.5f) * textScaleY),
 			Colors::White, 0.f, float2_t(0.5f, 0.5f), fHpScale * textUiScale);
 	}
 	if (isMultiBar && iBarsRemaining > 1u)
 	{
 		f32_t fCountX = 0.f, fCountY = 0.f, fCountWidth = 0.f, fCountHeight = 0.f;
-		if (m_pBossUIView->Get_SlotRect(
-			"Boss_BarCountText", fCountX, fCountY, fCountWidth, fCountHeight))
+		if (m_pBossUIView->Get_SlotRect("Boss_BarCountText", fCountX, fCountY, fCountWidth, fCountHeight))
 		{
 			const wstring strBarCount = L"X " + std::to_wstring(iBarsRemaining);
-			const float2_t vCountMeasured =
-				CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBarCount.c_str());
+			const float2_t vCountMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), strBarCount.c_str());
 			const f32_t fCountScale = (vCountMeasured.y > 0.f) ? (fCountHeight / vCountMeasured.y) : 1.f;
-			CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), strBarCount.c_str(),
-				float2_t(
-					(fCountX + fCountWidth * 0.5f) * textScaleX,
-					(fCountY + fCountHeight * 0.5f) * textScaleY),
+			CGameInstance::Get().Draw_Text(
+				TEXT("Font_YG760"), strBarCount.c_str(),
+				float2_t((fCountX + fCountWidth * 0.5f) * textScaleX, (fCountY + fCountHeight * 0.5f) * textScaleY),
 				Colors::White, 0.f, float2_t(0.5f, 0.5f), fCountScale * textUiScale);
 		}
 	}
 }
-
+// Render의 HUD 텍스트 단계에서 발탄·쿠크의 사망 안내를 그린다. 유효한 DEAD snapshot과 Level이 게시한 rect가 모두 필요하다.
+// 관전 중에는 제목·부활 질문만 생략하고 부활·관전 버튼 글자는 계속 그린다. 부활·관전 명령 처리는 Level이 맡는다.
 void CMainApp::RenderDeadSceneText()
 {
 	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID() &&
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+		ETOUI(LEVEL::KOUKUSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid ||
-		LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction)
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || LostArk::Shared::PLAYER_ACTION_STATE::DEAD != player.eAction)
 	{
 		return;
 	}
 
-	const HUD_DEADSCENE_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_DeadSceneTextRects();
+	const HUD_DEADSCENE_TEXT_RECTS &rects = CCombatHUDViewModel::Get().Get_DeadSceneTextRects();
 	if (!rects.isValid)
 		return;
 
@@ -9488,61 +9341,57 @@ void CMainApp::RenderDeadSceneText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* Positions/sizes come from CLevel_ValtanArena::Update_DeadScene(), which reads the live
-	DeadScene_TitleTextMarker/_ReviveButton/_SpectateButton/_ReviveMessageMarker slot rects out of
-	its own m_pDeadSceneView every frame -- moving any of those in the HUD Layout Tool moves this
-	text with them, instead of a hand-copied constant here drifting out of sync the way it just did. */
+	// 발탄·쿠크 Level의 Update_DeadScene이 자기 view의 제목·부활·관전·질문 슬롯 rect를 HUD view model에 값으로 전달한다.
+	// MainApp은 Level view를 직접 소유하지 않고 전달된 기준 좌표에 viewport 배율을 적용해 글자를 맞춘다.
 	const wstring strTitle = L"\xC0AC\xB9DD\xD558\xC600\xC2B5\xB2C8\xB2E4"; // 사망하였습니다 
-	const float2_t vTitleMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
-	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
-		(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
-	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
-		float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
-			(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+	const float2_t vTitleMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+	const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ? (rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
+	if (!rects.isSpectating)
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
+									   float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+												(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
+									   Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 
 	const wstring strReviveLabel = L"\xBD80\xD65C"; // 부활 
 	const float2_t vReviveMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str());
-	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ?
-		(rects.fReviveTextHeight * 0.55f / vReviveMeasured.y) : 1.f;
+	const f32_t fReviveScale = (vReviveMeasured.y > 0.f) ? (rects.fReviveTextHeight * 0.55f / vReviveMeasured.y) : 1.f;
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveLabel.c_str(),
-		float2_t((rects.fReviveTextX + rects.fReviveTextWidth * 0.5f) * textScaleX,
-			(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
+								   float2_t((rects.fReviveTextX + rects.fReviveTextWidth * 0.5f) * textScaleX,
+											(rects.fReviveTextY + rects.fReviveTextHeight * 0.5f) * textScaleY),
+								   Colors::White, 0.f, float2_t(0.5f, 0.5f), fReviveScale * textUiScale);
 
 	const wstring strSpectateLabel = L"\xAD00\xC804\xD558\xAE30"; // 관전하기 
 	const float2_t vSpectateMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str());
-	const f32_t fSpectateScale = (vSpectateMeasured.y > 0.f) ?
-		(rects.fSpectateHeight * 0.5f / vSpectateMeasured.y) : 1.f;
+	const f32_t fSpectateScale =
+		(vSpectateMeasured.y > 0.f) ? (rects.fSpectateHeight * 0.5f / vSpectateMeasured.y) : 1.f;
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strSpectateLabel.c_str(),
-		float2_t((rects.fSpectateX + rects.fSpectateWidth * 0.5f) * textScaleX,
-			(rects.fSpectateY + rects.fSpectateHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fSpectateScale * textUiScale);
+								   float2_t((rects.fSpectateX + rects.fSpectateWidth * 0.5f) * textScaleX,
+											(rects.fSpectateY + rects.fSpectateHeight * 0.5f) * textScaleY),
+								   Colors::White, 0.f, float2_t(0.5f, 0.5f), fSpectateScale * textUiScale);
 
 	const wstring strReviveMessage = L"\xBD80\xD65C\xD558\xC2DC\xACA0\xC2B5\xB2C8\xAE4C?"; // 부활하시겠습니까?
 	const float2_t vMessageMeasured =
 		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str());
-	const f32_t fMessageScale = (vMessageMeasured.y > 0.f) ?
-		(rects.fMessageHeight * 0.6f / vMessageMeasured.y) : 1.f;
-	if (!rects.isSpectating) CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
-		float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
-			(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
+	const f32_t fMessageScale = (vMessageMeasured.y > 0.f) ? (rects.fMessageHeight * 0.6f / vMessageMeasured.y) : 1.f;
+	if (!rects.isSpectating)
+		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReviveMessage.c_str(),
+									   float2_t((rects.fMessageX + rects.fMessageWidth * 0.5f) * textScaleX,
+												(rects.fMessageY + rects.fMessageHeight * 0.5f) * textScaleY),
+									   Colors::White, 0.f, float2_t(0.5f, 0.5f), fMessageScale * textUiScale);
 }
 
+// 발탄·쿠크가 게시한 클리어 제목과 선택적 버튼 rect를 읽어 글자를 그린다.
+// 클리어 판정·연출 시각·퇴장 요청은 Level이 소유하며 이 함수는 유효 flag별 텍스트만 제출한다.
 void CMainApp::RenderRaidClearText()
 {
-	/* Both arenas drive the same RaidClear_Layout.json document now; KoukuSaydon
-	   publishes the same text rects from its own Update_RaidClear. */
+	// 두 아레나는 각자의 클리어 화면에서 읽은 rect를 같은 HUD_RAIDCLEAR_TEXT_RECTS로 전달한다. 실제 슬롯 이름·연출은 각 Level이 소유한다.
 	const uint32_t iRaidClearLevel = CGameInstance::Get().Get_CurrentLevelID();
-	if (ETOUI(LEVEL::VALTAN_ARENA) != iRaidClearLevel &&
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) != iRaidClearLevel)
+	if (ETOUI(LEVEL::VALTAN_ARENA) != iRaidClearLevel && ETOUI(LEVEL::KOUKUSAYDON_ARENA) != iRaidClearLevel)
 		return;
 
-	const HUD_RAIDCLEAR_TEXT_RECTS& rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
+	const HUD_RAIDCLEAR_TEXT_RECTS &rects = CCombatHUDViewModel::Get().Get_RaidClearTextRects();
 	if (!rects.isValid && !rects.isButtonValid)
 		return;
 
@@ -9553,154 +9402,124 @@ void CMainApp::RenderRaidClearText()
 
 	if (rects.isValid)
 	{
-		/* Real loc key traced from epicgatecommonclear.gfx's clearTF field (fontClass=$YoonGasiIIM,
-		white, initialText="[$]commander.dungeon_clear") -- this project has no loc-key table, so
-		the real Korean string it resolves to in the reference screenshot is used directly. */
+		// 던전 클리어 제목은 현재 고정 한국어 문자열을 사용하며 이 함수에서 별도 localization key를 조회하지 않는다.
 		const wstring strTitle = L"\xB358\xC804 \xD074\xB9AC\xC5B4"; // 던전 클리어 
-		const float2_t vTitleMeasured =
-			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
-		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ?
-			(rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
+		const float2_t vTitleMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str());
+		const f32_t fTitleScale = (vTitleMeasured.y > 0.f) ? (rects.fTitleHeight * 0.6f / vTitleMeasured.y) : 1.f;
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strTitle.c_str(),
-			float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
-				(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
+									   float2_t((rects.fTitleX + rects.fTitleWidth * 0.5f) * textScaleX,
+												(rects.fTitleY + rects.fTitleHeight * 0.5f) * textScaleY),
+									   Colors::White, 0.f, float2_t(0.5f, 0.5f), fTitleScale * textUiScale);
 	}
 
-	// "돌아가기" -- RaidClear_ReturnButton's own label, same style/height ratio as
-	// RenderItemUpgradeButtonText's other NormalButton labels (0.6 of the button
-	// rect's own height, white, centered). Only appears once the celebration
-	// overlay itself has finished (isButtonValid), never together with isValid.
+	// "돌아가기"는 isButtonValid일 때 버튼 rect에 맞춰 그린다. 현재 발탄·쿠크 생산자는 이 flag를 켜지 않으므로 여기의 버튼 글자도 표시되지 않는다.
 	if (rects.isButtonValid)
 	{
 		const wstring strReturnLabel = L"\xB3CC\xC544\xAC00\xAE30"; // 돌아가기 
 		const float2_t vReturnMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str());
-		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ?
-			(rects.fButtonHeight * 0.6f / vReturnMeasured.y) : 1.f;
-		const f32_t fScaleByWidth = (vReturnMeasured.x > 0.f) ?
-			(rects.fButtonWidth * 0.85f / vReturnMeasured.x) : 1.f;
+		const f32_t fScaleByHeight = (vReturnMeasured.y > 0.f) ? (rects.fButtonHeight * 0.6f / vReturnMeasured.y) : 1.f;
+		const f32_t fScaleByWidth = (vReturnMeasured.x > 0.f) ? (rects.fButtonWidth * 0.85f / vReturnMeasured.x) : 1.f;
 		const f32_t fReturnScale = (std::min)(fScaleByHeight, fScaleByWidth);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strReturnLabel.c_str(),
-			float2_t((rects.fButtonX + rects.fButtonWidth * 0.5f) * textScaleX,
-				(rects.fButtonY + rects.fButtonHeight * 0.5f) * textScaleY),
-			Colors::White, 0.f, float2_t(0.5f, 0.5f), fReturnScale * textUiScale);
+									   float2_t((rects.fButtonX + rects.fButtonWidth * 0.5f) * textScaleX,
+												(rects.fButtonY + rects.fButtonHeight * 0.5f) * textScaleY),
+									   Colors::White, 0.f, float2_t(0.5f, 0.5f), fReturnScale * textUiScale);
 	}
 }
 
+// 발탄 Level이 게시한 획득 알림의 이름·접미사·품질 문자열을 표시한다.
+// 유효하지 않은 rect나 빈 이름은 전체 알림 글자를 생략한다. 인벤토리 지급·등급·품질 판정은 여기서 수행하지 않는다.
 void CMainApp::RenderItemAnnounceText()
 {
 	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 
-	const HUD_ITEMANNOUNCE_TEXT_RECTS& rects =
-		CCombatHUDViewModel::Get().Get_ItemAnnounceTextRects();
+	const HUD_ITEMANNOUNCE_TEXT_RECTS &rects = CCombatHUDViewModel::Get().Get_ItemAnnounceTextRects();
 	if (!rects.isValid || rects.strItemName.empty())
 		return;
 
 	const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
 	const f32_t fScaleX = vViewport.x / 1280.f;
 	const f32_t fScaleY = vViewport.y / 720.f;
-	/* announce.gfx text sizes are 1920x1080 stage px: the text line 16, the quality row 12.
-	ITEM_ANNOUNCE_TEXT_SCALE is the project's own enlargement (user request), not retail. */
+	// 기준 글자 높이16·품질12에 1920→1280 변환2/3과 현재 확대값1.3을 곱한다.
+	// 최종 글자 높이는 viewport의 세로 배율을 사용하며 가로 배율은 위치 계산에만 사용한다.
 	constexpr f32_t ITEM_ANNOUNCE_TEXT_SCALE = 1.3f;
 	const f32_t fTextPx = 16.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
 	const f32_t fQualityPx = 12.f * 2.f / 3.f * ITEM_ANNOUNCE_TEXT_SCALE * fScaleY;
 
-	/* textField 95: one centred line, the name in its grade colour, the rest white. */
+	// 이름과 접미사의 측정 폭을 합쳐 한 줄 전체를 가운데 맞춘다. 이름은 전달된 등급 RGB, 접미사는 흰색으로 그린다.
 	f32_t fNameScale = 1.f, fSuffixScale = 1.f;
 	const wstring_t strNameFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fNameScale);
 	const wstring_t strSuffixFont = UILabelFont::Resolve(TEXT("Font_YG760"), fTextPx, fSuffixScale);
-	const f32_t fNameWidth =
-		CGameInstance::Get().Measure_Text(strNameFont, rects.strItemName.c_str()).x * fNameScale;
+	const f32_t fNameWidth = CGameInstance::Get().Measure_Text(strNameFont, rects.strItemName.c_str()).x * fNameScale;
 	const float2_t vSuffixSize = CGameInstance::Get().Measure_Text(strSuffixFont, rects.strSuffix.c_str());
 	const f32_t fLineWidth = fNameWidth + vSuffixSize.x * fSuffixScale;
 	const f32_t fLineLeft = std::round((rects.fTextX + rects.fTextWidth * 0.5f) * fScaleX - fLineWidth * 0.5f);
-	const f32_t fLineTop = std::round((rects.fTextY + rects.fTextHeight * 0.5f) * fScaleY -
-		vSuffixSize.y * fSuffixScale * 0.5f);
+	const f32_t fLineTop =
+		std::round((rects.fTextY + rects.fTextHeight * 0.5f) * fScaleY - vSuffixSize.y * fSuffixScale * 0.5f);
+	// 입력 정수의 RGB 각 byte를0~1로 바꾸고 전달받은 alpha를 붙인다. alpha의 범위를 이 함수에서 다시 제한하지는 않는다.
 	const auto Rgb = [](const std::uint32_t iRgb, const f32_t fAlpha)
 	{
-		return XMVectorSet(((iRgb >> 16) & 0xffu) / 255.f, ((iRgb >> 8) & 0xffu) / 255.f,
-			(iRgb & 0xffu) / 255.f, fAlpha);
+		return XMVectorSet(((iRgb >> 16) & 0xffu) / 255.f, ((iRgb >> 8) & 0xffu) / 255.f, (iRgb & 0xffu) / 255.f,
+						   fAlpha);
 	};
 	const fvector_t vNameColor = Rgb(rects.iNameRgb, rects.fTextAlpha);
-	CGameInstance::Get().Draw_Text(strNameFont, rects.strItemName.c_str(),
-		float2_t(fLineLeft, fLineTop), vNameColor, 0.f, float2_t(0.f, 0.f), fNameScale);
+	CGameInstance::Get().Draw_Text(strNameFont, rects.strItemName.c_str(), float2_t(fLineLeft, fLineTop), vNameColor,
+								   0.f, float2_t(0.f, 0.f), fNameScale);
 	CGameInstance::Get().Draw_Text(strSuffixFont, rects.strSuffix.c_str(),
-		float2_t(std::round(fLineLeft + fNameWidth), fLineTop),
-		XMVectorSet(1.f, 1.f, 1.f, rects.fTextAlpha), 0.f, float2_t(0.f, 0.f), fSuffixScale);
+								   float2_t(std::round(fLineLeft + fNameWidth), fLineTop),
+								   XMVectorSet(1.f, 1.f, 1.f, rects.fTextAlpha), 0.f, float2_t(0.f, 0.f), fSuffixScale);
 
-	/* qualityProgress: "[$]item.option_quality" (품질) centred in its box, the value
-	right-aligned in targetText and coloured by the tier the value reaches. */
+	// Level이 전달한 품질 제목은 중앙, 값은 오른쪽에 맞춘다. 등급별 색·문자열·alpha도 Level의 표시값을 사용한다.
 	UILabelFont::Draw_Centered(TEXT("Font_YG760"), L"\xD488\xC9C8",
-		(rects.fQualityLabelX + rects.fQualityLabelWidth * 0.5f) * fScaleX,
-		(rects.fQualityLabelY + rects.fQualityLabelHeight * 0.5f) * fScaleY,
-		fQualityPx, XMVectorSet(1.f, 1.f, 1.f, rects.fQualityAlpha));
+							   (rects.fQualityLabelX + rects.fQualityLabelWidth * 0.5f) * fScaleX,
+							   (rects.fQualityLabelY + rects.fQualityLabelHeight * 0.5f) * fScaleY, fQualityPx,
+							   XMVectorSet(1.f, 1.f, 1.f, rects.fQualityAlpha));
 	f32_t fValueScale = 1.f;
 	const wstring_t strValueFont = UILabelFont::Resolve(TEXT("Font_YG760"), fQualityPx, fValueScale);
 	const float2_t vValueSize = CGameInstance::Get().Measure_Text(strValueFont, rects.strQualityValue.c_str());
-	CGameInstance::Get().Draw_Text(strValueFont, rects.strQualityValue.c_str(),
+	CGameInstance::Get().Draw_Text(
+		strValueFont, rects.strQualityValue.c_str(),
 		float2_t(std::round((rects.fQualityValueX + rects.fQualityValueWidth) * fScaleX - vValueSize.x * fValueScale),
-			std::round((rects.fQualityValueY + rects.fQualityValueHeight * 0.5f) * fScaleY -
-				vValueSize.y * fValueScale * 0.5f)),
-		Rgb(rects.iQualityRgb, rects.fQualityAlpha),
-		0.f, float2_t(0.f, 0.f), fValueScale);
+				 std::round((rects.fQualityValueY + rects.fQualityValueHeight * 0.5f) * fScaleY -
+							vValueSize.y * fValueScale * 0.5f)),
+		Rgb(rects.iQualityRgb, rects.fQualityAlpha), 0.f, float2_t(0.f, 0.f), fValueScale);
 }
-
+// Update_CombatHUD가 복제된 현재 스킬·단계·시작 tick과 로컬 스킬 정의를 조합해 HOLD 게이지를 갱신한다.
+// 표시용 경과 시간·취소 추정만 MainApp에 보관하며 Server 스킬 진행이나 입력 해제 상태를 변경하지 않는다.
 void CMainApp::Update_ChargeGauge()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.ChargeGauge.Update");
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
 
-	/* Real HOLD skill. Default (34590 적룡포 and every other HOLD skill): the gauge fills ONCE,
-	continuously, from action start and reaches 100% exactly at the real hit -- the first
-	comboStages[] entry with a nonzero hitTimeMs (confirmed real data: 34590's stage index 2 has
-	hitTimeMs=322). "Elapsed since action start" is NOT the sum of authored iActionDurationMs for
-	completed stages -- a HOLD skill's loop stage can be cut short (PlayerSkillSystem.cpp's
-	holdLeavesLoop/holdSkipsLoop) when the player releases early, and hasReleasedHold never reaches
-	the wire, so this tracks the REAL elapsed of each completed stage from observed
-	iComboStage/iActionStartTick edges instead (m_fChargeGaugeElapsedBeforeCurrentStageMs). The
-	instant an observed stage turns out shorter than its authored duration (or a whole stage was
-	skipped), that's proof of an early release -- the gauge cancels (hides) for the rest of this
-	skill-use instance instead of jumping ahead toward a now-moot target.
-
-	Special case (17240 풀배럴 캐넌, Warlord): confirmed against Warlord.skillbindings.json's real
-	clip chain -- stage1 (eternalcyclone_01) is the raise+shout windup (no gauge), stage2
-	(eternalcyclone_02/03/04, 300ms each, summing to stage2's own 900ms) is the 3 real arm-lowering
-	motions in sync with the 3 "thud" sounds (one gauge pump per 300ms sub-clip), and stage3
-	(eternalcyclone_07, the real hit) is the firing animation alone -- gauge hidden, matching the
-	real screen (3rd pump completes, gauge disappears, then it fires). No general data field
-	distinguishes this "single fill" vs "per-stage-of-substage pump" HOLD shape yet -- this is a
-	skillId-keyed exception until a second real multi-pump skill shows what that field should
-	look like. */
+	// HOLD 게이지는 Server snapshot의 단계·tick을 표시한다. 17240은 단계2에서 300ms씩 세 번, 분기형 HOLD는 단계2 비율로 채운다.
+	// 일반 HOLD는 관측한 단계 시간을 누적해 최초 타격까지 채우며 단계 누락·50ms 초과 단축은 표시 취소로 추정한다. 실제 키 해제 원인은 받지 않는다.
 	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
 	constexpr std::uint8_t FULL_BARREL_CANNON_PUMP_STAGE = 2u;
 	constexpr f32_t FULL_BARREL_CANNON_PUMP_MS = 300.f;
 	constexpr std::uint32_t FULL_BARREL_CANNON_PUMP_COUNT = 3u;
 	constexpr f32_t SERVER_TICK_HZ = 30.f;
-	/* A branching HOLD (Guardian Knight glide): the start stage hands off to the
-	loop at comboAdvanceMs, before its own motion ends, and the loop is the part
-	the player is actually holding. The gauge is that loop's remaining time, so it
-	shows only during stage 2 and never treats the cut start stage as a cancel. */
+	// 세 단계이고 첫 단계의 comboAdvanceMs가 actionDurationMs보다 짧으면 분기형 HOLD 표시로 처리한다.
+	// 단계2에서 경과 시간/해당 단계 지속 시간으로 채우며 일반 HOLD의 조기 종료 추정은 적용하지 않는다.
 	constexpr std::uint8_t BRANCHING_HOLD_LOOP_STAGE = 2u;
 
 	bool_t bCharging = false;
 	f32_t fChargeProgress = 0.f;
-	const bool_t bIsHoldAction = player.isValid &&
-		LostArk::Shared::PLAYER_ACTION_STATE::SKILL == player.eAction &&
-		0u != player.iComboStage;
-	const PLAYER_SKILL_DEFINITION* pSkill = bIsHoldAction ?
-		CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId) : nullptr;
+	const bool_t bIsHoldAction =
+		player.isValid && LostArk::Shared::PLAYER_ACTION_STATE::SKILL == player.eAction && 0u != player.iComboStage;
+	const PLAYER_SKILL_DEFINITION *pSkill =
+		bIsHoldAction ? CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId) : nullptr;
 	const bool_t bValidHoldStage = nullptr != pSkill &&
-		LostArk::Shared::PLAYER_SKILL_KIND::HOLD == pSkill->eSkillKind &&
-		player.iComboStage <= pSkill->ComboStages.size();
+								   LostArk::Shared::PLAYER_SKILL_KIND::HOLD == pSkill->eSkillKind &&
+								   player.iComboStage <= pSkill->ComboStages.size();
 
 	if (!bValidHoldStage)
 	{
-		// Not (or no longer) charging a HOLD skill -- next real charge starts fully fresh.
+		// 유효한 HOLD 단계가 아니면 추적 skill ID와 취소 flag를 초기화한다. 다음 일반 HOLD 시작에서 나머지 추적 상태도 새로 설정한다.
 		m_iChargeGaugeTrackedSkillId = LostArk::Shared::INVALID_SKILL_ID;
 		m_bChargeGaugeCancelled = false;
 	}
@@ -9709,27 +9528,28 @@ void CMainApp::Update_ChargeGauge()
 		if (FULL_BARREL_CANNON_PUMP_STAGE == player.iComboStage)
 		{
 			f32_t fStageAgeSeconds = 0.f;
-			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
-				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(player.iServerTick, player.iActionStartTick,
+																	 SERVER_TICK_HZ, fStageAgeSeconds);
 			const f32_t fStageAgeMs = fStageAgeSeconds * 1000.f;
 			const f32_t fPumpTotalMs = FULL_BARREL_CANNON_PUMP_MS * FULL_BARREL_CANNON_PUMP_COUNT;
 			const f32_t fClampedAgeMs = std::clamp(fStageAgeMs, 0.f, fPumpTotalMs);
+			// 현재 단계 나이를0~900ms로 제한하고300ms 나머지로 한 번의 pump 진행률을 만든다. 정확히300/600/900ms에서는 나머지가0이 된다.
 			const f32_t fWithinPumpMs = std::fmod(fClampedAgeMs, FULL_BARREL_CANNON_PUMP_MS);
 			fChargeProgress = std::clamp(fWithinPumpMs / FULL_BARREL_CANNON_PUMP_MS, 0.f, 1.f);
 			bCharging = true;
 		}
-		// Stage 1 (windup) and stage 3 (firing) show no gauge at all for this skill.
+		// 17240은 단계2에서만 게이지를 켠다. 단계1과3에서는 기본 false가 유지된다.
 	}
 	else if (3u == pSkill->ComboStages.size() &&
-		pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
+			 pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
 	{
 		if (BRANCHING_HOLD_LOOP_STAGE == player.iComboStage)
 		{
 			f32_t fStageAgeSeconds = 0.f;
-			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
-				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
-			const f32_t fLoopMs = static_cast<f32_t>(
-				pSkill->ComboStages[BRANCHING_HOLD_LOOP_STAGE - 1u].iActionDurationMs);
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(player.iServerTick, player.iActionStartTick,
+																	 SERVER_TICK_HZ, fStageAgeSeconds);
+			const f32_t fLoopMs =
+				static_cast<f32_t>(pSkill->ComboStages[BRANCHING_HOLD_LOOP_STAGE - 1u].iActionDurationMs);
 			if (fLoopMs > 0.f)
 			{
 				fChargeProgress = std::clamp(fStageAgeSeconds * 1000.f / fLoopMs, 0.f, 1.f);
@@ -9739,10 +9559,10 @@ void CMainApp::Update_ChargeGauge()
 	}
 	else
 	{
-		const bool_t bFreshCharge =
-			LostArk::Shared::INVALID_SKILL_ID == m_iChargeGaugeTrackedSkillId ||
-			m_iChargeGaugeTrackedSkillId != pSkill->iSkillId ||
-			player.iComboStage < m_iChargeGaugeTrackedComboStage;
+		// 추적이 비었거나 skill ID가 바뀌거나 단계 번호가 감소했으면 새 일반 HOLD로 본다. action 시작 tick만 바뀐 같은 단계는 이 조건에 포함하지 않는다.
+		const bool_t bFreshCharge = LostArk::Shared::INVALID_SKILL_ID == m_iChargeGaugeTrackedSkillId ||
+									m_iChargeGaugeTrackedSkillId != pSkill->iSkillId ||
+									player.iComboStage < m_iChargeGaugeTrackedComboStage;
 		if (bFreshCharge)
 		{
 			m_iChargeGaugeTrackedSkillId = pSkill->iSkillId;
@@ -9753,23 +9573,17 @@ void CMainApp::Update_ChargeGauge()
 		}
 		else if (player.iComboStage != m_iChargeGaugeTrackedComboStage)
 		{
-			// Real elapsed of the stage that just ended = the new stage's own start tick minus
-			// the old stage's start tick -- exact regardless of whether it ran its full authored
-			// duration or was cut short.
+			// 관측된 이전·새 단계의 시작 tick 차이를 초로 구한 뒤 ms로 변환한다. timeline 함수 실패는 출력0이며 이 호출부는 bool 반환을 따로 검사하지 않는다.
 			f32_t fEndedStageSeconds = 0.f;
 			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
-				player.iActionStartTick, m_iChargeGaugeStageStartTick, SERVER_TICK_HZ,
-				fEndedStageSeconds);
+				player.iActionStartTick, m_iChargeGaugeStageStartTick, SERVER_TICK_HZ, fEndedStageSeconds);
 			const f32_t fEndedStageRealMs = fEndedStageSeconds * 1000.f;
-			const std::size_t iEndedStageIndex =
-				static_cast<std::size_t>(m_iChargeGaugeTrackedComboStage) - 1u;
-			const f32_t fEndedStageAuthoredMs = static_cast<f32_t>(
-				pSkill->ComboStages[iEndedStageIndex].iActionDurationMs);
+			const std::size_t iEndedStageIndex = static_cast<std::size_t>(m_iChargeGaugeTrackedComboStage) - 1u;
+			const f32_t fEndedStageAuthoredMs =
+				static_cast<f32_t>(pSkill->ComboStages[iEndedStageIndex].iActionDurationMs);
 			constexpr f32_t TRUNCATION_TOLERANCE_MS = 50.f;
-			const bool_t bStageWasSkipped =
-				player.iComboStage > m_iChargeGaugeTrackedComboStage + 1u;
-			const bool_t bStageWasCutShort =
-				fEndedStageRealMs < fEndedStageAuthoredMs - TRUNCATION_TOLERANCE_MS;
+			const bool_t bStageWasSkipped = player.iComboStage > m_iChargeGaugeTrackedComboStage + 1u;
+			const bool_t bStageWasCutShort = fEndedStageRealMs < fEndedStageAuthoredMs - TRUNCATION_TOLERANCE_MS;
 			if (bStageWasSkipped || bStageWasCutShort)
 				m_bChargeGaugeCancelled = true;
 
@@ -9780,6 +9594,7 @@ void CMainApp::Update_ChargeGauge()
 
 		if (!m_bChargeGaugeCancelled)
 		{
+			// 첫 양수 hitTimeMs가 있는 단계까지의 저작 시간을 목표로 계산한다. 그런 단계가 없으면 마지막 단계의 전체 지속 시간까지를 목표로 삼는다.
 			std::size_t iHitStageIndex = pSkill->ComboStages.size() - 1;
 			for (std::size_t i = 0; i < pSkill->ComboStages.size(); ++i)
 			{
@@ -9792,27 +9607,25 @@ void CMainApp::Update_ChargeGauge()
 			f32_t fTargetMs = 0.f;
 			for (std::size_t i = 0; i < iHitStageIndex; ++i)
 				fTargetMs += static_cast<f32_t>(pSkill->ComboStages[i].iActionDurationMs);
-			fTargetMs += (0u != pSkill->ComboStages[iHitStageIndex].iHitTimeMs) ?
-				static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iHitTimeMs) :
-				static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iActionDurationMs);
+			fTargetMs += (0u != pSkill->ComboStages[iHitStageIndex].iHitTimeMs)
+							 ? static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iHitTimeMs)
+							 : static_cast<f32_t>(pSkill->ComboStages[iHitStageIndex].iActionDurationMs);
 
 			f32_t fStageAgeSeconds = 0.f;
-			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
-				player.iServerTick, player.iActionStartTick, SERVER_TICK_HZ, fStageAgeSeconds);
+			CActionPresentationTimeline::Try_ResolveActionAgeSeconds(player.iServerTick, player.iActionStartTick,
+																	 SERVER_TICK_HZ, fStageAgeSeconds);
 			const f32_t fStageAgeMs = fStageAgeSeconds * 1000.f;
 
 			if (fTargetMs > 0.f)
 			{
-				fChargeProgress = std::clamp(
-					(m_fChargeGaugeElapsedBeforeCurrentStageMs + fStageAgeMs) / fTargetMs, 0.f, 1.f);
+				fChargeProgress =
+					std::clamp((m_fChargeGaugeElapsedBeforeCurrentStageMs + fStageAgeMs) / fTargetMs, 0.f, 1.f);
 				bCharging = true;
 			}
 		}
 	}
 
-	/* Bg/Track are static full images (their own authored slots); Fill is the same authored
-	slot, clipped by the real charge progress via the g_FillRatio shader clip -- same technique
-	the boss/player bars use. */
+	// 배경과 track은 충전 상태에 맞춰 켜고 채움 슬롯은 진행률이 양수일 때만 켠다. 실제 채움 비율만 바꾸며 슬롯의 저작 rect는 유지한다.
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Bg", bCharging);
 	m_pHUDRuntimeView->Set_SlotVisible("ChargeGauge_Track", bCharging);
 	const bool_t bShowFill = bCharging && fChargeProgress > 0.f;
@@ -9821,31 +9634,26 @@ void CMainApp::Update_ChargeGauge()
 		m_pHUDRuntimeView->Set_SlotFillRatio("ChargeGauge_Fill", fChargeProgress);
 }
 
+// Render의 HUD 텍스트 단계에서 현재 HOLD 스킬 이름을 track rect 중앙에 그린다.
+// 지원하는 단계·취소 flag·이름 변환을 확인하며 글자 크기는 상자 높이70%와 폭90%에 맞는 배율 중 작은 값이다.
 void CMainApp::RenderChargeGaugeText()
 {
 	if (nullptr == m_pHUDRuntimeView)
 		return;
 
-	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
-	if (!player.isValid ||
-		LostArk::Shared::PLAYER_ACTION_STATE::SKILL != player.eAction ||
-		0u == player.iComboStage)
+	const HUD_PLAYER_STATE &player = CCombatHUDViewModel::Get().Get_Player();
+	if (!player.isValid || LostArk::Shared::PLAYER_ACTION_STATE::SKILL != player.eAction || 0u == player.iComboStage)
 	{
 		return;
 	}
 
-	const PLAYER_SKILL_DEFINITION* pSkill =
-		CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId);
-	if (nullptr == pSkill ||
-		LostArk::Shared::PLAYER_SKILL_KIND::HOLD != pSkill->eSkillKind ||
+	const PLAYER_SKILL_DEFINITION *pSkill = CPlayerSkillCatalog::Find_ById(player.iCurrentSkillId);
+	if (nullptr == pSkill || LostArk::Shared::PLAYER_SKILL_KIND::HOLD != pSkill->eSkillKind ||
 		player.iComboStage > pSkill->ComboStages.size())
 	{
 		return;
 	}
-	// Must mirror Update_ChargeGauge's own bCharging gate exactly -- 17240 풀배럴 캐넌 only shows a
-	// gauge (so only shows this label) during its stage-2 pump; every other HOLD skill hides both
-	// once an early release cancels the charge (m_bChargeGaugeCancelled, set earlier this same
-	// frame by Update_ChargeGauge).
+	// HOLD 이름도 17240·분기형은 단계2, 일반형은 Update가 남긴 취소 flag를 따른다. 목표 시간·loop 길이 검사는 반복하지 않아 게이지와 판정이 완전히 같지는 않다.
 	constexpr LostArk::Shared::SKILL_ID FULL_BARREL_CANNON_SKILL_ID = 17240;
 	if (FULL_BARREL_CANNON_SKILL_ID == pSkill->iSkillId)
 	{
@@ -9853,9 +9661,9 @@ void CMainApp::RenderChargeGaugeText()
 			return;
 	}
 	else if (3u == pSkill->ComboStages.size() &&
-		pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
+			 pSkill->ComboStages[0].iComboAdvanceMs < pSkill->ComboStages[0].iActionDurationMs)
 	{
-		// Branching HOLD: the gauge (and this label) exist only while the loop is held.
+		// 분기형 HOLD의 이름은 단계2에서만 표시한다. loop 지속 시간의 양수 여부는 이 텍스트 경로가 검사하지 않는다.
 		if (2u != player.iComboStage)
 			return;
 	}
@@ -9873,33 +9681,28 @@ void CMainApp::RenderChargeGaugeText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	// strDisplayName is UTF-8 (Data/Balance/PlayerSkills.json); a byte-wise widen would garble
-	// every Korean skill name, so this needs a real MultiByteToWideChar conversion, same as
-	// CWorldPlayerNameplateView::Try_ConvertUtf8 already does for the equivalent nickname case.
+	// 카탈로그의 UTF-8 이름을 Windows wide 문자열로 변환한다. 필요한 길이 조회와 실제 변환 결과를 모두 확인하며 실패하면 이 글자만 생략한다.
 	wstring strLabel;
-	const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-		pSkill->strDisplayName.data(), static_cast<int>(pSkill->strDisplayName.size()),
-		nullptr, 0);
+	const int iRequiredLength = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, pSkill->strDisplayName.data(),
+													static_cast<int>(pSkill->strDisplayName.size()), nullptr, 0);
 	if (iRequiredLength <= 0)
 		return;
 	strLabel.resize(static_cast<size_t>(iRequiredLength));
-	if (iRequiredLength != MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-		pSkill->strDisplayName.data(), static_cast<int>(pSkill->strDisplayName.size()),
-		strLabel.data(), iRequiredLength))
+	if (iRequiredLength != MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, pSkill->strDisplayName.data(),
+											   static_cast<int>(pSkill->strDisplayName.size()), strLabel.data(),
+											   iRequiredLength))
 	{
 		return;
 	}
 
-	const float2_t vMeasured =
-		CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
+	const float2_t vMeasured = CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str());
 	const f32_t fScaleByHeight = (vMeasured.y > 0.f) ? (fHeight * 0.7f / vMeasured.y) : 1.f;
 	const f32_t fScaleByWidth = (vMeasured.x > 0.f) ? (fWidth * 0.9f / vMeasured.x) : 1.f;
 	const f32_t fScale = (std::min)(fScaleByHeight, fScaleByWidth);
 	CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), strLabel.c_str(),
-		float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
-		Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
+								   float2_t((fX + fWidth * 0.5f) * textScaleX, (fY + fHeight * 0.5f) * textScaleY),
+								   Colors::White, 0.f, float2_t(0.5f, 0.5f), fScale * textUiScale);
 }
-
 void CMainApp::Hide_EstherUI()
 {
 	if (nullptr == m_pEstherUIView)
@@ -9921,9 +9724,8 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	if (nullptr == m_pEstherUIView)
 		return;
 
-	/* Esther's skill-select window is a Valtan raid mechanic -- Character Select's live Server
-	room can still populate a nonzero gauge maximum for the selected class, which drew this
-	window there too even though there is no raid encounter to use it against. */
+	/* 에스더 창은 발탄·쿠크 레이드에서만 표시한다. Character Select에서도 게이지 최대값이
+	전달될 수 있으므로 최대값만으로 레이드 UI를 열지 않고 현재 Level도 확인한다. */
 	const uint32_t maximum =
 		CCombatHUDViewModel::Get().Get_EstherGaugeMaximum();
 	const bool_t skillWindowOpen =
@@ -9931,7 +9733,7 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isRaidArena =
 		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
+		ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel;
 	if (!isRaidArena || 0u == maximum || skillWindowOpen || Is_KoukuMinigameHUDHidden() ||
 		!CCombatHUDViewModel::Get().Get_Player().isValid)
 	{
@@ -9939,11 +9741,9 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 		return;
 	}
 
-	/* Static pieces (frame/portraits/track) show whenever the window itself shows; real pieces
-	(frame/lock/gauge) traced from the actual estherweaponskill.gfx + EFUI_ICONATLAS_E packages,
-	not placeholder rects. Esther_GaugeFill is a separate Tool-placeable slot (own rect,
-	independently adjustable) fill-ratio-clipped by the real gauge value -- same technique as the
-	boss/player HP bars. The 3 Ready glows only show at full gauge. */
+	/* 프레임·초상화·트랙은 창이 표시되는 동안 함께 보인다. Esther_GaugeFill은 별도 rect를
+	가진 슬롯이므로 위치 편집과 실제 게이지 비율 적용을 분리한다. 아래에서 비율을 0~1로
+	제한하고, 세 Ready 슬롯은 게이지가 최대값에 도달했을 때만 켠다. */
 	constexpr const char_t* ESTHER_STATIC_SLOTS[] = {
 		"Esther_HeaderFrame",
 		"Esther_Slot1_Frame", "Esther_Slot1_KeyBg", "Esther_Slot1_Icon",
@@ -9954,11 +9754,9 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	for (const char_t* pSlotId : ESTHER_STATIC_SLOTS)
 		m_pEstherUIView->Set_SlotVisible(pSlotId, true);
 
-	/* Each raid grants its own three esther skills, in its own order -- the same three the raid
-	entry screen lists for that raid, so the window a player sees inside the raid matches what
-	they were shown on the way in. The level is the raid: this only runs in an arena level, and
-	this shared view survives level transitions, so every raid sets all three icons. */
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel)
+	/* 같은 UI view가 Level 전환 뒤에도 남을 수 있으므로 현재 레이드의 세 초상화를 모두
+	지정한다. 쿠크와 발탄의 슬롯별 이미지 경로를 여기서 선택해 이전 레이드의 그림이 남지 않게 한다. */
+	if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel)
 	{
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot1_Icon", "UI/Esther/esther_icon_3.png");
 		m_pEstherUIView->Set_SlotTexture("Esther_Slot2_Icon", "UI/Esther/esther_portrait_wei.png");
@@ -9981,20 +9779,19 @@ void CMainApp::Update_EstherGauge(const f32_t fTimeDelta)
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot1_Ready", bReady);
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot2_Ready", bReady);
 	m_pEstherUIView->Set_SlotVisible("Esther_Slot3_Ready", bReady);
-	/* The ready glow is the real 30-frame EpicSkillAbleSlotEffect flipbook; it only
-	advances while the view is updated. */
+	/* Ready 효과를 포함한 슬롯 애니메이션은 view의 Update에 전달한 시간으로 진행한다. */
 	m_pEstherUIView->Update(fTimeDelta);
 	CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pEstherUIView, "Esther_HeaderFrame");
 }
 
 void CMainApp::RenderEstherGaugeText()
 {
-	/* Same gates as Update_EstherGauge -- these labels belong to that window, so they must
-	disappear and reappear together with the art instead of floating without it. */
+	/* 이 문자는 에스더 창의 슬롯 rect를 사용하므로 현재 레이드·최대 게이지·스킬 창·플레이어
+	유효성을 먼저 확인한다. Update_EstherGauge의 추가 미니게임 숨김 조건까지 이 함수가 재검사하는 것은 아니다. */
 	const uint32_t currentLevel = CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t isRaidArena =
 		ETOUI(LEVEL::VALTAN_ARENA) == currentLevel ||
-		ETOUI(LEVEL::KAKULSAYDON_ARENA) == currentLevel;
+		ETOUI(LEVEL::KOUKUSAYDON_ARENA) == currentLevel;
 	if (nullptr == m_pEstherUIView || !isRaidArena)
 		return;
 	const uint32_t maximum =
@@ -10011,9 +9808,8 @@ void CMainApp::RenderEstherGaugeText()
 	const float textScaleY = vTextViewportSize.y / 720.f;
 	const float textUiScale = (std::min)(textScaleX, textScaleY);
 
-	/* Retail epicskill.gfx arkSlot keyBind: a 12px label centred on the key plate under each
-	portrait, white until the gauge is full and gold (#FFD200) once the skills are usable. The
-	Controller's Esther keys are Ctrl+Z/X/C, shown the way retail abbreviates them. */
+	/* 초상화 아래 키판에 Ctrl+Z/X/C의 축약 표기를 중앙 정렬한다. 최대 게이지 전에는 흰색,
+	도달 후에는 금색(#FFD200)을 쓰며, 글자 높이는 1080p 기준 12px를 720p 기준으로 환산한다. */
 	const uint32_t gauge = CCombatHUDViewModel::Get().Get_EstherGauge();
 	const vector_t vColor = gauge >= maximum ?
 		XMVectorSet(1.f, 210.f / 255.f, 0.f, 1.f) : Colors::White;
@@ -10032,7 +9828,7 @@ void CMainApp::RenderEstherGaugeText()
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel);
 		const f32_t fScale = (vMeasured.y > 0.f) ? (LABEL_HEIGHT / vMeasured.y) : 1.f;
-		/* Retail text box sits at plate y+5 with a 22px box: centre 16px below the plate top. */
+		/* 원본 키판의 y+5, 높이 22px 배치를 기준으로 중심을 위쪽에서 16px 아래에 둔다. */
 		const f32_t fCenterX = fX + fWidth * 0.5f;
 		const f32_t fCenterY = fY + 16.f * (2.f / 3.f);
 		CGameInstance::Get().Draw_Text(TEXT("Font_YoonGasiIIM"), Label.pLabel,
@@ -10050,7 +9846,7 @@ namespace
 	struct SKILL_ICON_ENTRY { LostArk::Shared::SKILL_ID iSkillId; const char* pIconPath; };
 	constexpr SKILL_ICON_ENTRY SKILL_ICON_TABLE[] =
 	{
-		/* LanceMaster -- Long Spear */
+		/* 창술사 장창 스킬 아이콘 */
 		{ 34040, "UI/Skill/LanceMaster/34040_DoubleStrike.png" },
 		{ 34090, "UI/Skill/LanceMaster/34090_ThornJab.png" },
 		{ 34100, "UI/Skill/LanceMaster/34100_BlueDragonsClaw.png" },
@@ -10059,18 +9855,18 @@ namespace
 		{ 34120, "UI/Skill/LanceMaster/34120_ChainSlash.png" },
 		{ 34110, "UI/Skill/LanceMaster/34110_HalfMoonSlash.png" },
 		{ 34150, "UI/Skill/LanceMaster/34150_RagingDragonSlash.png" },
-		/* LanceMaster -- T */
+		/* 창술사 T 스킬 아이콘 */
 		{ 34650, "UI/Skill/LanceMaster/34650_DeadlyRedDragon.png" },
-		/* LanceMaster -- Short Spear (no D/F skill in that stance) */
+		/* 창술사 단창 스킬 아이콘: 이 자세에는 D/F 슬롯이 없다. */
 		{ 34540, "UI/Skill/LanceMaster/34540_SpiralingSpear.png" },
 		{ 34550, "UI/Skill/LanceMaster/34550_4HeadedDragon.png" },
 		{ 34560, "UI/Skill/LanceMaster/34560_ThrustOfDestruction.png" },
 		{ 34570, "UI/Skill/LanceMaster/34570_StarfallPounce.png" },
 		{ 34580, "UI/Skill/LanceMaster/34580_DragonscaleDefense.png" },
 		{ 34590, "UI/Skill/LanceMaster/34590_RedDragonsHorn.png" },
-		/* LanceMaster -- V (awakening) */
+		/* 창술사 V 각성기 아이콘 */
 		{ 34610, "UI/Skill/LanceMaster/34610_StormingRedDragon.png" },
-		/* Warlord */
+		/* 워로드 기본 스킬 아이콘 */
 		{ 17030, "UI/Skill/Warlord/17030_SharpSpear.png" },
 		{ 17060, "UI/Skill/Warlord/17060_FireBullet.png" },
 		{ 17080, "UI/Skill/Warlord/17080_DashUpperFire.png" },
@@ -10079,11 +9875,11 @@ namespace
 		{ 17040, "UI/Skill/Warlord/17040_Bash.png" },
 		{ 17100, "UI/Skill/Warlord/17100_ShieldShock.png" },
 		{ 17140, "UI/Skill/Warlord/17140_GuardiansLightning.png" },
-		/* Warlord -- T */
+		/* 워로드 T 스킬 아이콘 */
 		{ 17240, "UI/Skill/Warlord/17240_FullBarrelCannon.png" },
-		/* Warlord -- V (awakening) */
+		/* 워로드 V 각성기 아이콘 */
 		{ 17170, "UI/Skill/Warlord/17170_GuardiansProtection.png" },
-		/* Artist */
+		/* 도화가 기본 스킬 아이콘 */
 		{ 31200, "UI/Skill/Artist/31200_InkShower.png" },
 		{ 31430, "UI/Skill/Artist/31430_Scatter.png" },
 		{ 31480, "UI/Skill/Artist/31480_CraneWings.png" },
@@ -10092,11 +9888,11 @@ namespace
 		{ 31420, "UI/Skill/Artist/31420_OrchidStrike.png" },
 		{ 31490, "UI/Skill/Artist/31490_TigerSlash.png" },
 		{ 31470, "UI/Skill/Artist/31470_OneStroke.png" },
-		/* Artist -- T */
+		/* 도화가 T 스킬 아이콘 */
 		{ 31950, "UI/Skill/Artist/31950_DragonEngraving.png" },
-		/* Artist -- V (awakening) */
+		/* 도화가 V 각성기 아이콘 */
 		{ 31910, "UI/Skill/Artist/31910_DreamPeachGarden.png" },
-		/* DimensionMaster */
+		/* 차원술사 기본 스킬 아이콘 */
 		{ 2050100, "UI/Skill/DimensionMaster/2050100_OneNeedle.png" },
 		{ 2050120, "UI/Skill/DimensionMaster/2050120_Fragment.png" },
 		{ 2050160, "UI/Skill/DimensionMaster/2050160_CrossThrust.png" },
@@ -10105,11 +9901,11 @@ namespace
 		{ 2050220, "UI/Skill/DimensionMaster/2050220_PointPierce.png" },
 		{ 2050240, "UI/Skill/DimensionMaster/2050240_BoundaryBreak.png" },
 		{ 2050230, "UI/Skill/DimensionMaster/2050230_TimeShatter.png" },
-		/* DimensionMaster -- T */
+		/* 차원술사 T 스킬 아이콘 */
 		{ 2050500, "UI/Skill/DimensionMaster/2050500_KarmaBoundary.png" },
-		/* DimensionMaster -- V (awakening) */
+		/* 차원술사 V 각성기 아이콘 */
 		{ 2050520, "UI/Skill/DimensionMaster/2050520_TimeShackles.png" },
-		/* GuardianKnight -- human stance */
+		/* 가디언나이트 인간 자세 스킬 아이콘 */
 		{ 49100, "UI/Skill/GuardianKnight/49100_Cleave.png" },
 		{ 49110, "UI/Skill/GuardianKnight/49110_WildStrike.png" },
 		{ 49120, "UI/Skill/GuardianKnight/49120_Ignite.png" },
@@ -10118,17 +9914,17 @@ namespace
 		{ 49200, "UI/Skill/GuardianKnight/49200_DragonsBlow.png" },
 		{ 49220, "UI/Skill/GuardianKnight/49220_BurningFlame.png" },
 		{ 49260, "UI/Skill/GuardianKnight/49260_InfernoStrike.png" },
-		/* GuardianKnight -- dragon stance */
+		/* 가디언나이트 용 자세 스킬 아이콘 */
 		{ 49210, "UI/Skill/GuardianKnight/49210_DragonsSpear.png" },
 		{ 49230, "UI/Skill/GuardianKnight/49230_AbaddonFlame.png" },
 		{ 49270, "UI/Skill/GuardianKnight/49270_InfernoFlame.png" },
 		{ 49330, "UI/Skill/GuardianKnight/49330_FireBreath.png" },
-		/* GuardianKnight -- stance-free, and the Z toggle in both directions */
+		/* 가디언나이트 자세 공용 스킬과 양방향 Z 전환 아이콘 */
 		{ 49400, "UI/Skill/GuardianKnight/49400_DragonRampage.png" },
 		{ 49420, "UI/Skill/GuardianKnight/49420_BreathOfDestruction.png" },
 		{ 49040, "UI/Skill/GuardianKnight/49040_DragonAvatar.png" },
 		{ 49041, "UI/Skill/GuardianKnight/49041_DragonAvatarRelease.png" },
-		/* Move (Space) skills, cut by build_quickslot_hud_ui.py for the special slot. */
+		/* 특수 슬롯에 쓰는 이동(Space) 아이콘이며 build_quickslot_hud_ui.py의 출력 경로를 사용한다. */
 		{ 34020, "UI/Skill/LanceMaster/34020_Space.png" },
 		{ 34520, "UI/Skill/LanceMaster/34520_Space.png" },
 		{ 17020, "UI/Skill/Warlord/17020_Space.png" },
@@ -10152,25 +9948,18 @@ namespace
 void CMainApp::Update_SkillIcons()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.SkillIcons.Update");
-	/* Which skill icon belongs in Skill_Q.."Skill_F" is content, not layout: it depends on the
-	live (class, stance) pair via CPlayerSkillCatalog::Find_BySlot, the same source of truth the
-	input controller already resolves quick slots from. HUD_Layout.json only owns the shared
-	frame's position/size (ownerClass null "Skill_Q".."Skill_F"); it must not carry a second,
-	class-hardcoded copy of "which icon" that can drift out of sync with PlayerSkills.json.
-	Find_BySlot already resolves stance-gated skills correctly and ignores the stance argument
-	for classes whose skills have no requiredStance. Only reached from Update_CombatHUD's own
-	show path. */
+	/* Skill_Q부터 Skill_F까지의 아이콘은 현재 직업·자세의 스킬 내용이 결정한다. 입력 처리와
+	같은 CPlayerSkillCatalog::Find_BySlot을 사용해 PlayerSkills.json과 HUD에 서로 다른 슬롯
+	대응표를 두지 않는다. HUD_Layout.json은 공용 슬롯의 위치·크기를 맡고, 이 함수는
+	Update_CombatHUD의 표시 경로에서 현재 슬롯에 맞는 텍스처를 선택한다. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
 
 	for (const char* pInputSlot : INPUT_SLOTS)
 	{
-		/* Icon sits between the slot background and the frame in real sprite order: Skill_<X>
-		keeps only "Slot Bg.png" as its authored layer now, the dynamic Skill_<X>_Icon slot
-		carries whatever this resolves, and the appended Skill_<X>_Frame slot (the frame art
-		stripped from the base slot) draws over both -- the same border-above-icon stacking the
-		old redraw achieved. */
+		/* 기본 슬롯은 배경을, Skill_<X>_Icon은 현재 스킬 이미지를, Skill_<X>_Frame은 테두리를
+		그린다. 아이콘을 바꿔도 배경과 테두리의 별도 슬롯 배치·표시 순서를 유지한다. */
 		const char* pIconPath = nullptr;
 		bool_t bUsableInStance = true;
 		if (const PLAYER_SKILL_DEFINITION* pSkill = CPlayerSkillCatalog::Find_BySlot(
@@ -10181,11 +9970,8 @@ void CMainApp::Update_SkillIcons()
 		else if (LostArk::Shared::CHARACTER_CLASS_ID::GUARDIANKNIGHT == player.eCharacterClass &&
 			0 == std::strcmp(pInputSlot, "T"))
 		{
-			/* GuardianKnight's T is the dragon-form breath, so in the human stance the slot
-			resolves to nothing and used to sit empty. Retail keeps the icon there and dims it
-			until the stance makes it usable. Only this one slot is scoped that way: every
-			other GuardianKnight slot either exists in both stances or in neither, and the
-			other stance classes are left as they are. */
+			/* 가디언나이트 T는 용 자세에서 사용하는 스킬이다. 인간 자세의 조회가 비어 있을 때에도
+			용 자세의 아이콘을 찾아 어둡게 표시한다. 이 보완은 해당 직업·슬롯에만 적용한다. */
 			for (const PLAYER_SKILL_DEFINITION& Skill : CPlayerSkillCatalog::Get_Skills())
 			{
 				if (Skill.eCharacterClass != player.eCharacterClass ||
@@ -10207,10 +9993,8 @@ void CMainApp::Update_SkillIcons()
 		if (nullptr != pIconPath)
 		{
 			m_pHUDRuntimeView->Set_SlotTexture(strIconSlot, pIconPath);
-			/* There is no greyed copy of a skill icon in the data -- IconInfo has one DDK_Skill
-			page and no gray variant. Retail dims at draw time: ARKNewSlot sets its content
-			canvas to ColorTransform(1,1,1,1) while active and ColorTransform(0.3,0.3,0.3,1)
-			otherwise, so this is that same flat 0.3 multiply on RGB with alpha untouched. */
+			/* 비활성 아이콘을 별도 파일로 바꾸지 않고 같은 텍스처의 RGB에 0.3을 곱한다.
+			알파는 1로 유지하므로 투명도를 낮추는 것과 구분된다. */
 			m_pHUDRuntimeView->Set_SlotTint(strIconSlot, bUsableInStance ?
 				float4_t(1.f, 1.f, 1.f, 1.f) : float4_t(0.3f, 0.3f, 0.3f, 1.f));
 			m_pHUDRuntimeView->Set_SlotVisible(strIconSlot, true);
@@ -10225,10 +10009,8 @@ void CMainApp::Update_SkillIcons()
 void CMainApp::Update_QuickSlotFlash()
 {
 	Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "UI.Runtime.QuickSlotFlash.Update");
-	/* Icon art, slot frame, keybind label, and cooldown sweep aren't extracted from QuickSlot.gfx
-	yet, so this only plays the real on-use flash -- Update_SkillIcons/Update_SkillCooldowns
-	(called alongside this, not instead of it) still own everything else. Only reached from
-	Update_CombatHUD's own show path. */
+	/* Update_CombatHUD의 표시 경로에서 퀵슬롯 사용 효과만 갱신한다. 아이콘과 쿨다운은
+	함께 호출되는 Update_SkillIcons/Update_SkillCooldowns가 맡으므로 여기서 다시 갱신하지 않는다. */
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 
 	constexpr const char* INPUT_SLOTS[] = { "Q", "W", "E", "R", "A", "S", "D", "F", "T", "V" };
@@ -10246,8 +10028,8 @@ void CMainApp::Update_QuickSlotFlash()
 			}
 		}
 
-		/* Ready-to-not-ready is the only reliable "used just now" signal -- see the member
-		comment on m_bPreviousQuickSlotReady for why comparing raw iCooldownEndTick doesn't work. */
+		/* 이전 프레임에는 준비됐고 지금은 준비되지 않은 전이를 사용 직후 신호로 삼는다.
+		원시 종료 tick 대신 플레이어의 현재 Server tick으로 계산한 Is_Ready 결과를 비교한다. */
 		if (m_bPreviousQuickSlotReady[iSlotIndex] && !bIsReady)
 		{
 			m_pHUDRuntimeView->Play_KeyframeAnimation(
@@ -10264,10 +10046,10 @@ void CMainApp::RenderCombatHUDText()
 	if (currentLevel != ETOUI(LEVEL::COLOSSEUM) &&
 		currentLevel != ETOUI(LEVEL::BERN) &&
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
+		currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
 		!Is_WaterGunHudLevel(currentLevel, CCombatHUDViewModel::Get().Get_Player()))
 	{
 		return;
@@ -10285,22 +10067,18 @@ void CMainApp::RenderCombatHUDText()
 	const HUD_PLAYER_STATE& player = CCombatHUDViewModel::Get().Get_Player();
 	if (player.isValid && player.iMaximumHp > 0u && player.iMaximumResource > 0u && !m_bShipHudActive)
 	{
-		/* ark.controls:Progress.updateText appends the shield straight after the
-		readout as "(+n)", and writes nothing at all while there is no shield. */
+		/* 보호막이 있을 때만 HP 숫자 뒤에 (+n)을 붙여 별도 보호막 수치를 구분한다. */
 		const wstring hp = std::to_wstring(player.iCurrentHp) +
 			L" / " + std::to_wstring(player.iMaximumHp) +
 			(0u == player.iShield ? wstring() :
 				L"(+" + std::to_wstring(player.iShield) + L")");
-		/* A class with an ember pool draws its own gauge art over this strip -- the orb and the
-		10 sockets (Update_GuardianKnightIdentity) -- so the numeric stand-in that stood here
-		until that art existed would now just sit on top of the sockets. */
+		/* ember 자원을 쓰는 직업은 Update_GuardianKnightIdentity의 구슬·소켓으로 표시하므로
+		이 공용 자원 숫자는 그리지 않아 중복 표시를 피한다. */
 		const bool_t bHasEmberPool = 0u != player.iEmberMaximumSockets;
 		const wstring mana = std::to_wstring(player.iCurrentResource) +
 			L" / " + std::to_wstring(player.iMaximumResource);
-		/* Positions/size follow the same 0.75 anchor-scale (around 673.675, 747.092) and -12
-		vertical shift applied to the whole bottom HUD in HUD_Layout.json -- these two labels
-		are drawn here in C++, not from that JSON, so they need the same transform by hand or
-		they drift off the now-smaller HP/mana bars. */
+		/* 이 두 글자는 C++에 둔 1280×720 기준 좌표를 viewport의 scaleX/scaleY로 변환해
+		그린다. 글자 크기는 두 배율 중 작은 textScale을 사용해 가로·세로 비율을 유지한다. */
 		CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), hp.c_str(),
 			position(504.419f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 		if (!bHasEmberPool)
@@ -10309,9 +10087,7 @@ void CMainApp::RenderCombatHUDText()
 				position(835.169f, 635.273f), Colors::White, 0.f, float2_t(0.5f, 0.5f), 0.315f * textScale);
 		}
 	}
-	/* Boss HP number/name/grade text moved into RenderBossHealthBarText() -- the decompiled
-	targetstatus_loc_int.gfx places them relative to the bar's own real position (see that
-	function), not this hardcoded (640, 58). */
+	/* 보스 HP·이름·등급 문자는 RenderBossHealthBarText가 실제 막대 rect를 기준으로 그린다. */
 }
 
 void CMainApp::RenderDamageNumbers()
@@ -10327,7 +10103,7 @@ void CMainApp::RenderDamageNumbers()
 		currentLevel != ETOUI(LEVEL::VALTAN_ARENA) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) &&
 		currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
-		currentLevel != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		currentLevel != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		return;
 	}
@@ -10341,41 +10117,34 @@ void CMainApp::RenderDamageNumbers()
 	if (nullptr != m_pSkillWindowView && m_pSkillWindowView->Is_Open())
 		return;
 
-	/* Retail damagetext.gfx (EFUI_DAMAGE): $YoonGasiIIM 32px centred text on the 1080p stage.
-	What animates it is DamageTextElement's own timeline, which DamageTextWnd starts per hit
-	kind (gotoAndPlay "playerDamageType0" / "critical" / "heal") -- not DamageTextCBT2's tween
-	parameters, which only a test harness drives. The movie runs at 30 fps and the frames below
-	are its scaleX keys, so a number punches out to 2.65x within five frames and settles back
-	onto 1.0 by frame 18. It does not travel: the timeline has no translation and no alpha. */
+	/* 아래 값은 피해 숫자에 쓰는 30fps 배율 키다. 5프레임까지 2.65배로 커지고 18프레임에
+	1배로 돌아온다. 글자 크기는 1080p 기준 32px로 계산하며, 위치와 종료 투명도는
+	아래 화면 좌표 변환·fade 처리에서 별도로 적용한다. */
 	constexpr f32_t DAMAGE_TIMELINE_FPS = 30.f;
 	constexpr f32_t DAMAGE_SCALE_NORMAL[] = {
 		1.00f, 1.25f, 2.00f, 2.33f, 2.65f, 2.60f, 2.55f, 2.50f, 2.17f,
 		1.83f, 1.50f, 1.37f, 1.26f, 1.16f, 1.09f, 1.04f, 1.01f, 1.00f };
-	/* "heal" holds 1.5 for its whole run. */
+	/* 회복 숫자는 전체 구간에서 1.5배를 유지한다. */
 	constexpr f32_t DAMAGE_SCALE_HEAL = 1.5f;
 	constexpr f32_t DAMAGE_FONT_PX_START = 32.f;
-	/* The timeline ends on its last key and the host then drops the element. How long the
-	settled number is held and how it leaves are native values the movie does not carry, so
-	the number rests where it landed and fades from there. */
+	/* 배율 키를 모두 지난 뒤에는 마지막 크기를 유지한다. 유지·사라짐 시간은 아래
+	상수로 정하고, 숫자 위치는 유지한 채 종료 구간의 알파만 줄인다. */
 	constexpr f64_t DAMAGE_HOLD_SECONDS = 0.25;
 	constexpr f64_t DAMAGE_FADE_SECONDS = 0.25;
 	constexpr f64_t DAMAGE_NUMBER_LIFETIME_SECONDS =
 		std::size(DAMAGE_SCALE_NORMAL) / DAMAGE_TIMELINE_FPS +
 		DAMAGE_HOLD_SECONDS + DAMAGE_FADE_SECONDS;
-	/* DamageTextTween.DAMAGE_ANI_LIMIT: retail animates at most 20 numbers at once. */
+	/* 피해 숫자 애니메이션을 동시에 보관할 최대 개수는 20개다. */
 	constexpr size_t MAX_FLOATING_DAMAGE_NUMBERS = 20u;
 
-	/* Get_DamageEvents() keeps every retained hit, not just this frame's -- only spawn a floating
-	number for events strictly newer than the last batch we already spawned from. See the member
-	comment on m_iLastRenderedDamageServerTick for why a serverTick cursor is safe here even though
-	the buffer trims from the front. */
+	/* Get_DamageEvents는 이전에 보관한 타격도 반환하므로 마지막 처리 Server tick보다
+	새로운 사건만 숫자로 만든다. 배열 위치 대신 tick을 기억해 앞쪽 항목 제거에 영향받지 않는다. */
 	const std::vector<HUD_DAMAGE_EVENT>& damageEvents =
 		CCombatHUDViewModel::Get().Get_DamageEvents();
-	/* Compare against the cursor as it was before this pass: one snapshot batches every hit of
-	that tick under the same serverTick, so advancing the cursor inside the loop would drop all
-	but the first number of a multi-target hit. */
+	/* 이번 순회를 시작할 때의 커서와 비교한다. 같은 snapshot의 여러 타격이 같은 tick을
+	가지므로 루프 안에서 비교 기준을 앞당기면 같은 tick의 후속 타격을 놓칠 수 있다. */
 	const uint32_t iSpawnedUpToTick = m_iLastRenderedDamageServerTick;
-	const auto* arena = currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	const auto* arena = currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ? CLevel_KoukuSaydonArena::Get_Active() : nullptr;
 	for (const HUD_DAMAGE_EVENT& damageEvent : damageEvents)
 	{
 		if (damageEvent.iServerTick <= iSpawnedUpToTick)
@@ -10384,8 +10153,7 @@ void CMainApp::RenderDamageNumbers()
 			(std::max)(m_iLastRenderedDamageServerTick, damageEvent.iServerTick);
 		if (arena && !arena->Should_ShowDamageWorldUI(damageEvent.Event.iTargetNetEntityId,
 			damageEvent.Event.iSourcePlayerId)) continue;
-		/* A shard belongs to the one hunter who was dealt that suit, so the
-		other hunters' shards are not drawn on this screen. */
+		/* 카드 조각은 해당 문양을 배정받은 사냥꾼에게만 보이도록 로컬 플레이어 ID를 확인한다. */
 		if (LostArk::Shared::MECHANIC_CARD_SYMBOL::NONE !=
 				damageEvent.Event.eCardMazeSuit &&
 			damageEvent.Event.eCardMazeSuit !=
@@ -10405,9 +10173,8 @@ void CMainApp::RenderDamageNumbers()
 		number.isOutgoing = damageEvent.Event.isOutgoing;
 		number.eCardMazeSuit = damageEvent.Event.eCardMazeSuit;
 		number.eHitFlag = damageEvent.Event.eHitFlag;
-		/* Retail fills DamageTextElement's randValue/direction per hit so a burst does not
-		stack on one point; the spread reads wider than the status words' 26x18. The values
-		are native, so the range is the project's. */
+		/* 한 번에 발생한 숫자가 한 점에 겹치지 않도록 타격별 초기 오프셋을 만든다.
+		아래 범위는 이 프로젝트의 화면 공간 분산값이다. */
 		{
 			static std::mt19937 scatterRandom{ std::random_device{}() };
 			std::uniform_real_distribution<f32_t> spreadX(-42.f, 42.f);
@@ -10430,15 +10197,14 @@ void CMainApp::RenderDamageNumbers()
 		if (damageEvent.Event.isStaggerSuccess) appendSuccess(2u,
 			damageEvent.Event.isCounterSuccess ? -104.f : -64.f);
 	}
-	/* System option "show damage": the events are still consumed above so switching it back
-	on does not replay a backlog. */
+	/* 피해 숫자 표시 옵션을 꺼도 위에서 사건 커서는 진행시켜 다시 켤 때 지난 타격을 재생하지 않는다. */
 	if (!CUserSettings::Get().Is_DamageNumberShown())
 	{
 		std::erase_if(m_FloatingDamageNumbers, [](const auto& number) { return number.iMechanicSuccess == 0u; });
 	}
 	while (m_FloatingDamageNumbers.size() > MAX_FLOATING_DAMAGE_NUMBERS)
 	{
-		// A same-tick burst must not evict the counter/stagger verdict before its first draw.
+		// 같은 tick의 연속 숫자가 카운터·무력화 성공 문구를 첫 렌더 전에 밀어내지 않게 한다.
 		const auto amount = std::find_if(m_FloatingDamageNumbers.begin(), m_FloatingDamageNumbers.end(),
 			[](const auto& number) { return number.iMechanicSuccess == 0u; });
 		m_FloatingDamageNumbers.erase(amount == m_FloatingDamageNumbers.end() ?
@@ -10461,13 +10227,11 @@ void CMainApp::RenderDamageNumbers()
 		return;
 	const matrix_t view = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::VIEW));
 	const matrix_t projection = XMLoadFloat4x4(CGameInstance::Get().Get_Transform(D3DTS::PROJ));
-	/* The system option battle font size (75 .. 300%) scales the whole tween. */
+	/* 전투 글자 크기 옵션(75~300%)을 전체 배율 애니메이션에 함께 적용한다. */
 	const f32_t stageScale = viewportSize.y / 1080.f * CUserSettings::Get().Get_DamageFontScale();
 
-	/* A card maze shard rises where the damage number would: "<suit> jogak x N".
-	   Korean is written with universal character names so this file keeps its
-	   existing bytes; Font_EventDamage is the same YoonGasiIIM sprite font that
-	   carries every Hangul syllable used here. */
+	/* 카드 조각은 타격 위치에 문양·조각·개수를 표시한다. 한글 문자열은 아래 universal
+	   character name 표기를 유지하며 Font_EventDamage로 그린다. */
 	const auto shardText = [](const LostArk::Shared::MECHANIC_CARD_SYMBOL suit,
 		const uint32_t count) -> wstring
 	{
@@ -10490,10 +10254,9 @@ void CMainApp::RenderDamageNumbers()
 	{
 		if (arena && !arena->Should_ShowDamageWorldUI(number.iTargetNetEntityId, number.iSourcePlayerId)) continue;
 		const f64_t dAge = dNow - number.dSpawnSeconds;
-		/* Walk the element's own frames: hold the last key once the timeline has run out. */
+		/* 해당 숫자의 프레임을 따라가되 키 범위를 지나면 마지막 배율을 유지한다. */
 		const bool_t isHeal = LostArk::Shared::DAMAGE_HIT_FLAG::HEAL == number.eHitFlag;
-		/* A critical reads as a colour, not as a bigger number, so it walks the same
-		curve as an ordinary hit. */
+		/* 치명타 여부는 아래 색상 분기에서 표현하고 배율 곡선은 일반 피해와 공유한다. */
 		const f32_t* pCurve = DAMAGE_SCALE_NORMAL;
 		const size_t iCurveKeys = std::size(DAMAGE_SCALE_NORMAL);
 		const f32_t fFrame = static_cast<f32_t>(dAge) * DAMAGE_TIMELINE_FPS;
@@ -10507,13 +10270,12 @@ void CMainApp::RenderDamageNumbers()
 			fTimelineScale = pCurve[iKey] + (pCurve[iNext] - pCurve[iKey]) * fBlend;
 		}
 		const f32_t fFontPx = DAMAGE_FONT_PX_START * fTimelineScale;
-		/* The number stays where it landed; only the tail fades. */
+		/* 숫자의 위치는 유지하고 마지막 구간에서만 알파를 줄인다. */
 		const f64_t dTimeline = iCurveKeys / DAMAGE_TIMELINE_FPS;
 		const f32_t fAlpha = dAge <= dTimeline + DAMAGE_HOLD_SECONDS ? 1.f :
 			1.f - (std::clamp)(static_cast<f32_t>(
 				(dAge - dTimeline - DAMAGE_HOLD_SECONDS) / DAMAGE_FADE_SECONDS), 0.f, 1.f);
-		/* Anchored a little above the hit point (the event carries the target's ground position);
-		the tween moves it in screen space from there, like retail's canvas does. */
+		/* 사건의 월드 바닥 위치에서 조금 위를 기준점으로 잡고 투영한 뒤 화면 공간 오프셋을 더한다. */
 		const vector_t vProjected = XMVector3Project(
 			XMVectorSet(
 				number.vWorldPosition.x,
@@ -10536,11 +10298,9 @@ void CMainApp::RenderDamageNumbers()
 		const float2_t vMeasured =
 			CGameInstance::Get().Measure_Text(TEXT("Font_EventDamage"), strAmount.c_str());
 		const f32_t fScale = vMeasured.y > 0.f ? (fFontPx * stageScale) / vMeasured.y : 1.f;
-		/* Retail DamageTextWnd's own colour table, selected by the Server's hit flag:
-		COLOR_PC_DAMAGE 0xFFFFFF for what the player deals, COLOR_ENEMY_DAMAGE 0xFF0000 for what
-		it takes, COLOR_CRITICAL_DAMAGE 0xFFCC00, COLOR_MISS_DAMAGE 0x999999, COLOR_HEAL
-		0x00FF00. A potion heal is the one non-combat flag the Server raises today; CRITICAL and
-		MISS light up once the combat numbers that decide them exist. */
+		/* 나가는 피해는 흰색, 받는 피해는 빨간색을 기본으로 한다. Server가 전달한 hit flag에
+		따라 치명타·빗나감·회복·흡수·무적의 색을 아래에서 덮어쓴다. 어떤 flag를 발행할지는
+		이 렌더 함수가 판정하지 않는다. */
 		vector_t vColor = number.isOutgoing ?
 			XMVectorSet(1.f, 1.f, 1.f, fAlpha) :
 			XMVectorSet(1.f, 0.f, 0.f, fAlpha);
@@ -10559,7 +10319,7 @@ void CMainApp::RenderDamageNumbers()
 			vColor = XMVectorSet(0.2f, 0.6f, 1.f, fAlpha); break;
 		default: break;
 		}
-		/* A shard is a pickup, not a hit, so it keeps the plain white. */
+		/* 카드 조각은 피해 판정 대신 획득 표시이므로 흰색을 사용한다. */
 		if (isShard)
 			vColor = XMVectorSet(1.f, 1.f, 1.f, fAlpha);
 		if (number.iMechanicSuccess == 1u) vColor = XMVectorSet(0.15f, 0.55f, 1.f, fAlpha);
@@ -10567,9 +10327,8 @@ void CMainApp::RenderDamageNumbers()
 		const float2_t vDrawPosition(
 			XMVectorGetX(vProjected) + number.fScatterX * stageScale,
 			XMVectorGetY(vProjected) + number.fScatterY * stageScale);
-		/* textContainer carries a GLOWFILTER (blur 5, strength 1, opaque black) in retail, which
-		is what keeps a number readable over a bright floor. A sprite font cannot blur, so the
-		same black is stamped around the glyphs once per direction before the coloured pass. */
+		/* 밝은 배경에서도 글자를 읽을 수 있도록 색상 글자를 그리기 전에 주변 방향에 검은
+		글자를 한 번씩 찍는다. 이 sprite font 경로는 흐림 필터 대신 외곽선을 근사한다. */
 		const f32_t fGlowOffset = (std::max)(1.f, fFontPx * 0.06f * stageScale);
 		const fvector_t vGlowColor = XMVectorSet(0.f, 0.f, 0.f, fAlpha);
 		for (const float2_t& vStep : {
@@ -10632,7 +10391,7 @@ void CMainApp::RenderCinematicSubtitles()
         for (auto& line : parsed) lines[upper ? 1u : 0u].push_back({std::move(line), offset, scale});
     };
     if (m_pKoukuPresentationPlayer &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
         for (const auto& subtitle : m_pKoukuPresentationPlayer->Collect_Subtitles())
             appendLines(subtitle.strText, subtitle.bUpper, subtitle.vScreenOffset, subtitle.fTextScale);
 
@@ -10648,8 +10407,8 @@ void CMainApp::RenderCinematicSubtitles()
     {
         if (!seen.emplace(subtitle.instanceId, subtitle.subtitleTrackId).second) continue;
         if (subtitle.position == "BALLOON") balloons.push_back(subtitle);
-        // Match the authored Kouku Gate 2 clear subtitle layout (1080p units).
-        // Balloon text stays world-anchored and retains its separate layout.
+        // 저작된 쿠크 2관문 클리어 자막 배치와 같은 1080p 기준 단위를 사용한다.
+        // 말풍선은 월드 기준점을 유지하며 별도 배치 계산을 사용한다.
         else appendLines(subtitle.text, subtitle.position == "UPPER", float2_t(0.f, 90.f), 2.f);
     }
     if (lines[0].empty() && lines[1].empty() && balloons.empty()) return;
@@ -10701,33 +10460,48 @@ void CMainApp::RenderCinematicSubtitles()
     }
 }
 
+// 제품 텍스트 pass가 평활 FPS를 표시한다. 유효한 viewport·측정된 폰트 높이가 없으면 그 프레임만 건너뛴다.
 void CMainApp::RenderFpsText()
 {
-	/* combobox_fps: 0 always, 1 in combat only (a hit within the last few seconds), 2 never.
-	Small YG760 line in the top-left corner; the retail placement was not traced. */
+	// Debug의 FPS 표시 모드는 항상/최근 피격 중/숨김이다.
+	// Release는 아래 빌드 분기 밖에서 같은 노란 FPS 글자를 표시하며 저장 옵션은 바꾸지 않는다.
 	if (m_fSmoothedFps <= 0.f)
 		return;
 #ifdef _DEBUG
 	const int32_t iMode = CUserSettings::Get().Get_FpsDisplayMode();
-	if (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0))
+	if (!(m_pProfilerTool && m_pProfilerTool->Is_CutsceneRecording()) &&
+        (2 == iMode || (1 == iMode && Product_Now_Seconds() - m_dLastDamageSeconds > 6.0)))
 		return;
 #endif
-	// Release keeps the readout visible for frame-rate checks without changing saved settings.
+	// Release는 저장 설정을 바꾸지 않고 프레임 확인용 FPS를 표시한다.
 	const float2_t viewportSize = CGameInstance::Get().Get_ViewportSize();
 	if (viewportSize.x <= 0.f || viewportSize.y <= 0.f)
 		return;
-	wchar_t text[32]{};
-	::_snwprintf_s(text, _countof(text), _TRUNCATE, L"FPS %d",
-		static_cast<int32_t>(std::lround(m_fSmoothedFps)));
+    wchar_t text[160]{};
+    Engine::FProfilerGeometryStats geometry{};
+    const auto* profiler = CGameInstance::Get().Get_Profiler();
+    const bool available = profiler && profiler->Get_GeometryStats(geometry);
+    wchar_t vertices[32] = L"--", indices[32] = L"--";
+    // Vtx는 버퍼 용량이 아니라 GPU의 실제 VS 실행 수다. Idx는 계측된 Engine draw의
+    // 인스턴스 포함 참조 수이며 indirect도 완료된 args만 더한다. 미완료를 0으로 쓰지 않는다.
+    if (available && geometry.VertexValid)
+        ::_snwprintf_s(vertices, _countof(vertices), _TRUNCATE, L"%llu", static_cast<unsigned long long>(geometry.VSInvocations));
+    if (available && geometry.IndexValid)
+        ::_snwprintf_s(indices, _countof(indices), _TRUNCATE, L"%llu", static_cast<unsigned long long>(geometry.TotalIndices));
+    ::_snwprintf_s(text, _countof(text), _TRUNCATE, L"FPS %d  |  Vtx(VS) %ls  |  Idx %ls  |  GPU -%lluF",
+        static_cast<int32_t>(std::lround(m_fSmoothedFps)), vertices, indices,
+        static_cast<unsigned long long>(available ? geometry.LatencyFrames : 0u));
 	const float2_t measured = CGameInstance::Get().Measure_Text(TEXT("Font_YG760"), text);
 	if (measured.y <= 0.f)
 		return;
 	const f32_t refScale = viewportSize.y / 720.f;
-	CGameInstance::Get().Draw_Text(TEXT("Font_YG760"), text,
-		float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
+	CGameInstance::Get().Draw_Text(
+		TEXT("Font_YG760"), text, float2_t(std::round(8.f * refScale), std::round(6.f * refScale)),
 		XMVectorSet(1.f, 0.95f, 0.6f, 1.f), 0.f, float2_t(0.f, 0.f), 13.f * refScale / measured.y);
 }
 
+// 메인 루프 끝에서 현재 전경/배경 제한을 읽고 다음 시작 시각을 맞춘다.
+// 제한이 없거나 이미 늦은 프레임은 현재 시각을 다음 기준으로 남긴다.
 void CMainApp::Limit_FrameRate()
 {
 	const bool_t bForeground = IsWindowOwnedByCurrentProcess(GetForegroundWindow());
@@ -10738,18 +10512,19 @@ void CMainApp::Limit_FrameRate()
 		m_LastFrameEnd = now;
 		return;
 	}
-	const std::chrono::steady_clock::time_point target = m_LastFrameEnd +
-		std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-			std::chrono::duration<f64_t>(1.0 / static_cast<f64_t>(iLimit)));
+	// 제한 FPS의 역수는 프레임당 초다. steady_clock duration으로 변환해 직전 종료 기준에 더한다.
+	const std::chrono::steady_clock::time_point target =
+		m_LastFrameEnd + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+							 std::chrono::duration<f64_t>(1.0 / static_cast<f64_t>(iLimit)));
 	if (now >= target)
 	{
-		/* A slow frame: no catch-up burst, the next period starts now. */
+		// 이미 제한 시각을 지난 프레임은 따라잡기 반복 없이 지금부터 다음 주기를 시작한다.
 		m_LastFrameEnd = now;
 		return;
 	}
-	/* Sleep the bulk on a high-resolution timer (1 ms class), spin the last stretch. */
-	static const HANDLE s_hTimer = CreateWaitableTimerExW(nullptr, nullptr,
-		CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	// 대부분의 남은 시간은 고해상도 타이머로 기다리고 마지막 짧은 구간은 spin으로 맞춘다.
+	static const HANDLE s_hTimer =
+		CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
 	std::chrono::steady_clock::time_point current = now;
 	while (current < target)
 	{
@@ -10757,6 +10532,7 @@ void CMainApp::Limit_FrameRate()
 		if (nullptr != s_hTimer && remain > std::chrono::milliseconds(2))
 		{
 			LARGE_INTEGER due{};
+			// Win32 상대 timer 시각은 음수 100ns 단위다. 마지막 1ms를 남기고 나머지만 기다린다.
 			due.QuadPart = -static_cast<LONGLONG>((remain - std::chrono::milliseconds(1)).count() / 100);
 			if (SetWaitableTimerEx(s_hTimer, &due, 0, nullptr, nullptr, nullptr, 0))
 				WaitForSingleObject(s_hTimer, 20);
@@ -10770,59 +10546,45 @@ void CMainApp::Limit_FrameRate()
 	m_LastFrameEnd = target;
 }
 
+// 초기화가 제품 텍스트용 폰트를 등록한다. 필수 폰트 실패는 E_FAIL, 선택적 크기 변형 누락은 로그 후 계속한다.
+// 앞서 등록한 폰트를 이 함수에서 개별 rollback하지 않으며 전체 초기화 실패 정리는 앱 종료 경로가 담당한다.
 HRESULT CMainApp::Ready_Fonts()
 {
-	const filesystem::path fontPath =
-		CRuntimeAssetRoot::Resolve_Font(L"161ex.spritefont");
-	if (fontPath.empty() || FAILED(CGameInstance::Get().Add_Font(
-		TEXT("Font_Default"),
-		fontPath.c_str())))
+	const filesystem::path fontPath = CRuntimeAssetRoot::Resolve_Font(L"161ex.spritefont");
+	if (fontPath.empty() || FAILED(CGameInstance::Get().Add_Font(TEXT("Font_Default"), fontPath.c_str())))
 	{
 		return E_FAIL;
 	}
 
-	/* LostArk's own source fonts (see SourceData/LPK/font/Binaries/Fonts/FontMap.xml),
-	converted to DirectXTK .spritefont via MakeSpriteFont. Tag names mirror the
-	original $-prefixed FontMap keys. */
-	struct SOURCE_FONT { const tchar_t* strTag; const wchar_t* strFile; };
-	constexpr SOURCE_FONT sourceFonts[] =
+	// 원본 FontMap의 역할에 맞춘 spritefont 등록이다. 기존 Font 태그를 유지해 제품 텍스트 소비자가 같은 이름을 사용한다.
+	struct SOURCE_FONT
 	{
-		{ TEXT("Font_YG760"), L"YG760.spritefont" },
-		{ TEXT("Font_YG330"), L"YG330.spritefont" },
-		{ TEXT("Font_YoonGasiIIM"), L"YoonGasiIIM.spritefont" },
-		/* Small 95-glyph ASCII-only subset (no Korean) -- fine for the boss HP number and "X N"
-		bar-count text, which are both pure digits/ASCII. User picked this one from the same 8-font
-		comparison gallery that settled Font_EventDamage. */
-		{ TEXT("Font_159"), L"159.spritefont" },
-		/* The floating damage number is damagetext.gfx's DamageTextCBT2, whose own
-		text field (character 231) is fontClass $YoonGasiIIM at 32pt. font.lpk's
-		Korean FontMap.xml does bind $eventDamageFont to BMKkubulimTTF.ttf, but the
-		three fields that ask for that token belong to DamageTextFoolsDay0, the
-		April Fools' variant -- not to the damage number. Reading the token name as
-		"the damage font" put BMKkubulim on every hit for a while; the gfx's own 43
-		text fields settle it ($YG760 x38, $eventDamageFont x3, $YoonGasiIIM x1 at
-		32pt, $YG330 x1). The tag name is kept so its consumers stay untouched. */
-		{ TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont" },
+		const tchar_t *strTag;
+		const wchar_t *strFile;
+	};
+	constexpr SOURCE_FONT sourceFonts[] = {
+		{TEXT("Font_YG760"), L"YG760.spritefont"},
+		{TEXT("Font_YG330"), L"YG330.spritefont"},
+		{TEXT("Font_YoonGasiIIM"), L"YoonGasiIIM.spritefont"},
+		// Font_159는 한글 없는 95자 ASCII 부분집합이다. 숫자와 X N처럼 ASCII만 필요한 보스 HP·줄 수에 사용한다.
+		{TEXT("Font_159"), L"159.spritefont"},
+		// 피해 숫자 태그는 원본 DamageTextCBT2의 YoonGasiIIM 계열에 대응한다.
+		// eventDamageFont라는 이름의 별도 원본 토큰과 혼동하지 않도록 태그는 유지하고 실제 폰트는 YoonGasiIIM을 등록한다.
+		{TEXT("Font_EventDamage"), L"YoonGasiIIM.spritefont"},
 	};
 
-	for (const SOURCE_FONT& sourceFont : sourceFonts)
+	for (const SOURCE_FONT &sourceFont : sourceFonts)
 	{
-		const filesystem::path sourceFontPath =
-			CRuntimeAssetRoot::Resolve_Font(sourceFont.strFile);
-		if (sourceFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(
-			sourceFont.strTag,
-			sourceFontPath.c_str())))
+		const filesystem::path sourceFontPath = CRuntimeAssetRoot::Resolve_Font(sourceFont.strFile);
+		if (sourceFontPath.empty() || FAILED(CGameInstance::Get().Add_Font(sourceFont.strTag, sourceFontPath.c_str())))
 		{
 			return E_FAIL;
 		}
 	}
 
-	/* Small-label variants of two of the fonts above, Lanczos pre-downsampled offline to each
-	line-spacing step in UILabelFont::BAKED_SIZES (the originals are baked at 32-42 px in 4-bit
-	BC2 and blur when SpriteBatch resamples them for 10-18 px labels; the windows draw these
-	1:1). They ship with the UI folder, so a missing file is not fatal: UILabelFont::Resolve
-	falls back to the full-size font when a tag is absent. */
-	for (const wchar_t* pFamily : { L"YG760", L"YoonGasiIIM" })
+	// 작은 라벨은 UILabelFont::BAKED_SIZES에 맞춘 별도 크기 파일을 선택적으로 등록한다.
+	// 누락은 로그만 남기며 UILabelFont의 기존 큰 폰트 대체 경로를 사용한다.
+	for (const wchar_t *pFamily : {L"YG760", L"YoonGasiIIM"})
 	{
 		for (const int32_t iSize : UILabelFont::BAKED_SIZES)
 		{
@@ -10834,9 +10596,7 @@ HRESULT CMainApp::Ready_Fonts()
 		}
 	}
 
-	/* Display-size variants, re-rasterised from the retail TTF (nothing above 42 px
-	exists to downsample from). Latin only -- see UILabelFont::LATIN_DISPLAY_SIZES --
-	so they are reached through Resolve_LatinDisplay and never by ordinary labels. */
+	// 큰 Latin 표시는 별도 raster 크기를 등록한다. Resolve_LatinDisplay 소비용이며 일반 라벨 선택에는 쓰지 않는다.
 	for (const int32_t iSize : UILabelFont::LATIN_DISPLAY_SIZES)
 	{
 		const wstring strTag = wstring(L"Font_YoonGasiIIM_Latin") + std::to_wstring(iSize);
@@ -10849,109 +10609,88 @@ HRESULT CMainApp::Ready_Fonts()
 	return S_OK;
 }
 
+// MainApp이 제품 공통 shader·quad·effect·UI 원형을 STATIC 영역에 등록한다. 원형 보관과 이후 Clone은 GameInstance의 Prototype_Manager가 맡는다.
 HRESULT CMainApp::Ready_Prototype_For_Static()
 {
 	if (FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		CSkillGroundTargetPreview::SHADER_TAG,
-		CShader::Create(
-			m_pDevice,
-			m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxSkillGroundTargetPreview.hlsl"),
-			VTXTEX::Elements,
-			VTXTEX::iNumElements))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		TEXT("Prototype_Component_Shader_VtxTex"),
-		CShader::Create(
-			m_pDevice,
-			m_pContext,
-			TEXT("../Bin/ShaderFiles/Shader_VtxTex.hlsl"),
-			VTXTEX::Elements,
-			VTXTEX::iNumElements))) ||
-		FAILED(CGameInstance::Get().Add_Prototype(
-			ETOUI(LEVEL::STATIC),
-			TEXT("Prototype_Component_VIBuffer_Rect"),
-			CVIBuffer_Rect::Create(m_pDevice, m_pContext))))
+			ETOUI(LEVEL::STATIC), CSkillGroundTargetPreview::SHADER_TAG,
+			CShader::Create(m_pDevice, m_pContext, TEXT("../Bin/ShaderFiles/Shader_VtxSkillGroundTargetPreview.hlsl"),
+							VTXTEX::Elements, VTXTEX::iNumElements))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_Component_Shader_VtxTex"),
+												  CShader::Create(m_pDevice, m_pContext,
+																  TEXT("../Bin/ShaderFiles/Shader_VtxTex.hlsl"),
+																  VTXTEX::Elements, VTXTEX::iNumElements))) ||
+		FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_Component_VIBuffer_Rect"),
+												  CVIBuffer_Rect::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}
 
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		TEXT("Prototype_GameObject_EffectObject"),
-		CEffectObject::Create(m_pDevice, m_pContext))))
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_GameObject_EffectObject"),
+												  CEffectObject::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		CSkillGroundTargetPreview::PROTOTYPE_TAG,
-		CSkillGroundTargetPreview::Create(m_pDevice, m_pContext))))
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), CSkillGroundTargetPreview::PROTOTYPE_TAG,
+												  CSkillGroundTargetPreview::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		CClickMoveEffect::PROTOTYPE_TAG,
-		CClickMoveEffect::Create(m_pDevice, m_pContext))))
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), CClickMoveEffect::PROTOTYPE_TAG,
+												  CClickMoveEffect::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}
 
-	/* For.Prototype_GameObject_UI_Sprite */
-	if (FAILED(CGameInstance::Get().Add_Prototype(
-		ETOUI(LEVEL::STATIC),
-		TEXT("Prototype_GameObject_UI_Sprite"),
-		CUI_Sprite::Create(m_pDevice, m_pContext))))
+	// Loading과 제품 UI가 clone할 공용 sprite prototype을 등록한다.
+	if (FAILED(CGameInstance::Get().Add_Prototype(ETOUI(LEVEL::STATIC), TEXT("Prototype_GameObject_UI_Sprite"),
+												  CUI_Sprite::Create(m_pDevice, m_pContext))))
 	{
 		return E_FAIL;
 	}
 
-	/* Every texture the loading-screen JSON references gets its own Texture prototype up
-	front, keyed by its Resources-relative path -- CLevel_Loading::Ready_Layer_Chrome() Clones
-	Prototype_GameObject_UI_Sprite once per slot and looks the texture prototype up by that
-	same path string. */
+	// Loading 문서의 Resources 상대 texture 경로를 prototype key로 미리 등록한다.
+	// Loading의 sprite clone도 같은 경로로 texture를 조회한다.
 	return Ready_Prototype_For_LoadingChrome();
 }
 
+// Loading 전에 layout과 목적지별 배경 texture를 STATIC prototype으로 준비한다.
+// 문서 누락·parse 오류는 기존 S_OK 정책으로 건너뛰고 실제 prototype 등록 실패만 E_FAIL로 반환한다.
 HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 {
-	const filesystem::path layoutPath =
-		CProjectDataRoot::Resolve(L"UI/Loading/LoadingLayout.json");
+	const filesystem::path layoutPath = CProjectDataRoot::Resolve(L"UI/Loading/LoadingLayout.json");
 
 	ifstream stream(layoutPath);
 	if (!stream.is_open())
 		return S_OK;
 
-	const string text(
-		(istreambuf_iterator<char>(stream)),
-		istreambuf_iterator<char>());
+	const string text((istreambuf_iterator<char>(stream)), istreambuf_iterator<char>());
 
 	DATA_JSON_VALUE root;
 	string error;
 	if (!CDataJson::Parse(text, root, error))
 		return S_OK;
 
-	const DATA_JSON_VALUE* pSlots = root.Find("slots");
+	const DATA_JSON_VALUE *pSlots = root.Find("slots");
 	if (nullptr == pSlots || !pSlots->Is_Array())
 		return S_OK;
 
+	// 문서가 같은 path를 여러 layer에서 사용해도 한 번만 등록한다. 빈/잘못된 layer와 루트 밖 경로는 건너뛴다.
 	vector<wstring_t> registeredPaths;
-	for (const DATA_JSON_VALUE& slot : pSlots->Get_Array())
+	for (const DATA_JSON_VALUE &slot : pSlots->Get_Array())
 	{
-		const DATA_JSON_VALUE* pLayers = slot.Find("layers");
+		const DATA_JSON_VALUE *pLayers = slot.Find("layers");
 		if (nullptr == pLayers || !pLayers->Is_Array())
 			continue;
 
-		for (const DATA_JSON_VALUE& layer : pLayers->Get_Array())
+		for (const DATA_JSON_VALUE &layer : pLayers->Get_Array())
 		{
-			const DATA_JSON_VALUE* pPath = layer.Find("path");
+			const DATA_JSON_VALUE *pPath = layer.Find("path");
 			if (nullptr == pPath || !pPath->Is_String() || pPath->Get_String().empty())
 				continue;
 
-			/* Loading chrome paths are plain ASCII filenames, so a naive widen is safe here. */
-			const string& narrowPath = pPath->Get_String();
+			// 기존 Loading 경로 계약의 ASCII byte를 wchar_t로 확장한다. UTF-8 다중 byte를 변환하는 경로는 아니다.
+			const string &narrowPath = pPath->Get_String();
 			const wstring_t widePath(narrowPath.begin(), narrowPath.end());
 
 			if (registeredPaths.end() != find(registeredPaths.begin(), registeredPaths.end(), widePath))
@@ -10963,32 +10702,24 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 				continue;
 
 			if (FAILED(CGameInstance::Get().Add_Prototype(
-				ETOUI(LEVEL::STATIC), widePath,
-				CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
+					ETOUI(LEVEL::STATIC), widePath, CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
 			{
 				return E_FAIL;
 			}
 		}
 	}
 
-	/* Per-target loading backgrounds: Level_Loading::Ready_Layer_Chrome swaps the Background
-	slot's texture path to one of these at runtime (Valtan Arena, Character Select), so they
-	never appear in LoadingLayout.json's own layers and the scan above never finds them --
-	register them explicitly or the CUI_Sprite clone fails to find a texture prototype. */
-	for (const wchar_t* pLoadingBackground : {
-		L"UI/Loading/Loading_Background_Valtan.png",
-		L"UI/Loading/Loading_Background_Kouku.png",
-		L"UI/Loading/Loading_Background_Prologue.png",
-		L"UI/Loading/Loading_Background_Maharaka.png",
-		L"UI/Loading/Loading_Background_Sea_0.png",
-		L"UI/Loading/Loading_Background_Colosseum.png" })
+	// Loading이 목적지에 따라 선택하는 배경은 기본 layout의 layer 목록에 없으므로 별도로 등록한다.
+	// 이 prototype이 있어야 목적지 배경으로 바뀐 sprite가 같은 경로 key를 찾을 수 있다.
+	for (const wchar_t *pLoadingBackground :
+		 {L"UI/Loading/Loading_Background_Valtan.png", L"UI/Loading/Loading_Background_Kouku.png",
+		  L"UI/Loading/Loading_Background_Prologue.png", L"UI/Loading/Loading_Background_Maharaka.png",
+		  L"UI/Loading/Loading_Background_Sea_0.png", L"UI/Loading/Loading_Background_Colosseum.png"})
 	{
-		const filesystem::path resolvedPath =
-			CRuntimeAssetRoot::Resolve(pLoadingBackground);
-		if (!resolvedPath.empty() &&
-			FAILED(CGameInstance::Get().Add_Prototype(
-				ETOUI(LEVEL::STATIC), pLoadingBackground,
-				CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
+		const filesystem::path resolvedPath = CRuntimeAssetRoot::Resolve(pLoadingBackground);
+		if (!resolvedPath.empty() && FAILED(CGameInstance::Get().Add_Prototype(
+										 ETOUI(LEVEL::STATIC), pLoadingBackground,
+										 CTexture::Create(m_pDevice, m_pContext, resolvedPath.c_str(), 1))))
 		{
 			return E_FAIL;
 		}
@@ -10997,90 +10728,61 @@ HRESULT CMainApp::Ready_Prototype_For_LoadingChrome()
 	return S_OK;
 }
 
-HRESULT CMainApp::Start_Level(
-	const LEVEL eTargetLevel,
-	const LOBBY_COMMAND_TOKEN lobbyCommandToken)
+// MainApp이 목적지 로딩을 시작하는 경계다. Loading을 만들고 프로필을 적용한 뒤 GameInstance의 Level_Manager로 소유권을 넘긴다.
+// 교체 실패 시 프로필 복원을 시도하며 목적지 Level의 실제 생성은 이후 ACTIVATE 요청에서 처리한다.
+HRESULT CMainApp::Start_Level(const LEVEL eTargetLevel, const LOBBY_COMMAND_TOKEN lobbyCommandToken)
 {
-	/* The P-toggled Item Upgrade debug preview (see m_pItemUpgradeView's declaration comment)
-	has no level awareness of its own -- it just shows whenever the flag is on. Without this,
-	leaving Character Select with the preview open (e.g. entering Valtan) left its CUI_Sprite
-	slots (LEVEL::STATIC, so they survive a level change) showing over the Loading screen and the
-	destination level too, and its text drawing along with them. Any real level transition ends
-	it. */
+	// STATIC 재련 UI와 반복 소리는 Loading 전환을 시작할 때 정리한다.
+	// 이후 검사에서 실패해도 이미 수행한 숨김·소리 정지를 되돌리지는 않는다.
 	m_bItemUpgradePreviewVisible = false;
 	Hide_ItemUpgrade();
 	CGameInstance::Get().Stop_LoopingSound();
 
-	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
-		CLevelRegistry::Find(eTargetLevel);
+	const CLIENT_LEVEL_DESCRIPTOR *pTarget = CLevelRegistry::Find(eTargetLevel);
 	if (nullptr == pTarget || nullptr == pTarget->pRenderingProfileId ||
 		!m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId) ||
-		!m_RenderingProfiles.Has_Profile(
-			CRenderingProfileService::LOADING_PROFILE_ID))
+		!m_RenderingProfiles.Has_Profile(CRenderingProfileService::LOADING_PROFILE_ID))
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_PROFILE_MISSING,
-			"main-app.start-level-profile",
-			"Target or Loading rendering profile is not registered.",
-			E_INVALIDARG);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.start-level-profile", "Target or Loading rendering profile is not registered.", E_INVALIDARG);
 		return E_INVALIDARG;
 	}
 
-	unique_ptr<CLevel_Loading> loading =
-		CLevel_Loading::Create(
-			m_pDevice,
-			m_pContext,
-			eTargetLevel,
-			lobbyCommandToken,
-			LEVEL::LOBBY == eTargetLevel && m_bOpenCharacterSelectOnLobby ?
-				m_pCharacterSelectWindowView.get() : nullptr);
+	unique_ptr<CLevel_Loading> loading = CLevel_Loading::Create(
+		m_pDevice, m_pContext, eTargetLevel, lobbyCommandToken,
+		LEVEL::LOBBY == eTargetLevel && m_bOpenCharacterSelectOnLobby ? m_pCharacterSelectWindowView.get() : nullptr);
 	if (nullptr == loading)
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_LOADING_START_FAILED,
-			"main-app.loading-level-create",
-			"CLevel_Loading::Create returned null.",
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED, "main-app.loading-level-create",
+			"CLevel_Loading::Create returned null.", E_FAIL);
 		return E_FAIL;
 	}
 
-	const string previousProfileId =
-		m_RenderingProfiles.Get_ActiveProfileId();
+	// Loading profile만 먼저 활성화한다. Level 교체 실패에 대비해 이전 profile identity를 보관한다.
+	const string previousProfileId = m_RenderingProfiles.Get_ActiveProfileId();
 	string status;
-	if (!m_RenderingProfiles.Activate_Profile(
-		CRenderingProfileService::LOADING_PROFILE_ID, status))
+	if (!m_RenderingProfiles.Activate_Profile(CRenderingProfileService::LOADING_PROFILE_ID, status))
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_PROFILE_FAILED,
-			"main-app.loading-profile-activation",
-			status,
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.loading-profile-activation", status, E_FAIL);
 		return E_FAIL;
 	}
 	CPresentation_Manager::Get().Clear_Frame();
-	const HRESULT hChange = CGameInstance::Get().Change_Level(
-		ETOUI(LEVEL::LOADING),
-		move(loading));
+	const HRESULT hChange = CGameInstance::Get().Change_Level(ETOUI(LEVEL::LOADING), move(loading));
 	if (FAILED(hChange))
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_LOADING_START_FAILED,
-			"main-app.loading-change-level",
-			"Change_Level(LOADING) failed.",
-			hChange);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED, "main-app.loading-change-level",
+			"Change_Level(LOADING) failed.", hChange);
 		if (!previousProfileId.empty())
 		{
 			string rollbackStatus;
-			if (!m_RenderingProfiles.Activate_Profile(
-				previousProfileId, rollbackStatus))
+			if (!m_RenderingProfiles.Activate_Profile(previousProfileId, rollbackStatus))
 			{
-				OutputDebugStringA((
-					"[MainApp] Loading profile rollback failed: " +
-					rollbackStatus + "\n").c_str());
+				OutputDebugStringA(("[MainApp] Loading profile rollback failed: " + rollbackStatus + "\n").c_str());
 			}
 		}
 		return hChange;
@@ -11088,62 +10790,57 @@ HRESULT CMainApp::Start_Level(
 	return S_OK;
 }
 
+// UI·Level·Loader는 전환 요청만 예약하고 MainApp이 다음 Update 시작에서 LOAD/ACTIVATE를 소비한다. 갱신 중인 Level을 그 자리에서 파괴하지 않기 위한 경계다.
+// LOAD 실패는 pending 정리·연결 종료 후 현 Level을 유지한다. ACTIVATE 실패는 대상 자원 정리와 필요 시 프로필 복원 후 Lobby 복구를 예약한다.
 void CMainApp::Apply_LevelRequest()
 {
-	// A single model decode is cooperatively cancellable only at its boundaries.
-	// Keep the request queued and the current scene ticking until retirement ends.
+	// 모델 decode는 협력 취소 경계에서 끝난다. 준비 작업이 종료될 때까지 요청을 큐에 남기고 현재 장면을 갱신한다.
+	// 취소 완료를 확인한 뒤에만 전환 요청을 소비한다.
 	if (CLevelTransitionService::Is_Pending())
 	{
 		Engine::CProfilerScope drainScope(CGameInstance::Get().Get_Profiler(), "CharacterAssets.LevelTransition.Drain");
 		CPlayableCharacterAssetService::Cancel_AllAsyncPreparations();
-		if (CPlayableCharacterAssetService::Has_ActivePreparations()) return;
+		if (CPlayableCharacterAssetService::Has_ActivePreparations())
+			return;
 	}
 	LEVEL_TRANSITION_REQUEST request{};
 	if (!CLevelTransitionService::Try_Consume(request))
 		return;
 #ifdef _DEBUG
-	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
-    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
-	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
+	if (m_pEffectTool)
+		m_pEffectTool->Deactivate_AuthoringWorkspace();
+	if (m_pEffectToolV2)
+		m_pEffectToolV2->Deactivate();
+	if (m_pWorldObjectTool)
+		m_pWorldObjectTool->Deactivate();
 	StopCompositionPreview(m_eCompositionPreviewOwner);
 	m_pWorldObjectCatalogSource = nullptr;
 	m_iWorldObjectCatalogGeneration = UINT64_MAX;
 #endif
-	const uint32_t iPreviousLevel =
-		CGameInstance::Get().Get_CurrentLevelID();
+	const uint32_t iPreviousLevel = CGameInstance::Get().Get_CurrentLevelID();
 
 	if (LEVEL_TRANSITION_PHASE::LOAD == request.ePhase)
 	{
-		/* Leaving a world for the Lobby, by the character select icon, a lost connection or a
-		Server disconnect, keeps what the character was carrying. */
+		// 캐릭터 선택·연결 종료 등으로 월드에서 로비로 복귀할 때 현재 캐릭터 보유 상태를 capture한다.
 		if (LEVEL::LOBBY == request.eTargetLevel &&
-			(iPreviousLevel == ETOUI(LEVEL::BERN) ||
-			 iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-			 iPreviousLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA) ||
-			 iPreviousLevel == ETOUI(LEVEL::MAHARAKA) ||
+			(iPreviousLevel == ETOUI(LEVEL::BERN) || iPreviousLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
+			 iPreviousLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA) || iPreviousLevel == ETOUI(LEVEL::MAHARAKA) ||
 			 iPreviousLevel == ETOUI(LEVEL::COLOSSEUM)))
 			CCharacterSelectionState::Capture_ActiveWorldState();
-		const HRESULT result = Start_Level(
-			request.eTargetLevel,
-			request.iLobbyCommandToken);
+		const HRESULT result = Start_Level(request.eTargetLevel, request.iLobbyCommandToken);
 		if (FAILED(result))
 		{
 			CCharacterSelectionState::Cancel_PendingCreation();
 			if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
 			{
-				CLobbyCommandService::Cancel(
-					request.iLobbyCommandToken,
-					"target level loading could not start");
+				CLobbyCommandService::Cancel(request.iLobbyCommandToken, "target level loading could not start");
 			}
 			CLevelTransitionService::Report_Recovery(
-				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-					CLIENT_LOADING_START_FAILED,
-				"main-app.start-level-request",
-				request.strSource,
-				result);
-			// Admission already consumed a Server room slot. Reclaim it here so
-			// the next Lobby click starts a fresh diagnostic generation instead
-			// of reusing a bound session whose loading transition failed.
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_LOADING_START_FAILED, "main-app.start-level-request",
+				request.strSource, result);
+			// Server 입장 승인으로 확보한 연결을 닫아 다음 로비 시도가 새 연결 진단 세대로 시작하게 한다.
+			// Loading 전환에 실패한 기존 바인딩을 재사용하지 않는다.
+			// 실제 연결 종료·룸 회수는 기존 Network/Server 경계가 처리한다.
 			CNetworkManager::Get().Close_ServerConnection();
 		}
 		else
@@ -11153,40 +10850,28 @@ void CMainApp::Apply_LevelRequest()
 		return;
 	}
 
-	const CLIENT_LEVEL_DESCRIPTOR* pTarget =
-		CLevelRegistry::Find(request.eTargetLevel);
-	const bool_t hasTargetProfile = nullptr != pTarget &&
-		nullptr != pTarget->pRenderingProfileId &&
-		m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId);
+	const CLIENT_LEVEL_DESCRIPTOR *pTarget = CLevelRegistry::Find(request.eTargetLevel);
+	const bool_t hasTargetProfile = nullptr != pTarget && nullptr != pTarget->pRenderingProfileId &&
+									m_RenderingProfiles.Has_Profile(pTarget->pRenderingProfileId);
 	if (!hasTargetProfile)
 	{
-		OutputDebugStringA(
-			"[MainApp] Activation target has no registered rendering profile.\n");
+		OutputDebugStringA("[MainApp] Activation target has no registered rendering profile.\n");
 	}
-	unique_ptr<CLevel> nextLevel = hasTargetProfile ?
-		CLevelRegistry::Create_Level(
-			request.eTargetLevel,
-			m_pDevice,
-			m_pContext) : nullptr;
+	unique_ptr<CLevel> nextLevel =
+		hasTargetProfile ? CLevelRegistry::Create_Level(request.eTargetLevel, m_pDevice, m_pContext) : nullptr;
 	const bool_t levelCreated = nullptr != nextLevel;
 	if (hasTargetProfile && nullptr == nextLevel)
 	{
-		OutputDebugStringA(
-			"[MainApp] Create_Level returned null (target Level::Initialize failed).\n");
+		OutputDebugStringA("[MainApp] Create_Level returned null (target Level::Initialize failed).\n");
 	}
-	const string previousProfileId =
-		m_RenderingProfiles.Get_ActiveProfileId();
-	const string previousLevelQualityId =
-		m_RenderingProfiles.Get_LevelQualityProfileId();
+	const string previousProfileId = m_RenderingProfiles.Get_ActiveProfileId();
+	const string previousLevelQualityId = m_RenderingProfiles.Get_LevelQualityProfileId();
 	string profileStatus;
-	const bool_t profileActivated = nullptr != nextLevel &&
-		m_RenderingProfiles.Activate_LevelProfile(
-		pTarget->pRenderingProfileId, profileStatus);
+	const bool_t profileActivated =
+		nullptr != nextLevel && m_RenderingProfiles.Activate_LevelProfile(pTarget->pRenderingProfileId, profileStatus);
 	if (nullptr != nextLevel && !profileActivated)
 	{
-		OutputDebugStringA((
-			"[MainApp] Target rendering profile activation failed: " +
-			profileStatus + "\n").c_str());
+		OutputDebugStringA(("[MainApp] Target rendering profile activation failed: " + profileStatus + "\n").c_str());
 	}
 #ifdef _DEBUG
 	if (profileActivated && nullptr != m_pCameraTool)
@@ -11196,160 +10881,124 @@ void CMainApp::Apply_LevelRequest()
 #endif
 	if (profileActivated)
 		CPresentation_Manager::Get().Clear_Frame();
-	const bool_t levelChanged = profileActivated &&
-		SUCCEEDED(CGameInstance::Get().Change_Level(
-			ETOUI(request.eTargetLevel), move(nextLevel)));
+	// 대상 생성과 profile 활성화가 모두 성공해야 Change_Level로 소유권을 넘긴다. identity 생성 확정은 실제 Bern 교체 성공 뒤다.
+	const bool_t levelChanged =
+		profileActivated && SUCCEEDED(CGameInstance::Get().Change_Level(ETOUI(request.eTargetLevel), move(nextLevel)));
 	if (levelChanged)
 	{
-	#ifdef _DEBUG
+#ifdef _DEBUG
 		if (nullptr != m_pCharacterPreviewPanel)
 			m_pCharacterPreviewPanel->On_LevelChanged();
 		if (nullptr != m_pAnimationTool)
 			m_pAnimationTool->On_LevelChanged();
-        if (m_pCharacterActionWorkbench) m_pCharacterActionWorkbench->On_LevelChanged();
+		if (m_pCharacterActionWorkbench)
+			m_pCharacterActionWorkbench->On_LevelChanged();
 		if (nullptr != m_pValtanActionWorkbench)
 			m_pValtanActionWorkbench->On_LevelChanged();
 		CKoukuSaydonPatternAuditionService::Get().Reset(
 			"Level changed; no KoukuSaydon Server pattern is Live in this Client session.");
 		if (nullptr != m_pEquipmentAuthoringTool)
 			m_pEquipmentAuthoringTool->On_LevelChanged();
-	#endif
+#endif
 		CEffectPresentationService::Clear_Level(iPreviousLevel);
-		if (LEVEL::BERN == request.eTargetLevel &&
-			CCharacterSelectionState::Has_PendingCreation() &&
+		if (LEVEL::BERN == request.eTargetLevel && CCharacterSelectionState::Has_PendingCreation() &&
 			!CCharacterSelectionState::Commit_PendingCreation())
 		{
-			OutputDebugStringA(
-				"[MainApp] Bern identity commit invariant failed.\n");
+			OutputDebugStringA("[MainApp] Bern identity commit invariant failed.\n");
 			CNetworkManager::Get().Close_ServerConnection();
 			CLevelTransitionService::Report_Recovery(
-				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-					CLIENT_IDENTITY_COMMIT_FAILED,
-				"main-app.identity-commit",
-				"Bern pending identity commit invariant failed.",
-				E_FAIL);
-			if (!CLevelTransitionService::Request_Load(
-				LEVEL::LOBBY,
-				"main-app.identity-commit-failure"))
+				LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_IDENTITY_COMMIT_FAILED, "main-app.identity-commit",
+				"Bern pending identity commit invariant failed.", E_FAIL);
+			if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "main-app.identity-commit-failure"))
 			{
-				OutputDebugStringA(
-					"[MainApp] Failed to stage Lobby after identity commit failure.\n");
+				OutputDebugStringA("[MainApp] Failed to stage Lobby after identity commit failure.\n");
 			}
 			return;
 		}
 		return;
 	}
+	// 메모리 교체 전 실패한 profile 변경은 기존 품질·장면 ID로 복원을 시도한다. 복원 실패를 원래 실패의 성공으로 처리하지 않는다.
 	if (profileActivated && !previousProfileId.empty())
 	{
 		string rollbackStatus;
-		const string& rollbackQualityId = previousLevelQualityId.empty() ? previousProfileId : previousLevelQualityId;
+		const string &rollbackQualityId = previousLevelQualityId.empty() ? previousProfileId : previousLevelQualityId;
 		if (!m_RenderingProfiles.Activate_LevelProfile(rollbackQualityId, rollbackStatus) ||
-			(previousProfileId != rollbackQualityId && !m_RenderingProfiles.Activate_Profile(previousProfileId, rollbackStatus)))
+			(previousProfileId != rollbackQualityId &&
+			 !m_RenderingProfiles.Activate_Profile(previousProfileId, rollbackStatus)))
 		{
-			OutputDebugStringA((
-				"[MainApp] Rendering profile rollback failed after level activation failure: " +
-				rollbackStatus + "\n").c_str());
+			OutputDebugStringA(
+				("[MainApp] Rendering profile rollback failed after level activation failure: " + rollbackStatus + "\n")
+					.c_str());
 		}
 	}
 
 	CCharacterSelectionState::Cancel_PendingCreation();
 	if (INVALID_LOBBY_COMMAND_TOKEN != request.iLobbyCommandToken)
 	{
-		CLobbyCommandService::Cancel(
-			request.iLobbyCommandToken,
-			"target level activation failed");
+		CLobbyCommandService::Cancel(request.iLobbyCommandToken, "target level activation failed");
 	}
+	// 활성화 실패의 대상 자원만 정리하고 최초 실패 단계에 맞는 복구 진단을 남긴다.
 	CGameInstance::Get().Clear_Resources(ETOUI(request.eTargetLevel));
 	if (!hasTargetProfile)
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_PROFILE_MISSING,
-			"main-app.target-profile-missing",
-			request.strSource,
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_MISSING,
+			"main-app.target-profile-missing", request.strSource, E_FAIL);
 	}
 	else if (!levelCreated)
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
-			"main-app.target-level-create",
-			request.strSource,
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_LEVEL_CREATE_FAILED,
+			"main-app.target-level-create", request.strSource, E_FAIL);
 	}
 	else if (!profileActivated)
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_PROFILE_FAILED,
-			"main-app.target-profile-activation",
-			profileStatus,
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_PROFILE_FAILED,
+			"main-app.target-profile-activation", profileStatus, E_FAIL);
 	}
 	else
 	{
 		CLevelTransitionService::Report_Recovery(
-			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::
-				CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED,
-			"main-app.target-change-level",
-			request.strSource,
-			E_FAIL);
+			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_ACTIVATION_CHANGE_LEVEL_FAILED,
+			"main-app.target-change-level", request.strSource, E_FAIL);
 	}
 	CNetworkManager::Get().Close_ServerConnection();
-	if (!CLevelTransitionService::Request_Load(
-		LEVEL::LOBBY,
-		"main-app.activation-failure"))
+	if (!CLevelTransitionService::Request_Load(LEVEL::LOBBY, "main-app.activation-failure"))
 	{
-		OutputDebugStringA(
-			"[MainApp] Failed to stage Lobby recovery after activation failure.\n");
+		OutputDebugStringA("[MainApp] Failed to stage Lobby recovery after activation failure.\n");
 	}
 }
 
+// MainApp이 ImGuiLayer를 보유해 매 프레임 Begin/Render를 제품 루프에 연결한다. 종료 때 엔진보다 먼저 backend를 Shutdown한다.
 HRESULT CMainApp::ReadyImGuiRuntime()
 {
 	m_pImGuiLayer = make_unique<Engine::CImGuiLayer>();
-	if (!m_pImGuiLayer->Initialize(
-		g_hWnd,
-		m_pDevice.Get(),
-		m_pContext.Get()))
+	if (!m_pImGuiLayer->Initialize(g_hWnd, m_pDevice.Get(), m_pContext.Get()))
 	{
 		return E_FAIL;
 	}
 
 #ifndef _DEBUG
-	// Recording Release keeps product UI in the main window without authoring viewports.
+	// Release는 제품 UI를 주 창에서 유지하고 저작용 docking·추가 viewport 및 ini 저장을 끈다.
 	ImGui::GetIO().ConfigFlags &= ~(ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable);
 	ImGui::GetIO().IniFilename = nullptr;
 #endif
 	return S_OK;
 }
 
-void CMainApp::UpdateProfilerRuntime()
+// 여러 입력 경로가 같은 창 소유 판정을 쓰도록 본체에 유지한다. 
+// HWND는 차용하며 null이나 PID 조회 실패는 false다.
+// 제품 단축키와 프레임 제한에서도 현재 프로세스의 전경 창인지 확인하므로 Release에서 함께 사용한다.
+bool_t CMainApp::IsWindowOwnedByCurrentProcess(HWND hWnd)
 {
-    // F7 only shows the profiler; Capture is an explicit action inside the window.
-    if (m_pProfilerTool) m_pProfilerTool->Update_SaveState();
-    const bool_t down = IsWindowOwnedByCurrentProcess(GetForegroundWindow()) &&
-        0 != (GetAsyncKeyState(VK_F7) & 0x8000);
-    if (down && !m_bF7Down && !ImGui::GetIO().WantTextInput &&
-        !CUIInputRouter::Get().Is_TextInputActive())
-    {
-        bool_t visible = m_bRuntimeProfilerVisible;
-        visible |= m_bDeveloperToolsVisible && IsDebugToolVisible(DEBUG_TOOL::PROFILER);
-        m_bRuntimeProfilerVisible = !visible;
-        if (m_bRuntimeProfilerVisible)
-        {
-            if (!m_pProfilerTool)
-            {
-                m_pProfilerTool = make_unique<CProfilerTool>(m_pDevice.Get());
-            }
-            m_pProfilerTool->Open();
-        }
-        else SetDebugToolVisible(DEBUG_TOOL::PROFILER, false);
-    }
-    m_bF7Down = down;
-}
+	if (nullptr == hWnd)
+		return false;
 
+	DWORD processId = {};
+	return 0 != GetWindowThreadProcessId(hWnd, &processId) &&
+		GetCurrentProcessId() == processId;
+}
 #ifdef _DEBUG
 HRESULT CMainApp::ReadyDebugTools()
 {
@@ -11460,7 +11109,7 @@ void CMainApp::ClaimCompositionPreviewOwner(const DEBUG_TOOL owner)
 	auto* previousShell = m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER ? m_pSequencerTool.get() :
 		(m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK ? m_pSequencerTool.get() : nullptr);
     if (m_eCompositionPreviewOwner == DEBUG_TOOL::SEQUENCER_BENCHMARK)
-        if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+        if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
             arena->Notify_SequencePlaybackEnded();
 	if (previousWorkbench)
 	{
@@ -11489,7 +11138,7 @@ void CMainApp::StopCompositionPreview(const DEBUG_TOOL owner)
 	if (owner == DEBUG_TOOL::SEQUENCER_BENCHMARK) ClearKoukuSequenceArrivals();
 	if (m_pAnimationTool) { std::string stoppedAnimationStatus; (void)m_pAnimationTool->Stop_KoukuCompositionPreview(stoppedAnimationStatus); }
 	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Stop_Preview();
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
+	if (auto* arena = CLevel_KoukuSaydonArena::Get_Active()) arena->Debug_StopCompositionWorldPreview();
 	ClaimCompositionPreviewOwner(DEBUG_TOOL::NONE);
 }
 
@@ -11509,8 +11158,8 @@ void CMainApp::CloseAllDebugTools()
 #ifdef _DEBUG
 HRESULT CMainApp::EnsureAnimationPreviewBackend()
 {
-	// Resource clicks need the shared CModel owner, without showing or focusing
-	// the Animation Tool window. Explicit Open Animation still uses EnsureDebugTool.
+	// Resources 선택에는 공용 CModel 미리보기 소유자가 필요하지만 이 준비 과정은
+	// Animation Tool 창을 표시하거나 포커스를 옮기지 않는다. 명시적인 열기는 EnsureDebugTool을 거친다.
 	if (nullptr == m_pCharacterPreviewPanel)
 		m_pCharacterPreviewPanel =
 			make_shared<CCharacterPreviewPanel>(m_pDevice, m_pContext);
@@ -11532,7 +11181,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Tool.Open");
 #ifdef _DEBUG
-    // The callbacks are owned by this app's tools and copy this closure, never a local reference.
+    // 도구 callback은 MainApp의 서비스에 요청을 되돌린다. 도구를 보유한 MainApp에 연결하므로 지역 변수 대신 소유자인 this를 사용한다.
     const CLASS_MOVIE_INSPECTION_CALLBACKS::OPEN_BACKGROUND openMovieBackground =
         [this](const std::string& classId, const std::string& expectedAreaId, std::string& status) {
             auto* level = CLevel_CharacterSelect::Get_Active();
@@ -11562,7 +11211,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             m_eDebugWindowFocusPending = DEBUG_TOOL::MAP;
             return true;
         };
-	/* Keep the old enum value as an internal compatibility route only. */
+	/* 이전 enum 값은 내부 호환 분기로 받아 기존 EFFECT 도구 열기에 연결한다. */
 	if (DEBUG_TOOL::EFFECT_COMPOSITION == eTool)
 		return EnsureDebugTool(DEBUG_TOOL::EFFECT, bShowWindow);
 	if (eTool == DEBUG_TOOL::WORLD_OBJECT || eTool == DEBUG_TOOL::SEQUENCER_BENCHMARK)
@@ -11650,9 +11299,8 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 				make_unique<CEffect_Tool>(
 					m_pDevice, m_pContext, m_pCharacterPreviewPanel,
 					m_pBalanceTool.get());
-		/* A Save may have completed while the Effect owner did not exist. Hand
-		   over its exact receipt before first-open code can perform an unpinned
-		   canonical refresh. */
+		/* Effect 도구가 만들어지기 전에 Save가 끝났을 수 있다. 첫 열기의 정본 새로고침보다
+		   먼저 해당 저장 영수증을 넘겨 어떤 저장 결과를 반영할지 고정한다. */
 		if (nullptr != m_pValtanActionWorkbench)
 		{
 			std::string ExpectedValtanSourceRevision;
@@ -11692,8 +11340,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
         break;
 	case DEBUG_TOOL::SEQUENCER:
 		if (FAILED(EnsureAnimationPreviewBackend())) return E_FAIL;
-		// Construct both independent sessions without loading the other boss's
-		// documents. The selected session lazily prepares its own frame.
+		// 발탄·쿠크 편집 세션은 MainApp이 각각 보유하고 선택된 세션만 필요한 문서를 읽는다. 다른 도구에는 세션 접근만 빌려 준다.
 		if (nullptr == m_pValtanActionWorkbench)
 			m_pValtanActionWorkbench = make_unique<CValtanActionWorkbench>(
 				m_pAnimationTool.get(), m_pBalanceTool.get(), m_pValtanBossTool.get());
@@ -11705,7 +11352,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			m_pKoukuSaydonActionWorkbench->Set_WorldPlacementResolver(
 				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 				{
-					auto* arena = CLevel_KakulSaydonArena::Get_Active();
+					auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 					float3_t position{};
 					if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
 					if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
@@ -11749,7 +11396,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 					m_pKoukuSaydonActionWorkbench->Set_WorldPlacementResolver(
 						[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 						{
-							auto* arena = CLevel_KakulSaydonArena::Get_Active();
+							auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 							float3_t position{};
 							if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
 							if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
@@ -11779,7 +11426,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			m_pSequenceActionWorkbench->Set_WorldPlacementResolver(
 				[](KOUKU_SAYDON_WORLD_PLACEMENT& placement, std::string& status)
 				{
-					auto* arena = CLevel_KakulSaydonArena::Get_Active();
+					auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 					float3_t position{};
 					if (!arena) { status = "WORLD placement requires the KoukuSaydon arena."; return false; }
 					if (!arena->Try_Get_AuthoringForwardPlacement(position, status)) return false;
@@ -11993,13 +11640,13 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             };
             classSelection.inspection = ClassMovieInspectionCallbacks(openMovieBackground);
             m_pSequencerTool->Set_ClassSelectionPreviewCallbacks(std::move(classSelection));
-			/* The Map Tool hosts the same Sequence session for its integrated
-			   cutscene view. One owner and one draft, borrowed per frame. */
+			/* Map Tool의 통합 컷신 화면도 같은 Sequence 세션을 프레임 동안 차용한다.
+			   별도 소유자나 문서 복사본을 만들지 않는다. */
 			if (m_pMapTool)
 			{
 				m_pMapTool->Set_SequenceCompositionSession(m_pSequenceActionWorkbench.get());
-				/* Valtan's Area hosts its own workbench: the Sequence session
-				   reads the KoukuSaydon composition and has no Valtan data. */
+				/* Valtan Area에는 발탄 Workbench를 연결한다. Sequence 세션은
+				   KoukuSaydon composition을 읽으므로 발탄 문서의 편집 세션으로 대체하지 않는다. */
 				m_pMapTool->Set_ValtanCompositionSession(m_pValtanActionWorkbench.get());
 			}
 			if (m_pMapTool)
@@ -12015,7 +11662,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
             {
 			    if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::CHARACTER_SELECT))
 				    m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
-			    else m_pSequencerTool->Open(ETOUI(LEVEL::KAKULSAYDON_ARENA) ==
+			    else m_pSequencerTool->Open(ETOUI(LEVEL::KOUKUSAYDON_ARENA) ==
 				    CGameInstance::Get().Get_CurrentLevelID() ?
 				    COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON : COMPOSITION_WORKBENCH_BOSS::VALTAN);
             }
@@ -12026,7 +11673,7 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 			const bool selectedValtan = m_pSequencerTool->Get_SelectedBoss() == COMPOSITION_WORKBENCH_BOSS::VALTAN;
 			if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::CHARACTER_SELECT))
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_TARGET::WORLD);
-			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KAKULSAYDON_ARENA) && selectedValtan)
+			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::KOUKUSAYDON_ARENA) && selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::KOUKU_SAYDON);
 			else if (m_pSequencerTool->Is_BossSelected() && level == ETOUI(LEVEL::VALTAN_ARENA) && !selectedValtan)
 				m_pSequencerTool->Open(COMPOSITION_WORKBENCH_BOSS::VALTAN);
@@ -12096,12 +11743,12 @@ HRESULT CMainApp::EnsureDebugTool(const DEBUG_TOOL eTool, const bool_t bShowWind
 		return E_INVALIDARG;
 	}
 
-    // Embedded tuners need the shared session without opening its window or
-    // stealing preview/input focus. Explicit Open callers keep the default true.
+    // 내장 조절 UI는 세션만 준비하고 창 표시나 미리보기·입력 포커스를 옮기지 않을 수 있다.
+    // 명시적인 열기 호출은 기본 인자인 true를 사용해 아래 표시·포커스 처리를 계속한다.
     if (!bShowWindow) return S_OK;
 	SetDebugToolVisible(eTool, true);
-	/* Valtan Logic Pattern is a read-only Server-state blueprint. Opening or focusing
-	it must not steal the explicit world/preview input owner. */
+	/* Valtan Logic Pattern은 Server 상태를 읽는 청사진이다. 열기·포커스 요청만으로
+	현재 월드·미리보기 입력 소유자를 바꾸지 않는다. */
 	if (DEBUG_TOOL::VALTAN_LOGIC_PATTERN != eTool)
 		m_eDebugInputOwner = eTool;
 	m_eDebugWindowFocusPending = eTool;
@@ -12219,7 +11866,7 @@ bool_t CMainApp::RequestDebugLevelNavigation(const LEVEL eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::BERN, eTargetLevel, "Bern");
 	if (LEVEL::VALTAN_ARENA == eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::VALTAN, eTargetLevel, "Valtan");
-	if (LEVEL::KAKULSAYDON_ARENA == eTargetLevel)
+	if (LEVEL::KOUKUSAYDON_ARENA == eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::KOUKU_SAYDON, eTargetLevel, "KoukuSaydon");
 	if (LEVEL::COLOSSEUM == eTargetLevel)
 		return routeThroughLobby(LOBBY_STAGE::COLOSSEUM, eTargetLevel, "Entrance PvP Arena");
@@ -12238,8 +11885,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	const LEVEL level = static_cast<LEVEL>(CGameInstance::Get().Get_CurrentLevelID());
 	CLevel_ValtanArena* valtan = LEVEL::VALTAN_ARENA == level ?
 		CLevel_ValtanArena::Get_Active() : nullptr;
-	CLevel_KakulSaydonArena* kouku = LEVEL::KAKULSAYDON_ARENA == level ?
-		CLevel_KakulSaydonArena::Get_Active() : nullptr;
+	CLevel_KoukuSaydonArena* kouku = LEVEL::KOUKUSAYDON_ARENA == level ?
+		CLevel_KoukuSaydonArena::Get_Active() : nullptr;
 	CLevel_CharacterSelect* characterSelect = LEVEL::CHARACTER_SELECT == level ?
 		CLevel_CharacterSelect::Get_Active() : nullptr;
 	CLevel_Bern* bern = LEVEL::BERN == level ? CLevel_Bern::Get_Active() : nullptr;
@@ -12281,8 +11928,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 	if (camera && ImGui::CollapsingHeader("Map Camera / Player", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::Text("Current map: %s", mapName);
-		/* Where the local player actually stands and which interact box the Server is offering
-		there, so an authored trigger can be placed against real coordinates instead of guesses. */
+		/* 실제 로컬 플레이어 위치와 Server가 제시한 상호작용 영역을 표시해
+		저작 트리거를 배치할 때 현재 좌표를 확인할 수 있게 한다. */
 		{
 			const std::shared_ptr<CCharacter> pDebugLocal =
 				nullptr != valtan ? valtan->Get_LocalCharacter() :
@@ -12301,7 +11948,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			ImGui::Text("Interact offer: %s", offered.empty() ? "(none)" : offered.c_str());
 		}
 #ifdef _DEBUG
-		// Maharaka Waterpang water gun: local-only arm override and fire clips/effects.
+		// 마하라카 워터팡 물총의 로컬 팔 덮어쓰기와 발사 clip·이펙트를 시험한다.
 		if (nullptr != development && LEVEL::MAHARAKA == level)
 			if (const std::shared_ptr<CCharacter> pWaterGunLocal = development->Get_DebugLocalCharacter())
 			{
@@ -12316,8 +11963,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 						(void)pWaterGunLocal->Play_WaterGunAttackPreview(attack);
 				}
 			}
-			/* Waterpang patterns on demand: the Debug Server starts a forced event for the
-			   whole room on its clock (hits, notice, telegraph, attack motions, sounds). */
+			/* 워터팡 패턴 버튼은 방 전체의 강제 이벤트를 Debug Server에 요청한다.
+			   적중·알림·예고·공격·소리의 진행 시점은 Server가 소유한다. */
 			if (nullptr != development && LEVEL::MAHARAKA == level)
 			{
 				static std::uint32_t s_WaterpangRequest = 0u, s_WaterpangAwaiting = 0u;
@@ -12360,8 +12007,8 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			}
 #endif
 
-		// The Server projects every request onto this active world's authored navigation.
-		// Bern needs this same Debug-only path to inspect the separate Bern3 deck.
+		// 이 경로는 현재 월드의 저작 navigation으로 투영할 이동 요청을 Server에 제출한다.
+		// Bern의 분리된 Bern3 갑판 위치도 같은 Debug 전용 이동 경로로 확인한다.
 		if (controller)
 		{
 			const bool_t freeCamera = !camera->Is_FollowRequested() &&
@@ -12372,7 +12019,7 @@ void CMainApp::RenderArenaCameraAndPlayerControls()
 			{
 				const auto world = nullptr != valtan ? LostArk::Shared::WORLD_ID::VALTAN_ARENA :
 					(nullptr != bern ? LostArk::Shared::WORLD_ID::BERN :
-						LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA);
+						LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA);
 				if (controller->Begin_DebugPlayerPlacement(world))
 					camera->Set_MouseLookEnabled(false);
 			}
@@ -12511,7 +12158,7 @@ void CMainApp::RenderKoukuUiPreviewControls()
 	if (!ImGui::CollapsingHeader("Kouku UI Preview (Debug)", ImGuiTreeNodeFlags_DefaultOpen))
 		return;
 	CCombatHUDViewModel& viewModel = CCombatHUDViewModel::Get();
-	// Replication reset clears the override when the arena session ends.
+	// 아레나 세션 종료의 replication 초기화가 이 덮어쓰기 상태를 해제한다.
 	m_bKoukuUiPreview = viewModel.Is_KoukuGimmickPreviewEnabled();
 	const KOUKU_HUD_MODE_DEF* pMode = nullptr;
 	for (const KOUKU_HUD_MODE_DEF& Mode : m_KoukuHudModes)
@@ -12523,8 +12170,8 @@ void CMainApp::RenderKoukuUiPreviewControls()
 			break;
 		}
 	}
-	/* Skill k -> slot k in list order; the dance mode shuffles the four so QWER
-	differs per activation, the way the real gimmick randomises it. */
+	/* 목록의 k번째 스킬을 k번째 슬롯에 대응시킨다. 춤 모드는 네 항목을 섞어
+	활성화할 때마다 QWER에 배정되는 스킬 순서를 바꾼다. */
 	const auto assignSlots = [this, &pMode]()
 	{
 		for (std::int8_t& iIndex : m_KoukuUiPreview.ModeSkillIndexBySlot)
@@ -12595,20 +12242,16 @@ void CMainApp::RenderKoukuUiPreviewControls()
 		}
 		bChanged = true;
 	}
-	/* Fires the floating status word over the local character in the KoukuSaydon
-	arena, so the retail damagetext motion can be looked at without waiting for the
-	Server to apply FEAR. The word and colour come from the same retail tables the
-	live path uses (EFTable_GameMsg tip.name.skillbuffdmgfont_*, and
-	EFTable_SkillBuff.FontColor = 0x8041D9 for fear). */
+	/* 쿠크 아레나의 로컬 캐릭터 위에 공포 상태 문구를 시험 표시한다. 이 버튼은
+	Server의 공포 적용을 기다리지 않고 Debug_Fire_StatusEffectTextPreview에 표시를 요청하므로
+	문구의 움직임을 확인하는 경로이며 실제 전투 상태를 결정하지 않는다. */
 	if (ImGui::Button("Fire fear status word##Kouku"))
 		viewModel.Debug_Fire_StatusEffectTextPreview();
 	ImGui::SameLine();
 	ImGui::TextDisabled("KoukuSaydon arena only");
-	/* Corner minigame time limit (retail dungeontimer.gfx, titleImageType
-	   KOUKUSATON). Drawn on the real screen by m_pDungeonTimerView, not on the
-	   HUD Layout Tool canvas -- that tool only positions the emblem. No Server
-	   deadline exists for the card maze or the Mario stage, so the countdown runs
-	   in CCombatHUDViewModel. Never touches Server truth. */
+	/* 구석 미니게임 타이머의 로컬 미리보기다. m_pDungeonTimerView가 실제 화면에
+	   표시하며 HUD Layout Tool은 문양 배치를 맡는다. 아래 버튼은 CCombatHUDViewModel의
+	   preview 타이머만 조절하고 Server의 제한 시간을 변경하지 않는다. */
 	ImGui::SeparatorText("Dungeon timer (Debug)");
 	{
 		HUD_DUNGEON_TIMER_STATE timer = viewModel.Get_DungeonTimer();
@@ -12644,9 +12287,8 @@ void CMainApp::RenderKoukuUiPreviewControls()
 			{
 				m_bDungeonTimerPreview = true;
 				timer.isVisible = true;
-				/* A stopped clock sitting at zero is a fresh run, not a resume. Without
-				   this the countdown starts at 0, which is below the warning threshold,
-				   so it comes up in the warning colour and the split readout. */
+				/* 0초에서 멈춘 타이머는 남은 시간을 설정한 뒤 새로 시작한다. 0초를 그대로
+				   재개해 처음부터 경고 색상과 분리 표시가 나오는 것을 피한다. */
 				if (timer.fSeconds <= 0.f)
 					timer.fSeconds = m_fDungeonTimerStartSeconds;
 			}
@@ -12690,7 +12332,7 @@ void CMainApp::RenderDebugLevelNavigation()
 		case LEVEL::CHARACTER_SELECT: return "Character Select";
 		case LEVEL::BERN: return "Bern";
 		case LEVEL::VALTAN_ARENA: return "Valtan";
-		case LEVEL::KAKULSAYDON_ARENA: return "KoukuSaydon";
+		case LEVEL::KOUKUSAYDON_ARENA: return "KoukuSaydon";
 		case LEVEL::COLOSSEUM: return "Entrance PvP Arena";
 		case LEVEL::MAHARAKA: return "Maharaka";
 		case LEVEL::LOADING: return "Loading";
@@ -12745,7 +12387,7 @@ void CMainApp::RenderDebugLevelNavigation()
 		{ LEVEL::CHARACTER_SELECT, "Character Select" },
 		{ LEVEL::BERN, "Bern" },
 		{ LEVEL::VALTAN_ARENA, "Valtan" },
-		{ LEVEL::KAKULSAYDON_ARENA, "KoukuSaydon" },
+		{ LEVEL::KOUKUSAYDON_ARENA, "KoukuSaydon" },
 		{ LEVEL::COLOSSEUM, "Entrance PvP Arena" },
 		{ LEVEL::MAHARAKA, "Maharaka" },
 	}};
@@ -12909,9 +12551,8 @@ void CMainApp::RefreshDebugResourceFiles()
 			break;
 	}
 
-	/* Data itself is also scanned above to expose catalogs that have no dedicated
-	   domain root. Remove exact duplicate stable paths while retaining the more
-	   specific domain entry inserted first. */
+	/* 전용 도메인 루트가 없는 catalog도 찾기 위해 Data를 함께 검색한다. 같은 stable
+	   경로가 반복되면 먼저 넣은 구체적 도메인 항목을 남기고 중복만 제거한다. */
 	std::stable_sort(
 		m_DebugResourceFiles.begin(), m_DebugResourceFiles.end(),
 		[](const DEBUG_RESOURCE_FILE& left, const DEBUG_RESOURCE_FILE& right)
@@ -12928,9 +12569,8 @@ void CMainApp::RefreshDebugResourceFiles()
 			}),
 		m_DebugResourceFiles.end());
 
-	/* KoukuSaydon is a user-facing collection, not a replacement for package or
-	   Area identity. Present the extracted closure under one virtual branch while
-	   keeping paths such as LV_LUT_MIDNIGHTC_ED and MN_RPCT_05 unchanged. */
+	/* KoukuSaydon은 목록에 보여 줄 가상 묶음이다. LV_LUT_MIDNIGHTC_ED나 MN_RPCT_05
+	   같은 원래 경로·Area 식별자는 보존하고 도메인 표시값을 바꾼 사본만 추가한다. */
 	const auto startsWith = [](const string& value, const char_t* prefix)
 	{
 		return 0u == value.rfind(prefix, 0u);
@@ -12999,9 +12639,8 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 		return;
 	}
 
-	/* Boss and pattern rows are a joined domain: Workbench owns the lanes and
-	   Valtan Boss Tool owns the Server command. Opening both is intentional and does
-	   not duplicate either runtime. */
+	/* Boss/Pattern 행은 레인 편집 Workbench와 Server 명령용 Valtan Boss Tool을 함께
+	   사용한다. 각 도구의 기존 역할을 연결하고 여기서 새 재생 객체를 만들지는 않는다. */
 	bool_t bValtanWorkspaceOpened = false;
 	if ("Boss / Pattern" == file.strDomain)
 	{
@@ -13014,10 +12653,9 @@ void CMainApp::OpenDebugResourceFile(const size_t iFile)
 		}
 	}
 
-	/* A KoukuSaydon action/reference file names a concrete authoring profile, not just
-	   the broad Animation domain. Hand that stable profile to Workbench so the
-	   matching physical WModel and action document open together. Other KoukuSaydon
-	   resources continue to open only their existing owner Tool. */
+	/* 쿠크 action/reference 경로에서 구체적인 저작 프로필을 찾아 Workbench에 넘긴다.
+	   같은 프로필의 물리 WModel과 action 문서를 연결하기 위한 선택이며, 나머지 리소스는
+	   각 도메인의 기존 도구 열기 흐름을 따른다. */
 	const bool_t isKoukuSaydonAnimationPath =
 		0u == file.strRelativePath.rfind(
 			"Data/Animation/Reference/KoukuSaydon/", 0u) ||
@@ -13079,8 +12717,8 @@ namespace
 		return !input.bad();
 	}
 
-	/* Stage both documents before replacing either. Backups survive a failed
-	   rollback; stale authoring bytes never get silently overwritten. */
+	/* 교체할 파일을 먼저 임시 파일로 기록·검증한다. 현재 입력 배열은 한 파일이며,
+	   기존 바이트와 다르면 중단한다. 복원 실패 때는 복구용 백업을 지우지 않는다. */
 	bool_t Commit_EncoreFiles(
 		const std::array<std::filesystem::path, 1>& paths,
 		const std::array<std::string, 1>& expected,
@@ -13140,8 +12778,8 @@ namespace
 				const DWORD error = GetLastError();
 				status = "Encore file replacement failed (" + std::to_string(error) +
 					"); reverting committed files.";
-				// ReplaceFile may move the original to the backup before failing.
-				// Restore that exact source without replacing a concurrent writer.
+				// ReplaceFile은 원본을 백업으로 옮긴 뒤 실패할 수 있다.
+				// 기대한 원본인지 확인하고 대상 덮어쓰기 없이 옮겨 동시 작성자의 파일을 보존한다.
 				if (ERROR_UNABLE_TO_MOVE_REPLACEMENT_2 == error &&
 					(!Read_EncoreFile(backups[i], current) || current != expected[i] ||
 					 !MoveFileExW(backups[i].c_str(), paths[i].c_str(), MOVEFILE_WRITE_THROUGH)))
@@ -13149,8 +12787,8 @@ namespace
 				break;
 			}
 			++promoted;
-			// The atomic replace captures the source it actually replaced. A
-			// writer between our read and replace must be restored, not lost.
+			// 원자 교체가 남긴 백업은 실제로 교체된 직전 원본이다.
+			// 사전 읽기 이후 다른 작성자가 변경했다면 그 원본을 복원 대상으로 남긴다.
 			if (!Read_EncoreFile(backups[i], current) || current != expected[i])
 			{
 				status = "Encore source changed at replacement; reverting committed files.";
@@ -13203,14 +12841,14 @@ namespace
 		return true;
 	}
 
-	void Render_KoukuEncoreRotation(CLevel_KakulSaydonArena& arena)
+	void Render_KoukuEncoreRotation(CLevel_KoukuSaydonArena& arena)
 	{
 		static bool loaded = false, preview = false;
 		static float baselineYaw = 0.f, targetYaw = 0.f;
 		static std::string status;
-		constexpr const char* placementId = "boss.kakulsaydon.bingo.saydon";
+		constexpr const char* placementId = "boss.koukusaydon.bingo.saydon";
 		const auto path = CProjectDataRoot::Resolve(L"Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json");
-		const auto npc = arena.Debug_FindArenaBossNpc("BOSS_KAKULSAYDON_BINGO_SAYDON");
+		const auto npc = arena.Debug_FindArenaBossNpc("BOSS_KOUKUSAYDON_BINGO_SAYDON");
 		const auto load = [&]() {
 			CWorldGameplayDocument document;
 			if (!document.Load(path, "LV_LUT_MIDNIGHTC_ED", status)) return false;
@@ -13270,10 +12908,9 @@ namespace
 
 namespace
 {
-	/* One F1 "Normal Monster 1/2" button. The trigger name, spawn group and maxAlive
-	   mirror the Server's WAVE_MONSTER_BUTTON_ROW table and the authored group; the
-	   tooltip is their only consumer. A press only asks the Server, which owns the
-	   mapping, the removal of the live monsters and the wave itself. */
+	/* F1의 일반 몬스터 버튼 설명 자료다. trigger·spawn group·maxAlive는 tooltip에
+	   보여 주고, 클릭은 정해진 버튼 명령만 Server에 제출한다. 실제 몬스터 제거·생성은
+	   Server 경로가 맡으므로 아래 표시 자료가 로컬 spawn을 수행하지 않는다. */
 	struct DEBUG_WAVE_MONSTER_BUTTON final
 	{
 		LostArk::Shared::WAVE_MONSTER_BUTTON eButton;
@@ -13410,7 +13047,7 @@ void CMainApp::RenderValtanArenaStateControls()
 
 void CMainApp::RenderValtanArenaControls()
 {
-	/* Hidden outside the arena so the hub does not carry an empty header there. */
+	/* 해당 아레나 밖에서는 빈 제목이 남지 않도록 패널 전체를 숨긴다. */
 	if (ETOUI(LEVEL::VALTAN_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 		return;
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.ValtanArena");
@@ -13441,7 +13078,7 @@ void CMainApp::RenderValtanArenaControls()
     ImGui::PushID("ValtanArenaState");
     RenderValtanArenaStateControls();
     ImGui::PopID();
-    RenderValtanAxeEditor();
+    m_pValtanBossTool->Render_AxeEditor();
     if (!pArena->Get_DebugValtanBossCommandStatus().empty())
         ImGui::TextWrapped("%s", pArena->Get_DebugValtanBossCommandStatus().c_str());
     if (ImGui::TreeNode("Valtan Presentation Status"))
@@ -13467,13 +13104,13 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		"Each gate asks the Server to raise its disabled boss placements, moves only your player, and points the boss HUD at that gate's boss.");
 	ImGui::TextDisabled(
 		"Spawned bosses wait idle. The Boss Tool (Play Isolated / Start Full Pattern) and Complete Play target the raised gate boss; a pattern plays only when the Product lists that boss body.");
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
+	if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) != CGameInstance::Get().Get_CurrentLevelID())
 	{
 		ImGui::TextDisabled(
 			"Enter KoukuSaydon Arena through Lobby Server admission first.");
 		return;
 	}
-	CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	CLevel_KoukuSaydonArena* pArena = CLevel_KoukuSaydonArena::Get_Active();
 	if (nullptr == pArena)
 	{
 		ImGui::TextDisabled("KoukuSaydon Arena Level instance is unavailable.");
@@ -13481,9 +13118,8 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	}
 	CBalanceTestPanel::Render_KillBossControl();
 #ifdef _DEBUG
-	/* Raid-clear MVP award page. Presentation only: this shows a sample page so
-	the layout and the intro timing can be looked at. Nothing decides an MVP yet --
-	no Server contribution tracking exists, so the numbers below are made up. */
+	/* 레이드 클리어 MVP의 배치와 등장 시간을 확인하는 Debug 표본 화면이다.
+	아래 버튼은 샘플 표시를 요청하며 실제 기여도 집계나 MVP 판정을 수행하지 않는다. */
 	ImGui::SeparatorText("MVP Result Page (Debug)");
 	ImGui::TextDisabled(
 		"Sample page: three contribution rows, three party columns, the default background.");
@@ -13501,14 +13137,13 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 			pArena->Debug_Hide_MvpResult();
 	}
 
-	/* Bingo board check. Play1 paints cells 0, 1 and 2 white; Play2 paints 3
-	and 4, which completes the first row and turns those five red. The Server
-	owns both masks, so these only ask. */
+	/* 아래 빙고 시험 버튼은 Play1에 0~2번 셀, Play2에 3~4번 셀의 마스크를
+	Server로 제출한다. 보드의 흰색·빨간색 판정 결과는 아래 HUD view model에서 읽는다. */
 	if (ImGui::TreeNode("Kouku Whirlwind Hammer Transform"))
 	{
 		if ((m_pKoukuSaydonActionWorkbench || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::SEQUENCER, false))) && m_pKoukuSaydonActionWorkbench)
-			m_pKoukuSaydonActionWorkbench->Render_WorldPlacementTuning("KAKULSAYDON_G1_PATTERN_24",
-				"KAKULSAYDON_G1_PATTERN_24.world.1");
+			m_pKoukuSaydonActionWorkbench->Render_WorldPlacementTuning("KOUKUSAYDON_G1_PATTERN_24",
+				"KOUKUSAYDON_G1_PATTERN_24.world.1");
 		ImGui::TreePop();
 	}
 	ImGui::SeparatorText("Bingo Board");
@@ -13524,22 +13159,19 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		ImGui::SameLine();
 		if (ImGui::Button("Bingo_Reset", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoFill(0u, true);
-		/* Bomb: the Server marks this player, holds it for
-		KOUKU_BINGO_BOMB_MARK_MS and then plants the bomb where the player
-		was standing. Nothing paints the board yet. */
+		/* 폭탄 버튼은 Server에 시험 요청만 보낸다. 표식·설치 단계와 위치는
+		아래에서 복제된 Bombs를 읽으며 여기서 보드 상태를 직접 고치지 않는다. */
 		if (ImGui::Button("Bingo_Bomb", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoBomb();
 		ImGui::SameLine();
-		/* Hammer: the Server rolls one of the twenty row/column ends, holds
-		it in the sky, drops it and sweeps that line. Diagonals are never
-		swept. */
+		/* 망치 버튼은 Server에 시험 요청을 제출한다. 선택된 anchor·단계·tick은
+		아래 복제 상태로 확인하며 이 UI에서 이동 경로나 적중을 판정하지 않는다. */
 		if (ImGui::Button("Bingo_Hammer", ImVec2(160.f, 0.f)))
 			(void)bingoController.Request_DebugBingoHammer();
 		if ((m_pWorldObjectTool || SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false))) && m_pWorldObjectTool)
 			m_pWorldObjectTool->Render_BingoSizeTuning();
-		/* Wave monsters: Debug builds no longer raise Book1_Monsters / Book2_Monsters
-		when a player steps into the trigger, so these two buttons ask the Server to
-		summon them again. */
+		/* 일반 몬스터 시험 버튼도 같은 플레이어의 typed 요청 경로를 사용한다.
+		이 패널은 트리거의 자동 발동 여부를 변경하지 않는다. */
 		Render_DebugWaveMonsterButtons(bingoController, KOUKU_WAVE_MONSTER_BUTTONS);
 		const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
 		ImGui::TextDisabled("white 0x%07X   red 0x%07X   bombs %u",
@@ -13568,10 +13200,9 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	}
 	ImGui::Separator();
 #endif
-	const auto& gates = CLevel_KakulSaydonArena::Get_DebugGates();
-	/* No gate may be pressed while the previous player move is unanswered:
-	   the Server would replace the bosses but refuse the second move, leaving
-	   the player on the old gate. The raised gate cannot be re-pressed. */
+	const auto& gates = CLevel_KoukuSaydonArena::Get_DebugGates();
+	/* 앞선 관문 전환이나 플레이어 배치 응답이 남아 있으면 새 요청을 막는다.
+	   아래 관문 버튼은 처리 대기·현재 활성 관문·지연 사유를 함께 확인해 중복 요청을 피한다. */
 	const bool_t placementPending = pArena->Is_DebugGatePending() ||
 		pArena->Get_DebugPlayerController().Is_DebugPlayerPlacementPending();
 	ImGui::BeginDisabled(placementPending);
@@ -13587,13 +13218,13 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 	if (ImGui::Button("3\xea\xb4\x80\xeb\xac\xb8 \xec\x9e\x85\xec\x9e\xa5 \xec\xa0\x84 \xea\xb3\xb5\xea\xb0\x84", ImVec2(260.f, 0.f)))
 	{
 		(void)pArena->Get_DebugPlayerController().Request_DebugTeleportToPosition(
-			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA,
+			LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA,
 			-17.509552f, 25.600000f, 960.530156f);
 	}
 	ImGui::EndDisabled();
 	for (size_t iGate = 0u; iGate < gates.size(); ++iGate)
 	{
-		const CLevel_KakulSaydonArena::KAKUL_DEBUG_GATE& gate = gates[iGate];
+		const CLevel_KoukuSaydonArena::KOUKU_DEBUG_GATE& gate = gates[iGate];
 		ImGui::PushID(static_cast<int32_t>(iGate));
 		const bool_t deferred = nullptr != gate.pDeferredReason;
 		const bool_t active = iGate == pArena->Get_ActiveDebugGate();
@@ -13626,7 +13257,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		}
 #ifdef _DEBUG
 		if (gate.pAuditionPlacementId &&
-			std::string_view(gate.pAuditionPlacementId) == "boss.kakulsaydon.bingo.saydon")
+			std::string_view(gate.pAuditionPlacementId) == "boss.koukusaydon.bingo.saydon")
 			Render_KoukuEncoreRotation(*pArena);
 #endif
 		ImGui::PopID();
@@ -13670,7 +13301,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		ImGui::TextWrapped("%s", pArena->Get_DebugPlayerController().Get_MarioReturnStatus().c_str());
 	}
 
-	// Folding keeps the last gaze state owned by the active arena.
+	// 패널을 접어도 마지막 시선 상태는 활성 아레나가 계속 소유한다.
 	if (ImGui::CollapsingHeader("Find the Real Saydon - Sight Collider", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		static CKoukuSaydonCompositionDocument gazeDocument;
@@ -13682,8 +13313,8 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		const bool reloadGaze = ImGui::SmallButton("Reload Sight Settings");
 		if (!gazeLoadAttempted || reloadGaze)
 		{
-			// A rejected document keeps its error until an explicit reload. Retrying
-			// the complete composition from this render path stalls every F1 frame.
+			// 거부된 문서의 오류는 명시적인 Reload까지 유지한다.
+			// 이 렌더 경로에서 전체 composition 읽기를 매 프레임 반복하지 않는다.
 			gazeLoadAttempted = true;
 			gazeLoaded = gazeDocument.Reload(gazeStatus);
 			if (gazeLoaded)
@@ -13708,8 +13339,8 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 		if (!gazeStatus.empty()) ImGui::TextWrapped("%s", gazeStatus.c_str());
 	}
 
-	/* Madness avatar: the Server owns the form and the snapshot swaps the
-	   body, so the buttons only submit intent and follow the replicated form. */
+	/* 광기 외형은 Server 상태를 snapshot으로 받아 교체한다. 버튼은 의도만
+	   제출하고 현재 형태는 복제된 값을 따라 표시한다. */
 	if (ImGui::CollapsingHeader("Clown", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		const HUD_PLAYER_STATE& hudPlayer = CCombatHUDViewModel::Get().Get_Player();
@@ -13740,7 +13371,7 @@ void CMainApp::RenderKoukuSaydonArenaControls()
 
 bool_t CMainApp::PrepareKoukuGateCompletePlay(const std::string_view gateId, std::string& status)
 {
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     if (!arena || !arena->Get_PlayerCommandSink() || m_KoukuRaidResourcePreparation ||
         (m_pKoukuSaydonBossTool && m_pKoukuSaydonBossTool->Is_PlayPreparationPending()) ||
         !m_strKoukuCompletePlayFlowGate.empty() || m_iKoukuRaidPendingRequest ||
@@ -13769,9 +13400,9 @@ bool_t CMainApp::StartKoukuGateCompletePlay(const std::string_view gateId, std::
     CKoukuSaydonCompositionDocument sequences(CKoukuSaydonCompositionDocument::Resolve_SequencePath());
     if (!sequences.Reload(status)) return false;
     if (!m_iNextKoukuRaidRequest) { status = "Raid request sequence is exhausted."; return false; }
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
-    request.iRequestSequence = m_iNextKoukuRaidRequest++; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+    request.iRequestSequence = m_iNextKoukuRaidRequest++; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
     request.ExpectedGameplayRevision = CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
     request.iActionSourceRevision = m_pKoukuSaydonBossTool->Get_SourceRevision();
     request.iSequenceSourceRevision = sequences.Get_LastGood().iRevision; request.strStartGateId = std::string(gateId);
@@ -13799,11 +13430,11 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
     if (m_KoukuRaidResourcePreparation)
     {
         m_KoukuRaidResourcePreparation.reset();
-        if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Debug_ResetCompletePlayPreparation();
+        if (auto* level = CLevel_KoukuSaydonArena::Get_Active()) level->Debug_ResetCompletePlayPreparation();
         m_strKoukuCompletePlayStatus = "Complete raid preparation cancelled before Server playback.";
         return;
     }
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     if (arena && m_iKoukuRaidPendingRequest && m_iKoukuCompletePlayWorldGeneration == CNetworkManager::Get().Get_WorldInboundGeneration())
     {
         m_bKoukuRaidStopAfterAdmission = true;
@@ -13818,7 +13449,7 @@ void CMainApp::CancelKoukuGateCompletePlay(const std::string& status)
         if (active && state.iOwnerPlayerId == CNetworkManager::Get().Get_LocalPlayerId() && m_iNextKoukuRaidRequest && arena->Get_PlayerCommandSink())
         {
             C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
-            request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.iRequestSequence = m_iNextKoukuRaidRequest++;
+            request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; request.iRequestSequence = m_iNextKoukuRaidRequest++;
             request.eOperation = KOUKUSAYDON_RAID_OPERATION::STOP; request.iExpectedRunEpoch = state.iRunEpoch;
             request.ExpectedGameplayRevision = state.PinnedGameplayRevision; request.iActionSourceRevision = state.iActionSourceRevision;
             request.iSequenceSourceRevision = state.iSequenceSourceRevision; request.strStartGateId = state.strGateId;
@@ -13938,7 +13569,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	auto& service=CKoukuSaydonPatternAuditionService::Get(); const auto audition=service.Get_Snapshot();
 	const auto flow = service.Get_FlowSnapshot();
 	const bool preparing = m_pKoukuSaydonBossTool->Is_PlayPreparationPending();
-	const bool arena=ETOUI(LEVEL::KAKULSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
+	const bool arena=ETOUI(LEVEL::KOUKUSAYDON_ARENA)==CGameInstance::Get().Get_CurrentLevelID();
     const auto patternReady = [&](const std::string& id) {
         const auto* row = findPattern(id);
         return row && row->strGateId == gate && row->strLoadError.empty() && !row->Stages.empty();
@@ -13968,8 +13599,8 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 			{ m_strKoukuCompletePlayStatus = "Save Composition changes and use Publish All Patterns before Complete Play."; return false; }
 		}
 		if (!m_pKoukuSaydonBossTool->Reload(m_strKoukuCompletePlayStatus)) return false;
-		// A clean editor can still hold a revision from before an external publish.
-		// Compare the saved source, preserving any open editor's draft and selection.
+		// dirty가 없는 편집기도 외부 publish 이전의 revision을 보유할 수 있다.
+		// 열린 편집기의 draft와 선택은 보존하고 저장된 원본을 비교한다.
 		CKoukuSaydonCompositionDocument savedComposition;
 		if (!savedComposition.Reload(m_strKoukuCompletePlayStatus)) return false;
 		const auto savedRevision = savedComposition.Get_LastGood().iRevision;
@@ -13991,7 +13622,7 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
         if (bingoParentSelected) (void)StartKoukuGateCompletePlay(gate, m_strKoukuCompletePlayStatus);
         else
         {
-		// Reload can replace the inventory backing these UI pointers.
+		// Reload가 UI 포인터의 원본 목록을 교체할 수 있으므로 선택 ID를 값으로 먼저 복사한다.
 		const std::string selectedId = bundleSelected ? selectedBundle->strBundleId : pattern->strPatternId;
 		if (prepareSavedProduct())
 		{
@@ -14031,16 +13662,16 @@ void CMainApp::RenderKoukuSaydonCompletePlayControls()
 	if (!flow.strStatus.empty()) ImGui::TextWrapped("%s", flow.strStatus.c_str());
 	if (!audition.strBundleId.empty()) ImGui::Text("Bundle %s | run %u | common tick %u",audition.strBundleId.c_str(),audition.iRoomAuditionEpoch,audition.iCommonStartTick);
 	for (const auto& member : audition.Members) ImGui::BulletText("%s | boss %u | %s | state %u",member.strMemberId.c_str(),member.iBossNetEntityId,member.strPatternId.c_str(),unsigned(member.eState));
-    const auto* raidArena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* raidArena = CLevel_KoukuSaydonArena::Get_Active();
     if (!raidArena || !raidArena->Get_KoukuRaidState().iRunEpoch ||
         audition.strStatus != "Level changed; no KoukuSaydon Server pattern is Live in this Client session.")
         ImGui::TextWrapped("%s", audition.strStatus.c_str());
-	// Submission returns a pending message once; the service owns its later verdict.
+	// 제출 직후에는 대기 메시지를 한 번 표시하고 이후 결과 판정은 서비스가 맡는다.
 	if (!m_strKoukuCompletePlayStatus.starts_with("Waiting for the Server to admit") &&
 		m_strKoukuCompletePlayStatus != audition.strStatus)
 		ImGui::TextWrapped("%s",m_strKoukuCompletePlayStatus.c_str());
-    // Keep an unresolved or rejected command visible even while older raid state
-    // broadcasts continue to update the presentation status above.
+    // 이전 레이드 상태의 broadcast가 위 표시 상태를 갱신하더라도
+    // 아직 결론 나지 않았거나 거부된 명령의 상태 메시지는 보존한다.
     if (!m_strKoukuRaidReplyStatus.empty() && m_strKoukuRaidReplyStatus != m_strKoukuCompletePlayStatus &&
         m_strKoukuRaidReplyStatus != audition.strStatus)
         ImGui::TextWrapped("%s", m_strKoukuRaidReplyStatus.c_str());
@@ -14065,7 +13696,7 @@ void CMainApp::RenderKoukuRaidPreparationDiagnostics()
         if (ageMs >= 5000)
             ImGui::TextWrapped("No recent Server packet. Readiness below is the last received state, not a live confirmation.");
     }
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     if (!arena) { ImGui::TextWrapped("Raid: no active KoukuSaydon arena."); return; }
     const auto& state = arena->Get_KoukuRaidState();
     const char* phase = "UNKNOWN";
@@ -14202,8 +13833,8 @@ bool_t CMainApp::Debug_SelectCompletePlayPattern(
 		m_CompletePlayPatternIds.end(), strPatternId);
 	if (m_CompletePlayPatternIds.end() == found)
 	{
-		/* A domain owner may have refreshed its joined graph before the workspace
-		   inventory.  One bounded reload on the selection edge closes that skew. */
+		/* 도메인 소유자가 workspace 목록보다 먼저 결합된 그래프를 갱신할 수 있다.
+		   선택 시점에 한 번만 Reload해 두 목록의 시점 차이를 해소한다. */
 		RefreshCompletePlayPatternOptions();
 		found = std::find(
 			m_CompletePlayPatternIds.begin(),
@@ -14400,16 +14031,16 @@ void CMainApp::RenderServerArenaActiveControls()
 
 	if (ImGui::BeginTabItem("KoukuSaydon"))
 	{
-		if (ETOUI(LEVEL::KAKULSAYDON_ARENA) !=
+		if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) !=
 			CGameInstance::Get().Get_CurrentLevelID())
 		{
 			ImGui::TextDisabled(
 				"Enter KoukuSaydon Arena through Server admission. Stage controls never move a local Character directly.");
 		}
-		else if (CLevel_KakulSaydonArena* pKakulArena =
-			CLevel_KakulSaydonArena::Get_Active())
+		else if (CLevel_KoukuSaydonArena* pKoukuArena =
+			CLevel_KoukuSaydonArena::Get_Active())
 		{
-			const auto& stageMarkers = pKakulArena->Get_StageMarkers();
+			const auto& stageMarkers = pKoukuArena->Get_StageMarkers();
 			ImGui::Text(
 				"Runtime-projected stages (%zu)", stageMarkers.size());
 			ImGui::TextDisabled(
@@ -14429,26 +14060,26 @@ void CMainApp::RenderServerArenaActiveControls()
 					stageLabel = stageLabel.substr(separator + 1u);
 				}
 				const std::string buttonLabel = stageLabel +
-					"##KakulStageTeleport_" + marker.strPlacementId;
+					"##KoukuStageTeleport_" + marker.strPlacementId;
 				const bool_t sequenceExhausted =
-					0u == m_iNextKakulStageTeleportRequestSequence;
+					0u == m_iNextKoukuStageTeleportRequestSequence;
 				ImGui::BeginDisabled(sequenceExhausted);
 				if (ImGui::SmallButton(buttonLabel.c_str()))
 				{
 					const std::uint32_t requestSequence =
-						m_iNextKakulStageTeleportRequestSequence;
+						m_iNextKoukuStageTeleportRequestSequence;
 					if ((std::numeric_limits<std::uint32_t>::max)() ==
-						m_iNextKakulStageTeleportRequestSequence)
+						m_iNextKoukuStageTeleportRequestSequence)
 					{
-						m_iNextKakulStageTeleportRequestSequence = 0u;
+						m_iNextKoukuStageTeleportRequestSequence = 0u;
 					}
 					else
 					{
-						++m_iNextKakulStageTeleportRequestSequence;
+						++m_iNextKoukuStageTeleportRequestSequence;
 					}
-					(void)pKakulArena->Request_StageTeleport(
+					(void)pKoukuArena->Request_StageTeleport(
 						requestSequence, marker.strPlacementId,
-						m_strKakulStageTeleportStatus);
+						m_strKoukuStageTeleportStatus);
 				}
 				ImGui::EndDisabled();
 				ImGui::SameLine();
@@ -14457,9 +14088,9 @@ void CMainApp::RenderServerArenaActiveControls()
 					marker.strDisplayNameKo.c_str(),
 					marker.strPlacementId.c_str());
 			}
-			if (0u == m_iNextKakulStageTeleportRequestSequence)
+			if (0u == m_iNextKoukuStageTeleportRequestSequence)
 			{
-				m_strKakulStageTeleportStatus =
+				m_strKoukuStageTeleportStatus =
 					"KoukuSaydon stage teleport request sequence is exhausted; restart the Client before another request.";
 			}
 		}
@@ -14468,17 +14099,18 @@ void CMainApp::RenderServerArenaActiveControls()
 			ImGui::TextDisabled(
 				"KoukuSaydon Arena is selected, but its active Level instance is unavailable.");
 		}
-		ImGui::TextWrapped("%s", m_strKakulStageTeleportStatus.c_str());
+		ImGui::TextWrapped("%s", m_strKoukuStageTeleportStatus.c_str());
 		ImGui::EndTabItem();
 	}
 
 	ImGui::EndTabBar();
 }
 
+// 이 const 포인터는 WorldObjectTool의 draft를 읽도록 빌려 주며 소유권을 넘기지 않는다. 문서가 교체된 뒤에는 이전 포인터를 계속 쓰지 않고 다시 조회해야 한다.
 const CWorldSequenceDocument* CMainApp::CompositionPreviewWorldSource() const
 {
-	// Authoring previews consume the same draft edited by the direct Animation lane.
-	// Product playback still loads the published document through its existing path.
+	// 저작 미리보기는 직접 Animation 레인에서 편집하는 WorldObjectTool의 draft를 읽는다.
+	// 제품 재생은 기존 경로를 통해 게시된 문서를 읽는다.
 	return m_pWorldObjectTool ? m_pWorldObjectTool->Get_AuthoringDraftDocument() : nullptr;
 }
 
@@ -14488,6 +14120,7 @@ void CMainApp::RefreshWorldObjectResources()
 	for (auto* editor : {m_pKoukuSaydonActionWorkbench.get(), m_pSequenceActionWorkbench.get()})
 		if (editor)
 		{
+			// Workbench의 이력 버튼을 WorldObjectTool의 실제 문서 소유자에 연결한다. capture는 const 공유 snapshot을, restore는 기대값과 목표값을 전달한다.
 			editor->Set_WorldAnimationHistoryCallbacks(
 				[this](bool prepare) -> std::shared_ptr<const CWorldSequenceDocument> {
 					if (prepare && FAILED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT, false))) return {};
@@ -14508,7 +14141,7 @@ void CMainApp::RefreshWorldObjectResources()
 			[this](std::string& status) {
 				if (!m_pWorldObjectTool)
 				{ status = "World animation draft is unavailable. Save was not completed."; return false; }
-				// Timeline Save writes authoring only; publishing remains explicit.
+				// Timeline Save는 저작 원본만 저장하며 publish는 별도 명령으로 남긴다.
 				const bool saved = !m_pWorldObjectTool->Is_Dirty() || m_pWorldObjectTool->Save_Source(false);
 				status = m_pWorldObjectTool->Get_Status();
 				if (saved)
@@ -14517,18 +14150,19 @@ void CMainApp::RefreshWorldObjectResources()
 				return saved;
 			});
 		}
-	const auto* level = CLevel_KakulSaydonArena::Get_Active();
+	const auto* level = CLevel_KoukuSaydonArena::Get_Active();
 	const CWorldSequenceDocument* document = m_pWorldObjectTool ? m_pWorldObjectTool->Get_AuthoringDraftDocument() : nullptr;
 	const uint64_t generation = document ? m_pWorldObjectTool->Get_SavedGeneration() : 0;
 	if (!document && level) document = &level->Get_WorldSequenceDocument();
 	const uint32_t revision = document ? document->Get_Revision() : 0;
+	// 캐시는 문서 주소만 비교하지 않고 저장 세대와 revision도 함께 비교한다. 주소가 같아도 저장 세대나 revision이 달라지면 Resources 표시 자료를 다시 만든다.
 	if (m_pWorldObjectCatalogSource == document && m_iWorldObjectCatalogGeneration == generation &&
 		m_iWorldObjectCatalogRevision == revision) return;
 	m_pWorldObjectCatalogSource = document; m_iWorldObjectCatalogGeneration = generation; m_iWorldObjectCatalogRevision = revision;
 	std::vector<KOUKU_WORLD_SEQUENCE_RESOURCE> resources;
 	if (document)
 	{
-		// Keep all states for Logic target selection; the Resource pane shows each parent once.
+		// Logic 대상 선택에는 모든 상태를 남기고 Resources 목록에는 부모별로 한 번만 표시한다.
 		for (const auto& instance : document->Get_Instances())
 		{
 			const auto* sequence = document->Find_Template(instance.templateId);
@@ -14640,8 +14274,8 @@ void CMainApp::RefreshWorldObjectResources()
 			row.iMaximumHp = object.combatBody ? object.combatBody->maxHp : 0u;
 			resources.push_back(std::move(row));
 		}
-		// Keep donor motions available to Logic/editing, but Object Append must
-		// select their unique complete group instead of a same-named g0 default.
+		// 원본 motion은 Logic·편집에서 계속 조회할 수 있게 남긴다. Object Append는
+		// 같은 이름의 g0 기본값 대신 유일하게 결정된 완전한 motion group을 선택하도록 연결한다.
 		for (auto& donor : resources)
 		{
 			if (!donor.bDefaultMotion || donor.bMotionGroup) continue;
@@ -14668,7 +14302,7 @@ void CMainApp::RefreshWorldObjectResources()
 
 void CMainApp::RenderHUDBarPositionControls()
 {
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 	{
 		float2_t offset{}; f32_t head = 0.f;
 		static std::string positionStatus;
@@ -14735,9 +14369,8 @@ void CMainApp::RenderBalanceTestLauncher()
 			"Balance Test opened." : "Balance Test initialization failed.";
 	ImGui::TextWrapped("Player / Skill / Damage / Boss tuning and room cooldown: Debug (3s) or Release (Retail).");
 
-	/* Temporary opener for the item repair window. Retail opens it from a repair NPC and which
-	NPC that is has not been decided, so until then this is the only way in. Delete this block
-	when the NPC interaction calls Open() instead. */
+	/* F1 도구에서 아이템 수리 창을 직접 여는 진입점이다. 여기서는 기존 view의 Open을
+	호출하며 NPC 배치나 상호작용 경로를 정의하지 않는다. */
 	if (nullptr != m_pRepairWindowView)
 	{
 		ImGui::SeparatorText("Item Repair");
@@ -14766,9 +14399,8 @@ void CMainApp::RenderDeveloperTools()
 	}
 	ImGui::SetNextWindowSize(vDefaultSize, ImGuiCond_FirstUseEver);
 
-	/* Only the first-use size is suggested. No minimum or maximum constraint is
-	   installed: ImGui's normal edge/corner resizing and saved layout own every
-	   subsequent size, including windows larger than the current viewport. */
+	/* 처음 열 때의 창 크기만 제안한다. 최소·최대 크기를 강제하지 않아 이후 크기는
+	   ImGui의 가장자리 조절과 저장된 창 배치를 따른다. */
 	if (!ImGui::Begin(
 		"LostArk Developer Tools###LostArkDeveloperToolsResizableV1",
 		&m_bDeveloperToolsVisible))
@@ -14787,6 +14419,16 @@ void CMainApp::RenderDeveloperTools()
 		RenderCameraSpeedControls();
     if (ImGui::CollapsingHeader("Bern Entrance Camera", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        // 같은 F1 구역에서 FOV를 고른 뒤 재생한다. UI는 현재 Level에 요청만 전달한다.
+        auto* const bern = currentLevelId == ETOUI(LEVEL::BERN) ? CLevel_Bern::Get_Active() : nullptr;
+        ImGui::BeginDisabled(nullptr == bern);
+        if (ImGui::Button("Start Bern Cutscene") && nullptr != bern)
+            (void)bern->Request_DebugEntranceReplay();
+        ImGui::EndDisabled();
+        if (nullptr == bern)
+            ImGui::TextDisabled("Enter Bern to replay its entrance cutscene.");
+        else if (!bern->Get_DebugEntranceReplayStatus().empty())
+            ImGui::TextWrapped("%s", bern->Get_DebugEntranceReplayStatus().c_str());
         float bernFov = CLevel_Bern::Get_EntranceCinematicFovYOverride().value_or(
             CLevel_Bern::Get_EntranceCinematicAuthoredFovYDegrees());
         ImGui::SetNextItemWidth(260.f);
@@ -14814,7 +14456,7 @@ void CMainApp::RenderDeveloperTools()
 	RenderWorldMeshInspection();
 	ImGui::TextDisabled(isMapEditorWorkspace ?
 		"Map Editor is active. Open Map Tool to author the selected Area." :
-		(currentLevelId == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+		(currentLevelId == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ?
 			"Kouku runtime supports Map, Object, Camera and Sequence authoring through F1." :
 			"F1 opens tools. Map authoring is available in Lobby Test or the Kouku runtime."));
 #endif
@@ -14946,7 +14588,7 @@ void CMainApp::RenderDeveloperTools()
 	}
 
 	RenderArenaCameraAndPlayerControls();
-	if (!CLevel_KakulSaydonArena::Get_Active()) RenderHUDBarPositionControls();
+	if (!CLevel_KoukuSaydonArena::Get_Active()) RenderHUDBarPositionControls();
 #else
 	RenderBalanceTestLauncher();
 	RenderHUDBarPositionControls();
@@ -15309,8 +14951,8 @@ void CMainApp::RenderRenderingWorkbench()
         m_strRenderingQualityProfileId = descriptor->pRenderingProfileId;
         const auto* selected = m_RenderingProfiles.Find_Profile(m_strRenderingSelectedProfileId);
         const auto* active = m_RenderingProfiles.Get_ActiveProfile();
-        // An independently authored scene (including Mario) owns its quality.
-        // The default Level selection follows that scene while viewing this Level.
+        // Mario처럼 자체 quality override를 가진 장면은 해당 장면의 품질 프로필을 사용한다.
+        // 현재 Level의 기본 프로필을 선택해 보는 중이면 활성 장면의 override를 우선한다.
         if (m_strRenderingSelectedProfileId == descriptor->pRenderingProfileId &&
             currentLevel == ETOUI(m_eRenderingSelectedLevel) && active && active->bHasQualityOverride)
             m_strRenderingQualityProfileId = active->strProfileId;
@@ -15398,7 +15040,7 @@ void CMainApp::RenderRenderingWorkbench()
     {
         ImGui::BeginDisabled(experimentOwned);
         static constexpr LEVEL levels[] = { LEVEL::LOBBY, LEVEL::CHARACTER_SELECT, LEVEL::BERN,
-            LEVEL::VALTAN_ARENA, LEVEL::KAKULSAYDON_ARENA, LEVEL::DEVELOPMENT };
+            LEVEL::VALTAN_ARENA, LEVEL::KOUKUSAYDON_ARENA, LEVEL::DEVELOPMENT };
         static constexpr const char* names[] = { "Lobby", "Character Select", "Bern", "Valtan", "KoukuSaydon", "Development" };
         int selectedLevel = 0;
         for (int i = 0; i < 6; ++i) if (levels[i] == m_eRenderingSelectedLevel) selectedLevel = i;
@@ -15499,8 +15141,8 @@ void CMainApp::RenderRenderingWorkbench()
         ImGui::SetTooltip("Updates the current view while dragging. Ctrl+click to enter an exact multiplier.");
     comparisonChanged |= ImGui::Checkbox("LUT grading##LiveCompare", &comparison.bLutEnabled);
     ImGui::SameLine();
-    // Both FXAA controls edit the same persistent scene quality. A transient
-    // comparison switch must not mask Save/Publish or re-enable the saved value.
+    // 두 FXAA 조절 UI는 같은 영구 저장 대상인 장면 품질 draft를 수정한다.
+    // 비교 상태에도 그 값을 맞춰 Save/Publish 값을 가리거나 이전 FXAA 값으로 되돌리지 않게 한다.
     if (ImGui::Checkbox("FXAA (saved)##LiveCompare", &m_RenderQualityDraft.bFXAAEnabled))
     {
         applyGlobal();
@@ -15681,94 +15323,6 @@ void CMainApp::RenderRenderingWorkbench()
 	}
 }
 
-void CMainApp::RenderProfilerOverlay()
-{
-	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.ProfilerOverlay");
-	if (!m_bProfilerVisible)
-		return;
-
-	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
-	if (nullptr == pProfiler)
-		return;
-
-	Engine::FProfilerLiveStats stats{};
-	const bool_t hasStats = pProfiler->Get_LiveStats(stats);
-	const ImGuiIO& io = ImGui::GetIO();
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowViewport(viewport->ID);
-	ImGui::SetNextWindowPos(
-		ImVec2(viewport->WorkPos.x + 10.f, viewport->WorkPos.y + 30.f),
-		ImGuiCond_Always);
-	constexpr ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoDecoration |
-		ImGuiWindowFlags_AlwaysAutoResize |
-		ImGuiWindowFlags_NoSavedSettings |
-		ImGuiWindowFlags_NoFocusOnAppearing |
-		ImGuiWindowFlags_NoNav |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoInputs;
-	if (ImGui::Begin("##LostArkPerfOverlay", nullptr, flags))
-	{
-		ImGui::Text("FPS: %.1f  (%.3f ms)",
-			io.Framerate,
-			io.Framerate > 0.f ? 1000.f / io.Framerate : 0.f);
-		if (hasStats)
-		{
-			ImGui::Text("CPU: %.3f ms", stats.CpuFrameMs);
-			ImGui::Text("GPU: %s",
-				stats.GpuValid ? "available" : "warming up");
-			if (stats.GpuValid)
-				ImGui::Text("GPU time: %.3f ms", stats.GpuFrameMs);
-		}
-	}
-	ImGui::End();
-}
-
-void CMainApp::RenderProfilerSettings()
-{
-	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.ProfilerDetails");
-	if (!m_bProfilerVisible)
-		return;
-
-	if (!ImGui::Begin(
-		"LostArk Profiler Details",
-		nullptr,
-		ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::End();
-		return;
-	}
-
-	Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
-	if (ImGui::Button("Reset profiler history") && nullptr != pProfiler)
-		pProfiler->Reset_History();
-	ImGui::SameLine();
-	ImGui::BeginDisabled(m_pProfilerTool && m_pProfilerTool->Is_Saving());
-	if (ImGui::Button("Save profiler JSON"))
-	{
-		if (nullptr == pProfiler)
-		{
-			m_strProfilerCaptureStatus = "Profiler is not available.";
-		}
-		else
-		{
-			// Both profiler entry points share the same bounded asynchronous exporter.
-			if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::PROFILER)) && m_pProfilerTool)
-			{
-				m_pProfilerTool->Request_Save(*pProfiler);
-				m_strProfilerCaptureStatus.clear();
-			}
-			else m_strProfilerCaptureStatus = "Composition Profiler could not be opened.";
-		}
-	}
-	ImGui::EndDisabled();
-	if (m_pProfilerTool && !m_pProfilerTool->Get_CaptureStatus().empty())
-		ImGui::TextWrapped("%s", m_pProfilerTool->Get_CaptureStatus().c_str());
-	if (!m_strProfilerCaptureStatus.empty())
-		ImGui::TextWrapped("%s", m_strProfilerCaptureStatus.c_str());
-	ImGui::End();
-}
-
 #endif
 
 void CMainApp::UpdateDebugToolShortcut()
@@ -15783,6 +15337,7 @@ void CMainApp::UpdateDebugToolShortcut()
 	m_bF1Down = f1Down;
 }
 
+// wWinMain이 Client 조정자를 준비하는 진입점이다. 엔진 관리자는 Initialize_Engine으로 만들고 제품 UI·도구는 MainApp 수명에 묶는다.
 unique_ptr<CMainApp> CMainApp::Create()
 {
 	auto instance = unique_ptr<CMainApp>(new CMainApp());
@@ -15791,12 +15346,17 @@ unique_ptr<CMainApp> CMainApp::Create()
 	return instance;
 }
 
+// MainApp의 제품 연출·네트워크·도구를 먼저 멈추고 GameInstance에 엔진 종료를 요청한다.
+// Level 종료가 Loading worker를 합류시킨 뒤에야 worker가 참조하던 effect 준비 cache를 해제한다.
 void CMainApp::Free()
 {
 #ifdef _DEBUG
-	if (m_pEffectTool) m_pEffectTool->Deactivate_AuthoringWorkspace();
-    if (m_pEffectToolV2) m_pEffectToolV2->Deactivate();
-	if (m_pWorldObjectTool) m_pWorldObjectTool->Deactivate();
+	if (m_pEffectTool)
+		m_pEffectTool->Deactivate_AuthoringWorkspace();
+	if (m_pEffectToolV2)
+		m_pEffectToolV2->Deactivate();
+	if (m_pWorldObjectTool)
+		m_pWorldObjectTool->Deactivate();
 	m_pWorldLevelPendingMapRequest.reset();
 	m_pMapEffectPlacementRequest.reset();
 	m_pWorldSceneTool.reset();
@@ -15806,26 +15366,25 @@ void CMainApp::Free()
 	m_pWorldObjectTool.reset();
 #endif
 #ifdef _DEBUG
-    if (m_pEffectTool) m_pEffectTool->Set_AuthoringPlayer(nullptr);
-    if (m_pEffectToolV2) m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
+	if (m_pEffectTool)
+		m_pEffectTool->Set_AuthoringPlayer(nullptr);
+	if (m_pEffectToolV2)
+		m_pEffectToolV2->Set_AuthoringPlayer(nullptr);
 #endif
-	if (m_pKoukuPresentationPlayer) m_pKoukuPresentationPlayer->Reset();
+	if (m_pKoukuPresentationPlayer)
+		m_pKoukuPresentationPlayer->Reset();
 	m_pKoukuPresentationPlayer.reset();
-	/* The session-look outfit applier holds the D3D device and an equipment service: release them
-	while the Engine is alive. */
+	// 저장 외형 적용기가 보관한 장치·장비 service 참조는 엔진이 살아 있을 때 해제한다.
 	CCustomizingView::Release_SavedLookCache();
-	/* Active instances must leave ObjectManager while the Engine is alive, but
-	   prepared renderer/catalog globals cannot be cleared until a Loading level
-	   has cancelled and joined its worker.  Release_Engine tears the current
-	   level down first; retained COM references keep the device valid until the
-	   post-join cache release below. */
+	// 표시 객체는 Object_Manager가 살아 있을 때 제거한다. 준비 cache의 COM 참조는 Loading worker가 끝나는 Release_Engine 이후까지 유지한다.
 	CEffectPresentationService::Clear_All();
 	CNetworkManager::Get().Shutdown();
 	CGameInstance::Get().Stop_LoopingSound();
 	CGameInstance::Get().SetInputBlocked(false, false);
-	// Cancel captures and restore session-owned settings while the Engine and
-	// profile service are still alive, including a hidden Release comparison.
-	if (m_pRenderingBenchmark) m_pRenderingBenchmark->Shutdown(m_RenderingProfiles);
+	// 엔진과 profile service가 살아 있을 때 capture를 취소하고 세션이 소유한 설정을 복원한다.
+	// 숨겨진 Release 비교 측정도 같은 종료 경로로 정리한다.
+	if (m_pRenderingBenchmark)
+		m_pRenderingBenchmark->Shutdown(m_RenderingProfiles);
 	m_pRenderingBenchmark.reset();
 
 #ifdef _DEBUG
@@ -15849,12 +15408,15 @@ void CMainApp::Free()
 	m_pBalanceTool.reset();
 	m_pKoukuSaydonBossTool.reset();
 	m_pValtanBossTool.reset();
-	if (auto* profiler = CGameInstance::Get().Get_Profiler()) profiler->Set_Enabled(false);
+	if (auto *profiler = CGameInstance::Get().Get_Profiler())
+		profiler->Set_Enabled(false);
 	m_pProfilerTool.reset();
 	m_pWorldHealthBarView.reset();
 	if (nullptr != m_pImGuiLayer)
 		m_pImGuiLayer->Shutdown();
 	m_pImGuiLayer.reset();
+	// GameInstance가 Level을 먼저 소멸시켜 worker·카메라 사용을 끝낸 뒤 나머지 관리자를 해제한다.
+	// 여기서 reset하지 않은 MainApp view와 장치 COM 참조는 뒤이은 멤버 소멸 때 풀린다.
 	CGameInstance::Get().Release_Engine();
 	CEffectPresentationService::Release_PreparedResources();
 	CEffectV2Runtime::Release_Resources();

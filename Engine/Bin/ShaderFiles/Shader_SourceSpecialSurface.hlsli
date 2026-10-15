@@ -1,8 +1,7 @@
 #ifndef LOSTARK_SOURCE_SPECIAL_SURFACE
 #define LOSTARK_SOURCE_SPECIAL_SURFACE
 
-// Original snow/ice, vertex blend and wet material expressions. The caller
-// supplies source texture color spaces and the mesh's actual vertex RGBA.
+// 눈·얼음·젖음·정점 혼합 재질의 표면 값을 계산한다. 텍스처 색공간과 메시의 정점 RGBA는 호출자가 제공한다.
 uint g_SourceSpecialFlags = 0u;
 float g_SourceNormalTiling = 1.f;
 float4 g_SourceIceCoreColor = 0.f;

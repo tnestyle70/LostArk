@@ -156,12 +156,12 @@ def build(root: Path):
 
     resources, templates, instances, worlds, cues = [], [], [], [], []
     pattern_number = cp["nextPatternOrdinal"]
-    pid = f"KAKULSAYDON_G1_PATTERN_{pattern_number}"
+    pid = f"KOUKUSAYDON_G1_PATTERN_{pattern_number}"
     world_number = cp["nextWorldOrdinal"]
 
     def add_world(name, iid, object_id=None):
         nonlocal world_number
-        wid = f"kakulsaydon.g1.world.{world_number}"
+        wid = f"koukusaydon.g1.world.{world_number}"
         world_number += 1
         row = {"worldId": wid, "displayName": name, "sequenceInstanceId": iid,
                "positionOffset": [0, 0, 0], "anchorKind": "NONE",
@@ -283,7 +283,7 @@ def build(root: Path):
                                 "runtimeClip": source_slot["runtimeClip"], "startOffsetMs": 0,
                                 "sourceStartMs": 0, "playMs": 3000, "playRate": 1, "endPolicy": "EXACT"}]})
         return {"patternId": pattern_id, "actorProfileId": "MN_RPCT_05", "gateId": "GATE3",
-                "targetBossPlacementId": "boss.kakulsaydon.g3.saydon", "displayName": display,
+                "targetBossPlacementId": "boss.koukusaydon.g3.saydon", "displayName": display,
                 "authoringStatus": "PRODUCT", "category": "MECHANIC", "nextStageOrdinal": stage_count + 1,
                 "nextAnimationOrdinal": stage_count + 1, "nextLogicOccurrenceOrdinal": 1,
                 "nextSummonOccurrenceOrdinal": 1, "nextWorldOccurrenceOrdinal": len(occurrences) + 1,
@@ -292,7 +292,7 @@ def build(root: Path):
                 "worldOccurrences": occurrences, "sceneProfileOccurrences": [],
                 "presentationOccurrences": [], "resetBossToSpawn": False}
 
-    hook_pid = f"KAKULSAYDON_G1_PATTERN_{pattern_number + 1}"
+    hook_pid = f"KOUKUSAYDON_G1_PATTERN_{pattern_number + 1}"
     hook_only = []
     for row in cues:
         if row["worldId"] != hook_world:

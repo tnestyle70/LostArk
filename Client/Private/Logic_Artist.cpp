@@ -1,36 +1,27 @@
-#include "Logic_Artist.h"
+﻿#include "Logic_Artist.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* One brush. The sp rig has no "b_weapon_*" bone -- it carries b_wp_1 under
-	bip001-r-hand, b_wp_2 under bip001-l-hand and b_wp_3 on the spine -- the same
-	family gn_f uses. A socket name the rig lacks fails silently: Get_BoneMatrix
-	returns identity, the body's 0.0001 preTransform never reaches the weapon and
-	it renders thousands of times too large. */
+	// 붓을 오른손의 b_wp_1에 붙인다. 소켓 누락은 현재 Part 초기화가 거부한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
 		  TEXT("Prototype_Component_Model_Artist_Weapon"), "b_wp_1" },
 	};
 
-	/* The helmet piece carries the hat (0) and the helmet-fitted hair (1,
-	pc_sp_28). The body already draws pc_sp_06 as its own submesh 3, so leaving
-	both on renders two heads of hair. The hat is what this piece is here for. */
+	// helmet의 1번 머리카락 mesh를 제외해 별도 hair 표현과 겹치지 않게 한다.
 	constexpr uint32_t HELMET_HAIR = 1u << 1;
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before the weapon tags. */
+	// tag 순서로 본체가 먼저 갱신되고 장비 다음에 무기가 갱신된다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Artist_Arm"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
-		/* Hidden so the hairstyle below owns the head: nothing makes two DEFAULT
-		pieces in one presentation slot exclusive, and the hat drawn over the loose
-		hairstyle let the hair through it. The part stays created for a later
-		helmet toggle, the way Warlord keeps its hair. */
+		// helmet Part는 생성하지만 기본 숨김 상태로 두어 별도 머리카락과 겹침을 막는다.
 		{ TEXT("Part_10_Equip_Helmet"),   TEXT("Prototype_Component_Model_Artist_Helmet"),
 		  HELMET_HAIR, true, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
@@ -43,46 +34,27 @@ namespace
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_Artist_Upper"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
-		/* The hairstyle is a part, not something the body draws: character creation
-		picks one and swaps this out for it. Style 0 of this class's list is what a
-		character that has never been through that screen wears. */
+		// HEAD 슬롯의 별도 머리카락 Part다. 캐릭터 외형 편집은 이 표현을 교체한다.
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Artist_Hair"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 	};
 
-	/* The cook lays the body out 0 face / 1 eye_ao / 2 eye / 3 hair /
-	4 upper / 5 base_body / 6 arm / 7 lower, so everything below the head is
-	hidden and the armour draws it instead.
-
-	Unlike gn_f, this body carries a bare-skin submesh of its own (5,
-	pc_sp_av_base_body_mi) on top of its default outfit, and every armour part
-	ships that same material for the skin it leaves exposed. Keeping both would
-	z-fight, so 5 is hidden with the rest. If that turns out to leave a gap the
-	armour does not cover, 5 is the bit to put back.
-	Re-cooking the body with different content invalidates these bits. */
+	// 장비와 겹치는 upper·base_body·arm·lower인 본체 submesh 4·5·6·7을 숨긴다.
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 4) | (1u << 5) | (1u << 6) | (1u << 7);
 
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. 3 is pc_sp_06_hair. */
+	// 별도 HEAD 표현에 가려지는 본체 3번 hair mesh의 mask다.
 	constexpr uint32_t BAKED_HAIR = (1u << 3);
 
-	/* Chains picked by parsing what the shipped meshes actually skin, not by
-	what the rig offers: the capatcloth chains and the long b_hair chains have
-	no weights on any product mesh and stay unlisted. The Upper coat hangs
-	eight b_skirt panels and one b_add_tail tassel off the pelvis, the
-	Shoulder piece is almost entirely the two b_armwing sleeve wings, and the
-	hat's b_hair_b_11 tassel rides the head. */
+	// 치마·허리 장식 solver에 전달할 계수다. 실제 적용 대상은 아래 BoneChains 목록이다.
 	constexpr f32_t ROBE_STIFFNESS = 0.05f;
 	constexpr f32_t ROBE_DAMPING = 0.6f;
 	constexpr f32_t ROBE_GRAVITY = 16.f;
 	constexpr f32_t ROBE_MAX_DISPLACEMENT = 0.3f;
 	constexpr f32_t ROBE_WIND_RESPONSE = 4.5f;
 
-	/* The wings hang from the upper arms, which move faster than the hips, so
-	they run stiffer to keep them from wrapping around the arm mid-swing. */
+	// 팔에 붙은 소매 체인은 몸통 천과 다른 복원·감쇠·풍응답 계수를 사용한다.
 	constexpr f32_t WING_STIFFNESS = 0.08f;
 	constexpr f32_t WING_DAMPING = 0.55f;
 	constexpr f32_t WING_GRAVITY = 12.f;
@@ -95,10 +67,7 @@ namespace
 	constexpr f32_t TASSEL_MAX_DISPLACEMENT = 0.15f;
 	constexpr f32_t TASSEL_WIND_RESPONSE = 2.f;
 
-	/* Swing cones from this class's own body PhysicsAsset. Our cone is one
-	symmetric half-angle per chain, so each value is that chain's first simulated
-	link's authored Swing1LimitAngle -- the link that sets the silhouette. PC_SP_00_Physics authors
-	b_hair_b as two independent sub-chains (_01.. and _11..) and add_tail as 30/45/45. */
+	// 마지막 값은 체인별 degree 반각 제한이다. root 이름과 길이는 직업 골격에 맞춘다.
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  4u, ROBE_STIFFNESS, ROBE_DAMPING,
@@ -130,6 +99,7 @@ namespace
 		  TASSEL_GRAVITY, TASSEL_MAX_DISPLACEMENT, TASSEL_WIND_RESPONSE, 30.0f },
 	};
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Artist>();
@@ -138,6 +108,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_Artist::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -146,7 +117,8 @@ void CLogic_Artist::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// catalog가 extern으로 참조할 직업 설정이며 배열과 문자열은 프로세스 동안 유지된다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_Artist =
 {
 	"Artist",
@@ -157,9 +129,7 @@ const CHARACTER_SPEC Spec_Artist =
 	COVERED_BY_ARMOUR,
 	BAKED_HAIR,
 
-	/* Item 1061002 is this class's default weapon and names WP_WSDM_09-1, which
-	is a material variant of the one mesh in WP_WSDM_09 -- the -1..-9 instances
-	all name the same textures. */
+	// 붓 Part는 static mesh 셰이더를 사용한다.
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,
 	static_cast<uint32_t>(size(Weapons)),
@@ -167,10 +137,7 @@ const CHARACTER_SPEC Spec_Artist =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
-	ESTHER_CAST -- FBX takes are "<armature>_<action>" and the armature is
-	named "sdm", so every clip carries that prefix. The cast clip comes from
-	the attached Esther animation set. */
+	// CHARACTER_ANIM 순서에 sdm 계열 기본·에스더 clip을 대응시킨다.
 	{
 		"sdm_idle_battle_1",
 		"sdm_run_battle_1",
@@ -181,11 +148,10 @@ const CHARACTER_SPEC Spec_Artist =
 		"sdm_down",
 		"sdm_standup_1",
 		"sdm_act_estherskill_1",
-		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
+		// 캐릭터 생성 화면의 idle clip이다.
 		"idle_charactercustomizing_1",
 		"sdm_abn_fear_1",
-		/* Square-hole song: the family PSA act_music_loop_1 appended to the body cook
-		(append_psa_clip_to_wmodel.py --name), named like the other body clips. */
+		// 스퀘어홀 노래 상태에 사용할 body clip이다.
 		"sdm_act_music_loop_1",
 	},
 

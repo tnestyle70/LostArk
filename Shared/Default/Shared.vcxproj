@@ -169,7 +169,7 @@
       <PrecompiledHeader Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">Create</PrecompiledHeader>
       <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+    <ClInclude Include="..\..\Tools\Build\PCH.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Gameplay\BalanceNumericContract.h" />

@@ -1,26 +1,51 @@
+// 발탄 편집 트리의 읽기 경계다. gameplay/presentation 저작 문서를 합치고 필요한 경로에서는 게시 Product와 대조한다.
+// 이 파일은 Server 전투를 실행하거나 문서를 게시하지 않는다. 외부에 넘기는 뷰는 검증한 임시 값으로 교체한다.
+// 아래 내부 parser는 출력을 중간까지 채울 수 있으므로 공개 Load의 임시 문서 안에서 사용한다.
+// 공개 Load·표시 보조 함수와 결합 결과 뷰, admission 소유 상태를 구현한다.
 #include "ValtanPatternTree.h"
 
+// Product 애니메이션 clip·binding 타입, clip 수 상한과 stage 환경 파서를 사용한다.
 #include "AnimationSkillBindingDocument.h"
+// JSON 값의 타입별 읽기와 원본 문서 파싱·직렬화를 수행한다.
 #include "DataJson.h"
+// 기존 Encounter 참조 헤더의 포함 관계를 유지한다. 이 본문은 Encounter JSON을 직접 읽어 결합한다.
 #include "EncounterPatternReference.h"
+// Effect V2 binding을 읽어 패턴/stage 원본 범위와 연결한다.
 #include "EffectV2_Document.h"
+// Data 상대 경로를 저작 원본 경로로 해석하고 읽기 admission의 프로젝트 루트를 구한다.
 #include "ProjectDataRoot.h"
+// 게시된 발탄 Effect cue 문서와 scale/follow/stop 계약을 읽는다.
 #include "ValtanPatternEffectCueDocument.h"
+// scripted sequence 길이를 기존 Flow 문서의 MAX_SLOTS 제한과 맞춘다.
 #include "ValtanPatternFlowDocument.h"
 
+// ID 검색·중복/조건 집계·순서 정렬을 기존 목록 위에서 수행한다.
 #include <algorithm>
+// 숫자의 유한성·정수 여부·절댓값 범위를 확인한다.
 #include <cmath>
+// 원본과 Product 파일을 binary 입력 스트림으로 읽는다.
 #include <fstream>
+// 패턴 후속 그래프의 깊이를 검사하는 재귀 callback을 보관한다.
 #include <functional>
+// 표시용 순번과 JSON 숫자의 자릿수·정밀도를 지정한다.
 #include <iomanip>
+// 허용·필수 JSON 필드 이름 묶음을 고정된 호출 인자로 전달한다.
 #include <initializer_list>
+// 파일 입력 스트림 전체를 문자열로 읽는 iterator 범위를 사용한다.
 #include <iterator>
+// 정수/실수 변환 상한과 JSON 실수 직렬화 정밀도를 구한다.
 #include <limits>
+// 표시 요약·JSON 숫자를 지역 설정의 소수점 표기와 분리한다.
 #include <locale>
+// stable ID의 정의·소유자·stage index를 결합하는 정렬 색인을 만든다.
 #include <map>
+// admission의 잠금 상태를 임시 unique_ptr로 준비해 성공한 객체에 넘긴다.
 #include <memory>
+// 중복 ID와 방문 상태·참조 coverage를 검사한다.
 #include <set>
+// 표시 이름·패턴 요약·접촉 배열 JSON을 메모리 문자열로 구성한다.
 #include <sstream>
+// 필드 이름과 stable ID를 검사할 때 입력 문자열을 복사 없이 차용한다.
 #include <string_view>
 
 namespace
@@ -33,12 +58,9 @@ namespace
 		L"out\\ValtanPatternTransactions\\active-generation.json";
 	constexpr uint32_t VALTAN_PATTERN_FOLLOWUP_MAX_DEPTH = 32u;
 
-	/* Canonical readers share the same byte range that every Python/C++
-	   Create/Project writer locks exclusively.  Holding the handle through the
-	   entire strict join prevents one reader from observing a mixture of owner
-	   and generated Product generations.  This reader never repairs a crashed
-	   writer: a durable active-generation journal is an explicit admission
-	   failure that the next writer transaction must recover. */
+	// Python/C++ 게시자가 배타 잠금을 거는 동일한 1 byte 범위를 공유 잠금으로 읽는다.
+	// 엄격한 문서 결합이 끝날 때까지 핸들을 소유하여 잠금에 참여하는 게시자와 세대가 섞이지 않게 한다.
+	// 중단된 게시자의 journal은 reader가 복구하지 않는다. journal이 남아 있으면 다음 writer의 복구를 요구한다.
 	class SCOPED_VALTAN_PATTERN_TRANSACTION_READ_LOCK final
 	{
 	public:
@@ -50,6 +72,8 @@ namespace
 			CloseHandle(m_hFile);
 		}
 
+		// 읽기 admission이 호출한다. 핸들과 byte 잠금은 이 객체가 소유하고 소멸 시 해제한다.
+		// 실패 이유를 busy와 I/O로 나누며 기다리는 재시도나 writer 복구를 여기서 수행하지 않는다.
 		bool_t Try_Acquire(
 			const std::filesystem::path& ProjectRoot,
 			std::string& strOutError,
@@ -87,9 +111,8 @@ namespace
 				return false;
 			}
 
-			/* Python's msvcrt writer initializes the same one-byte range.
-			   Initialize it before taking the shared lock so a first writer never
-			   needs to write through an already locked, zero-length file. */
+			// Python msvcrt writer와 같은 1 byte 잠금 범위를 초기화한다.
+			// 공유 잠금 전에 파일 길이를 확보해 첫 writer가 잠긴 빈 파일에 쓰지 않도록 한다.
 			LARGE_INTEGER Size{};
 			if (FALSE == GetFileSizeEx(m_hFile, &Size))
 			{
@@ -119,9 +142,8 @@ namespace
 				}
 			}
 
-			/* Omitting LOCKFILE_EXCLUSIVE_LOCK is the Windows shared/read mode.
-			   FAIL_IMMEDIATELY keeps a UI reload bounded while a publisher owns
-			   the corresponding exclusive Python msvcrt byte-range lock. */
+			// LOCKFILE_EXCLUSIVE_LOCK을 생략하면 공유 읽기 잠금이다.
+			// FAIL_IMMEDIATELY로 게시자의 배타 잠금이 풀리기를 UI에서 계속 기다리지 않고 실패를 돌려준다.
 			if (FALSE == LockFileEx(m_hFile, LOCKFILE_FAIL_IMMEDIATELY,
 				0u, 1u, 0u, &m_Overlap))
 			{
@@ -151,6 +173,8 @@ namespace
 		std::filesystem::path ProjectRoot;
 	};
 
+	// 현재 게시 journal의 존재만 확인한다. 내용을 파싱하거나 생성물 hash를 비교하지 않는다.
+	// journal이 있으면 복구가 필요하다고 알리며 reader가 파일을 지우지 않는다.
 	bool_t Require_NoActiveValtanPatternGeneration(
 		const std::filesystem::path& ProjectRoot,
 		std::string& strOutError,
@@ -187,12 +211,15 @@ namespace
 	constexpr std::string_view IDLE_CINEMATIC_ENTRY_PATTERN_ID =
 		"VALTAN_ENTRANCE_CINEMATIC_IDLE";
 
+	// 일반 decision 소유자가 없어도 허용하는 입장 패턴 ID를 좁게 한정한다.
 	bool_t Is_OptionalEntryPatternId(const std::string_view PatternId)
 	{
 		return CINEMATIC_ENTRY_PATTERN_ID == PatternId ||
 			IDLE_CINEMATIC_ENTRY_PATTERN_ID == PatternId;
 	}
 
+	// 명시한 파일을 binary로 읽는 공통 보조 함수다. 경로 해석과 JSON 검증은 호출자가 맡는다.
+	// 열기 성공 뒤 iterator 범위를 읽으며 별도 크기 상한, 읽기 완료 상태나 동시 변경 hash 검사는 하지 않는다.
 	bool Read_TextDocument(
 		const std::filesystem::path& Path,
 		std::string& OutText,
@@ -214,6 +241,7 @@ namespace
 		return true;
 	}
 
+	// Data 루트 상대 경로를 읽고 JSON 객체인지 확인한다. 출력은 상위 Load가 소유한 임시 JSON이다.
 	bool Parse_Document(
 		const std::filesystem::path& Relative,
 		DATA_JSON_VALUE& OutRoot,
@@ -235,6 +263,7 @@ namespace
 		return true;
 	}
 
+	// 명시적인 원본 경로를 읽는 변형이다. 경로의 admission 잠금은 이 함수가 획득하지 않는다.
 	bool Parse_DocumentPath(
 		const std::filesystem::path& Path,
 		DATA_JSON_VALUE& OutRoot,
@@ -253,6 +282,7 @@ namespace
 		return true;
 	}
 
+	// 선택 문자열 조회다. 누락과 타입 불일치는 빈 문자열로 돌려주므로 필수 계약은 별도 검증해야 한다.
 	std::string Read_String(
 		const DATA_JSON_VALUE& Object, const std::string_view Key)
 	{
@@ -261,6 +291,7 @@ namespace
 			std::string{} : pValue->Get_String();
 	}
 
+	// 선택 숫자 조회의 기본값은 0이다. 정수 범위나 필수 여부가 필요한 곳은 전용 reader를 사용한다.
 	double Read_Number(
 		const DATA_JSON_VALUE& Object, const std::string_view Key)
 	{
@@ -269,6 +300,7 @@ namespace
 			0.0 : pValue->Get_Number();
 	}
 
+	// JSON 숫자가 유한한 uint32 범위의 정수 값일 때만 출력한다. 소수부 절삭으로 잘못된 ms를 받아들이지 않는다.
 	bool_t Read_RequiredUInt32(
 		const DATA_JSON_VALUE& Object,
 		const std::string_view Key,
@@ -288,6 +320,7 @@ namespace
 		return true;
 	}
 
+	// 유한한 float 범위를 확인하고 성공할 때만 출력값을 바꾼다.
 	bool_t Read_RequiredFiniteFloat(
 		const DATA_JSON_VALUE& Object,
 		const std::string_view Key,
@@ -305,6 +338,7 @@ namespace
 		return true;
 	}
 
+	// 필수 이름과 타입을 함께 확인한다. 반환 포인터의 메모리는 입력 JSON이 소유한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& Object,
 		const std::string_view Key,
@@ -315,6 +349,7 @@ namespace
 			pValue : nullptr;
 	}
 
+	// 필수 키가 정확히 존재하고 추가 키가 없는지 확인해 지원하지 않는 필드를 조용히 버리지 않는다.
 	bool_t Has_ExactProperties(
 		const DATA_JSON_VALUE& Object,
 		const std::initializer_list<std::string_view> Names)
@@ -329,6 +364,7 @@ namespace
 		return true;
 	}
 
+	// JSON 값의 의미를 재귀 비교한다. 객체의 키 순서는 무시하지만 배열 순서와 숫자 값은 그대로 비교한다.
 	bool_t Equal_JsonSemanticValue(
 		const DATA_JSON_VALUE& Left,
 		const DATA_JSON_VALUE& Right)
@@ -375,6 +411,7 @@ namespace
 		}
 	}
 
+	// 필수 키는 모두 요구하고 명시한 선택 키만 생략을 허용한다. 알 수 없는 추가 키는 거절한다.
 	bool_t Has_ExactPropertiesWithOptional(
 		const DATA_JSON_VALUE& Object,
 		const std::initializer_list<std::string_view> RequiredNames,
@@ -396,6 +433,7 @@ namespace
 		return Object.Get_Object().size() == iExpectedPropertyCount;
 	}
 
+	// 문서 사이를 연결하는 stable token의 길이와 ASCII 문자 집합을 검사한다. 표시 이름과 경로 검사는 별도다.
 	bool_t Is_StableToken(const std::string_view Value)
 	{
 		if (Value.empty() || Value.size() > 255u)
@@ -413,12 +451,15 @@ namespace
 		return true;
 	}
 
+	// 선택 JSON 포인터의 숫자 타입과 유한성만 확인한다. 양수와 단위별 상한은 각 계약에서 검사한다.
 	bool_t Is_FiniteNumber(const DATA_JSON_VALUE* pValue)
 	{
 		return nullptr != pValue && pValue->Is_Number() &&
 			std::isfinite(pValue->Get_Number());
 	}
 
+	// 왼손 잡기 로컬 오프셋의 forward/up/right 세 필드를 읽고 공용 좌표 계약을 검사한다.
+	// 시작할 때 출력을 비우므로 실패 시 이전 optional 값 보존을 기대해서는 안 된다.
 	bool_t Read_PlayerHandGripLocalOffset(
 		const DATA_JSON_VALUE* const pValue,
 		std::optional<Client::PLAYER_HAND_GRIP_LOCAL_OFFSET>& Out)
@@ -447,6 +488,8 @@ namespace
 		return true;
 	}
 
+	// 본체를 숨기는 선택 구간을 stage 시작 기준 ms로 읽는다. from < to <= stage 길이를 요구한다.
+	// 출력은 먼저 기본값으로 초기화되며 제품 렌더 상태를 직접 바꾸지 않는다.
 	bool_t Read_StageBodyVisibility(
 		const DATA_JSON_VALUE* const pValue,
 		const uint32_t iStageDurationMs,
@@ -492,6 +535,7 @@ namespace
 		return true;
 	}
 
+	// 유한한 uint32 범위의 비음수 정수 값인지 확인한다. JSON의 텍스트 표기 방식 자체를 제한하지는 않는다.
 	bool_t Is_NonNegativeInteger(const DATA_JSON_VALUE* pValue)
 	{
 		return Is_FiniteNumber(pValue) && pValue->Get_Number() >= 0.0 &&
@@ -500,6 +544,7 @@ namespace
 				(std::numeric_limits<uint32_t>::max)());
 	}
 
+	// 필드는 필수지만 null은 빈 참조로 허용한다. 문자열이면 stable ID 형식을 요구한다.
 	bool_t Read_NullableStableToken(
 		const DATA_JSON_VALUE& Object,
 		const std::string_view Key,
@@ -519,6 +564,7 @@ namespace
 		return true;
 	}
 
+	// stage 조준 정책과 선택 종료 ms 및 응답 배율을 읽는다. 기본값 초기화 후 검사하므로 실패 시 일부 출력이 바뀔 수 있다.
 	bool_t Read_StageAim(
 		const DATA_JSON_VALUE* pValue,
 		const uint32_t iStageDurationMs,
@@ -551,6 +597,8 @@ namespace
 			  fOutResponseScale >= 0.01f && fOutResponseScale <= 10.f));
 	}
 
+	// stage 이동의 종류별 입력을 읽는다. 포탈 돌진은 지연 ms + 거리 m / 속도 m/s가 stage 시간 안에 있어야 한다.
+	// 출력 optional을 먼저 비우고 검증한 이동 값만 마지막에 넣는다.
 	bool_t Read_StageMotion(
 		const DATA_JSON_VALUE* pValue,
 		const uint32_t iStageDurationMs,
@@ -616,6 +664,8 @@ namespace
 		return true;
 	}
 
+	// 기존 stage action 뷰를 만든다. 일반 action, 잡기 해제와 일제 생성은 서로 다른 필드 계약을 사용한다.
+	// 목록을 먼저 비우므로 뒤 행에서 실패하면 앞서 추가한 임시 행이 남을 수 있다.
 	bool_t Read_StageActions(
 		const DATA_JSON_VALUE* pValue,
 		const uint32_t iStageDurationMs,
@@ -626,12 +676,17 @@ namespace
 			return true;
 		if (!pValue->Is_Array())
 			return false;
+
+		// 같은 stage의 예약 일제 생성은 하나의 시계를 공유한다.
+		// 첫 시작 ms·횟수·간격을 기억해 뒤의 예약 행과 일치하는지 비교한다.
 		bool_t bHasScheduledVolleyClock = false;
 		uint32_t iScheduledVolleyFirstOffsetMs = 0u;
 		uint32_t iScheduledVolleyCount = 0u;
 		uint32_t iScheduledVolleyIntervalMs = 0u;
 		for (const DATA_JSON_VALUE& Value : pValue->Get_Array())
 		{
+			// 일제 생성은 일반 action 값으로 축약하지 않는다.
+			// 대상별 배치·도형·추가 arena 배치와 스케줄을 검증한 뒤 별도 결합 경로에 남긴다.
 			if ("SPAWN_COMBAT_OBJECT_VOLLEY" == Read_String(Value, "kind"))
 			{
 				const DATA_JSON_VALUE* pTargeting = Required(
@@ -648,6 +703,9 @@ namespace
 					"PER_ALIVE_PLAYER" == strTargeting;
 				const bool_t bBossRelative = "BOSS_RELATIVE" == strTargeting;
 				const bool_t bArenaCenter = "ARENA_CENTER" == strTargeting;
+
+				// 허용 필드와 ENTER trigger를 먼저 확인한다. 이어서 대상별 개수·전체 상한과
+				// 마지막 생성 시각이 stage 종료 전인지 검사하며 조건의 평가 순서는 유지한다.
 				if (!Has_ExactProperties(Value,
 						{ "trigger", "kind", "targetId", "targetingPolicy",
 						  "countPerResolvedTarget", "layout", "radiusM",
@@ -674,6 +732,8 @@ namespace
 					!Is_NonNegativeInteger(Value.Find("maximumTotalObjects")) ||
 					0.0 == Value.Find("maximumTotalObjects")->Get_Number() ||
 					Value.Find("maximumTotalObjects")->Get_Number() > 64.0 ||
+
+					// 반복이 하나면 간격은 0, 둘 이상이면 양수다. 마지막 생성도 durationMs 미만이어야 한다.
 					!Is_NonNegativeInteger(Value.Find("spawnCount")) ||
 					0.0 == Value.Find("spawnCount")->Get_Number() ||
 					Value.Find("spawnCount")->Get_Number() > 8.0 ||
@@ -691,6 +751,8 @@ namespace
 						(Value.Find("spawnCount")->Get_Number() - 1.0) *
 						Value.Find("spawnIntervalMs")->Get_Number() >=
 						static_cast<double>(iStageDurationMs) ||
+
+					// arena 보충 배치의 개수·반경·높이 허용 오차를 검사한다. 길이 단위는 m다.
 					!Is_NonNegativeInteger(Value.Find("arenaRandomCount")) ||
 					Value.Find("arenaRandomCount")->Get_Number() > 32.0 ||
 					!Is_FiniteNumber(Value.Find("arenaRandomRadiusM")) ||
@@ -706,6 +768,9 @@ namespace
 				{
 					return false;
 				}
+
+				// 1개 배치는 SINGLE과 0 반경/각도만, 여러 개는 양수 RADIAL 반경/간격만 허용한다.
+				// angleStepDegrees × 개수가 360.000001도를 넘거나 allowOverlap이 켜져 있으면 거부한다.
 				const double fCount =
 					Value.Find("countPerResolvedTarget")->Get_Number();
 				const double fRadius = Value.Find("radiusM")->Get_Number();
@@ -724,6 +789,9 @@ namespace
 				{
 					return false;
 				}
+
+				// 플레이어별 배치는 arena 보충을 전부 끄거나 유효한 한 세트로 지정한다.
+				// 보스/arena 중심 배치는 보충 없이 한 번의 RADIAL 일제 생성만 허용한다.
 				const bool_t bNoArenaSupplement =
 					"NONE" == pArenaAnchor->Get_String() &&
 					0.0 == Value.Find("arenaRandomCount")->Get_Number() &&
@@ -749,6 +817,9 @@ namespace
 					"NONE" == pArenaAnchor->Get_String();
 				if (!bPerAlivePlayerContract && !bBossRelativeContract)
 					return false;
+
+				// 예약 시계를 uint32_t 값으로 읽은 뒤 기존 예약 행과 대조한다.
+				// 즉시 한 번 생성하는 행은 이 공유 예약 시계의 소유자가 아니다.
 				const uint32_t iFirstSpawnOffsetMs = static_cast<uint32_t>(
 					Value.Find("firstSpawnOffsetMs")->Get_Number());
 				const uint32_t iSpawnCount = static_cast<uint32_t>(
@@ -771,11 +842,13 @@ namespace
 						return false;
 					}
 				}
-				/* The expanded volley is validated and joined separately as a
-				   combat-object owner. It is not lossy-packed into the legacy
-				   five-field stage-action display view. */
+				// 일제 생성 행은 전투 오브젝트 소유자로 별도 검증하고 결합한다.
+				// 반경과 스케줄을 잃는 기존 5필드 stage action 뷰로 축약하지 않는다.
 				continue;
 			}
+
+			// 잡기 해제는 왼손 attachment를 대상으로 속도 m/s·지속 ms·yaw degree를 읽는다.
+			// HOLD는 모두 0이고 밀어내기는 양수 속도/시간, ARENA_EJECTION에서만 yaw를 허용한다.
 			if ("RELEASE_GRABBED_PLAYERS" == Read_String(Value, "kind"))
 			{
 				const DATA_JSON_VALUE* pTrigger = Required(
@@ -825,6 +898,9 @@ namespace
 				Out.push_back(std::move(Action));
 				continue;
 			}
+
+			// 나머지 action은 공통 다섯 필드를 읽는다. 아래에서 명시한 종류에는
+			// trigger·target·value·duration 조합 제약을 추가하며 그 외 kind 전체를 열거해 거부하지는 않는다.
 			if (!Has_ExactProperties(Value,
 					{ "trigger", "kind", "targetId", "value", "durationMs" }))
 			{
@@ -878,6 +954,8 @@ namespace
 		return true;
 	}
 
+	// outcome별 중복을 거절하고 로컬 action과 다른 패턴 연결을 구분한다. 둘을 동시에 지정할 수 없다.
+	// 입력 순서를 보존하며 실제 대상의 존재와 그래프 순환은 상위 결합에서 확인한다.
 	bool_t Read_StageBranches(
 		const DATA_JSON_VALUE* pValue,
 		std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Out)
@@ -920,6 +998,7 @@ namespace
 		return true;
 	}
 
+	// 이동 차단 분기는 잡기 반응에서만 허용한다. 이 검사는 branch 대상의 존재까지 확인하지 않는다.
 	bool_t Has_ValidNavigationBlockedCapture(
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
 		const std::string_view strPlayerResponse)
@@ -930,6 +1009,7 @@ namespace
 			{ return "NAVIGATION_BLOCKED" == Branch.strOutcome; });
 	}
 
+	// 지정 flag를 켜는 ENTER와 끄는 EXIT가 모두 있는지 확인한다. 같은 행의 중복 개수를 제한하는 검사는 아니다.
 	bool_t Has_ClosedSplitStageFlag(
 		const DATA_JSON_VALUE& Stage,
 		const std::string_view strFlagId)
@@ -960,6 +1040,8 @@ namespace
 		return bEntered && bExited;
 	}
 
+	// 부분 파괴, counter 도형과 누적 피해 응답을 선택 확장으로 읽는다. 이전 기본값은 먼저 초기화한다.
+	// 도형의 거리 단위는 m, 각도는 degree이며 stage 종류와 분기의 조합은 상위 검증이 맡는다.
 	bool_t Read_StageGameplayExtensions(
 		const DATA_JSON_VALUE& Stage,
 		std::string& strOutPartDamagePolicy,
@@ -1059,6 +1141,8 @@ namespace
 		return true;
 	}
 
+	// hit의 기준 원점과 활성 구간을 읽는다. 기준 오프셋은 m/degree, 활성 시각은 stage 시작 기준 ms다.
+	// 출력 기본값을 먼저 설정하고 ACTIVE_WINDOW_ONCE가 stage 길이를 넘지 않는지 검사한다.
 	bool_t Read_StageHitAuthority(
 		const DATA_JSON_VALUE& Stage,
 		const uint32_t iStageDurationMs,
@@ -1126,15 +1210,28 @@ namespace
 		return true;
 	}
 
+	// 무력화 성공 분기와 gauge의 시작/종료 event 또는 action이 함께 있는지 검사한다.
+	// 분리 원본과 Product의 stage 수직 offset 검사가 호출하는 읽기 전용 조건식이다.
+	// events가 존재하면 actions로 대체하지 않으며 성공 분기와 ENTER 양수/EXIT 0 gauge의 존재만 검사한다.
 	bool_t Has_ClosedStaggerStageResponse(const DATA_JSON_VALUE& Stage)
 	{
 		const auto* branches = Stage.Find("branches");
 		const auto* actions = Stage.Find("events");
-		if (nullptr == actions) actions = Stage.Find("actions");
+		if (nullptr == actions)
+			actions = Stage.Find("actions");
 		if (nullptr == branches || !branches->Is_Array() ||
-			nullptr == actions || !actions->Is_Array()) return false;
-		const bool_t hasOutcome = std::any_of(branches->Get_Array().begin(), branches->Get_Array().end(),
-			[](const DATA_JSON_VALUE& branch) { return Read_String(branch, "outcome") == "STAGGER_BROKEN"; });
+			nullptr == actions || !actions->Is_Array())
+			return false;
+
+		const bool_t hasOutcome = std::any_of(
+			branches->Get_Array().begin(), branches->Get_Array().end(),
+			[](const DATA_JSON_VALUE& branch)
+			{
+				return Read_String(branch, "outcome") == "STAGGER_BROKEN";
+			});
+
+		// 대응하는 event가 하나라도 있는지 조회한다. 순서·개수·추가 충돌 event를 검사하거나
+		// 실제로 gauge 상태를 켜고 끄는 함수는 아니다.
 		const auto hasGauge = [actions](const std::string_view trigger, const bool_t enabled)
 		{
 			return std::any_of(actions->Get_Array().begin(), actions->Get_Array().end(),
@@ -1149,6 +1246,7 @@ namespace
 		return hasOutcome && hasGauge("ENTER", true) && hasGauge("EXIT", false);
 	}
 
+	// 분리 gameplay stage의 특수 응답과 분기를 함께 검사한다. 부분 파괴, counter, 높이와 이동의 조합을 제한한다.
 	bool_t Validate_SplitGameplayStageExtensions(
 		const DATA_JSON_VALUE& Stage,
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Branches,
@@ -1236,6 +1334,8 @@ namespace
 		return true;
 	}
 
+	// 분리 원본의 counter 창과 성공/실패 stage를 action 또는 pattern ID로 연결한다.
+	// flag의 정확한 ENTER/EXIT 쌍, 허용 stage 종류와 전방 TIMEOUT을 확인하며 실제 counter 판정은 수행하지 않는다.
 	bool_t Validate_SplitCounterBranchContract(
 		const DATA_JSON_VALUE& GameplayPattern,
 		const DATA_JSON_VALUE::ARRAY& GameplayPatterns,
@@ -1247,6 +1347,8 @@ namespace
 		if (nullptr == pStages)
 			return false;
 
+		// flag 이벤트를 세 상태로 분류한다. 0은 미지정, 1은 ENTER true/EXIT false 각 한 번,
+		// -1은 배열 누락 또는 잘못된 조합이다. 관련 없는 flag 이벤트는 집계하지 않는다.
 		const auto FlagState = [](const DATA_JSON_VALUE& Stage,
 			const std::string_view strFlagId)
 		{
@@ -1281,6 +1383,9 @@ namespace
 		};
 
 		const auto& Stages = pStages->Get_Array();
+
+		// 다른 패턴으로 가는 성공 분기는 그 패턴의 entryActionId로 stage를 찾는다.
+		// 반환 포인터는 GameplayPatterns의 JSON 값을 차용하며 이 검사 밖으로 보관하지 않는다.
 		const auto ResolvePatternEntry = [&GameplayPatterns](
 			const std::string_view strTargetPatternId)
 			-> const DATA_JSON_VALUE*
@@ -1311,6 +1416,9 @@ namespace
 			return Entry == pTargetStages->Get_Array().end() ?
 				nullptr : &*Entry;
 		};
+
+		// stage별 COUNTER_HIT/TIMEOUT 분기와 counterable flag를 함께 확인한다.
+		// COUNTER_HIT 없이 proxy를 가진 대기 stage와 실제 counter 창의 조건을 아래에서 나눈다.
 		for (std::size_t iStageIndex = 0u;
 			iStageIndex < Stages.size(); ++iStageIndex)
 		{
@@ -1346,6 +1454,9 @@ namespace
 			{
 				return false;
 			}
+
+			// COUNTER_HIT가 없으면 counterable flag도 없어야 한다. proxy만 미리 준비했다면
+			// 같은 패턴 안의 뒤쪽 stage로 향하는 TIMEOUT 하나를 요구한다.
 			if (0u == iCounterCount)
 			{
 				if (0 != iCounterState)
@@ -1385,6 +1496,8 @@ namespace
 			}
 			else
 			{
+				// 실제 counter 창은 성공 분기 하나와 TIMEOUT 하나를 갖는다.
+				// 성공은 로컬 action 또는 다른 패턴 중 하나만, TIMEOUT은 로컬 action만 가리켜야 한다.
 				const bool_t bCounterUsesLocalSuccess =
 					Counter != Branches.end() &&
 					Counter->strNextActionId.has_value();
@@ -1402,6 +1515,9 @@ namespace
 						std::string(strPatternId) + "/" + strStageId;
 					return false;
 				}
+
+				// 로컬 대상은 현재 stage보다 뒤에 있어야 하므로 배열 index를 함께 찾는다.
+				// 다른 패턴 성공은 자신에게 되돌아갈 수 없으며 그 패턴의 진입 stage로 해석한다.
 				const DATA_JSON_VALUE* pTarget = nullptr;
 				const DATA_JSON_VALUE* pTimeoutTarget = nullptr;
 				std::size_t iTargetIndex = Stages.size();
@@ -1430,6 +1546,9 @@ namespace
 					pTarget = ResolvePatternEntry(
 						*Counter->strNextPatternId);
 				}
+
+				// 성공 대상은 WINDUP/GROGGY/RECOVERY 중 하나다. GROGGY에는 닫힌 groggy flag를,
+				// 나머지 종류에는 그 flag의 부재를 요구하고 출발 stage와 proxy 종류도 함께 검사한다.
 				const std::string strTargetKind = nullptr == pTarget ?
 					std::string{} : Read_String(*pTarget, "stageKind");
 				const bool bTypedSuccessTarget = "WINDUP" == strTargetKind ||
@@ -1456,6 +1575,7 @@ namespace
 				}
 			}
 
+			// 분기 유무와 관계없이 각 stage의 GROGGY 종류와 groggy flag 계약을 마지막으로 확인한다.
 			const int iGroggyState = FlagState(Stage, "boss.flag.groggy");
 			if (("GROGGY" == Read_String(Stage, "stageKind") &&
 				 1 != iGroggyState) ||
@@ -1470,6 +1590,8 @@ namespace
 		return true;
 	}
 
+	// 필수 offset 배열을 엄격한 오름차순 ms 목록으로 읽는다. 빈 배열은 이 reader에서 허용한다.
+	// 출력을 먼저 비우므로 실패 시 기존 목록을 보존하는 함수는 아니다.
 	bool_t Read_RequiredHitOffsets(
 		const DATA_JSON_VALUE& Object,
 		std::vector<uint32_t>& Out)
@@ -1494,6 +1616,8 @@ namespace
 		return true;
 	}
 
+	// 패턴 단위 도약의 anchor, 착지 위치와 이륙/이동 ms 구간을 읽는다. 위치와 높이는 m 단위다.
+	// 실제 travel stage와 첫 stage 시간에 맞는지는 별도 결합에서 검사한다.
 	bool_t Read_PatternServerMotion(
 		const DATA_JSON_VALUE* pValue,
 		std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW>& Out)
@@ -1571,6 +1695,7 @@ namespace
 		return true;
 	}
 
+	// 유령/포탈 finale의 자식 패턴 ID와 생성 범위를 읽는다. 자식 ID 중복은 거절하고 실제 정의는 상위 문서에서 연결한다.
 	bool_t Read_PatternFinale(
 		const DATA_JSON_VALUE* pValue,
 		std::optional<Client::VALTAN_PATTERN_FINALE_VIEW>& Out)
@@ -1628,6 +1753,7 @@ namespace
 		return true;
 	}
 
+	// 분리 원본을 결합하면서 사용하는 내부 참조 값이다. JSON 객체 포인터나 Server 실행 객체를 보관하지 않는다.
 	struct MASTER_EFFECT_REFERENCE final
 	{
 		std::string strType;
@@ -1641,6 +1767,7 @@ namespace
 		bool_t bHasSourceEnd = false;
 	};
 
+	// 한 stage의 저작 gameplay와 presentation을 값으로 결합하는 임시 구조다. 공개 뷰를 교체하기 전에 검사한다.
 	struct MASTER_STAGE final
 	{
 		std::string strStageId;
@@ -1703,6 +1830,7 @@ namespace
 	};
 
 	template <typename TStage>
+	// 도약의 이륙 시각은 첫 stage 안에, travel 구간은 뒤쪽 지정 stage 안에 있어야 한다.
 	bool_t Validate_PatternServerMotionStageWindows(
 		const std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW>& Motion,
 		const std::vector<TStage>& Stages)
@@ -1724,6 +1852,7 @@ namespace
 			Motion->iTravelEndMs <= Travel->iDurationMs;
 	}
 
+	// 하나의 패턴 저작 정의와 출처, stage를 소유한다. 실행 중 HP나 분기 상태를 가진 Server 패턴 인스턴스는 아니다.
 	struct MASTER_PATTERN final
 	{
 		std::string strPatternId;
@@ -1763,6 +1892,8 @@ namespace
 		std::vector<MASTER_STAGE> Stages;
 	};
 
+	// 종료되어야 하는 선택된 패턴에 적용하는 stage 그래프 검사다. action ID 색인과 인접 목록/진입 차수를 만든다.
+	// Kahn 방식으로 모든 노드를 소진할 수 있는지 확인한다. 명시적인 잡기 재시도 간선만 아래에서 제외한다.
 	bool_t Validate_FinitePatternStageGraph(
 		const MASTER_PATTERN& Pattern, std::string& strOutError)
 	{
@@ -1789,6 +1920,7 @@ namespace
 						Pattern.strPatternId + "/" + ActionId;
 					return false;
 				}
+				// 잡기 패턴의 지정 재충전 분기는 Server가 반복을 소유한다. 이 좁은 예외만 유한 경로 검사에서 제외한다.
 				if ((Pattern.strPatternId == "VALTAN_TRASH" || Pattern.strPatternId == "VALTAN_TRASH_CATCH_IF") &&
 					(Stage.strStageId == "RETRY_EXHAUSTED" || Stage.strStageId == "CATCH_SLAM" ||
 					 Stage.strStageId == "EXECUTE_TAIL") &&
@@ -1802,8 +1934,8 @@ namespace
 			const auto Timeout = std::find_if(Stage.Branches.begin(), Stage.Branches.end(),
 				[](const Client::VALTAN_STAGE_BRANCH_VIEW& Branch)
 				{ return "TIMEOUT" == Branch.strOutcome; });
-			// Split validation already requires the explicit default edge to
-			// match TIMEOUT, or the next sequential stage when TIMEOUT is absent.
+			// 분리 원본 검증에서 기본 연결은 TIMEOUT 대상과 같아야 한다.
+			// TIMEOUT이 없으면 다음 stage의 순차 연결을 이 그래프에도 추가한다.
 			if (Stage.Branches.end() == Timeout && iStage + 1u < Pattern.Stages.size() &&
 				!AddSuccessor(Pattern.Stages[iStage + 1u].strActionId))
 				return false;
@@ -1811,8 +1943,8 @@ namespace
 				if (Branch.strNextActionId.has_value() && !AddSuccessor(*Branch.strNextActionId))
 					return false;
 		}
-		// Check every authored stage, including unreachable alternatives, without
-		// recursive traversal or a duration cap that could hide a graph loop.
+		// 도달하지 않는 대체 stage까지 진입 차수로 검사한다.
+		// 이 검사는 재귀 호출이나 시간 상한에 의존하지 않고 순환 여부를 확인한다.
 		std::vector<size_t> Ready;
 		Ready.reserve(Pattern.Stages.size());
 		for (size_t iStage = 0u; iStage < Incoming.size(); ++iStage)
@@ -1830,6 +1962,7 @@ namespace
 		return true;
 	}
 
+	// 편집 순서와 구간별 추적 ms를 값으로 보관한다. 같은 패턴 ID의 반복도 순서의 일부다.
 	struct MASTER_SCRIPTED_SEQUENCE_VIEW final
 	{
 		std::string strSequenceId;
@@ -1840,6 +1973,7 @@ namespace
 		std::vector<uint32_t> TransitionPursuitMs;
 	};
 
+	// 일제 생성 event의 소유 패턴/stage와 typed 투영을 보관한다. 기존 action 뷰에 축약하지 않은 별도 결합 입력이다.
 	struct MASTER_VOLLEY_PROJECTION final
 	{
 		std::string strEventId;
@@ -1850,6 +1984,7 @@ namespace
 		DATA_JSON_VALUE ProductAction;
 	};
 
+	// 분리된 두 저작 문서를 검증해 모은 임시 문서다. map의 차용 포인터는 이 값의 수명 안에서만 사용한다.
 	struct MASTER_DOCUMENT final
 	{
 		std::vector<std::string> RetiredPatternIds;
@@ -1866,6 +2001,7 @@ namespace
 		std::vector<MASTER_PATTERN> Patterns;
 	};
 
+	// 한 animation occurrence의 stable ID, clip 이름, 원본 ms와 재생 배율을 읽는다. 검증 후 값 필드를 채운다.
 	bool_t Parse_MasterOccurrence(
 		const DATA_JSON_VALUE& Value,
 		Client::VALTAN_CLIP_OCCURRENCE_VIEW& Out,
@@ -1911,6 +2047,7 @@ namespace
 		return true;
 	}
 
+	// 호환 Master stage의 gameplay 필수 필드와 잡기/action 입력 모양을 확인한다. 실제 Server 객체를 만들지 않는다.
 	bool_t Validate_MasterStageGameplayShape(
 		const DATA_JSON_VALUE& Value,
 		std::string& strOutError)
@@ -2043,6 +2180,7 @@ namespace
 		return true;
 	}
 
+	// camera 호출을 stage ms 범위 안에서 읽어 출력 목록에 추가한다. 함수가 기존 목록을 비우지는 않는다.
 	bool_t Read_MasterCameraInvocations(
 		const DATA_JSON_VALUE* pValue,
 		const uint32_t iStageDurationMs,
@@ -2100,11 +2238,15 @@ namespace
 		return true;
 	}
 
+	// 호환 Master stage의 gameplay, 애니메이션, Effect 참조와 camera를 함께 읽는다.
+	// Out은 진행 중 채워지는 임시 값이며 실패 시 기존 stage를 보존하는 공개 저장 경계가 아니다.
 	bool_t Parse_MasterStage(
 		const DATA_JSON_VALUE& Value,
 		MASTER_STAGE& Out,
 		std::string& strOutError)
 	{
+		// 공통 stage 스키마와 잡기 응답 필드를 모두 가진 스키마 중 하나만 받는다.
+		// 선택 필드가 아닌 미지의 속성이나 잡기 필드의 일부만 가진 조합은 거부한다.
 		const bool_t bBaseShape = Has_ExactPropertiesWithOptional(Value,
 				{ "stageId", "sequenceRole", "actionId", "stageKind",
 				  "durationMs", "hitShape", "hitOuterRadius", "hitInnerRadius",
@@ -2132,6 +2274,9 @@ namespace
 			strOutError = "master stage has unexpected properties";
 			return false;
 		}
+
+		// stage/role/action의 stable identity와 필수 배열·객체 타입을 확보한 뒤
+		// 공통 gameplay 도형 검증을 호출한다. 아직 Out에 값을 게시하지 않는다.
 		const DATA_JSON_VALUE* pStageId = Required(
 			Value, "stageId", DATA_JSON_TYPE::STRING);
 		const DATA_JSON_VALUE* pRole = Required(
@@ -2166,6 +2311,8 @@ namespace
 		if (!Validate_MasterStageGameplayShape(Value, strOutError))
 			return false;
 
+		// animation의 NONE은 기존 본체 pose를 유지하는 표현이다.
+		// 그 외에는 명시 occurrence 목록·반복 횟수·종료 정책을 함께 요구한다.
 		const bool_t bSuppressAnimation = Has_ExactProperties(
 			*pAnimation, { "mode" });
 		const DATA_JSON_VALUE* pRepeatCount = nullptr;
@@ -2208,6 +2355,8 @@ namespace
 			}
 		}
 
+		// 검사한 identity와 시간·애니메이션 정책을 임시 Out에 옮긴다.
+		// 이 뒤 실패에서는 여기까지 채운 값이 남으므로 상위 parser가 임시 stage로 사용한다.
 		Out.strStageId = pStageId->Get_String();
 		Out.strSequenceRole = pRole->Get_String();
 		Out.strActionId = pAction->Get_String();
@@ -2237,6 +2386,9 @@ namespace
 			strOutError = "master stage bodyVisibility is invalid";
 			return false;
 		}
+
+		// 일반 피해와 잡기 응답을 구분해 손 부착 오프셋 존재 여부를 맞춘다.
+		// 잡기 스키마가 아니면 DAMAGE/NONE 기본값을 사용한다.
 		Out.strHitShape = pShape->Get_String();
 		Out.strServerDamageProfileId = pDamage->Get_String();
 		Out.strPlayerResponse = bCaptureShape ?
@@ -2250,6 +2402,9 @@ namespace
 			strOutError = "master stage gripLocalOffset is invalid";
 			return false;
 		}
+
+		// 도형·hit 일정·밀어내기 수치를 먼저 읽고 이동·action·분기·응답·환경을 결합한다.
+		// 각 reader가 Out을 채우므로 전체 조건식의 단락 평가와 호출 순서가 실패 경계를 결정한다.
 		if (!Read_RequiredFiniteFloat(
 				Value, "hitOuterRadius", Out.fHitOuterRadius) ||
 			!Read_RequiredFiniteFloat(
@@ -2286,12 +2441,15 @@ namespace
 			!Read_MasterCameraInvocations(
 				Value.Find("cameraInvocations"), Out.iDurationMs,
 				Out.CameraInvocations) ||
-            !Client::Parse_BossStageEnvironment(Value, Out.SceneProfileOccurrences,
-                Out.LightOccurrences, strOutError, Out.iDurationMs))
+			!Client::Parse_BossStageEnvironment(Value, Out.SceneProfileOccurrences,
+				Out.LightOccurrences, strOutError, Out.iDurationMs))
 		{
 			strOutError = "master stage gameplay values are invalid";
 			return false;
 		}
+
+		// 누적 피해 반응은 ACTIVE stage의 threshold 분기 하나와 연결한다.
+		// 높이 오프셋·이동·counter proxy의 종류도 stage 역할과 충돌하지 않아야 한다.
 		const std::size_t iHealthThresholdCount =
 			static_cast<std::size_t>(std::count_if(
 				Out.Branches.begin(), Out.Branches.end(),
@@ -2315,15 +2473,21 @@ namespace
 			strOutError = "master stage response/proxy contract is invalid";
 			return false;
 		}
-        if (!LostArk::Shared::Validate_StageAttackContacts(Out.AttackContacts,
-            Out.iDurationMs, Out.HitOffsetsMs, Out.iHitCount, Out.iHitDelayMs, Out.iHitIntervalMs) ||
-            (!Out.AttackContacts.empty() && (Out.bHasHitActivation ||
-                (Out.Motion.has_value() && Out.Motion->strKind != "TO_ARENA_CENTER") ||
-                Out.strPlayerResponse != "DAMAGE" || Out.strHitShape == "NONE")))
-        {
-            strOutError = "master stage attackContacts contract is invalid";
-            return false;
-        }
+
+		// 명시 attackContacts는 Shared의 시각/횟수 검증을 거친다.
+		// 지속 활성 hit, 지원하지 않는 이동, 잡기 응답이나 NONE 도형과 함께 사용할 수 없다.
+		if (!LostArk::Shared::Validate_StageAttackContacts(Out.AttackContacts,
+			Out.iDurationMs, Out.HitOffsetsMs, Out.iHitCount, Out.iHitDelayMs, Out.iHitIntervalMs) ||
+			(!Out.AttackContacts.empty() && (Out.bHasHitActivation ||
+				(Out.Motion.has_value() && Out.Motion->strKind != "TO_ARENA_CENTER") ||
+				Out.strPlayerResponse != "DAMAGE" || Out.strHitShape == "NONE")))
+		{
+			strOutError = "master stage attackContacts contract is invalid";
+			return false;
+		}
+
+		// hit 시계는 명시 offset pulse, delay+interval pulse, 지속 활성 구간으로 나눈다.
+		// pulse의 마지막 hit는 stage 종료 전이고, NONE 도형의 빈 hit 표현도 별도로 허용한다.
 		const bool_t bHasExplicitOffsets = !Out.HitOffsetsMs.empty();
 		const bool_t bValidPulse = !Out.bHasHitActivation &&
 			((bHasExplicitOffsets && Out.HitOffsetsMs.size() == Out.iHitCount &&
@@ -2349,6 +2513,7 @@ namespace
 		}
 		Out.bKnockdown = Required(
 			Value, "knockdown", DATA_JSON_TYPE::BOOLEAN)->Get_Boolean();
+		// 포탈 돌진의 hit는 retarget 지연부터 이동 종료 전까지 50 ms 간격의 전체 offset과 정확히 대응해야 한다.
 		if (Out.Motion.has_value() &&
 			"PORTAL_TARGET_RUSH" == Out.Motion->strKind)
 		{
@@ -2383,6 +2548,9 @@ namespace
 				return false;
 			}
 		}
+
+		// clip occurrence는 입력 순서로 쌓되 stage 안의 stable ID 중복을 거부한다.
+		// 아래 repeatCount 검사는 반복 목록의 크기와 clip 이름까지 대조한다.
 		std::set<std::string, std::less<>> OccurrenceIds;
 		if (nullptr != pOccurrences)
 		{
@@ -2401,10 +2569,8 @@ namespace
 				Out.Occurrences.push_back(std::move(Occurrence));
 			}
 		}
-		/* repeatCount is a semantic promise that one authored clip is repeated,
-		   not merely a display label for an arbitrary occurrence list. Keeping
-		   this check in the shared master admission makes both Tools fail closed
-		   before they can build different timelines. */
+		// repeatCount는 한 clip을 반복한다는 저작 계약이다. 임의 occurrence 목록의 표시 개수가 아니다.
+		// 공통 Master 검증에서 occurrence 개수와 clip 이름을 맞춰 도구마다 다른 타임라인을 만들지 않게 한다.
 		if (1u < Out.iRepeatCount)
 		{
 			if (Out.Occurrences.size() != Out.iRepeatCount)
@@ -2429,6 +2595,9 @@ namespace
 				return false;
 			}
 		}
+
+		// Effect 참조는 종류와 ID의 쌍으로 중복을 확인한다.
+		// INDEPENDENT_EFFECT는 identity만, CUE_BINDING은 별도의 cueProjection도 소유한다.
 		std::set<std::string, std::less<>> EffectReferenceIds;
 		for (const DATA_JSON_VALUE& EffectValue : pEffects->Get_Array())
 		{
@@ -2474,6 +2643,9 @@ namespace
 					strOutError = "master cueProjection contract is invalid";
 					return false;
 				}
+
+				// timingBasis가 있으면 STAGE_CLOCK 표현으로만 읽는다.
+				// 시작은 stage 내부 ms이고 선택 끝 시각은 시작 초과·600000ms 이하만 여기서 검사한다.
 				if (nullptr != pProjection->Find("timingBasis"))
 				{
 					const DATA_JSON_VALUE* pTimingBasis = Required(
@@ -2496,7 +2668,10 @@ namespace
 					Reference.bHasSourceEnd = end && !end->Is_Null();
 					if (Reference.bHasSourceEnd && (!Is_NonNegativeInteger(end) ||
 						end->Get_Number() <= pStageOffset->Get_Number() || end->Get_Number() > 600000.0))
-					{ strOutError = "master stage-clock end leaves Stage"; return false; }
+					{
+						strOutError = "master stage-clock end leaves Stage";
+						return false;
+					}
 					Reference.iSourceEndMs = Reference.bHasSourceEnd ? static_cast<uint32_t>(end->Get_Number()) : 0u;
 					Reference.bUsesStageClock = true;
 					Reference.iStageOffsetMs = static_cast<uint32_t>(
@@ -2504,6 +2679,9 @@ namespace
 					Out.EffectReferences.push_back(std::move(Reference));
 					continue;
 				}
+
+				// clip 기준 cue는 clipOccurrenceId와 원본 내부 시작/선택 끝 시각, mappingBasis를 보관한다.
+				// 여기서는 필드 형식을 읽으며 실제 occurrence 결합은 상위 문서 대조가 맡는다.
 				if (!Has_ExactProperties(*pProjection,
 						{ "clipOccurrenceId", "sourceStartMs", "sourceEndMs",
 						  "mappingBasis" }))
@@ -2544,6 +2722,9 @@ namespace
 		return true;
 	}
 
+	// 패턴 도약이 참조하는 stage와 시각의 관계를 Master stage 목록에 대조한다.
+	// 보충: 이 함수는 serverMotion 필드의 존재와 Read_PatternServerMotion 구조 검증만 담당한다.
+	// stage 목록과 시간창의 실제 대조는 stage 수집 뒤 Validate_PatternServerMotionStageWindows가 수행한다.
 	bool_t Validate_MasterServerMotion(
 		const DATA_JSON_VALUE& Pattern,
 		std::string& strOutError)
@@ -2558,11 +2739,15 @@ namespace
 		return true;
 	}
 
+	// 패턴 메타데이터와 stage, 출처 및 외부 참조를 임시 정의에 읽는다.
+	// stage ID 중복과 응답 개수, 높이/이동 조합을 검사하며 Out의 부분 변경은 상위 임시 문서 안에 남는다.
 	bool_t Parse_MasterPattern(
 		const DATA_JSON_VALUE& Value,
 		MASTER_PATTERN& Out,
 		std::string& strOutError)
 	{
+		// 호환 Master의 필수/선택 필드를 구분하고 패턴 identity·표시 이름·stage 배열을 확인한다.
+		// 실제 선택과 실행은 이 reader가 수행하지 않으며 아래에서 임시 정의를 채운다.
 		if (!Has_ExactPropertiesWithOptional(Value,
 				{ "patternId", "category", "minimumPhase", "maximumPhase",
 				  "targetPolicy", "aimPolicy", "displayName", "actionId",
@@ -2599,6 +2784,8 @@ namespace
 			return false;
 		}
 
+		// 선택 정책 문자열의 비어 있음과 정수 필드의 기본 형식부터 검사한다.
+		// 범위 실수·선택 높이·무적 여부·serverMotion의 구조 검사가 이어진다.
 		for (const std::string_view Field :
 			{ "category", "targetPolicy", "aimPolicy", "selectionMode",
 			  "armorRequirement", "phaseRequirement" })
@@ -2644,8 +2831,8 @@ namespace
 			Value, "sourceActionIds", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pPresentationSources = Required(
 			Value, "presentationSources", DATA_JSON_TYPE::ARRAY);
-		// A name-only manual pattern has no claimed source animation. Keep it
-		// editable without inventing a PRIMARY source or an idle clip.
+		// 이름만 만든 수동 패턴은 아직 원본 애니메이션을 소유하지 않는다.
+		// PRIMARY 출처나 idle clip을 임의로 채우지 않고 빈 저작 상태를 허용한다.
 		const bool_t bUnboundManualPattern =
 			"AUDITION_ONLY" == Read_String(Value, "selectionMode") &&
 			nullptr != pSourceActions && pSourceActions->Get_Array().empty() &&
@@ -2671,6 +2858,9 @@ namespace
 			strOutError = "master presentationSources is invalid";
 			return false;
 		}
+
+		// 연출 출처는 sourceActionId·sequenceIndex·role의 조합으로 중복을 거부한다.
+		// 동일 sourceActionId의 다른 순번/역할은 별도 identity다.
 		std::set<std::string, std::less<>> PresentationSourceIdentities;
 		for (const DATA_JSON_VALUE& Source :
 			pPresentationSources->Get_Array())
@@ -2697,6 +2887,9 @@ namespace
 				return false;
 			}
 		}
+
+		// 반응·카메라·월드 이벤트는 서로 다른 참조 목록이다.
+		// 지금은 stable ID와 중복을 확인하고 stage 존재 여부는 stage 수집 이후 대조한다.
 		const DATA_JSON_VALUE* pReactions = Required(
 			Value, "reactions", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pCameraCues = Required(
@@ -2731,6 +2924,8 @@ namespace
 			ReactionView.strStageId = pStage->Get_String();
 			Out.Reactions.push_back(std::move(ReactionView));
 		}
+
+		// cameraCueIds는 cue ID 자체로 중복을 판정한다. 여기서 카메라 리소스를 열지는 않는다.
 		std::set<std::string, std::less<>> CameraCueIdentities;
 		for (const DATA_JSON_VALUE& CameraCue : pCameraCues->Get_Array())
 		{
@@ -2743,6 +2938,9 @@ namespace
 			}
 			Out.CameraCueIds.push_back(CameraCue.Get_String());
 		}
+
+		// 월드 이벤트 참조는 patternId·stageId·triggerKind를 묶어 보관한다.
+		// 아래 최종 검사에서 현재 패턴과 그 stage를 가리키는지 확인한다.
 		std::set<std::string, std::less<>> WorldReferenceIdentities;
 		for (const DATA_JSON_VALUE& WorldRef : pWorldRefs->Get_Array())
 		{
@@ -2775,6 +2973,8 @@ namespace
 			Out.WorldEventTriggerRefs.push_back(std::move(Reference));
 		}
 
+		// 검사한 패턴 속성과 출처를 Out의 소유 값으로 복사한다.
+		// serverMotion/finale도 여기서 보관하며 finale와 실행 중 무적의 동시 사용은 거부한다.
 		Out.strPatternId = pPatternId->Get_String();
 		Out.strCategory = Required(
 			Value, "category", DATA_JSON_TYPE::STRING)->Get_String();
@@ -2841,6 +3041,9 @@ namespace
 				Source, "role", DATA_JSON_TYPE::STRING)->Get_String();
 			Out.PresentationSources.push_back(std::move(Presentation));
 		}
+
+		// stage를 원본 순서로 파싱하고 stageId 중복을 거부한다.
+		// 모두 수집된 뒤에만 패턴 전체 반응 개수와 stage 간 참조를 검사할 수 있다.
 		std::set<std::string, std::less<>> StageIds;
 		for (const DATA_JSON_VALUE& StageValue : pStages->Get_Array())
 		{
@@ -2854,6 +3057,9 @@ namespace
 			}
 			Out.Stages.push_back(std::move(Stage));
 		}
+
+		// boss response는 패턴에 최대 하나다. 패턴 높이는 반응 존재를 요구하고
+		// stage 높이를 쓴 패턴에는 별도 ServerMotion을 함께 허용하지 않는다.
 		const std::size_t iBossResponseCount =
 			static_cast<std::size_t>(std::count_if(
 				Out.Stages.begin(), Out.Stages.end(),
@@ -2872,6 +3078,8 @@ namespace
 				Out.strPatternId;
 			return false;
 		}
+
+		// 반응의 stage ID와 월드 이벤트의 패턴/stage 소유 관계를 완성된 목록에 대조한다.
 		for (const Client::VALTAN_PATTERN_REACTION_VIEW& Reaction :
 			Out.Reactions)
 		{
@@ -2894,6 +3102,8 @@ namespace
 				return false;
 			}
 		}
+
+		// 도약 구조 파싱과 별도로 이륙이 첫 stage 안에, travel이 뒤쪽 지정 stage 안에 드는지 확인한다.
 		if (!Validate_PatternServerMotionStageWindows(
 				Out.ServerMotion, Out.Stages))
 		{
@@ -2905,6 +3115,8 @@ namespace
 		return true;
 	}
 
+	// 독립 Effect의 소유 종류에 따라 stage cue 또는 전투 오브젝트 참조를 읽는다.
+	// 서로 다른 소유 방식의 필드를 함께 허용하지 않고 실제 owner 결합은 뒤 단계에서 수행한다.
 	bool_t Parse_MasterIndependentEffect(
 		const DATA_JSON_VALUE& Value,
 		Client::VALTAN_INDEPENDENT_EFFECT_VIEW& Out,
@@ -3015,7 +3227,10 @@ namespace
 			Out.bHasCueSourceEnd = end && !end->Is_Null();
 			if (Out.bHasCueSourceEnd && (!Is_NonNegativeInteger(end) ||
 				end->Get_Number() <= pStageOffset->Get_Number() || end->Get_Number() > 600000.0))
-			{ strOutError = "independent stage-clock end is invalid"; return false; }
+			{
+				strOutError = "independent stage-clock end is invalid";
+				return false;
+			}
 			Out.iCueSourceEndMs = Out.bHasCueSourceEnd ? static_cast<uint32_t>(end->Get_Number()) : 0u;
 			Out.bUsesCueStageClock = true;
 			Out.iCueStageOffsetMs = static_cast<uint32_t>(
@@ -3057,6 +3272,7 @@ namespace
 		return true;
 	}
 
+	// 호환 일반 선택 목록과 체력 구간을 읽는다. 여기의 PatternIds는 고유 coverage 목록이며 반복 순서 목록과 구분한다.
 	bool_t Parse_MasterNormalSelection(
 		const DATA_JSON_VALUE& Value,
 		Client::VALTAN_NORMAL_SELECTION_VIEW& Out,
@@ -3130,6 +3346,7 @@ namespace
 		return true;
 	}
 
+	// 기존 counter의 창/성공/실패 참조를 읽는다. REFERENCE_ONLY_LEGACY 외의 소유 상태는 받지 않는다.
 	bool_t Parse_MasterCounterReactionLayer(
 		const DATA_JSON_VALUE& Value,
 		Client::VALTAN_COUNTER_REACTION_LAYER_VIEW& Out,
@@ -3178,12 +3395,16 @@ namespace
 		return true;
 	}
 
+	// 분리 JSON에서 만든 메모리상의 호환 Master를 검증한다. 과거 단일 Master 파일을 새 정본으로 읽는 경로가 아니다.
+	// 전체 패턴을 모은 뒤 참조 대상을 연결하고, 후속 패턴의 순환과 제한 깊이 및 선택 목록의 coverage를 검사한다.
 	bool_t Parse_MasterDocument(
 		const DATA_JSON_VALUE& Root,
 		const std::set<std::string, std::less<>>& ScriptedEntryOnlyPatternIds,
 		MASTER_DOCUMENT& Out,
 		std::string& strOutError)
 	{
+		// 분리 원본을 합쳐 만든 호환 객체의 schema·버전·보스/encounter/scope를 확인한다.
+		// 이 함수는 해당 객체를 검증하며 별도의 Master 파일을 디스크에서 열지 않는다.
 		if (!Has_ExactProperties(Root,
 				{ "schema", "formatVersion", "bossArchetypeId", "encounterId",
 				  "scope", "previewPaths", "retiredPatternIds",
@@ -3207,6 +3428,9 @@ namespace
 			strOutError = "joined authoring compatibility root is invalid";
 			return false;
 		}
+
+		// previewPaths는 필드 목록과 Data/ 접두사를 검사한다.
+		// 실제 파일 존재나 경로를 여는 작업은 뒤의 공개 Load/결합 경계가 맡는다.
 		const DATA_JSON_VALUE* pPreviewPaths = Required(
 			Root, "previewPaths", DATA_JSON_TYPE::OBJECT);
 		if (nullptr == pPreviewPaths || !Has_ExactProperties(*pPreviewPaths,
@@ -3248,6 +3472,8 @@ namespace
 			return false;
 		}
 
+		// 먼저 폐기된 패턴 ID를 모아 뒤의 활성 패턴과 중복 소유되지 않게 한다.
+		// Out의 목록은 진행 중 채워지므로 실패 시 상위 임시 문서와 함께 폐기해야 한다.
 		std::set<std::string, std::less<>> RetiredIds;
 		for (const DATA_JSON_VALUE& Retired : pRetired->Get_Array())
 		{
@@ -3264,6 +3490,9 @@ namespace
 		{
 			return false;
 		}
+
+		// counter 반응의 자체 ID와 owner pattern/stage 쌍은 각각 중복될 수 없다.
+		// 참조용 반응을 읽는 단계이며 실제 owner가 관리 패턴에 들어왔는지는 마지막에 확인한다.
 		std::set<std::string, std::less<>> CounterLayerIds;
 		std::set<std::string, std::less<>> CounterOwnerStages;
 		for (const DATA_JSON_VALUE& LayerValue :
@@ -3284,6 +3513,8 @@ namespace
 			Out.CounterReactionLayers.push_back(std::move(Layer));
 		}
 
+		// 독립 Effect는 independent ID뿐 아니라 Effect asset ID도 유일해야 한다.
+		// 두 색인을 따로 두어 다른 이름으로 같은 리소스를 중복 소유하는 행을 거부한다.
 		std::set<std::string, std::less<>> IndependentIds;
 		std::set<std::string, std::less<>> IndependentAssets;
 		for (const DATA_JSON_VALUE& IndependentValue : pIndependent->Get_Array())
@@ -3302,6 +3533,8 @@ namespace
 			Out.IndependentEffects.push_back(std::move(Independent));
 		}
 
+		// 각 패턴을 임시 정의로 읽고 중복 또는 이미 폐기된 ID를 거부한다.
+		// 참조 대상을 찾는 검사는 모든 패턴이 모인 다음에 수행한다.
 		std::set<std::string, std::less<>> PatternIds;
 		for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
 		{
@@ -3316,6 +3549,9 @@ namespace
 			}
 			Out.Patterns.push_back(std::move(Pattern));
 		}
+
+		// 완성된 Out.Patterns의 주소를 차용하는 ID 색인과 후속 관계 표를 만든다.
+		// 이 뒤 검증 중에는 패턴 vector에 새 항목을 추가하지 않아 차용 주소를 유지한다.
 		std::map<std::string, const MASTER_PATTERN*, std::less<>> PatternById;
 		std::map<std::string, std::set<std::string, std::less<>>, std::less<>>
 			FollowupSuccessors;
@@ -3325,6 +3561,9 @@ namespace
 			FollowupSuccessors.emplace(
 				Pattern.strPatternId, std::set<std::string, std::less<>>{});
 		}
+
+		// 호환 action의 flag를 미지정 0·ENTER 1/EXIT 0의 정상 쌍 1·그 외 -1로 분류한다.
+		// 분리 원본의 boolean 이벤트가 아니라 변환된 action의 fValue를 검사하는 경계다.
 		const auto MasterFlagState = [](const MASTER_STAGE& Stage,
 			const std::string_view strFlagId)
 		{
@@ -3350,6 +3589,8 @@ namespace
 		};
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
+			// 현재 패턴의 action ID를 stage index에 연결한다.
+			// 로컬 성공/TIMEOUT이 뒤쪽 stage인지 판정할 때 이 순서 색인을 사용한다.
 			std::map<std::string, size_t, std::less<>> StageByAction;
 			for (size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
 				StageByAction.emplace(
@@ -3363,6 +3604,8 @@ namespace
 					{ return "COUNTER_HIT" == Branch.strOutcome; });
 				if (Counter != Stage.Branches.end())
 				{
+					// COUNTER_HIT가 있는 stage는 성공과 TIMEOUT을 각 하나만 가져야 한다.
+					// 성공 대상은 로컬 action 또는 다른 패턴의 첫 stage로 찾고 두 방식을 동시에 허용하지 않는다.
 					const std::size_t iCounterCount =
 						static_cast<std::size_t>(std::count_if(
 							Stage.Branches.begin(), Stage.Branches.end(),
@@ -3403,6 +3646,9 @@ namespace
 							pSuccess = &Target->second->Stages.front();
 						}
 					}
+
+					// TIMEOUT은 같은 패턴의 로컬 action만 허용한다.
+					// 출발 stage/proxy 종류, 닫힌 counter flag, 성공 stage/groggy flag와 전방 순서를 함께 확인한다.
 					const auto TimeoutTarget = Timeout == Stage.Branches.end() ||
 						!Timeout->strNextActionId.has_value() ||
 						Timeout->strNextPatternId.has_value() ?
@@ -3437,6 +3683,9 @@ namespace
 						return false;
 					}
 				}
+
+				// 모든 nextPatternId를 후속 그래프에 넣기 전에 자기 참조와 없는 패턴을 거부한다.
+				// 대상은 자동 선택·조준에 참여하지 않는 AUDITION_ONLY여야 하며 다음 DFS가 순환/깊이를 검사한다.
 				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch :
 					Stage.Branches)
 				{
@@ -3478,6 +3727,8 @@ namespace
 				}
 			}
 		}
+		// 후속 패턴은 DFS의 방문 중/완료 상태로 순환을 찾고 완료된 깊이를 재사용한다.
+		// 깊이는 재귀에서 돌아오며 검사한다. 이 상한을 호출 스택 깊이의 사전 제한으로 해석하면 안 된다.
 		std::map<std::string, uint32_t, std::less<>> FollowupVisitState;
 		std::map<std::string, uint32_t, std::less<>> FollowupDepth;
 		std::function<bool_t(const std::string&)> ValidateFollowupDepth;
@@ -3520,6 +3771,7 @@ namespace
 			if (!ValidateFollowupDepth(Pattern.strPatternId))
 				return false;
 		}
+		// 잡기 계열과 finale 및 그 유령 자식처럼 유한 경로가 필요한 집합만 stage 순환 검사에 넣는다.
 		std::set<std::string, std::less<>> FinitePatternIds = {
 			"VALTAN_TRASH", "VALTAN_TRASH_CATCH_IF",
 			"VALTAN_TRASH_CATCH_SUCCESS", "VALTAN_TRASH_CATCH_FAIL" };
@@ -3546,6 +3798,9 @@ namespace
 			if (FinitePatternIds.contains(Pattern.strPatternId) &&
 				!Validate_FinitePatternStageGraph(Pattern, strOutError))
 				return false;
+
+		// NORMAL 패턴 전체와 normalSelection의 ID 집합을 비교한다.
+		// 아래 entry-only 예외를 제외하면 두 집합이 같아야 하며 단순 부분집합 검사가 아니다.
 		std::set<std::string, std::less<>> ManagedNormalPatternIds;
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
@@ -3555,8 +3810,8 @@ namespace
 		const std::set<std::string, std::less<>> WeightedPatternIds(
 			Out.NormalSelection.PatternIds.begin(),
 			Out.NormalSelection.PatternIds.end());
-		/* Optional entry definitions retain NORMAL Product metadata, but the
-		   split decision model does not put either one in the weighted pool. */
+		// 선택적인 입장 패턴은 NORMAL Product 메타데이터를 유지한다.
+		// 분리된 decision 소유 모델에서는 이 입장 패턴을 가중치 선택 집합에 넣지 않는다.
 		for (const std::string& PatternId : ScriptedEntryOnlyPatternIds)
 		{
 			if (0u == ManagedNormalPatternIds.erase(PatternId) ||
@@ -3573,6 +3828,9 @@ namespace
 				"master normalSelection is not a subset of the managed normal pattern set";
 			return false;
 		}
+
+		// counterReactionLayers는 관리 패턴 밖의 참조용 반응이다.
+		// 그 owner가 위에서 수집한 관리 PatternIds에도 있으면 이중 역할로 보고 거부한다.
 		for (const Client::VALTAN_COUNTER_REACTION_LAYER_VIEW& Layer :
 			Out.CounterReactionLayers)
 		{
@@ -3586,6 +3844,7 @@ namespace
 		return true;
 	}
 
+	// 선택 offset은 누락이면 빈 목록을 허용하지만 명시한 빈 배열은 거절한다. 오름차순 ms 값으로 읽는다.
 	bool_t Read_OptionalOrderedHitOffsets(
 		const DATA_JSON_VALUE& Object,
 		std::vector<uint32_t>& OutOffsets)
@@ -3621,6 +3880,7 @@ namespace
 		return true;
 	}
 
+	// 선택 ownerHitChain의 지연 ms와 후속 action/presentation ID를 읽는다. 출력 optional은 먼저 비운다.
 	bool Read_CombatObjectOwnerHitChain(
 		const DATA_JSON_VALUE& Object,
 		std::optional<Client::VALTAN_COMBAT_OBJECT_OWNER_HIT_CHAIN_VIEW>& Out)
@@ -3644,6 +3904,7 @@ namespace
 		return true;
 	}
 
+	// 전투 오브젝트 gameplay와 visual 결합의 임시 레코드다. 이동/판정/연출을 복사해 stage 표시에서 함께 사용한다.
 	struct COMBAT_OBJECT_EFFECT_REFERENCE final
 	{
 		std::string strPreparationEventId;
@@ -3667,6 +3928,7 @@ namespace
 			PresentationEvents;
 	};
 
+	// 검증된 animation binding의 clip 값을 도구 occurrence 뷰로 복사한다. 런타임 clip 리소스를 로드하지 않는다.
 	Client::VALTAN_CLIP_OCCURRENCE_VIEW Build_ClipOccurrenceView(
 		const Client::BOSS_PATTERN_ANIMATION_CLIP& Clip)
 	{
@@ -3681,6 +3943,7 @@ namespace
 		return View;
 	}
 
+	// 기믹 목록부터 일반 목록 순서로 stable ID를 선형 조회한다. 반환 포인터는 View가 소유한 원소를 차용한다.
 	Client::VALTAN_PATTERN_VIEW* Find_Pattern(
 		Client::VALTAN_PATTERN_TREE_VIEW& View,
 		const std::string_view strPatternId)
@@ -3700,6 +3963,7 @@ namespace
 		return nullptr;
 	}
 
+	// 읽기 전용 조회도 같은 두 목록을 순서대로 찾는다. View 교체나 vector 변경 뒤에는 반환 포인터를 재사용하지 않는다.
 	const Client::VALTAN_PATTERN_VIEW* Find_Pattern(
 		const Client::VALTAN_PATTERN_TREE_VIEW& View,
 		const std::string_view strPatternId)
@@ -3719,6 +3983,7 @@ namespace
 		return nullptr;
 	}
 
+	// 패턴 내부 stage ID를 선형 조회한다. 결과는 패턴 vector 원소의 차용 포인터다.
 	Client::VALTAN_STAGE_VIEW* Find_Stage(
 		Client::VALTAN_PATTERN_VIEW& Pattern,
 		const std::string_view strStageId)
@@ -3732,6 +3997,7 @@ namespace
 		return Found == Pattern.Stages.end() ? nullptr : &*Found;
 	}
 
+	// 게시 occurrence와 저작 occurrence의 계약 필드를 대조한다. 재생 배율만 작은 오차를 허용한다.
 	bool_t Equal_MasterOccurrence(
 		const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Product,
 		const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Master)
@@ -3745,6 +4011,7 @@ namespace
 			Product.bLoop == Master.bLoop;
 	}
 
+	// cue identity와 저작 transform/시각/정책을 대조한다. 선택 종료 시각과 playback offset은 존재 여부도 함께 비교한다.
 	bool_t Equal_AuthoredCue(
 		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Product,
 		const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& Authored)
@@ -3789,6 +4056,7 @@ namespace
 			Product.LocalTransform.vScale.z == Authored.LocalTransform.vScale.z;
 	}
 
+	// 선택 stage 이동의 존재와 typed 값을 대조한다. 같은 optional 유무만으로 동일하다고 보지 않는다.
 	bool_t Equal_StageMotion(
 		const std::optional<Client::VALTAN_STAGE_MOTION_VIEW>& Left,
 		const std::optional<Client::VALTAN_STAGE_MOTION_VIEW>& Right)
@@ -3804,6 +4072,7 @@ namespace
 			 Left->HalfExtentsM == Right->HalfExtentsM);
 	}
 
+	// action 순서와 값, 잡기 해제의 전용 필드까지 대조한다.
 	bool_t Equal_StageActions(
 		const std::vector<Client::VALTAN_STAGE_ACTION_VIEW>& Left,
 		const std::vector<Client::VALTAN_STAGE_ACTION_VIEW>& Right)
@@ -3827,6 +4096,7 @@ namespace
 		return true;
 	}
 
+	// branch의 순서, outcome과 로컬/다른 패턴 연결을 대조한다.
 	bool_t Equal_StageBranches(
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Left,
 		const std::vector<Client::VALTAN_STAGE_BRANCH_VIEW>& Right)
@@ -3845,6 +4115,7 @@ namespace
 		return true;
 	}
 
+	// 선택 counter 도형의 존재와 위치/크기/각도를 대조한다.
 	bool_t Equal_CounterProxy(
 		const std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& Left,
 		const std::optional<Client::VALTAN_COUNTER_PROXY_VIEW>& Right)
@@ -3860,6 +4131,8 @@ namespace
 			 Left->fArcDegrees == Right->fArcDegrees);
 	}
 
+	// stage gameplay의 게시 결과를 저작 정의와 대조한다.
+	// COUNTER_HIT 분기가 없는 저작 counterProxy는 휴면 상태로 취급해 Product에 요구하지 않는다.
 	bool_t Equal_MasterStageGameplay(
 		const Client::VALTAN_STAGE_VIEW& Product,
 		const MASTER_STAGE& Master)
@@ -3919,6 +4192,7 @@ namespace
 			Equal_StageBranches(Product.Branches, Master.Branches);
 	}
 
+	// 패턴 단위 도약의 존재, 종류, anchor와 ms/위치 값을 대조한다.
 	bool_t Equal_PatternServerMotion(
 		const std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW>& Left,
 		const std::optional<Client::VALTAN_PATTERN_SERVER_MOTION_VIEW>& Right)
@@ -3938,6 +4212,7 @@ namespace
 			 Left->bMoveToAnchorBeforeTakeoff == Right->bMoveToAnchorBeforeTakeoff);
 	}
 
+	// 패턴의 선택, 대상, 무적과 이동/finale 메타데이터를 대조한다. 개별 stage는 별도 비교한다.
 	bool_t Equal_MasterPatternGameplay(
 		const Client::VALTAN_PATTERN_VIEW& Product,
 		const MASTER_PATTERN& Master)
@@ -3970,6 +4245,9 @@ namespace
 			Product.Finale == Master.Finale;
 	}
 
+	// clip 원본 재생 ms를 playRate로 나누고 반올림해 stage의 재생 시간 예산을 배분한다.
+	// EXACT, HOLD_LAST_POSE, LOOP_TO_STAGE_END의 남는 시간 처리를 구분한다.
+	// Stage의 occurrence를 순서대로 변경하므로 실패 시 보존은 상위 Load의 임시 View가 담당한다.
 	bool_t Assign_MasterWallBudgets(
 		Client::VALTAN_STAGE_VIEW& Stage,
 		std::string& strOutError)
@@ -4105,12 +4383,14 @@ namespace
 		return true;
 	}
 
+	// 체력 기믹의 발동 값과 같은 체력의 순서를 결합할 때 쓰는 임시 메타데이터다.
 	struct SPLIT_MECHANIC final
 	{
 		uint32_t iHealthBar = 0u;
 		uint32_t iTriggerOrder = 0u;
 	};
 
+	// pCue는 Parse_SplitMasterDocument가 받은 presentation JSON 원소를 차용한다. 결합 함수 밖으로 내보내지 않는다.
 	struct SPLIT_CUE_OWNER final
 	{
 		std::string strPatternId;
@@ -4118,6 +4398,7 @@ namespace
 		const DATA_JSON_VALUE* pCue = nullptr;
 	};
 
+	// 생성 event가 속한 패턴/stage와 전투 오브젝트 정의 ID를 값으로 보관한다.
 	struct SPLIT_SPAWN_OWNER final
 	{
 		std::string strPatternId;
@@ -4125,6 +4406,7 @@ namespace
 		std::string strCombatObjectArchetypeId;
 	};
 
+	// 독립 Effect 선언은 stage cue 또는 spawn event의 ID를 가리킨다. 내용은 해당 owner에서 가져온다.
 	struct SPLIT_INDEPENDENT_DECLARATION final
 	{
 		std::string strIndependentEffectId;
@@ -4133,6 +4415,7 @@ namespace
 		std::string strReferenceId;
 	};
 
+	// 호환 Master에 넘길 문자열 배열을 만든다. 입력 순서와 중복 여부를 그대로 보존한다.
 	DATA_JSON_VALUE Build_StringArray(
 		const std::vector<std::string>& Values)
 	{
@@ -4143,6 +4426,7 @@ namespace
 		return DATA_JSON_VALUE::Array(std::move(Result));
 	}
 
+	// gameplay와 presentation의 schema/version 및 보스/encounter/scope identity를 맞춘다.
 	bool_t Validate_SplitRootIdentity(
 		const DATA_JSON_VALUE& Gameplay,
 		const DATA_JSON_VALUE& Presentation,
@@ -4201,6 +4485,8 @@ namespace
 		return true;
 	}
 
+	// stage 시계와 clip occurrence 시계의 cue를 서로 다른 필드 계약으로 검사한다.
+	// transform과 scale 정책의 형식을 확인하며 실제 owner와 stage 길이는 결합 단계에서도 확인한다.
 	bool_t Validate_SplitCue(
 		const DATA_JSON_VALUE& Cue,
 		std::string& strOutError)
@@ -4352,6 +4638,7 @@ namespace
 		return true;
 	}
 
+	// 검증한 cue를 소유 stage/action 및 stage 길이와 함께 복사한다. Effect 리소스 내용은 읽지 않는다.
 	Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW Build_SplitCueView(
 		const DATA_JSON_VALUE& Cue,
 		const std::string& strPatternId,
@@ -4405,8 +4692,8 @@ namespace
 		{
 			View.iStageOffsetMs = static_cast<uint32_t>(
 				Cue.Find("stageOffsetMs")->Get_Number());
-			/* Keep the legacy display position meaningful while consumers move to
-			   the explicit tagged field. It is not a clip-source position. */
+			// 기존 표시용 위치에도 stage 시각을 복사한다.
+			// 이 값은 clip 원본 내부 시각이 아니며 실제 구분은 bUsesStageClock이 유지한다.
 			View.iSourceStartMs = View.iStageOffsetMs;
 			const auto* end = Cue.Find("stageEndMs");
 			View.bHasSourceEnd = end && !end->Is_Null();
@@ -4446,6 +4733,8 @@ namespace
 		return View;
 	}
 
+	// 분리 gameplay hit를 호환 Master의 평탄한 필드로 투영한다. anchor와 activation, schedule 및 잡기 정책을 보존한다.
+	// OutStage는 임시 JSON이며 검사 중 일부 필드가 추가될 수 있다. 최종 stage 범위 검증은 Master reader가 이어서 맡는다.
 	bool_t Build_SplitHitProjection(
 		const DATA_JSON_VALUE& Hit,
 		DATA_JSON_VALUE::OBJECT& OutStage,
@@ -4700,6 +4989,12 @@ namespace
 		return true;
 	}
 
+	// decision을 선택 집합, 체력 window, 기믹과 수동 시험 목록으로 나눈다.
+	// window는 phase별 이어지는 체력 범위를 요구하고 각 선택 집합은 한 window에 연결한다.
+	// 순서 반복의 PatternIds는 중복을 보존하지만 coverage용 NormalPatternIds는 중복 없이 만든다.
+	// OutSelectionSets/Windows·기믹·수동 목록과 색인은 처리 중 추가된다. 실패 시 이 부분 출력은 남는다.
+	// OutNormalSelection과 OutScriptedSequence는 마지막까지 임시로 준비해 false 반환 경로에서는 기존 값을 유지한다.
+	// 이는 할당 예외까지 전체 rollback한다는 보장이 아니며 호출자는 상위 임시 문서 안에서 사용한다.
 	bool_t Build_SplitDecisionProjection(
 		const DATA_JSON_VALUE& Decision,
 		DATA_JSON_VALUE& OutNormalSelection,
@@ -4720,6 +5015,9 @@ namespace
 			strOutError = "split gameplay decisionModel has unexpected properties";
 			return false;
 		}
+
+		// 선택 모델의 다섯 구성 요소를 찾고 scripted sequence부터 읽는다.
+		// 명시된 패턴 순서와 전환 추적 시간은 아래 선택 집합의 가중치와 별개다.
 		const DATA_JSON_VALUE* pScriptedSequence = Required(
 			Decision, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
 		const DATA_JSON_VALUE* pSets = Required(
@@ -4758,6 +5056,9 @@ namespace
 			strOutError = "split gameplay scriptedSequence is invalid";
 			return false;
 		}
+
+		// sequence는 아직 지역 값으로 준비한다. patternIds의 순서와 반복 ID를 그대로 보관하며
+		// ID가 실제 정의를 가리키는지는 후속 패턴 결합에서 확인한다.
 		MASTER_SCRIPTED_SEQUENCE_VIEW ScriptedSequence;
 		ScriptedSequence.strSequenceId = Read_String(
 			*pScriptedSequence, "sequenceId");
@@ -4777,6 +5078,9 @@ namespace
 			}
 			ScriptedSequence.PatternIds.push_back(PatternId.Get_String());
 		}
+
+		// transitionPursuitMs가 없으면 공통 추적 시간을 패턴 사이마다 복제한다.
+		// 명시하면 패턴 수보다 하나 적은 ms 배열이어야 하고 각 값은 0~10000ms를 허용한다.
 		if (nullptr == pScriptedTransitionPursuit)
 		{
 			ScriptedSequence.TransitionPursuitMs.assign(
@@ -4815,6 +5119,8 @@ namespace
 			return false;
 		}
 
+		// selectionSetId별 전체 구성원 목록을 준비한다.
+		// ORDERED_LOOP는 같은 ID의 재등장과 원본 순서를 보존하고 WEIGHTED_POOL은 ID 중복을 거부한다.
 		std::map<std::string, std::vector<std::string>, std::less<>>
 			PatternsBySet;
 		for (const DATA_JSON_VALUE& Set : pSets->Get_Array())
@@ -4826,20 +5132,29 @@ namespace
 				if (!Has_ExactProperties(Set, {"selectionSetId", "mode", "patternIds"}) ||
 					!Is_StableToken(strSetId) || PatternsBySet.contains(strSetId) ||
 					nullptr == pMembers || pMembers->Get_Array().empty() || pMembers->Get_Array().size() > 32u)
-				{ strOutError = "split gameplay ordered loop is invalid"; return false; }
+				{
+					strOutError = "split gameplay ordered loop is invalid";
+					return false;
+				}
 				Client::VALTAN_SELECTION_SET_VIEW SetView;
 				SetView.strSelectionSetId = strSetId;
 				SetView.strMode = "ORDERED_LOOP";
 				for (const auto& Member : pMembers->Get_Array())
 				{
 					if (!Member.Is_String() || !Is_StableToken(Member.Get_String()))
-					{ strOutError = "split gameplay ordered loop occurrence is invalid"; return false; }
+					{
+						strOutError = "split gameplay ordered loop occurrence is invalid";
+						return false;
+					}
 					SetView.PatternIds.push_back(Member.Get_String());
 				}
 				PatternsBySet.emplace(strSetId, SetView.PatternIds);
 				OutSelectionSets.push_back(std::move(SetView));
 				continue;
 			}
+
+			// 가중치 집합은 각 후보의 양수 weight와 enabled 상태를 보관한다.
+			// 여기서는 선택을 실행하지 않으며 최소 하나의 활성 후보가 있어야 한다.
 			if (!Has_ExactProperties(Set,
 					{ "selectionSetId", "mode", "candidates" }) ||
 				"WEIGHTED_POOL" != Read_String(Set, "mode"))
@@ -4889,6 +5204,9 @@ namespace
 				CandidateView.bEnabled = pEnabled->Get_Boolean();
 				if (CandidateView.bEnabled)
 					++iEnabledCount;
+
+				// 비활성 후보도 구성원 목록에 남겨 전체 패턴 coverage에 포함한다.
+				// enabled는 실행 후보 여부이고 정의 소유권 검사에서 행을 제외하는 스위치가 아니다.
 				SetView.Candidates.push_back(std::move(CandidateView));
 				PatternIds.push_back(strPatternId);
 			}
@@ -4901,6 +5219,8 @@ namespace
 			OutSelectionSets.push_back(std::move(SetView));
 		}
 
+		// window를 gameplay phase별 체력 구간으로 읽는다. maximum은 포함하고 minimum은 제외하며
+		// 같은 phase의 다음 maximum은 앞서 읽은 minimum과 같아야 한다. 서로 다른 phase끼리는 이 경계를 비교하지 않는다.
 		DATA_JSON_VALUE::ARRAY Ranges;
 		std::vector<std::string> NormalPatternIds;
 		std::set<std::string, std::less<>> NormalPatternSet;
@@ -4938,6 +5258,9 @@ namespace
 				Window.Find("maximumHealthBarInclusive")->Get_Number());
 			const uint32_t iMinimum = static_cast<uint32_t>(
 				Window.Find("minimumHealthBarExclusive")->Get_Number());
+
+			// 해당 phase의 직전 경계와 ID 중복을 확인한다. 하나의 selection set은
+			// 한 window에만 연결하고 compatibilityRotationId도 전체 window에서 유일해야 한다.
 			const auto Previous = PreviousMinimumByPhase.find(iPhase);
 			if (Patterns == PatternsBySet.end() || iMaximum <= iMinimum ||
 				(Previous != PreviousMinimumByPhase.end() &&
@@ -4950,6 +5273,9 @@ namespace
 				return false;
 			}
 			PreviousMinimumByPhase[iPhase] = iMinimum;
+
+			// window가 연결한 전체 구성원을 처음 나타난 순서로 모아 중복 없는 호환 목록을 만든다.
+			// 이 목록과 별개로 각 selection set의 반복/가중치 메타데이터는 그대로 보존한다.
 			for (const std::string& strPatternId : Patterns->second)
 			{
 				if (NormalPatternSet.insert(strPatternId).second)
@@ -4972,14 +5298,20 @@ namespace
 				*Window.Find("minimumHealthBarExclusive"));
 			Ranges.push_back(DATA_JSON_VALUE::Object(std::move(Range)));
 		}
+
+		// 존재하는 모든 set이 정확히 한 window에 연결됐는지 개수를 대조한다.
+		// 앞선 존재/중복 검사와 함께 적용되며 사용되지 않은 set을 조용히 버리지 않는다.
 		if (WindowSetIds.size() != PatternsBySet.size())
 		{
 			strOutError = "split gameplay selection windows do not cover every set";
 			return false;
 		}
 
+		// 체력 기믹은 한 encounter에 한 번, 실패 시 reset 요구 정책만 허용한다.
+		// 기믹 ID·체력/순서 쌍·소유 pattern을 중복 없이 저장하고 원본 정렬도 검사한다.
 		std::set<std::string, std::less<>> MechanicIds;
 		std::set<std::pair<uint32_t, uint32_t>> MechanicTriggers;
+		// 체력은 내림차순, 같은 체력의 triggerOrder는 오름차순으로 기믹 순서를 검증한다.
 		uint32_t iPreviousHealthBar = (std::numeric_limits<uint32_t>::max)();
 		uint32_t iPreviousOrder = 0u;
 		for (const DATA_JSON_VALUE& Mechanic : pMechanics->Get_Array())
@@ -5046,6 +5378,8 @@ namespace
 			OutMechanicViews.push_back(std::move(MechanicView));
 		}
 
+		// 수동/파생 시험 패턴은 NORMAL 선택 집합과 기믹의 소유 pattern과 겹칠 수 없다.
+		// pattern ID와 source chain ID도 각각 유일해야 하며 조회 map과 표시 vector를 함께 채운다.
 		std::set<std::string, std::less<>> ManualSourceChainIds;
 		for (const DATA_JSON_VALUE& Manual : pManualAuditions->Get_Array())
 		{
@@ -5082,6 +5416,8 @@ namespace
 			OutManualViews.push_back(std::move(View));
 		}
 		const auto ArenaBreak = OutMechanics.find("VALTAN_ARENA_BREAK_109");
+		// 첫 gameplay phase의 마지막 window 경계가 VALTAN_ARENA_BREAK_109 기믹 발동 체력과 맞아야 한다.
+		// 기믹 ID에 들어간 숫자를 이 검사에서 고정 체력 값으로 대신 사용하지 않는다.
 		uint32_t iPhaseOneBoundary = 0u;
 		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
 			OutSelectionWindows)
@@ -5097,6 +5433,8 @@ namespace
 			return false;
 		}
 
+		// 모든 검사 뒤에만 호환 normalSelection과 scripted sequence를 최종 출력에 옮긴다.
+		// 다른 Out 목록/색인은 앞에서 이미 채워졌으므로 이 두 대입을 전체 출력의 일괄 commit으로 해석하지 않는다.
 		DATA_JSON_VALUE::OBJECT Normal;
 		Normal.emplace("selectionMode",
 			DATA_JSON_VALUE::String("HEALTH_BAR_ROTATIONS" == ScriptedSequence.strMode ? "ORDERED_LOOP" : "WEIGHTED_POOL"));
@@ -5107,6 +5445,7 @@ namespace
 		return true;
 	}
 
+	// camera invocation의 stable ID와 trigger, stage 내부 시작/길이 ms를 확인한다.
 	bool_t Validate_SplitCameraInvocation(
 		const DATA_JSON_VALUE& Invocation,
 		const uint32_t iStageDurationMs,
@@ -5139,6 +5478,8 @@ namespace
 		return true;
 	}
 
+	// 분리 event를 호환 action 또는 world event/spawn 메타데이터로 투영한다.
+	// pOutAction은 호출자가 제공한 유효 출력 포인터이며 먼저 null로 설정한다. 실패 시 부분 출력이 남을 수 있다.
 	bool_t Build_SplitEventProjection(
 		const DATA_JSON_VALUE& Event,
 		const std::string_view strPatternId,
@@ -5426,8 +5767,8 @@ namespace
 				Is_FiniteNumber(pLayout->Find("radiusM")) &&
 				Is_FiniteNumber(pLayout->Find("startAngleDegrees")) &&
 				Is_FiniteNumber(pLayout->Find("angleStepDegrees"));
-			/* ARENA_CENTER reuses the boss radial layout fields around the authored
-			   arena centre with world-absolute angles. */
+			// ARENA_CENTER는 저작한 아레나 중심 주위에 방사형 배치 값을 사용한다.
+			// 각도는 보스의 현재 yaw가 아니라 월드 기준이다.
 			const bool_t bArenaCenterRadial =
 				"RADIAL_AROUND_ARENA_CENTER" == strLayoutKind &&
 				Has_ExactProperties(*pLayout,
@@ -5515,9 +5856,8 @@ namespace
 					"split gameplay combat-object volley arena random contract is invalid";
 				return false;
 			}
-			/* The repository-facing Product projection uses one flat, typed volley
-			   row. Preserve every radial field here so Parse_MasterDocument and the
-			   local Arena Clone join see the same contract as the Server bootstrap. */
+			// Product 중간 표현에는 typed 일제 생성 행 하나를 만든다.
+			// 방사형 배치와 스케줄을 모두 보존해 Master 검증 및 전투 오브젝트 결합에 같은 값을 전달한다.
 			Action.emplace("targetId", DATA_JSON_VALUE::String(
 				Read_String(Event, "combatObjectArchetypeId")));
 			Action.emplace("targetingPolicy",
@@ -5590,6 +5930,11 @@ namespace
 		return true;
 	}
 
+	// 저작 gameplay와 presentation을 동일 패턴/stage 순서 및 stable ID로 맞춰 임시 Master로 합친다.
+	// 호환 JSON 투영을 기존 Master reader에 넘긴 뒤 cue anchor와 stage 시간 예산을 추가 검사한다.
+	// 입력 JSON 차용 포인터는 이 함수 안의 색인에만 보관하고 외부 결과에는 값을 복사한다.
+	// 후반의 Parse_MasterDocument부터 Out을 직접 채우고 추가 검증 중에도 이를 수정한다.
+	// false가 기존 Out의 보존을 뜻하지 않으므로 호출자는 지역 Master 후보를 넘긴다.
 	bool_t Parse_SplitMasterDocument(
 		const DATA_JSON_VALUE& Gameplay,
 		const DATA_JSON_VALUE& Presentation,
@@ -5599,6 +5944,8 @@ namespace
 		if (!Validate_SplitRootIdentity(Gameplay, Presentation, strOutError))
 			return false;
 
+		// preview 경로는 정확한 필드 목록과 Data/ 접두사를 검사한다.
+		// 이 단계에서는 파일을 열거나 전체 경로의 안전성·존재를 확정하지 않는다.
 		const DATA_JSON_VALUE* pPreviewPaths = Required(
 			Gameplay, "previewPaths", DATA_JSON_TYPE::OBJECT);
 		const std::initializer_list<std::string_view> PreviewFields = {
@@ -5622,6 +5969,8 @@ namespace
 			}
 		}
 
+		// 분리 decisionModel을 호환 NORMAL 목록과 sequence, 선택/기믹/수동 보기로 투영한다.
+		// 부분 작성될 수 있는 출력은 모두 이 함수의 지역 값으로 받아 실패 시 함께 버린다.
 		DATA_JSON_VALUE NormalSelection;
 		MASTER_SCRIPTED_SEQUENCE_VIEW ScriptedSequence;
 		std::vector<Client::VALTAN_SELECTION_SET_VIEW> SelectionSets;
@@ -5641,6 +5990,9 @@ namespace
 		{
 			return false;
 		}
+
+		// 선택 집합의 원본 ID와 가중치 후보를 하나의 소유권 집합으로 모은다.
+		// 비활성 후보도 여기에 남아 뒤의 패턴별 decision 소유자 검사에 참여한다.
 		std::set<std::string, std::less<>> CandidatePatterns;
 		for (const Client::VALTAN_SELECTION_SET_VIEW& Set : SelectionSets)
 		{
@@ -5652,6 +6004,8 @@ namespace
 			}
 		}
 
+		// 독립 Effect 선언을 ID로 모으고 소유 종류별 cue/spawn event 역색인을 만든다.
+		// 선언 ID와 각 소유 종류 안의 참조 ID는 중복할 수 없으며 실제 owner 존재는 뒤에서 연결한다.
 		const DATA_JSON_VALUE* pIndependent = Required(
 			Presentation, "independentEffects", DATA_JSON_TYPE::ARRAY);
 		if (nullptr == pIndependent || pIndependent->Get_Array().empty())
@@ -5709,6 +6063,8 @@ namespace
 			}
 		}
 
+		// 두 문서의 패턴 수와 배열 순서를 함께 사용한다. ID로 재정렬하지 않으므로
+		// 같은 위치의 patternId가 달라지면 결합을 거부한다.
 		const DATA_JSON_VALUE* pGameplayPatterns = Required(
 			Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
 		const DATA_JSON_VALUE* pPresentationPatterns = Required(
@@ -5722,6 +6078,8 @@ namespace
 			return false;
 		}
 
+		// cue의 입력 JSON 포인터는 아래 지역 색인에서만 차용한다.
+		// cue/event/camera 발생 ID의 전체 중복과 stage별 owner를 수집해 후속 독립 Effect 결합에 쓴다.
 		std::map<std::string, SPLIT_CUE_OWNER, std::less<>> CueOwners;
 		std::map<std::string, SPLIT_SPAWN_OWNER, std::less<>> SpawnOwners;
 		std::vector<MASTER_VOLLEY_PROJECTION> VolleyProjections;
@@ -5760,6 +6118,8 @@ namespace
 				return false;
 			}
 
+			// 같은 패턴 안의 stage 수를 맞추고 gameplay의 stageId/actionId를 각각 유일하게 모은다.
+			// entryActionId는 이 집합에 존재하면서 첫 stage의 action이어야 한다.
 			const DATA_JSON_VALUE* pGameplayStages = Required(
 				GameplayPattern, "stages", DATA_JSON_TYPE::ARRAY);
 			const DATA_JSON_VALUE* pPresentationStages = Required(
@@ -5803,6 +6163,9 @@ namespace
 			DATA_JSON_VALUE::ARRAY WorldReferences;
 			std::vector<std::string> CameraCueIds;
 			std::set<std::string, std::less<>> PatternCameraCueIds;
+
+			// stage도 원본 배열의 같은 위치끼리 결합한다. 허용 필드와 stage/action ID를 먼저 맞춘 뒤
+			// 양수 ms 기간과 그 기간을 기준으로 한 bodyVisibility를 검사한다.
 			for (size_t iStage = 0u;
 				iStage < pGameplayStages->Get_Array().size(); ++iStage)
 			{
@@ -5859,6 +6222,8 @@ namespace
 					return false;
 				}
 
+				// 분기와 proxy/응답 확장을 읽고 defaultNextActionId의 기대값을 구한다.
+				// TIMEOUT 분기가 있으면 그 nullable action을 우선하며, 없으면 다음 stage, 마지막이면 없음이다.
 				std::vector<Client::VALTAN_STAGE_BRANCH_VIEW> BranchViews;
 				const DATA_JSON_VALUE* pBranches = Required(
 					GameplayStage, "branches", DATA_JSON_TYPE::ARRAY);
@@ -5898,6 +6263,9 @@ namespace
 						strPatternId + "/" + strStageId;
 					return false;
 				}
+
+				// 로컬 nextActionId를 가진 분기는 앞서 모은 action 집합 안을 가리켜야 한다.
+				// 다른 패턴으로 넘어가는 nextPatternId와 counter 소유 계약은 뒤의 별도 검사에서 확인한다.
 				for (const Client::VALTAN_STAGE_BRANCH_VIEW& Branch : BranchViews)
 				{
 					if (Branch.strNextActionId.has_value() &&
@@ -5909,6 +6277,8 @@ namespace
 					}
 				}
 
+				// 현재 두 stage를 기존 Master reader가 이해하는 지역 JSON으로 합친다.
+				// 판정·이동·응답은 gameplay에서, 애니메이션과 표현은 presentation에서 가져온다.
 				DATA_JSON_VALUE::OBJECT LegacyStage;
 				LegacyStage.emplace("stageId", DATA_JSON_VALUE::String(strStageId));
 				LegacyStage.emplace("sequenceRole", DATA_JSON_VALUE::String(
@@ -5936,6 +6306,9 @@ namespace
 				{
 					LegacyStage.emplace("verticalOffsetM", *pVerticalOffset);
 				}
+
+				// hit는 호환 필드로 투영하고 motion은 null 또는 객체만 허용한다.
+				// 여기서 복사한 세부 값은 뒤의 Master 파서가 추가 검증한다.
 				const DATA_JSON_VALUE* pHit = Required(
 					GameplayStage, "hit", DATA_JSON_TYPE::OBJECT);
 				if (nullptr == pHit || !Build_SplitHitProjection(
@@ -5952,6 +6325,8 @@ namespace
 				if (const DATA_JSON_VALUE* pAim = GameplayStage.Find("aim"))
 					LegacyStage.emplace("aim", *pAim);
 
+				// stage 이벤트를 호환 action, 독립 Effect 참조, 별도 volley 목록으로 분리한다.
+				// 예약 volley 시계는 현재 stage마다 새로 시작하며 다른 stage와 같은 시각을 강제하지 않는다.
 				DATA_JSON_VALUE::ARRAY Actions;
 				DATA_JSON_VALUE::ARRAY EffectReferences;
 				bool_t bHasScheduledVolleyClock = false;
@@ -5965,6 +6340,9 @@ namespace
 					strOutError = "split gameplay stage events are invalid";
 					return false;
 				}
+
+				// eventId는 전체 문서에서 중복될 수 없다. 각 이벤트의 변환 함수에는
+				// 분기·기본 후속이 없는 마지막 stage인지도 넘겨 종료 전용 이벤트의 허용 여부를 검사한다.
 				for (const DATA_JSON_VALUE& Event : pEvents->Get_Array())
 				{
 					const std::string strEventId = Read_String(Event, "eventId");
@@ -5986,6 +6364,9 @@ namespace
 					const bool_t bVolleyEvent =
 						"SPAWN_COMBAT_OBJECT_VOLLEY" ==
 							Read_String(Event, "kind");
+
+					// volley는 일반 Actions에 넣지 않고 원래 event/pattern/stage/action 소유 정보와 함께 보관한다.
+					// 첫 offset이 0이 아니거나 여러 번 발생하는 예약 volley끼리만 시작·횟수·간격을 같게 제한한다.
 					if (bVolleyEvent)
 					{
 						if (Action.Is_Null())
@@ -6029,6 +6410,9 @@ namespace
 					}
 					if (!Action.Is_Null() && !bVolleyEvent)
 						Actions.push_back(std::move(Action));
+
+					// spawn 이벤트의 archetype과 owner를 저장한다. 독립 Effect 선언이 해당 event를 가리키면
+					// 그 선언 ID로 참조를 만들며, 실제 visual/asset 결합은 더 뒤의 Product 연결이 담당한다.
 					if (!strSpawnArchetypeId.empty())
 					{
 						SPLIT_SPAWN_OWNER Owner;
@@ -6052,6 +6436,9 @@ namespace
 								DATA_JSON_VALUE::Object(std::move(Reference)));
 						}
 					}
+
+					// 월드 이벤트는 ENTER만 허용하고 현재 pattern/stage의 STAGE_ENTER 참조로 바꾼다.
+					// 이 참조를 만드는 작업이며 여기서 월드 이벤트를 실행하지 않는다.
 					if (bWorldEvent)
 					{
 						if ("ENTER" != Read_String(Event, "trigger"))
@@ -6080,12 +6467,16 @@ namespace
 					strOutError = "split presentation effectCues is invalid";
 					return false;
 				}
+				// stage 시계 cue는 stageOffsetMs를, clip 시계 cue는 같은 occurrence와 mappingBasis를 기준으로 연결한다.
 				for (const DATA_JSON_VALUE& Cue : pCues->Get_Array())
 				{
 					if (!Validate_SplitCue(Cue, strOutError))
 						return false;
 					const bool_t bUsesStageClock =
 						nullptr != Cue.Find("timingBasis");
+
+					// stage 시계는 시작 offset이 현재 stage 기간보다 작은지 확인한다.
+					// 끝 시각은 최대 600000ms와 비교하므로 stage 기간 안에서 끝난다는 보장은 아니다.
 					if (bUsesStageClock)
 					{
 						const auto* end = Cue.Find("stageEndMs");
@@ -6137,6 +6528,9 @@ namespace
 							return false;
 						}
 					}
+
+					// cue ID와 occurrence ID를 각각 전체 문서에서 유일하게 등록한다.
+					// 독립 선언이 있으면 그 ID를 참조하고, 없으면 cue ID와 원래 시계 정보를 호환 참조에 복사한다.
 					const std::string strCueId = Read_String(Cue, "cueId");
 					const std::string strOccurrenceId = Read_String(
 						Cue, "occurrenceId");
@@ -6169,7 +6563,8 @@ namespace
 						{
 							Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
 							Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
-							if (const auto* end = Cue.Find("stageEndMs")) Projection.emplace("stageEndMs", *end);
+							if (const auto* end = Cue.Find("stageEndMs"))
+								Projection.emplace("stageEndMs", *end);
 						}
 						else
 						{
@@ -6188,9 +6583,13 @@ namespace
 					EffectReferences.push_back(
 						DATA_JSON_VALUE::Object(std::move(Reference)));
 				}
+
+				// 애니메이션·환경/조명 occurrence와 선택적 몸체 숨김을 같은 stage에 복사한다.
+				// 위에서 모은 Effect 참조와 함께 기존 Master stage 검증으로 넘어갈 값이다.
 				LegacyStage.emplace("animation", *PresentationStage.Find("animation"));
-                for (const char* field : {"sceneProfileOccurrences", "lightOccurrences"})
-                    if (const auto* rows = PresentationStage.Find(field)) LegacyStage.emplace(field, *rows);
+				for (const char* field : {"sceneProfileOccurrences", "lightOccurrences"})
+					if (const auto* rows = PresentationStage.Find(field))
+						LegacyStage.emplace(field, *rows);
 				if (bHasBodyHiddenWindow)
 				{
 					LegacyStage.emplace(
@@ -6199,6 +6598,8 @@ namespace
 				LegacyStage.emplace("effectRefs",
 					DATA_JSON_VALUE::Array(std::move(EffectReferences)));
 
+				// cameraInvocationId는 문서 전체에서, cameraCueId는 현재 패턴 안에서 중복을 거부한다.
+				// 검증된 cue ID 순서를 패턴 목록에도 모으고 stage에는 원본 invocation 값을 보존한다.
 				const DATA_JSON_VALUE* pCamera = Required(
 					PresentationStage, "cameraInvocations", DATA_JSON_TYPE::ARRAY);
 				if (nullptr == pCamera)
@@ -6226,6 +6627,9 @@ namespace
 				LegacyStages.push_back(
 					DATA_JSON_VALUE::Object(std::move(LegacyStage)));
 			}
+
+			// 모든 stage를 합친 뒤 원래 gameplay 문서의 counter 성공/timeout 및 proxy 관계를 검사한다.
+			// 다른 패턴의 성공 대상을 찾을 수 있도록 전체 gameplay 패턴 배열을 전달한다.
 			if (!Validate_SplitCounterBranchContract(
 					GameplayPattern, pGameplayPatterns->Get_Array(),
 					strPatternId, strOutError))
@@ -6233,6 +6637,8 @@ namespace
 				return false;
 			}
 
+			// eligibility의 정확한 필드와 지원하는 반복·cooldown 정책을 검사한다.
+			// phase/체력 값은 비음수 정수, 거리 값은 유한 수인지 먼저 확인하고 호환 Master에 전달한다.
 			const DATA_JSON_VALUE* pEligibility = Required(
 				GameplayPattern, "eligibility", DATA_JSON_TYPE::OBJECT);
 			if (nullptr == pEligibility || !Has_ExactProperties(*pEligibility,
@@ -6280,6 +6686,9 @@ namespace
 				strOutError = "split gameplay eligibility range is invalid";
 				return false;
 			}
+
+			// 패턴 verticalOffsetM이 있으면 0이 아닌 ±100m 범위여야 하고
+			// 적어도 한 gameplay stage가 bossResponse 필드를 가져야 한다.
 			const DATA_JSON_VALUE* pVerticalOffset =
 				GameplayPattern.Find("verticalOffsetM");
 			const bool_t bOwnsBossResponse = std::any_of(
@@ -6299,6 +6708,8 @@ namespace
 				return false;
 			}
 
+			// 각 일반 패턴은 기믹, 선택 후보, 수동 시험 중 정확한 decision 소유자를 가져야 한다.
+			// 검토된 입장 전용 패턴 두 개의 예외는 아래에서 별도로 제한한다.
 			const auto Mechanic = Mechanics.find(strPatternId);
 			const bool_t bMechanic = Mechanic != Mechanics.end();
 			const bool_t bCandidate = CandidatePatterns.contains(strPatternId);
@@ -6309,8 +6720,8 @@ namespace
 			const uint32_t iOwnerCount =
 				(bMechanic ? 1u : 0u) + (bCandidate ? 1u : 0u) +
 				(bManual ? 1u : 0u);
-			/* Both reviewed cinematics stay entry-only definitions when a custom
-			   Flow omits them. Never promote an arbitrary unowned pattern. */
+			// 허용된 두 입장 연출은 사용자 Flow에서 빠져도 입장 전용 정의로 남을 수 있다.
+			// 이 예외로 decision 소유자가 없는 임의 패턴을 허용하지 않는다.
 			const bool_t bOptionalEntryPattern =
 				Is_OptionalEntryPatternId(strPatternId);
 			const bool_t bScriptedEntryOnly =
@@ -6339,6 +6750,9 @@ namespace
 			}
 			if (bScriptedEntryOnly)
 				ScriptedEntryOnlyPatternIds.insert(strPatternId);
+
+			// decision 소유자에 따라 HEALTH_BAR/AUDITION_ONLY/NORMAL과 기믹 trigger 값을 만든다.
+			// 수동 시험의 연속 사용 한도는 0으로 투영하며 일반/입장 후보는 호환 가중치를 유지한다.
 			DATA_JSON_VALUE::OBJECT LegacyPattern;
 			LegacyPattern.emplace("patternId", DATA_JSON_VALUE::String(strPatternId));
 			for (const std::string& Field :
@@ -6400,6 +6814,8 @@ namespace
 				DATA_JSON_VALUE::Object(std::move(LegacyPattern)));
 		}
 
+		// 독립 Effect의 선언 ID를 실제 cue 또는 spawn owner와 연결한다.
+		// 전투 오브젝트 쪽 임시 asset/visual 값은 이후 Product owner 결합에서 실제 값과 대조한다.
 		DATA_JSON_VALUE::ARRAY LegacyIndependent;
 		for (const auto& [IndependentId, Declaration] : IndependentById)
 		{
@@ -6436,7 +6852,8 @@ namespace
 				{
 					Projection.emplace("timingBasis", *Cue.Find("timingBasis"));
 					Projection.emplace("stageOffsetMs", *Cue.Find("stageOffsetMs"));
-					if (const auto* end = Cue.Find("stageEndMs")) Projection.emplace("stageEndMs", *end);
+					if (const auto* end = Cue.Find("stageEndMs"))
+						Projection.emplace("stageEndMs", *end);
 				}
 				else
 				{
@@ -6478,6 +6895,8 @@ namespace
 				DATA_JSON_VALUE::Object(std::move(Legacy)));
 		}
 
+		// 분리 previewPaths 중 기존 Master reader가 요구하는 경로만 복사한다.
+		// combatObjectAuthoring/worldEventSets/legacyCompatibility는 이 호환 객체의 필드가 아니다.
 		DATA_JSON_VALUE::OBJECT LegacyPreview;
 		for (const std::string& Field :
 			{ "encounter", "animationBindings", "effectCues", "combatObjects",
@@ -6486,6 +6905,7 @@ namespace
 		{
 			LegacyPreview.emplace(Field, *pPreviewPaths->Find(Field));
 		}
+		// 기존 Master 검증을 재사용할 메모리 JSON을 만든다. 디스크의 이전 단일 Master 파일을 저장하거나 게시하지 않는다.
 		DATA_JSON_VALUE::OBJECT LegacyRoot;
 		LegacyRoot.emplace("schema",
 			DATA_JSON_VALUE::String("lostark.valtan-pattern-master"));
@@ -6503,12 +6923,18 @@ namespace
 			DATA_JSON_VALUE::Array(std::move(LegacyIndependent)));
 		LegacyRoot.emplace("patterns",
 			DATA_JSON_VALUE::Array(std::move(LegacyPatterns)));
+
+		// 여기부터 Out이 직접 채워진다. Master 검증 뒤에도 sequence 참조·입장 연출·anchor 검사가
+		// 실패할 수 있으므로 이 성공을 전체 결과의 최종 commit으로 해석하지 않는다.
 		if (!Parse_MasterDocument(
 				DATA_JSON_VALUE::Object(std::move(LegacyRoot)),
 				ScriptedEntryOnlyPatternIds, Out, strOutError))
 		{
 			return false;
 		}
+
+		// sequence의 모든 pattern ID가 실제 Master에 들어왔는지 확인한다.
+		// HEALTH_BAR_ROTATIONS의 별도 입장 연출은 지정된 NORMAL·무적·NONE target/aim 계약을 추가로 요구한다.
 		for (const std::string& strPatternId : ScriptedSequence.PatternIds)
 		{
 			const bool_t bExists = std::any_of(
@@ -6540,6 +6966,9 @@ namespace
 				return false;
 			}
 		}
+
+		// 분리 문서 전용 선택/기믹/수동/volley 정보를 Out에 옮긴 뒤 각 패턴을 보충한다.
+		// 뒤의 cue anchor나 시간 예산 검사 실패가 이 대입을 되돌리지는 않는다.
 		Out.SelectionSets = std::move(SelectionSets);
 		Out.SelectionWindows = std::move(SelectionWindows);
 		Out.Mechanics = std::move(MechanicViews);
@@ -6549,6 +6978,9 @@ namespace
 		for (size_t iPattern = 0u; iPattern < Out.Patterns.size(); ++iPattern)
 		{
 			MASTER_PATTERN& Pattern = Out.Patterns[iPattern];
+
+			// 수동 시험 패턴은 앞서 모은 metadata를 복사해 출처 chain과 저작 phase/admission을 표시한다.
+			// 실제 Server 실행 승인을 여기서 요청하거나 확정하지 않는다.
 			const auto Manual = ManualAuditions.find(Pattern.strPatternId);
 			if (Manual != ManualAuditions.end())
 			{
@@ -6576,6 +7008,7 @@ namespace
 					GameplayStages.Get_Array()[iStage];
 				const DATA_JSON_VALUE& Cues =
 					*PresentationStage.Find("effectCues");
+				// target/landing/arena anchor가 요구하는 snapshot/follow와 gameplay 대상 또는 이동 계약을 확인한다.
 				for (const DATA_JSON_VALUE& Cue : Cues.Get_Array())
 				{
 					const std::string Anchor = Read_String(Cue, "anchorSlotId");
@@ -6609,6 +7042,9 @@ namespace
 							return false;
 						}
 					}
+
+					// arena 중심 anchor는 고정 중심·고정 방향·대상 추종별로 허용 이동과 조준 정책이 다르다.
+					// 대상 추종의 stage 경로는 현재 stage까지 TO_ARENA_CENTER가 있었는지와 현재 aim 정책을 함께 본다.
 					else if (Anchor.starts_with("arena.center"))
 					{
 						const bool_t bFixedFacing =
@@ -6651,6 +7087,9 @@ namespace
 							return false;
 						}
 					}
+
+					// 현재 cue의 anchor 계약을 통과하면 값 형태의 AuthoredCue를 stage에 추가한다.
+					// 이전 cue가 이미 추가된 상태에서 다음 cue가 실패할 수 있으므로 Out 전체는 여전히 후보 상태다.
 					Stage.AuthoredCues.push_back(Build_SplitCueView(
 						Cue,
 						Pattern.strPatternId,
@@ -6661,6 +7100,7 @@ namespace
 				}
 			}
 		}
+		// 모든 stage의 애니메이션 시간 예산을 임시 stage로 계산해 본다. 여기서 계산한 벽시계 값은 원본 JSON을 수정하지 않는다.
 		for (const MASTER_PATTERN& Pattern : Out.Patterns)
 		{
 			for (const MASTER_STAGE& SourceStage : Pattern.Stages)
@@ -6682,6 +7122,7 @@ namespace
 		return true;
 	}
 
+	// 복원 로드는 값 변경을 허용하되 패턴/action/source ID와 stage 개수 및 순서의 identity는 유지해야 한다.
 	bool_t Has_StableRestoreTopology(
 		const Client::VALTAN_PATTERN_VIEW& Product,
 		const MASTER_PATTERN& Master)
@@ -6702,6 +7143,8 @@ namespace
 				});
 	}
 
+	// 복원 정책에서 topology가 맞는 Product 뷰에 저작 gameplay 값을 덮어쓴다.
+	// stage 순서와 개수가 같다는 선행 검사를 전제로 하며 임시 View를 대상으로 호출한다.
 	void Overlay_MasterGameplay(
 		const MASTER_PATTERN& Master,
 		Client::VALTAN_PATTERN_VIEW& Out)
@@ -6779,6 +7222,7 @@ namespace
 		}
 	}
 
+	// 선택 진단 출력이 있으면 실패 종류와 거절된 패턴/stage ID를 함께 기록한다. null 진단은 허용한다.
 	void Set_CanonicalReadFailure(
 		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pDiagnostic,
 		const Client::VALTAN_CANONICAL_READ_FAILURE_KIND eFailure,
@@ -6794,28 +7238,48 @@ namespace
 		pDiagnostic->strRejectedStageId.assign(strStageId);
 	}
 
-	bool_t Join_StageEffectV2SourceScopes(MASTER_DOCUMENT& Master, std::string& strOutError)
+	// 선택 V2 binding 원본을 읽어 각 stage에 정확한 pattern/stage/action 범위의 binding이 있는지 표시한다.
+	// 파일이 없으면 성공하며 Effect 실제 재생이나 리소스 내용 검증을 대신하지 않는다.
+	// 두 Load 경로가 지역 Master를 완성할 때 호출한다. 선택 파일이 없으면 기존 stage 표식을 유지하고
+	// 성공한다. 파일을 읽은 경우 STAGE 시계와 pattern/stage/action·시작 범위가 맞는 binding 존재로 표식을 갱신한다.
+	bool_t Join_StageEffectV2SourceScopes(
+		MASTER_DOCUMENT& Master, std::string& strOutError)
 	{
-		const auto path = Client::CProjectDataRoot::Resolve(std::filesystem::path(L"Effects") /
+		const auto path = Client::CProjectDataRoot::Resolve(
+			std::filesystem::path(L"Effects") /
 			L"V2" / L"Bindings" / L"BOSS_VALTAN.effectv2bindings.json");
 		std::error_code error;
-		if (!std::filesystem::exists(path, error) && !error) return true;
+		if (!std::filesystem::exists(path, error) && !error)
+			return true;
+
+		// 파일 존재 확인 오류는 성공으로 처리하지 않고 실제 읽기를 이어 시도한다.
+		// 읽기/파싱 실패는 아직 Master를 건드리지 않은 시점이며 하위 reader의 오류 문자열을 그대로 반환한다.
 		std::string text;
 		std::vector<Client::EFFECT_V2_BINDING> bindings;
 		if (!Read_TextDocument(path, text, strOutError) ||
-			!Client::CEffectV2Document::Parse_Bindings(text, "BOSS_VALTAN", bindings, strOutError))
+			!Client::CEffectV2Document::Parse_Bindings(
+				text, "BOSS_VALTAN", bindings, strOutError))
 			return false;
+
 		for (auto& pattern : Master.Patterns)
 			for (auto& stage : pattern.Stages)
-				stage.bHasStageEffectV2Bindings = std::any_of(bindings.begin(), bindings.end(),
-					[&](const auto& binding) {
+				stage.bHasStageEffectV2Bindings = std::any_of(
+					bindings.begin(), bindings.end(),
+					[&](const auto& binding)
+					{
 						return binding.eClockBasis == Client::EFFECT_V2_CLOCK_BASIS::STAGE &&
-							binding.strPatternId == pattern.strPatternId && binding.strStageId == stage.strStageId &&
-							binding.strActionId == stage.strActionId && binding.iStartMs < stage.iDurationMs;
+							binding.strPatternId == pattern.strPatternId &&
+							binding.strStageId == stage.strStageId &&
+							binding.strActionId == stage.strActionId &&
+							binding.iStartMs < stage.iDurationMs;
 					});
+
 		return true;
 	}
 
+	// 게시 Product로 만든 임시 View를 저작 Master와 결합한다. strict 정책은 계약 값을 대조하고 restore 정책은 topology 확인 후 저작 값을 반영한다.
+	// 함수 도중 View가 바뀔 수 있으므로 호출자가 소유한 최종 뷰에 직접 적용하지 않는다.
+	// 퇴역/빈 수동 패턴, 순서/선택 coverage와 독립 Effect owner를 모두 확인한 뒤 상위 Load가 최종 교체한다.
 	bool_t Apply_MasterDocument(
 		const MASTER_DOCUMENT& Master,
 		const DATA_JSON_VALUE& PatternRotations,
@@ -6824,6 +7288,8 @@ namespace
 		const Client::VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
 		Client::VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic)
 	{
+		// 게시 값 불일치는 상태 문자열과 선택 진단에 STALE_PROJECTION을 함께 남긴다.
+		// 일부 기본 형식 실패는 아래에서 문자열만 채우며 상위 Load가 남은 진단 종류를 보충한다.
 		const auto RejectStaleProjection =
 			[&strOutError, pOutDiagnostic](
 				std::string strError,
@@ -6838,6 +7304,9 @@ namespace
 					strOutError, strPatternId, strStageId);
 				return false;
 			};
+
+		// strict 대조와 저장 원본 복원 두 정책만 허용한다.
+		// 둘 다 같은 임시 View를 결합하며 이 함수가 파일이나 현재 실행 패턴을 교체하지 않는다.
 		if (Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
 				REQUIRE_ACTIVE_PRODUCT_PARITY != ePolicy &&
 			Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
@@ -6849,6 +7318,9 @@ namespace
 		const bool_t bRequireProductParity =
 			Client::VALTAN_PATTERN_TREE_LOAD_POLICY::
 				REQUIRE_ACTIVE_PRODUCT_PARITY == ePolicy;
+
+		// 폐기된 저작 ID가 게시 View에 남으면 두 정책 모두 거부한다.
+		// 복원 정책도 이미 퇴역한 실행 정의를 되살리는 경로는 아니다.
 		for (const std::string& strRetiredPatternId : Master.RetiredPatternIds)
 		{
 			if (nullptr != Find_Pattern(View, strRetiredPatternId))
@@ -6860,6 +7332,8 @@ namespace
 			}
 		}
 
+		// Master 소유의 독립 Effect를 지역 포인터 색인으로 차용한다.
+		// stage 참조를 모은 뒤 전체 선언 coverage와 실제 Product owner를 대조한다.
 		std::map<std::string,
 			const Client::VALTAN_INDEPENDENT_EFFECT_VIEW*, std::less<>>
 			IndependentById;
@@ -6883,8 +7357,8 @@ namespace
 					[](const auto& Stage) { return Stage.Occurrences.empty() && Stage.EffectReferences.empty() &&
 						!Stage.bHasStageEffectV2Bindings && (Stage.strHitShape.empty() || Stage.strHitShape == "NONE"); }))
 			{
-				// Source-only empty patterns never become a Server Product until
-				// their first real animation or independent Effect is assigned and published.
+				// 원본 연결, 애니메이션, Effect와 hit가 모두 비어 있는 수동 패턴은 Product에 없어야 한다.
+				// 이 빈 저작 행은 게시본 결합과 재생 목록에서 제외하며 임의의 실행 정의를 만들지 않는다.
 				if (nullptr != pPattern)
 					return RejectStaleProjection(
 						"unbound manual pattern unexpectedly exists in Product: " +
@@ -6892,6 +7366,9 @@ namespace
 				UnboundManualPatternIds.insert(MasterPattern.strPatternId);
 				continue;
 			}
+
+			// strict는 패턴 gameplay 값을 비교하고 restore는 ID·source action·stage 개수/순서를 확인한다.
+			// 두 helper의 검증 범위는 같지 않으며, restore에서만 뒤의 gameplay 덮어쓰기를 수행한다.
 			if (nullptr == pPattern ||
 				(bRequireProductParity &&
 				 !Equal_MasterPatternGameplay(*pPattern, MasterPattern)) ||
@@ -6912,6 +7389,8 @@ namespace
 			if (!bRequireProductParity)
 				Overlay_MasterGameplay(MasterPattern, *pPattern);
 
+			// 두 정책 모두 저작 출처·카메라·월드 참조와 관리 표시를 임시 패턴에 복사한다.
+			// 이 뒤 stage 검증이 실패하더라도 이미 복사한 값을 자체적으로 되돌리지는 않는다.
 			pPattern->iSourceSequenceIndex =
 				MasterPattern.iSourceSequenceIndex;
 			pPattern->PresentationSources = MasterPattern.PresentationSources;
@@ -6928,6 +7407,9 @@ namespace
 				MasterPattern.strSourceAnimationChainId;
 			pPattern->iAuthoringPhase = MasterPattern.iAuthoringPhase;
 			pPattern->strAdmissionState = MasterPattern.strAdmissionState;
+
+			// Master의 stage 순서로 같은 index의 Product stage를 사용한다.
+			// 현재 strict 경로의 패턴 비교에는 stage 수 대조가 없으므로 이 접근을 크기 검증 완료로 설명할 수 없다.
 			for (size_t iStage = 0u; iStage < MasterPattern.Stages.size();
 				++iStage)
 			{
@@ -6953,6 +7435,9 @@ namespace
 							MasterStage.strStageId,
 						MasterPattern.strPatternId, MasterStage.strStageId);
 				}
+
+				// strict에서는 occurrence 수를 위에서 맞춘 뒤 같은 순서의 애니메이션 값을 비교한다.
+				// cue는 정렬 순서가 바뀔 수 있어 아래의 binding ID 검색으로 따로 대조한다.
 				if (bRequireProductParity)
 				{
 					for (size_t iClip = 0u;
@@ -6970,8 +7455,8 @@ namespace
 								MasterStage.strStageId);
 						}
 					}
-					// Product cues are sorted for playback; authored array order is
-					// not their identity. Both parsers already reject duplicate IDs.
+					// Product cue는 재생 순서로 정렬될 수 있으므로 저작 배열의 순번으로 짝짓지 않는다.
+					// 두 입력에서 중복을 거절한 binding ID로 찾고 저작 필드를 대조한다.
 					for (const Client::VALTAN_PRODUCT_EFFECT_CUE_VIEW& AuthoredCue :
 						MasterStage.AuthoredCues)
 					{
@@ -6992,6 +7477,8 @@ namespace
 				}
 				else
 				{
+					// restore에서는 저작 occurrence와 cue를 임시 stage에 다시 채운다.
+					// 대표 clip/cue는 첫 항목이고 각 occurrence의 cue 목록은 clipOccurrenceId로 재연결한다.
 					Stage.ClipOccurrences = MasterStage.Occurrences;
 					Stage.RuntimeClipNames.clear();
 					for (const Client::VALTAN_CLIP_OCCURRENCE_VIEW& Occurrence :
@@ -7021,6 +7508,9 @@ namespace
 						}
 					}
 				}
+
+				// 공통 표현 상태·환경/조명·카메라를 보충하고 occurrence별 벽시계 예산을 다시 계산한다.
+				// 계산 실패가 앞선 View 변경까지 rollback하지 않으므로 상위의 지역 Staged가 실패를 격리한다.
 				Stage.bHasStageEffectV2Bindings = MasterStage.bHasStageEffectV2Bindings;
 				Stage.strSequenceRole = MasterStage.strSequenceRole;
 				Stage.iAuthoringRepeatCount = MasterStage.iRepeatCount;
@@ -7032,11 +7522,13 @@ namespace
 				Stage.iBodyHiddenFromMs = MasterStage.iBodyHiddenFromMs;
 				Stage.iBodyHiddenToMs = MasterStage.iBodyHiddenToMs;
 				Stage.CameraInvocations = MasterStage.CameraInvocations;
-                Stage.SceneProfileOccurrences = MasterStage.SceneProfileOccurrences;
-                Stage.LightOccurrences = MasterStage.LightOccurrences;
+				Stage.SceneProfileOccurrences = MasterStage.SceneProfileOccurrences;
+				Stage.LightOccurrences = MasterStage.LightOccurrences;
 				if (!Assign_MasterWallBudgets(Stage, strOutError))
 					return false;
 
+				// 일반 cue 참조는 현재 stage의 binding ID와 시계·시작·선택적 끝 값이 일치해야 한다.
+				// 독립 참조는 선언 owner의 pattern/stage를 맞춘 뒤 stage 목록과 전체 참조 집합에 추가한다.
 				for (const MASTER_EFFECT_REFERENCE& Reference :
 					MasterStage.EffectReferences)
 				{
@@ -7053,7 +7545,7 @@ namespace
 									(Reference.bUsesStageClock ?
 										(Cue.iStageOffsetMs ==
 										 Reference.iStageOffsetMs && Cue.bHasSourceEnd == Reference.bHasSourceEnd &&
-                                        (!Reference.bHasSourceEnd || Cue.iSourceEndMs == Reference.iSourceEndMs)) :
+										(!Reference.bHasSourceEnd || Cue.iSourceEndMs == Reference.iSourceEndMs)) :
 										(Cue.strClipOccurrenceId ==
 											Reference.strClipOccurrenceId &&
 										 Cue.iSourceStartMs ==
@@ -7092,6 +7584,8 @@ namespace
 			}
 		}
 
+		// 게시 rotation 문서의 v4 형태와 scripted sequence를 읽는다.
+		// 복원 정책에서도 이 기본 형태·패턴 존재 검사는 건너뛰지 않으며 값 동등성 검사만 뒤에서 정책에 따라 나뉜다.
 		const DATA_JSON_VALUE* pProductScriptedSequence = Required(
 			PatternRotations, "scriptedSequence", DATA_JSON_TYPE::OBJECT);
 		const DATA_JSON_VALUE* pProductScriptedPatterns =
@@ -7138,6 +7632,9 @@ namespace
 				"Valtan selection-window/scripted-sequence Product v4 is invalid";
 			return false;
 		}
+
+		// sequence의 각 ID가 현재 View에 존재하는지 확인하고 배열 순서를 보존한다.
+		// 같은 패턴의 반복을 지우지 않으므로 뒤의 strict 배열 비교도 순서와 반복을 포함한다.
 		std::vector<std::string> ProductScriptedPatternIds;
 		for (const DATA_JSON_VALUE& PatternId :
 			pProductScriptedPatterns->Get_Array())
@@ -7154,6 +7651,9 @@ namespace
 			}
 			ProductScriptedPatternIds.push_back(PatternId.Get_String());
 		}
+
+		// 구간별 추적 시간이 없으면 공통 interStepPursuitMs를 패턴 사이마다 복제한다.
+		// 명시 배열은 패턴 수보다 하나 적어야 하며 각 값의 0ms도 허용한다.
 		std::vector<uint32_t> ProductTransitionPursuitMs;
 		if (nullptr == pProductTransitionPursuit)
 		{
@@ -7186,10 +7686,8 @@ namespace
 					static_cast<uint32_t>(PursuitMs.Get_Number()));
 			}
 		}
-		/* The gameplay scriptedSequence is the editable order authority and the
-		   rotations document is its generated Product.  An admitted canonical
-		   generation must therefore contain exact sequence identity, timing and
-		   ordered Pattern parity. */
+		// 편집 가능한 순서 정본은 gameplay의 scriptedSequence이고 rotations는 게시된 결과다.
+		// 엄격한 읽기에서는 sequence identity, 시간, 패턴 순서와 구간별 추적 시간을 모두 대조한다.
 		if (bRequireProductParity &&
 			(Read_String(*pProductScriptedSequence, "sequenceId") !=
 				Master.ScriptedSequence.strSequenceId ||
@@ -7208,6 +7706,9 @@ namespace
 			return RejectStaleProjection(
 				"Valtan scripted-sequence Product parity drifted");
 		}
+
+		// 정책별 대조 뒤 표시 View의 sequence 값은 항상 저작 Master에서 복사한다.
+		// 복원 때도 게시 문서를 새로 저장하는 작업은 아니다.
 		View.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
 		View.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
 		View.strEntranceCinematicPatternId = Master.ScriptedSequence.strEntranceCinematicPatternId;
@@ -7216,6 +7717,9 @@ namespace
 		View.ScriptedSequencePatternIds = Master.ScriptedSequence.PatternIds;
 		View.ScriptedSequenceTransitionPursuitMs =
 			Master.ScriptedSequence.TransitionPursuitMs;
+
+		// 저작 window를 게시 rotation ID에, selection set을 set ID에 연결하는 차용 색인이다.
+		// 아래 게시 행 검사 동안 Master의 vector를 변경하지 않아 포인터를 유지한다.
 		std::map<std::string, const Client::VALTAN_SELECTION_WINDOW_VIEW*,
 			std::less<>> WindowByRotation;
 		for (const Client::VALTAN_SELECTION_WINDOW_VIEW& Window :
@@ -7233,6 +7737,9 @@ namespace
 			uint32_t iFromHealthBar;
 			uint32_t iToHealthBar;
 		};
+
+		// 관리 window 뒤에 허용할 참조용 legacy rotation의 ID·체력 범위·순서다.
+		// 실제 개수 요구는 끝에서 sequence mode에 따라 0개 또는 이 여섯 개로 나뉜다.
 		static constexpr LEGACY_ROTATION_IDENTITY LegacyRotationOrder[] = {
 			{ "rotation.valtan.109.100", 108u, 100u },
 			{ "rotation.valtan.100.84", 99u, 84u },
@@ -7247,6 +7754,9 @@ namespace
 		std::set<std::string, std::less<>> SeenManagedRotations;
 		size_t iManagedRotationOrdinal = 0u;
 		size_t iLegacyRotationOrdinal = 0u;
+
+		// 이전 legacy 표시 목록을 지우고 게시 행을 순서대로 읽는다.
+		// 이후 실패하면 일부만 다시 채워진 상태이므로 최종 사용자 View가 아니라 임시 View에 적용한다.
 		View.LegacyRotations.clear();
 		for (const DATA_JSON_VALUE& Row : pRotationRows->Get_Array())
 		{
@@ -7257,6 +7767,9 @@ namespace
 				strOutError = "Valtan Product rotation identity is invalid/duplicated";
 				return false;
 			}
+
+			// 관리 rotation은 Master window와 같은 순서로 먼저 나와야 한다.
+			// legacy 행을 하나라도 처리한 뒤 관리 행이 다시 등장하면 두 정책 모두 거부한다.
 			const auto Managed = WindowByRotation.find(strRotationId);
 			if (Managed != WindowByRotation.end())
 			{
@@ -7269,6 +7782,9 @@ namespace
 						"Valtan managed Product rotation order drifted");
 				}
 				++iManagedRotationOrdinal;
+
+				// ORDERED_LOOP는 배열 크기와 stable ID를 읽고 원래 순서·반복을 유지한다.
+				// window/set/phase/체력 경계와의 정확한 값 일치는 strict에서만 대조한다.
 				if ("ORDERED_LOOP" == Read_String(Row, "selectionMode"))
 				{
 					const auto& Window = *Managed->second;
@@ -7277,12 +7793,18 @@ namespace
 					if (!Has_ExactProperties(Row, {"rotationId", "selectionMode", "fromHealthBar", "toHealthBar",
 						"windowId", "gameplayPhase", "selectionSetId", "patternIds"}) ||
 						nullptr == pMembers || pMembers->Get_Array().empty() || pMembers->Get_Array().size() > 32u)
-					{ strOutError = "Valtan ordered loop Product shape is invalid"; return false; }
+					{
+						strOutError = "Valtan ordered loop Product shape is invalid";
+						return false;
+					}
 					std::vector<std::string> Members;
 					for (const auto& Member : pMembers->Get_Array())
 					{
 						if (!Member.Is_String() || !Is_StableToken(Member.Get_String()))
-						{ strOutError = "Valtan ordered loop Product occurrence is invalid"; return false; }
+						{
+							strOutError = "Valtan ordered loop Product occurrence is invalid";
+							return false;
+						}
 						Members.push_back(Member.Get_String());
 					}
 					if (bRequireProductParity && (Set == SetById.end() || "ORDERED_LOOP" != Set->second->strMode ||
@@ -7297,6 +7819,9 @@ namespace
 					SeenManagedRotations.insert(strRotationId);
 					continue;
 				}
+
+				// 그 외 관리 행은 candidates 필드가 있는 v4 형태여야 한다.
+				// restore는 필드 목록과 coverage까지만 확인하고, strict는 아래에서 모드·window·후보 값까지 대조한다.
 				if (!Has_ExactProperties(Row,
 						{ "rotationId", "selectionMode", "fromHealthBar",
 						  "toHealthBar", "windowId", "gameplayPhase",
@@ -7333,6 +7858,9 @@ namespace
 						"Valtan managed Product window/set projection drifted: " +
 							strRotationId);
 				}
+
+				// strict 가중치 후보는 동일 index의 ID·weight·enabled를 비교한다.
+				// 비활성 행도 제외하지 않으므로 전체 후보 배열과 게시 순서가 일치해야 한다.
 				for (size_t i = 0u; i < Set->second->Candidates.size(); ++i)
 				{
 					const DATA_JSON_VALUE& ProductCandidate =
@@ -7360,6 +7888,8 @@ namespace
 				continue;
 			}
 
+			// legacy 행은 모든 관리 window 뒤에서 고정 ID/체력 구간 순서를 따라야 한다.
+			// 각 patternId의 현재 View 존재도 검사하고 legacy 표시 목록에는 원본 순서로 보관한다.
 			if (iManagedRotationOrdinal != Master.SelectionWindows.size() ||
 				iLegacyRotationOrdinal >= iLegacyRotationCount ||
 				strRotationId != LegacyRotationOrder[
@@ -7408,6 +7938,9 @@ namespace
 			View.LegacyRotations.push_back(std::move(Legacy));
 			++iLegacyRotationOrdinal;
 		}
+
+		// 관리 window coverage와 legacy 개수를 마무리한다.
+		// HEALTH_BAR_ROTATIONS이면 legacy가 없어야 하며, 다른 허용 mode는 고정 여섯 행을 모두 요구한다.
 		if (SeenManagedRotations.size() != Master.SelectionWindows.size() ||
 			iManagedRotationOrdinal != Master.SelectionWindows.size() ||
 			iLegacyRotationOrdinal != ("HEALTH_BAR_ROTATIONS" == Master.ScriptedSequence.strMode ? 0u : iLegacyRotationCount))
@@ -7415,6 +7948,9 @@ namespace
 			return RejectStaleProjection(
 				"Valtan Product selection-window/legacy rotation coverage is incomplete");
 		}
+
+		// 저작 선택/기믹/수동 목록을 View에 복사한 뒤 빈 수동 패턴을 제외한다.
+		// NORMAL 목록은 관리 여부와 모드를, 수동 목록은 그 조건에 더해 출처 metadata까지 확인한다.
 		View.SelectionSets = Master.SelectionSets;
 		View.SelectionWindows = Master.SelectionWindows;
 		View.Mechanics = Master.Mechanics;
@@ -7454,15 +7990,16 @@ namespace
 			}
 		}
 
+		// 관리 패턴 밖의 counterable ENTER stage를 Product에서 모은다.
+		// 아래 참조용 counter reaction owner 집합과 정확히 일치해야 하며 관리 gameplay counter는 여기서 제외한다.
 		std::set<std::string, std::less<>> ProductCounterOwnerStages;
 		for (std::vector<Client::VALTAN_PATTERN_VIEW>* pGroup :
 			{ &View.Gimmicks, &View.Rotation })
 		{
 			for (Client::VALTAN_PATTERN_VIEW& Pattern : *pGroup)
 			{
-				/* counterReactionLayers are explicitly REFERENCE_ONLY_LEGACY.
-				   Split-owned counters validate through their authored gameplay
-				   stages and must not expand this legacy exact-cover set. */
+				// counterReactionLayers는 REFERENCE_ONLY_LEGACY 범위다.
+				// 분리 원본이 소유하는 counter는 해당 gameplay stage에서 검증하므로 기존 참조 전용 집합에 추가하지 않는다.
 				if (Pattern.bAuthoringMasterManaged)
 					continue;
 				for (Client::VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
@@ -7490,6 +8027,9 @@ namespace
 				View, MasterLayer.strOwnerPatternId);
 			Client::VALTAN_STAGE_VIEW* pWindow = nullptr == pOwnerPattern ?
 				nullptr : Find_Stage(*pOwnerPattern, MasterLayer.strOwnerStageId);
+
+			// 같은 owner 패턴에서 action ID에 해당하는 stage 하나를 찾는다.
+			// 없거나 중복이면 nullptr이므로 성공/실패 경로를 임의의 첫 stage에 연결하지 않는다.
 			const auto FindActionStage = [pOwnerPattern](
 				const std::string& ActionId) -> Client::VALTAN_STAGE_VIEW*
 			{
@@ -7510,6 +8050,9 @@ namespace
 				MasterLayer.Success.strActionId);
 			Client::VALTAN_STAGE_VIEW* pFailure = FindActionStage(
 				MasterLayer.Failure.strActionId);
+
+			// owner window의 ENTER 1/EXIT 0 flag와 COUNTER_HIT/TIMEOUT 대상 존재를 대조한다.
+			// window·성공·실패 stage 모두 재생 occurrence가 있어야 참조용 layer로 연결한다.
 			const bool_t bHasCounterEnter = nullptr != pWindow && std::any_of(
 				pWindow->Actions.begin(), pWindow->Actions.end(),
 				[](const Client::VALTAN_STAGE_ACTION_VIEW& Action)
@@ -7558,6 +8101,9 @@ namespace
 					MasterLayer.strOwnerPatternId,
 					MasterLayer.strOwnerStageId);
 			}
+
+			// 참조용 Master layer에 실제 Product의 세 occurrence 목록을 복사해 보관한다.
+			// 그 뒤 전체 owner 집합을 비교하므로 부분 layer 추가 뒤에도 실패할 수 있다.
 			Client::VALTAN_COUNTER_REACTION_LAYER_VIEW Layer = MasterLayer;
 			Layer.Window.ClipOccurrences = pWindow->ClipOccurrences;
 			Layer.Success.ClipOccurrences = pSuccess->ClipOccurrences;
@@ -7573,6 +8119,8 @@ namespace
 				"counter reaction master does not cover exact Product counter stages");
 		}
 
+		// 모든 독립 Effect 선언이 어느 stage에서 참조됐는지 coverage를 확인한다.
+		// 이어서 owner stage가 실제 관리 패턴에 있고 소유 종류별 Product 값이 맞는지 검사한다.
 		if (ReferencedIndependentIds.size() != Master.IndependentEffects.size())
 		{
 			return RejectStaleProjection(
@@ -7594,6 +8142,9 @@ namespace
 					Independent.strOwnerPatternId,
 					Independent.strOwnerStageId);
 			}
+
+			// 전투 오브젝트는 asset/archetype/visual을, stage 소유 cue는 asset/binding/시계 범위를 대조한다.
+			// 여기서 any_of는 일치하는 항목의 존재를 검사하며 일치 항목 수를 다시 세지는 않는다.
 			bool_t bOwnerJoined = false;
 			if ("SERVER_COMBAT_OBJECT" == Independent.strOwnership)
 			{
@@ -7627,7 +8178,7 @@ namespace
 							(Independent.bUsesCueStageClock ?
 								(Cue.iStageOffsetMs ==
 									Independent.iCueStageOffsetMs && Cue.bHasSourceEnd == Independent.bHasCueSourceEnd &&
-                                    (!Independent.bHasCueSourceEnd || Cue.iSourceEndMs == Independent.iCueSourceEndMs)) :
+									(!Independent.bHasCueSourceEnd || Cue.iSourceEndMs == Independent.iCueSourceEndMs)) :
 								(Cue.strClipOccurrenceId ==
 									Independent.strCueClipOccurrenceId &&
 								 Cue.iSourceStartMs ==
@@ -7639,6 +8190,8 @@ namespace
 									Independent.iCueSourceEndMs)));
 					});
 			}
+			// 독립 Effect는 하나의 Product owner와 일반 Effect 문서 파일이 있어야 한다.
+			// 여기서는 파일 존재를 확인하며 Effect 문서 내용의 파싱이나 GPU 표시 성공을 보장하지 않는다.
 			const std::filesystem::path EffectDocument =
 				Client::CProjectDataRoot::Resolve(
 					std::filesystem::path(L"Effects") / L"Authored" /
@@ -7656,44 +8209,58 @@ namespace
 			}
 		}
 
+		// 전체 독립 Effect 결합과 문서 존재 검사가 끝나면 그 목록을 View에 복사한다.
+		// 이 대입만 최종 단계이며 View의 다른 필드는 앞서 이미 변경됐다.
 		View.IndependentEffects = Master.IndependentEffects;
 		return true;
 	}
 
+	// 뷰의 follow enum을 기존 cue 문서에서 쓰는 문자열로 돌린다. 알 수 없는 값은 빈 문자열이다.
 	std::string Describe_FollowPolicy(
 		const Client::EFFECT_FOLLOW_POLICY ePolicy)
 	{
 		switch (ePolicy)
 		{
-		case Client::EFFECT_FOLLOW_POLICY::FOLLOW: return "follow";
-		case Client::EFFECT_FOLLOW_POLICY::SNAPSHOT: return "snapshot";
-		default: return {};
+		case Client::EFFECT_FOLLOW_POLICY::FOLLOW:
+			return "follow";
+		case Client::EFFECT_FOLLOW_POLICY::SNAPSHOT:
+			return "snapshot";
+		default:
+			return {};
 		}
 	}
 
+	// 뷰의 stop enum을 문서 정책 문자열로 돌린다. 알 수 없는 값은 빈 문자열이다.
 	std::string Describe_StopPolicy(
 		const Client::EFFECT_STOP_POLICY ePolicy)
 	{
 		switch (ePolicy)
 		{
-		case Client::EFFECT_STOP_POLICY::NATURAL: return "natural";
-		case Client::EFFECT_STOP_POLICY::CUE_END: return "cue_end";
-		default: return {};
+		case Client::EFFECT_STOP_POLICY::NATURAL:
+			return "natural";
+		case Client::EFFECT_STOP_POLICY::CUE_END:
+			return "cue_end";
+		default:
+			return {};
 		}
 	}
 
+	// cue 반복 정책을 문서 문자열로 돌린다. 알 수 없는 값은 빈 문자열이다.
 	std::string Describe_RepeatPolicy(
 		const Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY ePolicy)
 	{
 		switch (ePolicy)
 		{
-		case Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE: return "once";
+		case Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY::ONCE:
+			return "once";
 		case Client::VALTAN_PATTERN_EFFECT_REPEAT_POLICY::EACH_LOOP:
 			return "each_loop";
-		default: return {};
+		default:
+			return {};
 		}
 	}
 
+	// cue scale 정책을 문서 문자열로 돌린다. 알 수 없는 값은 빈 문자열이다.
 	std::string Describe_ScalePolicy(
 		const Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY ePolicy)
 	{
@@ -7705,11 +8272,13 @@ namespace
 			return "GAMEPLAY_FOOTPRINT";
 		case Client::VALTAN_PATTERN_EFFECT_SCALE_POLICY::ARENA_ABSOLUTE:
 			return "ARENA_ABSOLUTE";
-		default: return {};
+		default:
+			return {};
 		}
 	}
 }
 
+// admission이 소유한 내부 상태를 파괴하며 RAII 잠금과 핸들도 함께 해제한다.
 Client::CValtanCanonicalProductReadAdmission::
 	~CValtanCanonicalProductReadAdmission()
 {
@@ -7717,6 +8286,7 @@ Client::CValtanCanonicalProductReadAdmission::
 	m_pState = nullptr;
 }
 
+// 문자열 상태만 필요한 호출자를 위한 adapter다. 상세 실패 분류는 typed overload가 담당한다.
 bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
 	std::string& strOutStatus)
 {
@@ -7726,6 +8296,8 @@ bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
 	return bAcquired;
 }
 
+// Load나 도구의 묶음 읽기가 공유 admission을 얻는다. 잠금과 journal 확인을 모두 통과한 State만 멤버로 넘긴다.
+// 실패한 임시 unique_ptr은 자동 정리하며 이미 보유한 admission을 다시 획득하지 않는다.
 bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
 	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
 {
@@ -7761,6 +8333,7 @@ bool_t Client::CValtanCanonicalProductReadAdmission::Acquire(
 	return true;
 }
 
+// 호출자가 재시도를 판단할 일시 실패만 분류한다. 실제 대기나 재시도 실행은 호출자 책임이다.
 bool_t Client::CValtanCanonicalProductReadAdmission::Is_TransientFailure(
 	const VALTAN_CANONICAL_READ_FAILURE_KIND eFailure)
 {
@@ -7768,6 +8341,7 @@ bool_t Client::CValtanCanonicalProductReadAdmission::Is_TransientFailure(
 		VALTAN_CANONICAL_READ_FAILURE_KIND::GENERATION_CHANGED == eFailure;
 }
 
+// 재확인의 상세 진단 중 상태 문자열을 전달하는 adapter다.
 bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
 	std::string& strOutStatus) const
 {
@@ -7777,6 +8351,8 @@ bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
 	return bCurrent;
 }
 
+// 보유한 admission의 journal 부재를 다시 확인한다. 파일별 hash나 revision 대조는 하지 않는다.
+// 읽는 사이 journal이 생긴 경우 GENERATION_CHANGED로 알려 호출자가 임시 결과를 버리게 한다.
 bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
 	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic) const
 {
@@ -7811,6 +8387,7 @@ bool_t Client::CValtanCanonicalProductReadAdmission::Validate_StillCurrent(
 	return true;
 }
 
+// 두 패턴 목록의 stage 개수를 합친다. 화면용 Phase에 중복 연결된 index는 다시 세지 않는다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
 {
 	size_t iCount = 0u;
@@ -7821,6 +8398,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_StageCount() const
 	return iCount;
 }
 
+// Effect가 있는 stage의 수다. 한 stage의 여러 Effect 문서 개수와 구분한다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectCount() const
 {
 	size_t iCount = 0u;
@@ -7841,6 +8419,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectCount() const
 	return iCount;
 }
 
+// stage Effect와 전투 오브젝트 Effect 행을 합산한다. asset ID를 전역 중복 제거한 고유 파일 수는 아니다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectDocumentCount() const
 {
 	size_t iCount = 0u;
@@ -7860,6 +8439,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_EffectDocumentCount() const
 	return iCount;
 }
 
+// 애니메이션 binding이 있는 stage 수를 센다. 실제 clip 리소스 로드 성공을 검사하지 않는다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ClipBoundStageCount() const
 {
 	size_t iCount = 0u;
@@ -7880,6 +8460,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ClipBoundStageCount() const
 	return iCount;
 }
 
+// Product cue가 연결된 stage 수를 센다. cue가 여러 개인 stage도 한 번 센다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueStageCount() const
 {
 	size_t iCount = 0u;
@@ -7900,6 +8481,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueStageCount() const
 	return iCount;
 }
 
+// 저작 occurrence를 모두 센다. 같은 clip 이름을 반복한 occurrence도 각각 별도 행이다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ClipOccurrenceCount() const
 {
 	size_t iCount = 0u;
@@ -7916,6 +8498,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ClipOccurrenceCount() const
 	return iCount;
 }
 
+// stage에 연결된 Product cue 행을 모두 센다. Effect asset ID의 고유 개수와는 다르다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueCount() const
 {
 	size_t iCount = 0u;
@@ -7932,6 +8515,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_ProductCueCount() const
 	return iCount;
 }
 
+// stage에 연결한 전투 오브젝트 Effect 행의 합계다. 실제 생성한 오브젝트 수가 아니다.
 size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_CombatObjectEffectCount() const
 {
 	size_t iCount = 0u;
@@ -7948,6 +8532,7 @@ size_t Client::VALTAN_PATTERN_TREE_VIEW::Get_CombatObjectEffectCount() const
 	return iCount;
 }
 
+// 세 종류의 재생 목록에 해당 stable pattern ID가 있는지 조회한다. 문서나 Server 상태를 바꾸지 않는다.
 bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
 	const std::string& strPatternId) const
 {
@@ -7963,6 +8548,8 @@ bool_t Client::VALTAN_TOOL_AUDITION_INVENTORY::Contains(
 		ContainsIn(DerivedPatternIds);
 }
 
+// 원본 복원 clip 문서를 asset ID별 색인으로 읽는다. 임시 색인을 검증한 뒤 교체하므로 실패 시 기존 색인은 유지된다.
+// 편집용 시간 재정의는 호출자가 명시한 경우에만 적용하고 원본 대조 기본 경로와 구분한다.
 bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 	const std::filesystem::path& Path,
 	VALTAN_FULL_RESTORE_CLIP_INDEX& OutIndex, std::string& OutError,
@@ -7980,7 +8567,9 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 	if (!CDataJson::Parse(Text, Root, OutError))
 		return false;
 	const auto StringIs = [](const DATA_JSON_VALUE* Value, std::string_view Expected)
-		{ return Value && Value->Is_String() && Value->Get_String() == Expected; };
+		{
+			return Value && Value->Is_String() && Value->Get_String() == Expected;
+		};
 	const auto Unsigned = [](const DATA_JSON_VALUE* Value, uint32_t& Out)
 	{
 		if (!Value || !Value->Is_Number() || !std::isfinite(Value->Get_Number()) ||
@@ -8013,8 +8602,8 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 		std::ostringstream Id;
 		Id << "effect.valtan.action." << Action << ".stage" << std::setw(3)
 			<< std::setfill('0') << Stage;
-		// A split restoration keeps the same verified source animation. The
-		// optional variant qualifies its own asset without replacing the original.
+		// 분할 복원도 같은 원본 애니메이션 기록을 유지한다.
+		// 선택적인 variant는 별도 asset을 구분하며 원래 기록을 대체하지 않는다.
 		if (const auto* Variant = Effect.Find("variantId"))
 		{
 			if (!Variant->Is_String() || Variant->Get_String().empty() ||
@@ -8046,8 +8635,8 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 			Clip.strClipOccurrenceId = "editor.full-restore." + Id.str();
 			SourceClips.push_back(std::move(Clip));
 		}
-		// Authored audition timing never replaces the verified source receipt.
-		// Only the standalone editor opts in; Product matching keeps the source.
+		// 편집용 시험 시간을 원본 검증 기록 대신 사용하지 않는다.
+		// 명시적인 편집기 호출만 이 시간 재정의를 선택하며 Product 대조는 원본 시계를 유지한다.
 		if (const auto* Preview = Effect.Find("authoredPreview"))
 		{
 			uint32_t WallMs = 0u;
@@ -8071,6 +8660,7 @@ bool_t Client::CValtanPatternTree::Load_FullRestoreSourceClips(
 	return true;
 }
 
+// 패턴/action 및 Product cue의 Effect ID를 통해 원본 색인과 연결 가능한지 조회한다. 원본 기록을 수정하지 않는다.
 bool_t Client::CValtanPatternTree::Matches_FullRestoreSource(
 	const Client::VALTAN_PATTERN_VIEW& Pattern,
 	const std::string& strEffectAssetId,
@@ -8083,8 +8673,8 @@ bool_t Client::CValtanPatternTree::Matches_FullRestoreSource(
 		[&strEffectAssetId](const uint32_t Id)
 		{ return strEffectAssetId.starts_with(
 			"effect.valtan.action." + std::to_string(Id) + ".stage"); });
-	// An explicitly authored Product cue can join a reviewed original Action
-	// even when the animation promotion retains a legacy action alias.
+	// Product cue가 명시한 Effect ID로 원본 Action을 찾을 수도 있다.
+	// 이 경로는 애니메이션 승격 결과가 기존 action alias를 유지하는 경우를 지원한다.
 	const bool_t CueMatches = std::ranges::any_of(Pattern.Stages,
 		[&strEffectAssetId](const auto& Stage)
 		{ return std::ranges::any_of(Stage.ProductCues,
@@ -8100,18 +8690,26 @@ bool_t Client::CValtanPatternTree::Matches_FullRestoreSource(
 	return false;
 }
 
+// 읽은 트리와 리소스/원본 색인으로 표시용 이름 map을 구성한다. ID나 디스크에 저장한 이름은 바꾸지 않는다.
 void Client::CValtanPatternTree::Build_EffectResourceDisplayLabels(
     VALTAN_PATTERN_TREE_VIEW& View,
     const std::unordered_map<std::string, std::string>& SavedNames,
     const VALTAN_FULL_RESTORE_CLIP_INDEX& SourceClips)
 {
-    // The same inventory projection is consumed by both pickers and editor titles.
-    // Only ambiguous labels gain a display ordinal; saved IDs and names stay intact.
+    // 선택 목록과 편집기 제목이 같은 표시 이름을 사용한다.
+    // 겹치는 표시 이름에만 순번을 덧붙이며 저장 ID와 사용자가 저장한 이름은 바꾸지 않는다.
+    // 이전 표시 이름을 먼저 비워 Describe_EffectResource가 그 캐시를 재사용하지 않게 한다.
+    // 뒤의 임시 map 생성 중 할당 예외가 나면 이전 이름 map으로 복구하지 않는다.
     View.EffectResourceDisplayLabels.clear();
     std::map<std::string, std::vector<std::string>> ByLabel;
+
     for (const auto& [Id, Name] : SavedNames)
         if (Id.starts_with("effect.valtan.") || Id.starts_with("boss.valtan."))
-            ByLabel[Describe_EffectResource(View, Id, Name, SourceClips)].push_back(Id);
+            ByLabel[Describe_EffectResource(
+                View, Id, Name, SourceClips)].push_back(Id);
+
+    // 같은 표시 이름을 가진 asset ID를 문자열 순으로 정렬하고 두 개 이상일 때만 순번을 붙인다.
+    // 입력 SavedNames의 unordered 순회 순서를 표시 순번으로 사용하지 않는다.
     std::unordered_map<std::string, std::string> Staged;
     for (auto& [Label, Ids] : ByLabel)
     {
@@ -8119,23 +8717,39 @@ void Client::CValtanPatternTree::Build_EffectResourceDisplayLabels(
         for (size_t I = 0; I < Ids.size(); ++I)
         {
             std::ostringstream Ordinal;
-            if (Ids.size() > 1u) Ordinal << "\x20\xC2\xB7\x20" << std::setw(2) << std::setfill('0') << I + 1u;
+            if (Ids.size() > 1u)
+                Ordinal << "\x20\xC2\xB7\x20" <<
+                    std::setw(2) << std::setfill('0') << I + 1u;
             Staged.emplace(Ids[I], Label + Ordinal.str());
         }
     }
+
     View.EffectResourceDisplayLabels = std::move(Staged);
 }
 
+// 리소스의 소유 패턴과 원본 복원 순서를 이용해 화면용 이름을 만든다. 식별자와 저장 이름의 대체 저장 계약은 아니다.
+// Effect 도구의 표시 목록과 이름 map 작성이 호출한다. 입력 트리·색인은 읽기 전용으로 차용하며
+// 리소스 파일이나 저장 이름을 수정하지 않고 화면용 문자열 값만 반환한다.
 std::string Client::CValtanPatternTree::Describe_EffectResource(
     const VALTAN_PATTERN_TREE_VIEW& View, const std::string& Id,
     const std::string& SavedName, const VALTAN_FULL_RESTORE_CLIP_INDEX& Index)
 {
+    // 발탄 접두사가 아니면 저장 이름 또는 ID를 그대로 사용한다. 발탄이면 이미 만들어 둔
+    // EffectResourceDisplayLabels를 가장 먼저 사용해 목록과 상세 제목의 이름을 맞춘다.
     if (!Id.starts_with("effect.valtan.") && !Id.starts_with("boss.valtan."))
         return SavedName.empty() ? Id : SavedName;
     if (const auto Label = View.EffectResourceDisplayLabels.find(Id);
-        Label != View.EffectResourceDisplayLabels.end()) return Label->second;
+        Label != View.EffectResourceDisplayLabels.end())
+        return Label->second;
     const auto Number = [](size_t Value)
-    { std::ostringstream Out; Out << std::setw(2) << std::setfill('0') << Value; return Out.str(); };
+    {
+        std::ostringstream Out;
+        Out << std::setw(2) << std::setfill('0') << Value;
+        return Out.str();
+    };
+
+    // UTF-8처럼 보이는 연속 세 바이트에서 완성형 한글 음절 범위를 찾는 표시용 판정이다.
+    // 문자열 전체의 UTF-8 유효성이나 자모·모든 한국어 문자의 존재를 검증하지 않는다.
     const auto HasKorean = [](const std::string& Text)
     {
         for (size_t I = 0; I + 2 < Text.size(); ++I)
@@ -8143,29 +8757,49 @@ std::string Client::CValtanPatternTree::Describe_EffectResource(
             const auto A = static_cast<unsigned char>(Text[I]);
             const auto B = static_cast<unsigned char>(Text[I + 1]);
             const auto C = static_cast<unsigned char>(Text[I + 2]);
-            if ((A & 0xf0u) != 0xe0u || (B & 0xc0u) != 0x80u || (C & 0xc0u) != 0x80u) continue;
+            if ((A & 0xf0u) != 0xe0u || (B & 0xc0u) != 0x80u || (C & 0xc0u) != 0x80u)
+                continue;
             const unsigned Code = ((A & 15u) << 12) | ((B & 63u) << 6) | (C & 63u);
-            if (Code >= 0xac00u && Code <= 0xd7a3u) return true;
+            if (Code >= 0xac00u && Code <= 0xd7a3u)
+                return true;
         }
         return false;
     };
+
+    // full.restore 접미사가 원본 복원 리소스를 구분한다. 본체/부채꼴 variant는
+    // 뒤에서 같은 기본 ID의 순번을 공유하고 표시 접미사만 더한다.
     const bool Restore = Id.ends_with(".full.restore");
     const auto Source = Index.find(Id);
     const auto Variant = [&]() -> std::string
     {
-        if (Id.ends_with(".body.full.restore")) return "\x20\xC2\xB7\x20\xEB\xB3\xB8\xEC\xB2\xB4";
-        if (Id.ends_with(".sectors.full.restore") || Id.ends_with(".sector.full.restore")) return "\x20\xC2\xB7\x20\xEB\xB6\x80\xEC\xB1\x84\xEA\xBC\xB4";
+        if (Id.ends_with(".body.full.restore"))
+            return "\x20\xC2\xB7\x20\xEB\xB3\xB8\xEC\xB2\xB4";
+        if (Id.ends_with(".sectors.full.restore") || Id.ends_with(".sector.full.restore"))
+            return "\x20\xC2\xB7\x20\xEB\xB6\x80\xEC\xB1\x84\xEA\xBC\xB4";
         return {};
     };
+
+    // 기믹·일반 패턴의 주소를 차용한 뒤 pattern ID 순으로 정렬한다.
+    // 여러 패턴이 같은 리소스를 가리키면 이 순서에서 처음 맞는 패턴의 이름을 사용한다.
     std::vector<const VALTAN_PATTERN_VIEW*> Patterns;
     for (const auto* Rows : { &View.Gimmicks, &View.Rotation })
-        for (const auto& Pattern : *Rows) Patterns.push_back(&Pattern);
-    std::ranges::sort(Patterns, {}, [](const auto* Pattern) { return Pattern->strPatternId; });
+        for (const auto& Pattern : *Rows)
+            Patterns.push_back(&Pattern);
+
+    std::ranges::sort(Patterns, {}, [](const auto* Pattern)
+    {
+        return Pattern->strPatternId;
+    });
+
+    // 일반 리소스는 한글이 들어 있는 독립 Effect 표시 이름을 패턴 이름보다 우선한다.
+    // 복원 리소스는 이 단계를 건너뛰고 원본 clip 관계로 이름을 만든다.
     for (const auto& Independent : View.IndependentEffects)
         if (!Restore && Independent.strEffectAssetId == Id && HasKorean(Independent.strDisplayName))
             return Independent.strDisplayName;
     for (const auto* Pattern : Patterns)
     {
+        // 패턴 일치는 Product cue·전투 오브젝트 참조 또는 복원 source 관계로 판정한다.
+        // 표시 stage 순번은 그 중 처음 맞는 stage이며 clip 일치만으로 패턴 일치 판정을 새로 참으로 바꾸지는 않는다.
         size_t StageOrdinal = 0u;
         bool Matches = Restore && Matches_FullRestoreSource(*Pattern, Id, Index);
         for (size_t I = 0; I < Pattern->Stages.size(); ++I)
@@ -8178,70 +8812,108 @@ std::string Client::CValtanPatternTree::Describe_EffectResource(
             const bool Clip = Restore && Source != Index.end() && std::ranges::any_of(Stage.ClipOccurrences,
                 [&](const auto& Occurrence) { return std::ranges::find(Source->second, Occurrence.strClipName,
                     &VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Source->second.end(); });
-            if (!StageOrdinal && (Product || Object || Clip)) StageOrdinal = I + 1u;
+            if (!StageOrdinal && (Product || Object || Clip))
+                StageOrdinal = I + 1u;
             Matches = Matches || Product || Object;
         }
-        if (!Matches) continue;
+        if (!Matches)
+            continue;
         const std::string Name = HasKorean(Pattern->strDisplayName) ? Pattern->strDisplayName : "\xEB\xB0\x9C\xED\x83\x84\x20\xED\x8C\xA8\xED\x84\xB4";
         if (Restore)
         {
-            // Number restored pieces in the owning Pattern's clip order. Source
-            // variants keep that same order and gain a readable suffix only.
+            // 소유 패턴의 clip 순서에 맞춰 복원 조각의 표시 순번을 정한다.
+            // 원본 variant도 같은 순서를 유지하고 읽기 쉬운 접미사만 추가한다.
             const auto BaseId = [](std::string Value)
             {
                 for (const std::string_view Variant : { ".body.full.restore", ".sectors.full.restore", ".sector.full.restore" })
-                    if (Value.ends_with(Variant)) { Value.resize(Value.size() - Variant.size()); return Value + ".full.restore"; }
+                    if (Value.ends_with(Variant))
+                    {
+                        Value.resize(Value.size() - Variant.size());
+                        return Value + ".full.restore";
+                    }
                 return Value;
             };
+
+            // stage/clip 순서로 복원 원본을 찾고 variant를 합친 기본 ID를 한 번씩 센다.
+            // 같은 clip에서 여러 원본이 맞으면 set의 문자열 순서를 사용한다.
             std::set<std::string> Seen;
             size_t Ordinal = 0u, SelectedOrdinal = 0u;
             for (const auto& Stage : Pattern->Stages)
                 for (const auto& Clip : Stage.ClipOccurrences)
                 {
                     std::set<std::string> MatchingSources;
+
                     for (const auto& [RestoreId, Clips] : Index)
-                        if (Matches_FullRestoreSource(*Pattern, RestoreId, Index) &&
+                        if (Matches_FullRestoreSource(
+                                *Pattern, RestoreId, Index) &&
                             std::ranges::find(Clips, Clip.strClipName,
-                                &VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) != Clips.end())
+                                &VALTAN_CLIP_OCCURRENCE_VIEW::strClipName) !=
+                                    Clips.end())
                             MatchingSources.insert(BaseId(RestoreId));
+
+                    // 한 clip에서 찾은 기본 복원 ID는 set 순서로 처리한다. 이미 앞선 clip에서 센 ID는
+                    // 다시 세지 않으므로 같은 기본 ID의 body/sector variant가 순번을 공유한다.
                     for (const auto& RestoreId : MatchingSources)
                         if (Seen.insert(RestoreId).second)
                         {
                             ++Ordinal;
-                            if (RestoreId == BaseId(Id)) SelectedOrdinal = Ordinal;
+                            if (RestoreId == BaseId(Id))
+                                SelectedOrdinal = Ordinal;
                         }
                 }
+
+            // 잡기 패턴의 일부 원본 clip은 잡기 준비/사자후 준비/불어 날리기 이름으로 표시한다.
+            // 여러 clip이 조건에 맞으면 뒤에서 확인한 이름이 앞의 이름을 대체한다.
             std::string Role = "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
             if (Pattern->strPatternId == "VALTAN_CATCH_BREATH" && Source != Index.end())
                 for (const auto& Clip : Source->second)
                 {
-                    if (Clip.strClipName == "mesh_att_battle_21_01") Role = "\xEC\x9E\xA1\xEA\xB8\xB0\x20\xEC\xA4\x80\xEB\xB9\x84";
-                    else if (Clip.strClipName == "mesh_att_battle_21_03") Role = "\xEC\x82\xAC\xEC\x9E\x90\xED\x9B\x84\x20\xEC\xA4\x80\xEB\xB9\x84";
-                    else if (Clip.strClipName == "mesh_att_battle_21_04") Role = "\xEB\xB6\x88\xEC\x96\xB4\x20\xEB\x82\xA0\xEB\xA6\xAC\xEA\xB8\xB0";
+                    if (Clip.strClipName == "mesh_att_battle_21_01")
+                        Role = "\xEC\x9E\xA1\xEA\xB8\xB0\x20\xEC\xA4\x80\xEB\xB9\x84";
+                    else if (Clip.strClipName == "mesh_att_battle_21_03")
+                        Role = "\xEC\x82\xAC\xEC\x9E\x90\xED\x9B\x84\x20\xEC\xA4\x80\xEB\xB9\x84";
+                    else if (Clip.strClipName == "mesh_att_battle_21_04")
+                        Role = "\xEB\xB6\x88\xEC\x96\xB4\x20\xEB\x82\xA0\xEB\xA6\xAC\xEA\xB8\xB0";
                 }
+
+            // 복원 기본 ID의 순번을 찾았으면 그것을, 없으면 첫 일치 stage 순번을 쓴다.
+            // 원본 variant 접미사는 이 순번 뒤에만 붙인다.
             return Name + "\x20\xC2\xB7\x20" + Number(SelectedOrdinal ? SelectedOrdinal : StageOrdinal) + " " + Role + Variant();
         }
         return Name + "\x20\xC2\xB7\x20" + Number(StageOrdinal) + "\x20\xEC\xA0\x9C\xED\x92\x88\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
     }
-    // Saved Korean names remain author-controlled. Drop only a trailing
-    // technical decoration; exact saved names remain in search and details.
+    // 저장한 한국어 이름은 저작자의 값이다. 표시할 때 끝의 기술용 장식만 덜어낸다.
+    // 정확한 저장 이름 자체를 변경하지 않으므로 검색과 상세 정보에서 계속 사용할 수 있다.
     if (!Restore && HasKorean(SavedName))
     {
         std::string Name = SavedName;
         for (const char* Marker : { " | ", " / VALTAN_", " / STEP_" })
-            if (const auto At = Name.find(Marker); At != std::string::npos && HasKorean(Name.substr(0, At))) Name.resize(At);
+            if (const auto At = Name.find(Marker); At != std::string::npos && HasKorean(Name.substr(0, At)))
+                Name.resize(At);
         return Name;
     }
+
+    // 앞선 label·독립 이름·패턴·한글 저장 이름이 모두 선택되지 않은 마지막 대체 경로다.
+    // ID 끝부분의 숫자 묶음을 추출하고 떨어진 숫자 묶음 사이에는 하이픈을 넣는다.
     std::string Tail = Id.substr(Id.rfind('.') + 1u);
-    if (Id.starts_with("boss.valtan.")) Tail = Id.substr(12u);
+    if (Id.starts_with("boss.valtan."))
+        Tail = Id.substr(12u);
     std::string Numbers;
     bool PreviousDigit = false;
     for (const unsigned char C : Tail)
     {
         const bool Digit = C >= '0' && C <= '9';
-        if (Digit) { if (!PreviousDigit && !Numbers.empty()) Numbers += '-'; Numbers += static_cast<char>(C); }
+        if (Digit)
+        {
+            if (!PreviousDigit && !Numbers.empty())
+                Numbers += '-';
+            Numbers += static_cast<char>(C);
+        }
         PreviousDigit = Digit;
     }
+
+    // ID에 포함된 첫 키워드만 표시용 한국어 역할에 추가한다.
+    // 이 배열의 순서가 우선순위이며 모든 일치 단어를 이어 붙이지 않는다.
     const std::pair<std::string_view, std::string_view> Terms[] = {
         {"tracking-axe", "\xEC\xB6\x94\xEC\xA0\x81\x20\xEB\x8F\x84\xEB\x81\xBC"}, {"high-jump", "\xEC\xB6\x94\xEC\xA0\x81\x20\xEB\x8F\x84\xEB\x81\xBC"}, {"axe", "\xEB\x8F\x84\xEB\x81\xBC"},
         {"catch-breath", "\xEC\x9E\xA1\xEC\x95\x84\xEC\xB1\x84\xEC\x84\x9C\x20\xEB\xB6\x88\xEC\x96\xB4\x20\xEB\x82\xA0\xEB\xA6\xAC\xEA\xB8\xB0"}, {"breathe.red", "\xEB\xB6\x89\xEC\x9D\x80\x20\xEC\x88\xA8\xEA\xB2\xB0"}, {"breathe", "\xEC\x88\xA8\xEA\xB2\xB0"},
@@ -8259,16 +8931,29 @@ std::string Client::CValtanPatternTree::Describe_EffectResource(
     };
     std::string Role = Restore ? "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8" : Id.find(".source.") != std::string::npos ? "\xEC\x9B\x90\xEB\xB3\xB8\x20\xEB\x9D\xBC\xEC\x9D\xB4\xEB\xB8\x8C\xEB\x9F\xAC\xEB\xA6\xAC" : "\xEC\xA0\x80\xEC\x9E\xA5\x20\xEC\x9D\xB4\xED\x8E\x99\xED\x8A\xB8";
     for (const auto& [Token, Korean] : Terms)
-        if (Id.find(Token) != std::string::npos) { Role += "\x20\xC2\xB7\x20"; Role += Korean; break; }
+        if (Id.find(Token) != std::string::npos)
+        {
+            Role += "\x20\xC2\xB7\x20";
+            Role += Korean;
+            break;
+        }
+
+    // 복원 색인에 clip이 있으면 ID에서 뽑은 숫자를 지우고 첫 clip 이름의 숫자만 모은다.
+    // 이 마지막 대체 이름은 원본 파일 내용이나 재생 성공을 확인한 결과가 아니다.
     if (Restore && Source != Index.end() && !Source->second.empty())
     {
         Numbers.clear();
         const auto& Clip = Source->second.front().strClipName;
-        for (const unsigned char C : Clip) if (C >= '0' && C <= '9') Numbers += static_cast<char>(C);
+        for (const unsigned char C : Clip)
+            if (C >= '0' && C <= '9')
+                Numbers += static_cast<char>(C);
     }
     return "\xEB\xB0\x9C\xED\x83\x84\x20\xC2\xB7\x20" + Role + (Numbers.empty() ? std::string{} : " " + Numbers) + Variant();
 }
 
+// 도구 재생 후보를 split 관리 패턴과 수동 소유 메타데이터 양쪽에서 확인한다.
+// 빈 수동 저작 행은 제외하고 Core/Animator/Derived 목록을 임시 값으로 만든 뒤 교체한다.
+// 이 함수 자체가 디스크 Product를 다시 읽거나 Server 재생을 승인하는 것은 아니다.
 bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	const VALTAN_PATTERN_TREE_VIEW& View,
 	VALTAN_TOOL_AUDITION_INVENTORY& OutInventory,
@@ -8362,8 +9047,8 @@ bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	for (const VALTAN_PATTERN_VIEW* pPattern : StagedPatterns)
 		if (!pPattern->bManualServerAudition)
 			Staged.CorePatternIds.push_back(pPattern->strPatternId);
-	/* Preserve the authored manual display order independently of Next's
-	   source-sequence ordering. Membership was validated in both directions. */
+	// 수동 패턴의 표시 순서는 저작 순서를 유지한다. Next의 원본 sequence 정렬과 구분한다.
+	// 위에서 수동 메타데이터와 패턴 소유 관계를 양방향으로 확인했다.
 	for (const VALTAN_MANUAL_AUDITION_VIEW& Manual : View.ManualAuditions)
 	{
 		const auto* Pattern = Find_Pattern(View, Manual.strPatternId);
@@ -8380,6 +9065,7 @@ bool_t Client::CValtanPatternTree::Build_PlayablePatternInventory(
 	return true;
 }
 
+// 공통 재생 목록을 source sequence 순서와 ID 동률 순서로 합쳐 Next 버튼의 순서를 만든다. 실패하면 이전 출력 목록을 유지한다.
 bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 	const VALTAN_PATTERN_TREE_VIEW& View,
 	std::vector<std::string>& OutPatternIds,
@@ -8406,6 +9092,7 @@ bool_t Client::CValtanPatternTree::Build_NextPatternInventory(
 	return true;
 }
 
+// 패턴과 stage의 identity를 진단 문자열로 만든다. 이 문자열은 저장 ID나 JSON 직렬화 형식이 아니다.
 std::string Client::CValtanPatternTree::Build_PatternIdentitySummary(
 	const VALTAN_PATTERN_VIEW& Pattern)
 {
@@ -8466,14 +9153,15 @@ std::string Client::CValtanPatternTree::Build_PatternIdentitySummary(
 	return Summary.str();
 }
 
+// cue가 없는 stage의 편집 문서를 찾기 위한 기존 이름 규칙이다. 실제 Product cue ID보다 우선하지 않는다.
 std::string Client::CValtanPatternTree::Build_StageEffectAssetId(
 	const std::string& strPatternActionId,
 	const VALTAN_STAGE_VIEW& Stage)
 {
 	if (strPatternActionId.empty() || Stage.strActionId.empty())
 		return {};
-	/* valtan.attack.whirlwind -> whirlwind; the category is what the tree
-	   already shows, so it is not repeated inside the asset id. */
+	// valtan.attack.whirlwind에서는 whirlwind를 추출한다.
+	// 트리가 이미 보여주는 분류를 stage Effect의 이름 규칙에 중복해서 넣지 않는다.
 	std::string strPattern = strPatternActionId;
 	size_t iCut = strPattern.find('.');
 	if (std::string::npos != iCut)
@@ -8504,6 +9192,8 @@ std::string Client::CValtanPatternTree::Build_StageEffectAssetId(
 	return "effect.valtan." + strPattern + "." + strStage;
 }
 
+// 선택한 미리보기 분기 정책에 맞춰 하나의 로컬 stage 경로를 만든다. 실제 Server의 조건 판정을 실행하지 않는다.
+// 결과 포인터는 입력 Pattern의 stage를 차용한다. 실패하면 기존 OutStages를 유지하며 Pattern 변경 뒤에는 재구성해야 한다.
 bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const VALTAN_PATTERN_PREVIEW_PATH ePath,
@@ -8554,6 +9244,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 		}
 	}
 
+	// 방문한 action ID를 기억해 경로의 순환을 거절한다. 잡기 재시도는 뒤의 지정 간선에서 한 회차로 끝낸다.
 	std::vector<const VALTAN_STAGE_VIEW*> StagedPath;
 	std::set<std::string, std::less<>> VisitedActions;
 	size_t iStage = 0u;
@@ -8649,6 +9340,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 				Stage.strActionId;
 			return false;
 		}
+		// 로컬 nextActionId가 없으면 미리보기 경로를 끝낸다. nextPatternId의 다른 패턴까지 이 함수가 펼치지는 않는다.
 		if (!pSelected->strNextActionId.has_value())
 			break;
 		const auto Next = StageByAction.find(*pSelected->strNextActionId);
@@ -8688,6 +9380,7 @@ bool_t Client::CValtanPatternTree::Build_PreviewStagePath(
 	return true;
 }
 
+// typed Load의 상태 문자열만 전달하는 기존 호출자용 adapter다.
 bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	std::string& strOutStatus)
@@ -8698,6 +9391,7 @@ bool_t Client::CValtanPatternTree::Load(
 	return bLoaded;
 }
 
+// 공유 admission의 수명을 이 Load 호출 전체로 잡고 엄격한 저작/Product 결합을 실행한다.
 bool_t Client::CValtanPatternTree::Load(
 	VALTAN_PATTERN_TREE_VIEW& OutView,
 	VALTAN_CANONICAL_READ_DIAGNOSTIC& OutDiagnostic)
@@ -8708,6 +9402,7 @@ bool_t Client::CValtanPatternTree::Load(
 	return Load_WhileAdmitted(Admission, OutView, OutDiagnostic);
 }
 
+// 호출자가 이미 소유한 admission을 재사용하면서 문자열 상태를 반환한다.
 bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 	const CValtanCanonicalProductReadAdmission& Admission,
 	VALTAN_PATTERN_TREE_VIEW& OutView,
@@ -8720,6 +9415,8 @@ bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 	return bLoaded;
 }
 
+// 보유 admission을 앞뒤로 확인하고 임시 뷰로 Product와 저작 원본을 대조한다.
+// 모두 성공해야 OutView를 교체하므로 실패 시 이전 화면용 뷰가 유지된다.
 bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 	const CValtanCanonicalProductReadAdmission& Admission,
 	VALTAN_PATTERN_TREE_VIEW& OutView,
@@ -8757,9 +9454,9 @@ bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 		OutDiagnostic.strStatus = std::move(LoadStatus);
 		return false;
 	}
-	/* The post-join check makes a non-cooperating journal writer visible while
-	   preserving the caller's previously admitted view. Cooperating writers
-	   cannot reach this point because the shared byte-range lock is still held. */
+	// 결합 후 journal 존재를 다시 검사한 뒤에만 호출자의 뷰를 교체한다.
+	// 공유 잠금에 참여하는 writer는 읽는 동안 배타 잠금을 얻지 못한다.
+	// 이 재검사는 journal을 남긴 외부 변경을 탐지하지만 모든 파일의 hash를 재계산하는 검사는 아니다.
 	if (!Admission.Validate_StillCurrent(AdmissionDiagnostic))
 	{
 		OutDiagnostic = std::move(AdmissionDiagnostic);
@@ -8776,10 +9473,15 @@ bool_t Client::CValtanPatternTree::Load_WhileAdmitted(
 }
 
 
+// 편집기의 원본 보기 경로다. admission 아래 gameplay/presentation 및 원본 전투 오브젝트를 읽어 트리를 만든다.
+// 현재 게시 Product와의 값 일치를 요구하지 않으며 전투 오브젝트 목록도 최종적으로 원본에서 다시 구성한다.
+// 끝의 admission 재확인까지 통과한 Staged만 OutView에 넣는다. 파일 저장이나 publish는 수행하지 않는다.
 bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 	const CValtanCanonicalProductReadAdmission& Admission,
 	VALTAN_PATTERN_TREE_VIEW& OutView, std::string& strOutStatus)
 {
+	// Balance/Effect/ActionWorkbench가 확보한 admission을 호출 동안 차용한다.
+	// 진입에서 획득·현재성을 확인하고 끝에서 다시 검사하므로 명시적 false 경로는 OutView를 보존한다.
 	if (!Admission.Is_Acquired() || !Admission.Validate_StillCurrent(strOutStatus))
 		return false;
 	DATA_JSON_VALUE Gameplay, Presentation;
@@ -8791,132 +9493,208 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 		!Parse_SplitMasterDocument(Gameplay, Presentation, Master, strOutStatus) ||
 		!Join_StageEffectV2SourceScopes(Master, strOutStatus))
 		return false;
-    DATA_JSON_VALUE CombatAuthoring, BossCatalog;
-    if (!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.combatobjects.json", CombatAuthoring, strOutStatus) ||
-        !Parse_Document(std::filesystem::path(L"Actors") / L"BossCatalog.json", BossCatalog, strOutStatus)) return false;
-    std::map<std::string, const DATA_JSON_VALUE*> SourceObjects, SourceVisuals, SourceStageEvents;
-    const auto* objects = Required(CombatAuthoring, "objects", DATA_JSON_TYPE::ARRAY);
-    const auto* bosses = Required(BossCatalog, "bosses", DATA_JSON_TYPE::ARRAY);
-    const auto* sourcePatterns = Required(Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
-    if (!objects || !bosses || !sourcePatterns) { strOutStatus = "Source Summon owner arrays missing."; return false; }
-    for (const auto& object : objects->Get_Array())
-        SourceObjects.emplace(Read_String(object, "combatObjectArchetypeId"), &object);
-    for (const auto& boss : bosses->Get_Array())
-        if (Read_String(boss, "archetypeId") == "BOSS_VALTAN")
-            if (const auto* visuals = Required(boss, "combatObjectVisuals", DATA_JSON_TYPE::ARRAY))
-                for (const auto& visual : visuals->Get_Array())
-                    SourceVisuals.emplace(Read_String(visual, "combatObjectArchetypeId"), &visual);
-    for (const auto& pattern : sourcePatterns->Get_Array())
-        if (const auto* stages = Required(pattern, "stages", DATA_JSON_TYPE::ARRAY))
-            for (const auto& stage : stages->Get_Array())
-                SourceStageEvents.emplace(Read_String(pattern, "patternId") + "/" + Read_String(stage, "stageId"), stage.Find("events"));
-    const auto fillSourceInventory = [&](VALTAN_PATTERN_VIEW& pattern) -> bool
-    {
-        for (auto& stage : pattern.Stages)
-        {
-            stage.CombatObjectEffects.clear();
-            const auto found = SourceStageEvents.find(pattern.strPatternId + "/" + stage.strStageId);
-            if (found == SourceStageEvents.end() || !found->second || !found->second->Is_Array())
-            { strOutStatus = "Source Summon Stage events missing."; return false; }
-            for (const auto& event : found->second->Get_Array())
-            {
-                const auto kind = Read_String(event, "kind");
-                if (kind == "TRIGGER_WORLD_EVENT_SET")
-                {
-                    VALTAN_STAGE_ACTION_VIEW action;
-                    action.strKind = kind; action.strTrigger = Read_String(event, "trigger");
-                    action.strTargetId = Read_String(event, "worldEventSetId"); action.fValue = 1.f;
-                    stage.Actions.push_back(std::move(action));
-                    continue;
-                }
-                if (kind != "SPAWN_COMBAT_OBJECT" && kind != "SPAWN_COMBAT_OBJECT_VOLLEY") continue;
-                const auto id = Read_String(event, "combatObjectArchetypeId");
-                const auto object = SourceObjects.find(id), visual = SourceVisuals.find(id);
-                if (object == SourceObjects.end() || visual == SourceVisuals.end())
-                { strOutStatus = "Source Summon definition/visual unavailable: " + id; return false; }
-                const auto& definition = *object->second;
-                VALTAN_COMBAT_OBJECT_EFFECT_VIEW row;
-                row.strCombatObjectArchetypeId = id;
-                row.strClientVisualId = Read_String(*visual->second, "clientVisualId");
-                row.strEffectAssetId = Read_String(*visual->second, "effectAssetId");
-                if (const auto* owns = visual->second->Find("armedEffectOwnsTerminal"); owns && owns->Is_Boolean() && owns->Get_Boolean())
-                    row.strPreparationEventId = Read_String(*visual->second, "armedPresentationEventId");
-                if (const auto* group = visual->second->Find("effectV2Group")) row.strEffectV2GroupId = Read_String(*group, "groupId");
-                row.strTrigger = Read_String(event, "trigger");
-                row.iSpawnValue = static_cast<uint32_t>(Read_Number(event, kind == "SPAWN_COMBAT_OBJECT" ? "count" : "countPerResolvedTarget"));
-                row.strKind = Read_String(definition, "kind");
-                row.iLifetimeMs = definition.Find("lifetimeMs") ? static_cast<uint32_t>(Read_Number(definition, "lifetimeMs")) : stage.iDurationMs;
-                row.fCoverRadiusM = static_cast<float>(Read_Number(definition, "coverRadiusM"));
-                if (!Read_CombatObjectOwnerHitChain(definition, row.OwnerHitChain))
-                { strOutStatus = "Source combat-object owner-hit chain is invalid: " + id; return false; }
-                if (const auto* spawn = definition.Find("spawn"))
-                {
-                    if (const auto* origin = spawn->Find("origin")) row.strOriginPolicy = Read_String(*origin, "kind");
-                    if (row.strOriginPolicy == "RESOLVED_VOLLEY_POSITION") row.strOriginPolicy = "LOCKED_TARGET_PER_ALIVE_PLAYER";
-                    if (const auto* direction = spawn->Find("direction")) row.strDirectionPolicy = Read_String(*direction, "kind");
-                }
-                if (const auto* movement = definition.Find("movement"))
-                { row.fSpeedMps = static_cast<float>(Read_Number(*movement, "speedMps")); row.fMaximumDistanceM = static_cast<float>(Read_Number(*movement, "maximumDistanceM")); }
-                if (const auto* hits = Required(definition, "hits", DATA_JSON_TYPE::ARRAY))
-                    for (const auto& hit : hits->Get_Array())
-                    {
-                        const auto hitId = Read_String(hit, "hitId");
-                        row.HitIds.push_back(hitId);
-                        if (const auto* trigger = hit.Find("trigger")) row.HitOffsetsMs.push_back(static_cast<uint32_t>(Read_Number(*trigger, "atMs")));
-                        VALTAN_COMBAT_OBJECT_HIT_VIEW view; view.strHitId = hitId;
-                        if (const auto* trigger = hit.Find("trigger"))
-                        { view.strTriggerKind = Read_String(*trigger, "kind"); view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs")); }
-                        if (const auto* repeat = hit.Find("repeat"))
-                        { view.iRepeatCount = static_cast<uint32_t>(Read_Number(*repeat, "count")); view.iRepeatIntervalMs = static_cast<uint32_t>(Read_Number(*repeat, "intervalMs")); }
-                        if (const auto* shape = hit.Find("shape"))
-                        { view.strHitShape = Read_String(*shape, "kind"); view.fInnerRadiusM = static_cast<float>(Read_Number(*shape, "innerRadiusM")); view.fOuterRadiusM = static_cast<float>(Read_Number(*shape, "outerRadiusM")); }
-                        view.strServerDamageProfileId = Read_String(hit, "serverDamageProfileId");
-                        view.fPushRangeM = static_cast<float>(Read_Number(hit, "pushRangeM"));
-                        view.iPushMs = static_cast<uint32_t>(Read_Number(hit, "pushMs"));
-                        view.iDownMs = static_cast<uint32_t>(Read_Number(hit, "downMs"));
-                        if (const auto* knockdown = hit.Find("knockdown")) view.bKnockdown = knockdown->Get_Boolean();
-                        row.Hits.push_back(std::move(view));
-                    }
-                if (const auto* presentations = Required(definition, "presentationEvents", DATA_JSON_TYPE::ARRAY))
-                    for (const auto& presentation : presentations->Get_Array())
-                    {
-                        VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW view;
-                        view.strPresentationEventId = Read_String(presentation, "presentationEventId");
-                        if (const auto* trigger = presentation.Find("trigger")) view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs"));
-                        row.PresentationEvents.push_back(std::move(view));
-                    }
-                if (kind == "SPAWN_COMBAT_OBJECT_VOLLEY")
-                {
-                    row.strVolleyPolicy = Read_String(event, "volleyPolicy");
-                    row.iVolleyMaximumTotalObjects = static_cast<uint32_t>(Read_Number(event, "maximumTotalObjects"));
-                    if (const auto* overlap = event.Find("allowOverlap")) row.bVolleyAllowOverlap = overlap->Get_Boolean();
-                    if (const auto* layout = event.Find("layout"))
-                    {
-                        row.strVolleyLayout = Read_String(*layout, "kind") == "TARGET_CENTER" ? "SINGLE" : "RADIAL";
-                        row.fVolleyRadiusM = static_cast<float>(Read_Number(*layout, "radiusM"));
-                        row.fVolleyStartAngleDegrees = static_cast<float>(Read_Number(*layout, "startAngleDegrees"));
-                        row.fVolleyAngleStepDegrees = static_cast<float>(Read_Number(*layout, "angleStepDegrees"));
-                    }
-                    if (const auto* schedule = event.Find("spawnSchedule"))
-                    {
-                        row.iSpawnScheduleCount = static_cast<uint32_t>(Read_Number(*schedule, "count"));
-                        row.iFirstSpawnOffsetMs = static_cast<uint32_t>(Read_Number(*schedule, "firstOffsetMs"));
-                        row.iSpawnIntervalMs = static_cast<uint32_t>(Read_Number(*schedule, "intervalMs"));
-                    }
-                    if (const auto* random = event.Find("arenaRandom"))
-                    {
-                        row.strArenaRandomKind = Read_String(*random, "kind"); row.strArenaAnchor = Read_String(*random, "anchor");
-                        row.iArenaRandomCount = static_cast<uint32_t>(Read_Number(*random, "count"));
-                        row.fArenaRandomRadiusM = static_cast<float>(Read_Number(*random, "radiusM"));
-                        row.fArenaHeightToleranceM = static_cast<float>(Read_Number(*random, "heightToleranceM"));
-                    }
-                }
-                stage.CombatObjectEffects.push_back(std::move(row));
-            }
-        }
-        return true;
-    };
 
+	// 표시할 소환 정의와 visual을 원본 문서에서 읽는다.
+	// 이 경로는 게시 Product 전체를 읽어 strict parity를 검사하는 실행 승인 경로와 구분한다.
+	DATA_JSON_VALUE CombatAuthoring, BossCatalog;
+	if (!Parse_Document(std::filesystem::path(L"Valtan") / L"Valtan.combatobjects.json",
+			CombatAuthoring, strOutStatus) ||
+		!Parse_Document(std::filesystem::path(L"Actors") / L"BossCatalog.json",
+			BossCatalog, strOutStatus))
+		return false;
+	// 아래 포인터 색인은 이번 호출의 JSON 값을 차용한다. 최종 뷰에는 필요한 값을 복사한다.
+	std::map<std::string, const DATA_JSON_VALUE*> SourceObjects, SourceVisuals, SourceStageEvents;
+	const auto* objects = Required(CombatAuthoring, "objects", DATA_JSON_TYPE::ARRAY);
+	const auto* bosses = Required(BossCatalog, "bosses", DATA_JSON_TYPE::ARRAY);
+	const auto* sourcePatterns = Required(Gameplay, "patterns", DATA_JSON_TYPE::ARRAY);
+	if (!objects || !bosses || !sourcePatterns)
+	{
+		strOutStatus = "Source Summon owner arrays missing.";
+		return false;
+	}
+
+	// archetype별 오브젝트 정의·발탄 visual과 pattern/stage별 event의 차용 색인을 만든다.
+	// 이 emplace들은 반환값을 검사하지 않으므로 같은 키가 다시 나오면 최초 항목이 유지된다.
+	for (const auto& object : objects->Get_Array())
+		SourceObjects.emplace(Read_String(object, "combatObjectArchetypeId"), &object);
+	for (const auto& boss : bosses->Get_Array())
+		if (Read_String(boss, "archetypeId") == "BOSS_VALTAN")
+			if (const auto* visuals = Required(boss, "combatObjectVisuals", DATA_JSON_TYPE::ARRAY))
+				for (const auto& visual : visuals->Get_Array())
+					SourceVisuals.emplace(Read_String(visual, "combatObjectArchetypeId"), &visual);
+	for (const auto& pattern : sourcePatterns->Get_Array())
+		if (const auto* stages = Required(pattern, "stages", DATA_JSON_TYPE::ARRAY))
+			for (const auto& stage : stages->Get_Array())
+				SourceStageEvents.emplace(
+					Read_String(pattern, "patternId") + "/" + Read_String(stage, "stageId"),
+					stage.Find("events"));
+	// 생성 event를 전투 오브젝트 원본 및 visual과 연결해 각 stage의 소환 Effect 목록을 만든다.
+	// 기존 목록을 비운 뒤 채우므로 임시 Pattern 안에서만 호출한다.
+	const auto fillSourceInventory = [&](VALTAN_PATTERN_VIEW& pattern) -> bool
+	{
+		for (auto& stage : pattern.Stages)
+		{
+			// 현재 stage의 소환 Effect 목록을 먼저 비운다. event 배열이 없으면 실패하며
+			// 지역 Pattern만 부분 변경되므로 호출자가 가진 이전 OutView에는 영향을 주지 않는다.
+			stage.CombatObjectEffects.clear();
+			const auto found = SourceStageEvents.find(pattern.strPatternId + "/" + stage.strStageId);
+			if (found == SourceStageEvents.end() || !found->second || !found->second->Is_Array())
+			{
+				strOutStatus = "Source Summon Stage events missing.";
+				return false;
+			}
+			for (const auto& event : found->second->Get_Array())
+			{
+				// 월드 이벤트는 stage action으로 추가하고 소환/volley 외의 종류는 여기서 건너뛴다.
+				// 이미 읽은 gameplay를 표시용 목록으로 연결할 뿐 실제 월드 이벤트나 소환을 실행하지 않는다.
+				const auto kind = Read_String(event, "kind");
+				if (kind == "TRIGGER_WORLD_EVENT_SET")
+				{
+					VALTAN_STAGE_ACTION_VIEW action;
+					action.strKind = kind;
+					action.strTrigger = Read_String(event, "trigger");
+					action.strTargetId = Read_String(event, "worldEventSetId");
+					action.fValue = 1.f;
+					stage.Actions.push_back(std::move(action));
+					continue;
+				}
+				if (kind != "SPAWN_COMBAT_OBJECT" && kind != "SPAWN_COMBAT_OBJECT_VOLLEY")
+					continue;
+
+				// 소환 archetype에 대응하는 원본 정의와 발탄 visual이 모두 있어야 한다.
+				// visual 이름·asset·선택적 V2 group은 복사하며 GPU 리소스를 여기서 로드하지 않는다.
+				const auto id = Read_String(event, "combatObjectArchetypeId");
+				const auto object = SourceObjects.find(id), visual = SourceVisuals.find(id);
+				if (object == SourceObjects.end() || visual == SourceVisuals.end())
+				{
+					strOutStatus = "Source Summon definition/visual unavailable: " + id;
+					return false;
+				}
+				const auto& definition = *object->second;
+				VALTAN_COMBAT_OBJECT_EFFECT_VIEW row;
+				row.strCombatObjectArchetypeId = id;
+				row.strClientVisualId = Read_String(*visual->second, "clientVisualId");
+				row.strEffectAssetId = Read_String(*visual->second, "effectAssetId");
+				if (const auto* owns = visual->second->Find("armedEffectOwnsTerminal"); owns && owns->Is_Boolean() && owns->Get_Boolean())
+					row.strPreparationEventId = Read_String(*visual->second, "armedPresentationEventId");
+				if (const auto* group = visual->second->Find("effectV2Group"))
+					row.strEffectV2GroupId = Read_String(*group, "groupId");
+				row.strTrigger = Read_String(event, "trigger");
+
+				// 단일 소환은 count, volley는 countPerResolvedTarget을 표시 값으로 쓴다.
+				// 선택 문자열/숫자의 누락·타입 불일치는 공통 reader의 빈 문자열/0을 사용하고, lifetime 누락은 stage 기간을 쓴다.
+				row.iSpawnValue = static_cast<uint32_t>(Read_Number(event, kind == "SPAWN_COMBAT_OBJECT" ? "count" : "countPerResolvedTarget"));
+				row.strKind = Read_String(definition, "kind");
+				row.iLifetimeMs = definition.Find("lifetimeMs") ? static_cast<uint32_t>(Read_Number(definition, "lifetimeMs")) : stage.iDurationMs;
+				row.fCoverRadiusM = static_cast<float>(Read_Number(definition, "coverRadiusM"));
+				if (!Read_CombatObjectOwnerHitChain(definition, row.OwnerHitChain))
+				{
+					strOutStatus = "Source combat-object owner-hit chain is invalid: " + id;
+					return false;
+				}
+
+				// 원본 spawn/movement를 표시용 origin·방향·속도 m/s·거리 m로 옮긴다.
+				// RESOLVED_VOLLEY_POSITION은 이 View에서 사용하는 LOCKED_TARGET_PER_ALIVE_PLAYER 이름으로 대응한다.
+				if (const auto* spawn = definition.Find("spawn"))
+				{
+					if (const auto* origin = spawn->Find("origin"))
+						row.strOriginPolicy = Read_String(*origin, "kind");
+					if (row.strOriginPolicy == "RESOLVED_VOLLEY_POSITION")
+						row.strOriginPolicy = "LOCKED_TARGET_PER_ALIVE_PLAYER";
+					if (const auto* direction = spawn->Find("direction"))
+						row.strDirectionPolicy = Read_String(*direction, "kind");
+				}
+				if (const auto* movement = definition.Find("movement"))
+				{
+					row.fSpeedMps = static_cast<float>(Read_Number(*movement, "speedMps"));
+					row.fMaximumDistanceM = static_cast<float>(Read_Number(*movement, "maximumDistanceM"));
+				}
+
+				// 원본 hit 목록을 순서대로 복사해 ID·시각 ms·반복·형상 m·피격 응답을 표시한다.
+				// 이 읽기는 별도 owner-hit chain 검사 외 모든 수치를 엄격히 재검증하는 Product 파서가 아니다.
+				if (const auto* hits = Required(definition, "hits", DATA_JSON_TYPE::ARRAY))
+					for (const auto& hit : hits->Get_Array())
+					{
+						const auto hitId = Read_String(hit, "hitId");
+						row.HitIds.push_back(hitId);
+						if (const auto* trigger = hit.Find("trigger"))
+							row.HitOffsetsMs.push_back(static_cast<uint32_t>(Read_Number(*trigger, "atMs")));
+						VALTAN_COMBAT_OBJECT_HIT_VIEW view;
+						view.strHitId = hitId;
+						if (const auto* trigger = hit.Find("trigger"))
+						{
+							view.strTriggerKind = Read_String(*trigger, "kind");
+							view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs"));
+						}
+						if (const auto* repeat = hit.Find("repeat"))
+						{
+							view.iRepeatCount = static_cast<uint32_t>(Read_Number(*repeat, "count"));
+							view.iRepeatIntervalMs = static_cast<uint32_t>(Read_Number(*repeat, "intervalMs"));
+						}
+						if (const auto* shape = hit.Find("shape"))
+						{
+							view.strHitShape = Read_String(*shape, "kind");
+							view.fInnerRadiusM = static_cast<float>(Read_Number(*shape, "innerRadiusM"));
+							view.fOuterRadiusM = static_cast<float>(Read_Number(*shape, "outerRadiusM"));
+						}
+						view.strServerDamageProfileId = Read_String(hit, "serverDamageProfileId");
+						view.fPushRangeM = static_cast<float>(Read_Number(hit, "pushRangeM"));
+						view.iPushMs = static_cast<uint32_t>(Read_Number(hit, "pushMs"));
+						view.iDownMs = static_cast<uint32_t>(Read_Number(hit, "downMs"));
+						if (const auto* knockdown = hit.Find("knockdown"))
+							view.bKnockdown = knockdown->Get_Boolean();
+						row.Hits.push_back(std::move(view));
+					}
+
+				// 표현 이벤트는 event ID와 trigger 시각만 이 목록에 복사한다.
+				// 아래 volley 정보와 함께 사용자가 원본 소환 구성을 볼 때 소비한다.
+				if (const auto* presentations = Required(definition, "presentationEvents", DATA_JSON_TYPE::ARRAY))
+					for (const auto& presentation : presentations->Get_Array())
+					{
+						VALTAN_COMBAT_OBJECT_PRESENTATION_EVENT_VIEW view;
+						view.strPresentationEventId = Read_String(presentation, "presentationEventId");
+						if (const auto* trigger = presentation.Find("trigger"))
+							view.iAtMs = static_cast<uint32_t>(Read_Number(*trigger, "atMs"));
+						row.PresentationEvents.push_back(std::move(view));
+					}
+
+				// volley에만 전체 개수 상한·배치·예약 시계·arena random 범위를 추가한다.
+				// 선택 필드가 없으면 row 기본값을 유지하며 이 함수는 무작위 위치를 표본화하지 않는다.
+				if (kind == "SPAWN_COMBAT_OBJECT_VOLLEY")
+				{
+					row.strVolleyPolicy = Read_String(event, "volleyPolicy");
+					row.iVolleyMaximumTotalObjects = static_cast<uint32_t>(Read_Number(event, "maximumTotalObjects"));
+					if (const auto* overlap = event.Find("allowOverlap"))
+						row.bVolleyAllowOverlap = overlap->Get_Boolean();
+					if (const auto* layout = event.Find("layout"))
+					{
+						row.strVolleyLayout = Read_String(*layout, "kind") == "TARGET_CENTER" ? "SINGLE" : "RADIAL";
+						row.fVolleyRadiusM = static_cast<float>(Read_Number(*layout, "radiusM"));
+						row.fVolleyStartAngleDegrees = static_cast<float>(Read_Number(*layout, "startAngleDegrees"));
+						row.fVolleyAngleStepDegrees = static_cast<float>(Read_Number(*layout, "angleStepDegrees"));
+					}
+					if (const auto* schedule = event.Find("spawnSchedule"))
+					{
+						row.iSpawnScheduleCount = static_cast<uint32_t>(Read_Number(*schedule, "count"));
+						row.iFirstSpawnOffsetMs = static_cast<uint32_t>(Read_Number(*schedule, "firstOffsetMs"));
+						row.iSpawnIntervalMs = static_cast<uint32_t>(Read_Number(*schedule, "intervalMs"));
+					}
+					if (const auto* random = event.Find("arenaRandom"))
+					{
+						row.strArenaRandomKind = Read_String(*random, "kind");
+						row.strArenaAnchor = Read_String(*random, "anchor");
+						row.iArenaRandomCount = static_cast<uint32_t>(Read_Number(*random, "count"));
+						row.fArenaRandomRadiusM = static_cast<float>(Read_Number(*random, "radiusM"));
+						row.fArenaHeightToleranceM = static_cast<float>(Read_Number(*random, "heightToleranceM"));
+					}
+				}
+				stage.CombatObjectEffects.push_back(std::move(row));
+			}
+		}
+		return true;
+	};
+
+	// 직접 수정할 출력과 분리된 새 트리다. 뒤의 문서 결합이나 admission 재확인 실패 시 그대로 버린다.
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	Staged.strScriptedSequenceId = Master.ScriptedSequence.strSequenceId;
 	Staged.strScriptedSequenceMode = Master.ScriptedSequence.strMode;
@@ -8931,6 +9709,9 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 	Staged.NormalSelection = Master.NormalSelection;
 	Staged.IndependentEffects = Master.IndependentEffects;
 	Staged.CounterReactionLayers = Master.CounterReactionLayers;
+
+	// Master 패턴 순서대로 새 표시 패턴을 만든다. 저작 ID·출처와 표현 목록을 먼저 채운 뒤
+	// 같은 순서로 만든 stage에 gameplay 값을 Overlay한다.
 	for (const MASTER_PATTERN& Source : Master.Patterns)
 	{
 		VALTAN_PATTERN_VIEW Pattern;
@@ -8949,6 +9730,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 		Pattern.iAuthoringPhase = Source.iAuthoringPhase;
 		Pattern.strAdmissionState = Source.strAdmissionState;
 		Pattern.strEntryActionId = Source.Stages.empty() ? std::string{} : Source.Stages.front().strActionId;
+		// 같은 패턴이 있으면 기존 CombatObjectEffects를 일시 복사한다. 뒤의 fillSourceInventory가 이 목록을 비우고 원본으로 다시 구성한다.
+		// Previous 포인터 자체는 새 뷰에 저장하지 않는다.
 		const VALTAN_PATTERN_VIEW* Previous = Find_Pattern(OutView, Source.strPatternId);
 		for (const MASTER_STAGE& Row : Source.Stages)
 		{
@@ -8963,8 +9746,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 			Stage.ProductCues = Row.AuthoredCues;
 			Stage.bHasStageEffectV2Bindings = Row.bHasStageEffectV2Bindings;
 			Stage.CameraInvocations = Row.CameraInvocations;
-            Stage.SceneProfileOccurrences = Row.SceneProfileOccurrences;
-            Stage.LightOccurrences = Row.LightOccurrences;
+			Stage.SceneProfileOccurrences = Row.SceneProfileOccurrences;
+			Stage.LightOccurrences = Row.LightOccurrences;
 			if (nullptr != Previous)
 			{
 				const auto OldStage = std::find_if(Previous->Stages.begin(), Previous->Stages.end(),
@@ -8972,6 +9755,9 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 				if (OldStage != Previous->Stages.end())
 					Stage.CombatObjectEffects = OldStage->CombatObjectEffects;
 			}
+
+			// occurrence마다 clip 이름을 모으고 같은 clipOccurrenceId의 cue를 다시 연결한다.
+			// 대표 runtime clip과 대표 cue는 각 목록이 비어 있지 않을 때 첫 항목으로 정한다.
 			for (auto& Clip : Stage.ClipOccurrences)
 			{
 				Stage.RuntimeClipNames.push_back(Clip.strClipName);
@@ -8980,8 +9766,13 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 					if (Cue.strClipOccurrenceId == Clip.strClipOccurrenceId)
 						Clip.ProductCues.push_back(Cue);
 			}
-			if (!Stage.RuntimeClipNames.empty()) Stage.strRuntimeClipName = Stage.RuntimeClipNames.front();
-			if (!Stage.ProductCues.empty()) Stage.ProductCue = Stage.ProductCues.front();
+			if (!Stage.RuntimeClipNames.empty())
+				Stage.strRuntimeClipName = Stage.RuntimeClipNames.front();
+			if (!Stage.ProductCues.empty())
+				Stage.ProductCue = Stage.ProductCues.front();
+
+			// 각 cue asset의 Effect 문서 경로를 표시 목록에 넣는다.
+			// 여기서는 파일 존재를 검사하거나 Effect 문서를 파싱하지 않는다.
 			for (const auto& Cue : Stage.ProductCues)
 			{
 				VALTAN_STAGE_EFFECT_VIEW Effect;
@@ -8992,27 +9783,33 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 				Stage.Effects.push_back(std::move(Effect));
 			}
 			for (const auto& Reference : Row.EffectReferences)
-				if (Reference.strType != "CUE_BINDING") Stage.IndependentEffectIds.push_back(Reference.strId);
+				if (Reference.strType != "CUE_BINDING")
+					Stage.IndependentEffectIds.push_back(Reference.strId);
 			Pattern.Stages.push_back(std::move(Stage));
 		}
+
+		// 새 stage와 Master의 순서·개수가 같은 상태에서 gameplay 값을 복사한다.
+		// 이후 원본 소환 목록과 애니메이션 시간 예산을 완성한 패턴만 새 트리에 넣는다.
 		Overlay_MasterGameplay(Source, Pattern);
-        if (!fillSourceInventory(Pattern)) return false;
+		if (!fillSourceInventory(Pattern))
+			return false;
 		for (auto& Stage : Pattern.Stages)
-			if (!Assign_MasterWallBudgets(Stage, strOutStatus)) return false;
-		if (Pattern.Is_Gimmick()) Staged.Gimmicks.push_back(std::move(Pattern));
-		else Staged.Rotation.push_back(std::move(Pattern));
+			if (!Assign_MasterWallBudgets(Stage, strOutStatus))
+				return false;
+		if (Pattern.Is_Gimmick())
+			Staged.Gimmicks.push_back(std::move(Pattern));
+		else
+			Staged.Rotation.push_back(std::move(Pattern));
 	}
-	/* Gimmicks read as a timeline down the health bar, so order them the way
-	   the fight actually presents them. */
+	// 기믹을 발동 체력 내림차순으로 정렬해 표시한다. 같은 체력의 추가 정렬 키는 여기서 사용하지 않는다.
 	std::sort(Staged.Gimmicks.begin(), Staged.Gimmicks.end(),
 		[](const VALTAN_PATTERN_VIEW& Left, const VALTAN_PATTERN_VIEW& Right)
 		{
 			return Left.iTriggerHealthBar > Right.iTriggerHealthBar;
 		});
 
-	/* A phase is the band of health bars that ends when its gimmick fires.
-	   The encounter document has no phase field, so this band is derived from
-	   triggerHealthBar and used only as a display grouping. */
+	// 아래 Phase는 triggerHealthBar로 나눈 화면용 체력 구간이다.
+	// 기믹이 발동하는 체력까지 한 구간으로 묶으며 Server의 gameplay phase와는 별개다.
 	int32_t iTopHealthBar = 0;
 	const auto RaiseTop = [&iTopHealthBar](
 		const std::vector<VALTAN_PATTERN_VIEW>& Group)
@@ -9026,6 +9823,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 	RaiseTop(Staged.Gimmicks);
 	RaiseTop(Staged.Rotation);
 
+	// 정렬된 기믹마다 해당 체력까지의 화면 구간을 만들고 다음 구간의 위쪽을 1줄 낮춘다.
+	// 마지막에 체력 1까지 남은 구간이 있으면 관문 없는 구간으로 추가한다.
 	uint32_t iPhaseNumber = 0u;
 	int32_t iBandTop = iTopHealthBar;
 	for (size_t iGimmick = 0u; iGimmick < Staged.Gimmicks.size(); ++iGimmick)
@@ -9050,9 +9849,8 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 		Staged.Phases.push_back(std::move(Phase));
 	}
 
-	/* A rotation pattern belongs to every band its own bar range overlaps.
-	   Most are 1-160 and therefore appear in all of them; two are narrower
-	   and that is exactly the information the band grouping exposes. */
+	// 일반 패턴은 자신의 체력 범위와 겹치는 모든 화면 구간에 연결한다.
+	// 구간에는 Rotation의 index를 보관하므로 원본 vector 순서와 함께 사용해야 한다.
 	for (VALTAN_PHASE_VIEW& Phase : Staged.Phases)
 	{
 		for (size_t iRotation = 0u; iRotation < Staged.Rotation.size();
@@ -9068,12 +9866,20 @@ bool_t Client::CValtanPatternTree::Load_Authoring_WhileAdmitted(
 		}
 	}
 
-	if (!Admission.Validate_StillCurrent(strOutStatus)) return false;
+	// 모든 원본 읽기와 트리 구성이 끝난 뒤 admission이 여전히 현재인지 재확인한다.
+	// 통과한 Staged만 한 번 이동 대입하며 이 성공은 원본 보기 준비이지 게시/Server 실행 승인이 아니다.
+	if (!Admission.Validate_StillCurrent(strOutStatus))
+		return false;
 	OutView = std::move(Staged);
 	strOutStatus = "Loaded Valtan authoring source; Product publication is independent.";
 	return true;
 }
 
+// 명시한 gameplay/presentation 경로와 Data 루트의 Product 문서를 결합한다.
+// 이 함수 자체는 admission을 얻지 않는다. canonical 호출자는 외부에서 잠금을 유지하고 결과 후에도 재확인한다.
+// strict는 게시 값 일치를 요구하고 restore는 안정된 topology 위에 저작 값을 복원한다. 성공한 임시 트리만 OutView를 교체한다.
+// Load_WhileAdmitted와 Balance Tool의 저장본 복원이 호출한다. 지정된 원본 두 경로와 현재 Product를
+// 지역 트리로 결합하며 명시적 false에서는 OutView를 보존한다. admission 잠금은 자체 획득하지 않는다.
 bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	const std::filesystem::path& GameplayPath,
 	const std::filesystem::path& PresentationPath,
@@ -9082,12 +9888,13 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	const VALTAN_PATTERN_TREE_LOAD_POLICY ePolicy,
 	VALTAN_CANONICAL_READ_DIAGNOSTIC* const pOutDiagnostic)
 {
+	// 선택 진단을 초기화하고 기본 실패 종류를 Product 오류로 둔다. 아래 일부 경로만 상세 진단을
+	// 갱신하므로 모든 false가 진단의 strStatus까지 채운다는 보장은 없고 문자열 출력도 함께 확인해야 한다.
 	if (nullptr != pOutDiagnostic)
 	{
 		pOutDiagnostic->Clear();
-		/* Once policy admission succeeds, a failure is conservatively a
-		   Product/document failure unless a source parser or an exact parity
-		   check below assigns a more precise typed reason. */
+		// 정책 값이 유효한 이후의 실패는 우선 Product 문서 오류로 분류한다.
+		// 뒤의 원본 파서나 일치 검사가 원인을 알면 더 구체적인 진단으로 덮어쓴다.
 		pOutDiagnostic->eFailure =
 			VALTAN_CANONICAL_READ_FAILURE_KIND::PRODUCT_INVALID;
 	}
@@ -9107,6 +9914,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	DATA_JSON_VALUE PresentationRoot;
 	DATA_JSON_VALUE PatternRotations;
 	std::string Error;
+
+	// Encounter·rotation·binding 등 게시 연결은 현재 Data 정본에서 읽는다.
+	// GameplayPath/PresentationPath만 호출자가 지정하므로 저장본 복원도 현재 Product 연결을 필요로 한다.
 	const std::filesystem::path EncounterRelative =
 		std::filesystem::path(L"Encounters") / L"Valtan" /
 		L"ValtanEncounter.json";
@@ -9151,6 +9961,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			strOutStatus);
 		return false;
 	}
+
+	// 분리 원본을 지역 Master로 합치고 Effect V2 원본 범위를 연결한다.
+	// 파서가 부분 출력을 남겨도 지역 값으로 폐기하며 이 단계의 실패는 SOURCE_INVALID로 구분한다.
 	MASTER_DOCUMENT MasterDocument;
 	if (!Parse_SplitMasterDocument(
 			GameplayRoot, PresentationRoot, MasterDocument, Error) ||
@@ -9164,8 +9977,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 
-	/* The tree consumes the same typed, fail-closed documents as Product
-	   runtime.  It does not maintain a second permissive JSON interpretation. */
+	// 애니메이션 binding과 Effect cue는 기존 typed 문서 파서로 읽는다.
+	// 여기서 별도의 느슨한 JSON 해석으로 같은 계약을 우회하지 않는다.
 	std::string BindingText;
 	BOSS_PATTERN_ANIMATION_BINDING_DOCUMENT BindingDocument;
 	if (!Read_TextDocument(CProjectDataRoot::Resolve(BindingRelative),
@@ -9176,6 +9989,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "Valtan pattern bindings load failed: " + Error;
 		return false;
 	}
+
+	// binding에 적힌 clip 이름을 그대로 availableClips에 전달해 typed 형식·중복·시간 계약을 검사한다.
+	// 실제 모델의 clip 목록을 로드해 대조하는 검사는 이 호출에 포함되지 않는다.
 	std::vector<std::string> DeclaredClipNames;
 	for (const BOSS_PATTERN_ANIMATION_BINDING& Binding :
 		BindingDocument.Bindings)
@@ -9191,6 +10007,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 
+	// 게시 Effect cue는 전용 Product reader로 읽는다. 이후 action별로 모아
+	// 각 stage/clip occurrence에 연결하고 마지막에 전체 cue 수가 해소됐는지 확인한다.
 	VALTAN_PATTERN_EFFECT_CUE_DOCUMENT CueDocument;
 	if (!CValtanPatternEffectCueDocument::Load_ReadOnlyProduct(CueDocument, Error))
 	{
@@ -9198,10 +10016,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 
-	/* Moving pattern visuals are owned by Server combat objects rather than
-	   boss-root cues.  Join the encounter spawn action, combat-object owner,
-	   and BossCatalog visual explicitly so the authoring tree cannot hide the
-	   document under an unrelated "unmapped" bucket or double-own it. */
+	// 이동하는 연출은 보스 본체 cue가 아닌 Server 전투 오브젝트가 소유한다.
+	// encounter의 생성 action, 전투 오브젝트 정의와 BossCatalog visual을 명시적으로 연결한다.
+	// 도구에서도 실제 소유 stage 아래에 표시하여 관련 없는 항목에 숨기거나 이중 소유하지 않게 한다.
 	DATA_JSON_VALUE BossCatalog;
 	DATA_JSON_VALUE CombatObjects;
 	if (!Parse_Document(std::filesystem::path(L"Actors") /
@@ -9223,6 +10040,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			"Valtan combat-object authoring documents have no rows.";
 		return false;
 	}
+
+	// BossCatalog 전체 archetype ID의 안정성과 중복을 검사한 뒤 BOSS_VALTAN 행을 차용한다.
+	// 차용 JSON 포인터는 이 함수의 지역 BossCatalog가 살아 있는 동안만 사용한다.
 	const DATA_JSON_VALUE* pValtanBoss = nullptr;
 	std::set<std::string, std::less<>> BossArchetypeIds;
 	for (const DATA_JSON_VALUE& Boss : pBosses->Get_Array())
@@ -9248,6 +10068,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "BOSS_VALTAN has no combat-object Effect visuals.";
 		return false;
 	}
+
+	// 발탄 visual을 전투 오브젝트 archetype별 값으로 모은다. 이 map의 키 중복은 거절하지만
+	// clientVisualId나 Effect asset ID가 서로 다른 archetype 사이에서 유일한지는 여기서 검사하지 않는다.
 	for (const DATA_JSON_VALUE& Visual : pVisuals->Get_Array())
 	{
 		if (!Visual.Is_Object())
@@ -9262,6 +10085,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Reference.strEffectAssetId = Read_String(Visual, "effectAssetId");
 		if (const auto* owns = Visual.Find("armedEffectOwnsTerminal"); owns && owns->Is_Boolean() && owns->Get_Boolean())
 			Reference.strPreparationEventId = Read_String(Visual, "armedPresentationEventId");
+
+		// 선택적 V2 group은 허용 필드 집합·group ID·양수 재생률을 검사한다.
+		// visualHitMs/serverHitId는 함께 있는지와 필드 목록만 이 블록에서 확인하며 수치·참조를 검증하지 않는다.
 		if (const DATA_JSON_VALUE* pEffectV2Group =
 			Visual.Find("effectV2Group"); nullptr != pEffectV2Group)
 		{
@@ -9304,6 +10130,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			return false;
 		}
 	}
+
+	// 등록한 visual과 같은 archetype을 가진 Product 오브젝트만 결합한다.
+	// 객체가 아닌 행과 관련 없는 archetype은 건너뛰며 같은 visual의 중복 owner 행은 뒤에서 거절한다.
 	std::set<std::string, std::less<>> DescribedCombatObjects;
 	for (const DATA_JSON_VALUE& Object : pObjects->Get_Array())
 	{
@@ -9331,6 +10160,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			strOutStatus = "Combat-object Product owner-hit chain is invalid: " + strArchetypeId;
 			return false;
 		}
+
+		// 이동 속도는 m/s, 최대 거리는 m, 수명은 ms로 읽는다. 속도·거리는 유한한 비음수,
+		// 수명은 양수 uint32를 요구하며 선택 coverRadiusM에는 이 블록의 동일한 검증을 적용하지 않는다.
 		if (!Read_RequiredFiniteFloat(
 				Object, "speedMps", Reference->second.fSpeedMps) ||
 			!Read_RequiredFiniteFloat(Object, "maximumDistanceM",
@@ -9349,6 +10181,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				strArchetypeId;
 			return false;
 		}
+
+		// hit 배열은 필수이고 표현 이벤트 배열은 선택이다. 두 목록의 합을 1~16행으로 제한한 뒤
+		// 각 목록의 identity와 시계를 별도 검사해 stage 표시용 값으로 복사한다.
 		const DATA_JSON_VALUE* pHits = Object.Find("hits");
 		const DATA_JSON_VALUE* pPresentationEvents =
 			Object.Find("presentationEvents");
@@ -9372,6 +10207,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				strArchetypeId;
 			return false;
 		}
+
+		// hit ID는 이 오브젝트 안에서 중복을 거절하고 at/repeat 시계는 uint32로 읽는다.
+		// RING 형상만 아래에서 반지름 관계를 추가 검사하며 모든 hit 시각의 수명 내 포함을 여기서 검사하지 않는다.
 		for (const DATA_JSON_VALUE& Hit : pHits->Get_Array())
 		{
 			uint32_t iHitOffsetMs = 0u;
@@ -9406,7 +10244,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			HitView.fPushRangeM = static_cast<float>(Read_Number(Hit, "pushRangeM"));
 			HitView.iPushMs = static_cast<uint32_t>(Read_Number(Hit, "pushMs"));
 			HitView.iDownMs = static_cast<uint32_t>(Read_Number(Hit, "downMs"));
-			if (const auto* knockdown = Hit.Find("knockdown")) HitView.bKnockdown = knockdown->Get_Boolean();
+			if (const auto* knockdown = Hit.Find("knockdown"))
+				HitView.bKnockdown = knockdown->Get_Boolean();
 			if ("RING" == strHitShape &&
 				(!Read_RequiredFiniteFloat(
 					Hit, "hitInnerRadius", HitView.fInnerRadiusM) ||
@@ -9425,6 +10264,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Reference->second.HitOffsetsMs.push_back(iHitOffsetMs);
 			Reference->second.Hits.push_back(std::move(HitView));
 		}
+
+		// 표현 이벤트는 안정적인 ID와 수명 이하의 시각을 요구한다.
+		// 표현 ID끼리의 중복과 앞서 읽은 hit ID와의 충돌을 모두 거절한다.
 		if (nullptr != pPresentationEvents)
 		{
 			std::set<std::string, std::less<>> PresentationEventIds;
@@ -9465,6 +10307,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			return false;
 		}
 	}
+
+	// visual마다 일치하는 오브젝트 owner 행이 정확히 하나 연결됐는지 수를 맞춘다.
+	// 뒤의 stage action 결합에서도 각 archetype이 한 번만 해소되는지 별도로 검사한다.
 	if (DescribedCombatObjects.size() !=
 		CombatObjectEffectsByArchetype.size())
 	{
@@ -9472,6 +10317,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			"BossCatalog combat-object Effect visual has no Valtan owner row.";
 		return false;
 	}
+
+	// Server 전투 오브젝트가 소유한 독립 Effect는 Product의 owner pattern을 맞춘 뒤
+	// 현재 visual/asset 값을 보충한다. 실제 owner stage action과의 결합은 아래 소환 action에서 검사한다.
 	for (VALTAN_INDEPENDENT_EFFECT_VIEW& Independent :
 		MasterDocument.IndependentEffects)
 	{
@@ -9492,8 +10340,10 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Independent.strEffectAssetId = Product->second.strEffectAssetId;
 	}
 
-	/* Effect bindings are optional: a freshly seeded stage document is not in
-	   patterneffects.json yet, and that must not fail the whole tree. */
+	// 선택적인 Effect binding 파일은 없을 수 있다.
+	// 새 stage Effect 문서가 아직 patterneffects.json에 연결되지 않은 상태만으로 트리 전체를 거절하지 않는다.
+	// 선택 파일의 읽기·JSON 파싱 실패도 이 분기는 건너뛴다. 성공한 문서 안에서는 객체/비어 있지 않은
+	// action만 사용하고 같은 action이 여러 번 나오면 마지막 행으로 덮어쓴다.
 	std::map<std::string, std::pair<std::string, std::string>, std::less<>>
 		EffectByAction;
 	DATA_JSON_VALUE Effects;
@@ -9517,6 +10367,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		}
 	}
 
+	// 검증한 binding을 action별 occurrence·애니메이션 억제·몸체 숨김 구간으로 나눈다.
+	// clip 목록은 값으로 복사하며 모델이나 애니메이션 GPU 자원을 여기서 생성하지 않는다.
 	std::map<std::string, std::vector<VALTAN_CLIP_OCCURRENCE_VIEW>, std::less<>>
 		ClipsByAction;
 	std::set<std::string, std::less<>> SuppressedAnimationActions;
@@ -9541,6 +10393,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		}
 	}
 
+	// typed cue의 시계·좌표·추종/종료/반복 정책을 표시 View로 복사한다.
+	// action별 목록은 원래 cue 순서를 유지하며 같은 action의 여러 cue를 보관한다.
 	std::map<std::string, std::vector<VALTAN_PRODUCT_EFFECT_CUE_VIEW>,
 		std::less<>>
 		CueByAction;
@@ -9586,6 +10440,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		return false;
 	}
 
+	// Product의 패턴을 먼저 임시 트리로 만든 뒤 Master와의 일치 또는 복원 결합을 적용한다.
+	// 여기서 만든 원소가 실패 중 호출자의 기존 View를 오염시키지 않도록 마지막까지 분리한다.
 	VALTAN_PATTERN_TREE_VIEW Staged;
 	size_t iResolvedCueCount = 0u;
 	std::set<std::string, std::less<>> ResolvedCombatObjectEffects;
@@ -9600,6 +10456,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "Valtan encounter dataset identity is invalid.";
 		return false;
 	}
+
+	// Product pattern의 gameplay 값을 임시 Pattern에 읽는다. 비객체 행은 건너뛰며
+	// 원본 Master와의 identity·값 일치 또는 복원 결합은 아래 Apply_MasterDocument가 이어 처리한다.
 	for (const DATA_JSON_VALUE& PatternValue : pPatterns->Get_Array())
 	{
 		if (!PatternValue.Is_Object())
@@ -9616,6 +10475,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			PatternValue, "armorRequirement");
 		Pattern.strPhaseRequirement = Read_String(
 			PatternValue, "phaseRequirement");
+
+		// 필수 선택/범위 필드는 uint32 또는 유한 수로 읽고 optional verticalOffsetM은 ±100m의 0 아닌 값만 허용한다.
+		// 여기서 형식 검사를 통과한 모든 수치가 gameplay 범위 검증까지 끝났다는 뜻은 아니다.
 		const DATA_JSON_VALUE* pVerticalOffset =
 			PatternValue.Find("verticalOffsetM");
 		uint32_t iMinimumHealthBar = 0u;
@@ -9677,6 +10539,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Pattern.bInvulnerableWhileRunning = pInvulnerable->Get_Boolean();
 		Pattern.fVerticalOffsetM = nullptr == pVerticalOffset ? 0.f :
 			static_cast<f32_t>(pVerticalOffset->Get_Number());
+
+		// sourceActionIds는 uint32 상한 안의 양의 정수 표현인지 공통 helper로 확인해 옮긴다.
+		// 이 반복문 자체는 같은 ID의 중복을 거절하지 않는다.
 		for (const DATA_JSON_VALUE& SourceAction :
 			pSourceActionIds->Get_Array())
 		{
@@ -9691,6 +10556,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				SourceAction.Get_Number()));
 		}
 
+		// stages가 배열이면 각 객체 행을 지역 Stage로 만든다. 누락·비배열 또는 비객체 행은
+		// 이 반복문에서 바로 실패하지 않으므로 뒤의 원본 결합과 같은 검사를 함께 읽어야 한다.
 		const DATA_JSON_VALUE* pStages = PatternValue.Find("stages");
 		if (nullptr != pStages && pStages->Is_Array())
 		{
@@ -9726,6 +10593,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						"Valtan encounter stage identity is missing or invalid";
 					return false;
 				}
+
+				// stage 기간/공격 시계는 ms, 형상 길이는 m, 부채꼴 각도는 degree 값으로 읽는다.
+				// 타격 시각 목록과 접촉 정보는 이어 전용 reader와 schedule 검사를 통과해야 한다.
 				if ((nullptr != pStageVerticalOffset &&
 					 (!Is_FiniteNumber(pStageVerticalOffset) ||
 					  0.0 == pStageVerticalOffset->Get_Number() ||
@@ -9767,6 +10637,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				}
 				Stage.strServerDamageProfileId = Read_String(
 					StageValue, "serverDamageProfileId");
+
+				// 피격 응답·부착 슬롯·손의 지역 offset은 셋 모두 있거나 모두 없어야 한다.
+				// 있으면 값을 복사하고 뒤에서 DAMAGE/CAPTURE의 허용 부착·밀림·다운 조합을 확인한다.
 				const DATA_JSON_VALUE* pPlayerResponse =
 					StageValue.Find("playerResponse");
 				const DATA_JSON_VALUE* pAttachmentSlot =
@@ -9791,6 +10664,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					Stage.strPlayerResponse = pPlayerResponse->Get_String();
 					Stage.strAttachmentSlot = pAttachmentSlot->Get_String();
 				}
+
+				// 피해 응답과 조준·이동·action·분기·보스 응답·판정 권한 확장을 각각의 reader로 읽는다.
+				// 부분 작성 중 하나라도 실패하면 아직 지역 변수인 Stage와 전체 Staged를 버린다.
 				const DATA_JSON_VALUE* pKnockdown = Required(
 					StageValue, "knockdown", DATA_JSON_TYPE::BOOLEAN);
 				if (nullptr == Required(StageValue, "serverDamageProfileId",
@@ -9829,6 +10705,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 				Stage.bKnockdown = pKnockdown->Get_Boolean();
+
+				// 체력 피해 threshold 분기는 BossResponse 존재와 ACTIVE stage 조건에 맞춰야 한다.
+				// 수직 offset의 응답/이동 제한과 counter proxy 종류별 허용 stage도 함께 검사한다.
 				const std::size_t iHealthThresholdCount =
 					static_cast<std::size_t>(std::count_if(
 						Stage.Branches.begin(), Stage.Branches.end(),
@@ -9856,6 +10735,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						Stage.strActionId;
 					return false;
 				}
+
+				// 추적 억제 action은 지정된 유령 사망 시험의 마지막 stage에서 한 번만 허용하고 분기를 금지한다.
+				// 일반 패턴 전체에 적용하는 이동 옵션으로 해석하지 않는다.
 				const std::size_t iPursuitSuppressionCount =
 					static_cast<std::size_t>(std::count_if(
 						Stage.Actions.begin(), Stage.Actions.end(),
@@ -9892,15 +10774,20 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 
-        if (!LostArk::Shared::Validate_StageAttackContacts(Stage.AttackContacts,
-            Stage.iDurationMs, Stage.HitOffsetsMs, Stage.iHitCount, Stage.iHitDelayMs, Stage.iHitIntervalMs) ||
-            (!Stage.AttackContacts.empty() && (Stage.bHasHitActivation ||
-                (Stage.Motion.has_value() && Stage.Motion->strKind != "TO_ARENA_CENTER") ||
-                Stage.strPlayerResponse != "DAMAGE" || Stage.strHitShape == "NONE")))
-        {
-            strOutStatus = "Valtan encounter stage attackContacts contract is invalid";
-            return false;
-        }
+				// Shared와 같은 접촉 판정 시계 검사를 사용한다. 접촉 목록이 있으면 별도 활성창과 함께 쓰지 않고
+				// 중앙 이동 외 motion·CAPTURE·NONE 형상을 거절해 두 판정 소유 방식이 섞이지 않게 한다.
+				if (!LostArk::Shared::Validate_StageAttackContacts(Stage.AttackContacts,
+					Stage.iDurationMs, Stage.HitOffsetsMs, Stage.iHitCount, Stage.iHitDelayMs, Stage.iHitIntervalMs) ||
+					(!Stage.AttackContacts.empty() && (Stage.bHasHitActivation ||
+						(Stage.Motion.has_value() && Stage.Motion->strKind != "TO_ARENA_CENTER") ||
+						Stage.strPlayerResponse != "DAMAGE" || Stage.strHitShape == "NONE")))
+				{
+					strOutStatus = "Valtan encounter stage attackContacts contract is invalid";
+					return false;
+				}
+
+				// 명시적 offset 목록 또는 delay+interval 시계의 마지막 타격은 stage 끝보다 빨라야 한다.
+				// 타격이 없는 시계도 허용하지만 지속 활성창은 비어 있는 시계와 NONE이 아닌 형상을 함께 요구한다.
 				const bool_t bHasExplicitOffsets = !Stage.HitOffsetsMs.empty();
 				const bool_t bValidExplicitSchedule = bHasExplicitOffsets &&
 					Stage.HitOffsetsMs.size() == Stage.iHitCount &&
@@ -9930,6 +10817,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					return false;
 				}
 
+				// 소환 action만 골라 앞서 읽은 visual/오브젝트 정의를 소유 stage 아래에 연결한다.
+				// 여기서는 표현 View를 구성할 뿐 오브젝트를 생성하거나 Server 소환 명령을 보내지 않는다.
 				const DATA_JSON_VALUE* pActions = StageValue.Find("actions");
 				if (nullptr != pActions && pActions->Is_Array())
 				{
@@ -9951,6 +10840,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							"SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind ?
 								Read_Number(Action, "countPerResolvedTarget") :
 								Read_Number(Action, "value");
+
+						// 원본 volley 투영은 pattern/action/archetype으로 찾는다. 엄격 정책은 Product action의 JSON 값과
+						// event의 단일 해소까지 비교하고, 저장본 복원 정책은 이 동등성 비교를 건너뛴다.
 						const auto ExpectedVolley = std::find_if(
 							MasterDocument.VolleyProjections.begin(),
 							MasterDocument.VolleyProjections.end(),
@@ -9989,6 +10881,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 								Stage.strStageId);
 							return false;
 						}
+
+						// 두 정책 모두 Product 소환의 owner pattern/action, 양의 정수 개수, archetype 단일 사용을 검사한다.
+						// 즉 복원 정책도 현재 Product의 잘못된 소환 소유 관계를 무조건 허용하지 않는다.
 						if (Reference == CombatObjectEffectsByArchetype.end() ||
 							Reference->second.strOwnerPatternId !=
 								Pattern.strPatternId ||
@@ -10016,6 +10911,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 							Reference->second.strEffectV2GroupId;
 						View.strTrigger = Read_String(Action, "trigger");
 						View.iSpawnValue = static_cast<uint32_t>(SpawnValue);
+
+						// volley에는 대상별 개수 외 전체 상한·배치 각도 degree·반경 m·예약 시각 ms를 복사한다.
+						// 무작위 영역 값은 표시 데이터이며 여기서 위치를 표본화하거나 내비게이션을 조회하지 않는다.
 						if ("SPAWN_COMBAT_OBJECT_VOLLEY" == strSpawnKind)
 						{
 							View.strVolleyPolicy = Read_String(
@@ -10069,6 +10967,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					}
 				}
 
+				// action에 대응하는 clip occurrence 목록을 복사하고 첫 clip 이름을 대표값으로 쓴다.
+				// NONE 애니메이션 binding은 비어 있는 clip 목록이어야 하며 모든 stage에 clip을 강제하지는 않는다.
 				const auto ClipIterator = ClipsByAction.find(Stage.strActionId);
 				if (ClipIterator != ClipsByAction.end())
 				{
@@ -10094,6 +10994,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					Stage.strRuntimeClipName = Stage.RuntimeClipNames.empty() ?
 						std::string{} : Stage.RuntimeClipNames.front();
 				}
+
+				// 몸체 숨김은 시작 < 끝 ≤ stage 기간인 ms 구간만 채택한다.
+				// 표시 View에 정책을 복사하는 작업이며 여기서 보스 몸체의 visible 상태를 직접 바꾸지 않는다.
 				const auto BodyHiddenWindow =
 					BodyHiddenWindowByAction.find(Stage.strActionId);
 				if (BodyHiddenWindow != BodyHiddenWindowByAction.end())
@@ -10112,6 +11015,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					Stage.iBodyHiddenToMs = BodyHiddenWindow->second[1];
 				}
 
+				// 각 cue는 action뿐 아니라 pattern/stage 소유자도 일치해야 한다. stage 시계 cue는
+				// 시작을 stage 기간과 비교하지만 선택 끝 시각은 600000ms 상한과 비교하므로 stage 끝 안을 보장하지 않는다.
 				const auto CueIterator = CueByAction.find(Stage.strActionId);
 				if (CueIterator != CueByAction.end())
 				{
@@ -10130,7 +11035,7 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						{
 							if (!Cue.strClipOccurrenceId.empty() ||
 								Cue.iStageOffsetMs >= Stage.iDurationMs ||
-                                (Cue.bHasSourceEnd && (Cue.iSourceEndMs <= Cue.iStageOffsetMs || Cue.iSourceEndMs > 600000u)))
+								(Cue.bHasSourceEnd && (Cue.iSourceEndMs <= Cue.iStageOffsetMs || Cue.iSourceEndMs > 600000u)))
 							{
 								strOutStatus =
 									"Valtan stage-clock Effect cue left its Stage wall: " +
@@ -10140,6 +11045,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						}
 						else
 						{
+							// clip 시계 cue는 현재 stage에 같은 clipOccurrenceId가 있어야 한다.
+							// 그 clip과 stage 양쪽 목록에 같은 값을 복사하고 전체 cue 해소 개수를 증가시킨다.
 							const auto Clip = std::find_if(
 								Stage.ClipOccurrences.begin(),
 								Stage.ClipOccurrences.end(),
@@ -10166,6 +11073,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 						Stage.ProductCue = Stage.ProductCues.front();
 				}
 
+				// 선택 legacy binding은 이미 있는 asset이면 표시 표식만 더하고 없으면 문서 경로를 추가한다.
+				// 이 경로 계산은 파일 존재나 Effect 문서 내용의 유효성을 보장하지 않는다.
 				const auto EffectIterator =
 					EffectByAction.find(Stage.strActionId);
 				if (EffectIterator != EffectByAction.end() &&
@@ -10197,12 +11106,13 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 					}
 				}
 
-				/* Product cues own the authoring entry. The naming rule is only
-				   a fallback for a stage that has no Product cue, so the old
-				   whirlwind seed cannot appear beside the admitted 420633 row. */
+				// Product cue가 있는 stage는 cue의 Effect ID를 편집 진입점으로 사용한다.
+				// 이름 규칙은 Product cue가 없는 stage에만 적용해 과거 seed와 게시된 항목을 함께 소유하지 않게 한다.
 				if (!Stage.Has_ProductCue() &&
 					Stage.CombatObjectEffects.empty())
 				{
+					// 이름 규칙 후보는 cue와 전투 오브젝트 표현이 모두 없는 stage에서만 찾는다.
+					// exists가 성공하면 표시 목록에 추가하며 regular file 확인이나 내용 파싱은 여기서 수행하지 않는다.
 					const std::string strCandidate = Build_StageEffectAssetId(
 						Pattern.strActionId, Stage);
 					const bool_t bCandidateAlreadyBound = std::any_of(
@@ -10234,6 +11144,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 				Pattern.Stages.push_back(std::move(Stage));
 			}
 		}
+
+		// stage 목록이 완성된 뒤 serverMotion이 참조한 stage와 시각 범위를 실제 기간에 맞춘다.
+		// 원본 Master의 serverMotion 구조 검사만으로 끝내지 않는 Product 연결 지점이다.
 		if (!Validate_PatternServerMotionStageWindows(
 				Pattern.ServerMotion, Pattern.Stages))
 		{
@@ -10263,6 +11176,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			Staged.Rotation.push_back(std::move(Pattern));
 	}
 
+	// 전체 cue 해소 수와 모든 visual의 소환 해소 수를 확인한다.
+	// 원본 volley 전체를 한 번씩 해소했는지의 추가 비교는 엄격 Product 일치 정책에서만 수행한다.
 	if (iResolvedCueCount != iCueCount)
 	{
 		strOutStatus = "Valtan Product Effect cue action did not resolve into the encounter: resolved " +
@@ -10305,6 +11220,9 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			"Valtan combat-object Effect visual did not resolve into its owner stage.";
 		return false;
 	}
+
+	// 지역 Product 트리에 원본 Master를 결합한다. 엄격 정책은 값 일치를 요구하고 복원 정책은
+	// 허용된 원본 값을 임시 트리에 덮어쓰며 어느 쪽도 원본/게시 파일을 저장하지 않는다.
 	if (!Apply_MasterDocument(
 			MasterDocument, PatternRotations, Staged, Error, ePolicy,
 			pOutDiagnostic))
@@ -10327,17 +11245,15 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		strOutStatus = "Valtan encounter produced no patterns.";
 		return false;
 	}
-	/* Gimmicks read as a timeline down the health bar, so order them the way
-	   the fight actually presents them. */
+	// 기믹을 발동 체력 내림차순으로 정렬해 표시한다. 같은 체력의 추가 정렬 키는 여기서 사용하지 않는다.
 	std::sort(Staged.Gimmicks.begin(), Staged.Gimmicks.end(),
 		[](const VALTAN_PATTERN_VIEW& Left, const VALTAN_PATTERN_VIEW& Right)
 		{
 			return Left.iTriggerHealthBar > Right.iTriggerHealthBar;
 		});
 
-	/* A phase is the band of health bars that ends when its gimmick fires.
-	   The encounter document has no phase field, so this band is derived from
-	   triggerHealthBar and used only as a display grouping. */
+	// 아래 Phase는 triggerHealthBar로 나눈 화면용 체력 구간이다.
+	// 기믹이 발동하는 체력까지 한 구간으로 묶으며 Server의 gameplay phase와는 별개다.
 	int32_t iTopHealthBar = 0;
 	const auto RaiseTop = [&iTopHealthBar](
 		const std::vector<VALTAN_PATTERN_VIEW>& Group)
@@ -10375,9 +11291,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		Staged.Phases.push_back(std::move(Phase));
 	}
 
-	/* A rotation pattern belongs to every band its own bar range overlaps.
-	   Most are 1-160 and therefore appear in all of them; two are narrower
-	   and that is exactly the information the band grouping exposes. */
+	// 일반 패턴은 자신의 체력 범위와 겹치는 모든 화면 구간에 연결한다.
+	// 구간에는 Rotation의 index를 보관하므로 원본 vector 순서와 함께 사용해야 한다.
 	for (VALTAN_PHASE_VIEW& Phase : Staged.Phases)
 	{
 		for (size_t iRotation = 0u; iRotation < Staged.Rotation.size();
@@ -10393,6 +11308,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		}
 	}
 
+	// 선택 introPatternId가 Rotation에서 발견되면 그 vector index만 보관한다.
+	// 비어 있거나 찾지 못하면 기존 Staged 기본값을 유지하고 이 조건만으로 실패하지 않는다.
 	const std::string strIntroPatternId = Read_String(
 		Encounter, "introPatternId");
 	if (!strIntroPatternId.empty())
@@ -10410,6 +11327,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		}
 	}
 
+	// 모든 명시적 실패 검사가 끝나면 임시 트리를 한 번 이동 대입하고 성공 요약과 선택 진단을 작성한다.
+	// 이후 문자열 할당 예외까지 기존 OutView로 되돌리는 강한 예외 보장은 제공하지 않는다.
 	OutView = std::move(Staged);
 	strOutStatus = "Valtan tree: " +
 		std::to_string(OutView.Phases.size()) + " phases, " +
@@ -10433,56 +11352,194 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 	return true;
 }
 
+	// PatternTree와 EncounterPatternReference가 stage의 optional attackContacts를 읽는 경계다.
+	// 필드가 없으면 contact 확장을 비우고 성공한다. 값이 있다면 임시 hits에서 모든 검증을 마친 뒤
+	// contacts를 교체하므로 잘못된 행이나 Shared 계약 위반은 호출자가 보관한 기존 목록을 바꾸지 않는다.
+	// 보충 설명: 필드 누락 시 목록을 비우는 경로와 값이 있을 때 임시 목록으로 검증하는 경로를 구분한다.
+	// 값이 있는 입력의 검사 실패는 기존 contacts를 보존한다. 두 경로 모두 Server에 판정을 전송하지 않는다.
 	bool Client::Parse_ValtanStageAttackContacts(const DATA_JSON_VALUE* value, std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& contacts)
 	{
-		if (!value) { contacts.clear(); return true; }
+		if (!value)
+		{
+			contacts.clear();
+			return true;
+		}
 		std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE> hits;
-		if (!value->Is_Array() || value->Get_Array().empty() || value->Get_Array().size() > 32u) return false;
-        const auto readUnsigned = [](const DATA_JSON_VALUE& item, uint32_t maximum, uint32_t& out)
-        {
-            if (!item.Is_Number() || !std::isfinite(item.Get_Number()) || item.Get_Number() < 0.0 ||
-                item.Get_Number() > maximum || std::floor(item.Get_Number()) != item.Get_Number()) return false;
-            out = static_cast<uint32_t>(item.Get_Number()); return true;
-        };
-        const auto readFinite = [](const DATA_JSON_VALUE& item, double minimum, double maximum, double& out)
-        {
-            if (!item.Is_Number() || !std::isfinite(item.Get_Number()) ||
-                item.Get_Number() < minimum || item.Get_Number() > maximum) return false;
-            out = item.Get_Number(); return true;
-        };
-        for (const auto& row : value->Get_Array())
+		if (!value->Is_Array())
+			return false;
+		// 명시적으로 제공한 빈 배열은 누락과 다른 입력이며 기존 저장 계약대로 거부한다.
+		if (value->Get_Array().empty() || value->Get_Array().size() > 32u)
+			return false;
+
+		const auto readUnsigned = [](const DATA_JSON_VALUE& item, uint32_t maximum, uint32_t& out)
+		{
+			if (!item.Is_Number())
+				return false;
+			const double parsedValue = item.Get_Number();
+			if (!std::isfinite(parsedValue) || parsedValue < 0.0 || parsedValue > maximum)
+				return false;
+			// JSON 숫자의 소수부를 잘라 시간이나 횟수가 다른 값으로 저장되는 일을 막는다.
+			if (std::floor(parsedValue) != parsedValue)
+				return false;
+			out = static_cast<uint32_t>(parsedValue);
+			return true;
+		};
+		const auto readFinite = [](const DATA_JSON_VALUE& item, double minimum, double maximum, double& out)
+		{
+			if (!item.Is_Number())
+				return false;
+			const double parsedValue = item.Get_Number();
+			if (!std::isfinite(parsedValue) || parsedValue < minimum || parsedValue > maximum)
+				return false;
+			out = parsedValue;
+			return true;
+		};
+
+		for (const auto& row : value->Get_Array())
 		{
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
-			if (!Has_ExactPropertiesWithOptional(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees", "riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection" })) return false;
-			if (const auto* item = row.Find("hitId")) { if (!item->Is_String()) return false; hit.strHitId = item->Get_String(); }
-			if (const auto* item = row.Find("trigger")) { if (!item->Is_String()) return false; hit.strTrigger = item->Get_String(); }
-			if (const auto* item = row.Find("shape")) { if (!item->Is_String()) return false; hit.strShape = item->Get_String(); }
-			if (const auto* item = row.Find("damageKind")) { if (!item->Is_String()) return false; hit.strDamageKind = item->Get_String(); }
-			if (const auto* item = row.Find("damageProfileId")) { if (!item->Is_String()) return false; hit.strDamageProfileId = item->Get_String(); }
-			if (const auto* item = row.Find("atMs")) if (!readUnsigned(*item, 600000u, hit.iAtMs)) return false;
-			if (const auto* item = row.Find("endMs")) if (!readUnsigned(*item, 600000u, hit.iEndMs)) return false;
-			if (const auto* item = row.Find("repeatCount")) if (!readUnsigned(*item, 600000u, hit.iRepeatCount)) return false;
-			if (const auto* item = row.Find("repeatIntervalMs")) if (!readUnsigned(*item, 600000u, hit.iRepeatIntervalMs)) return false;
-			if (const auto* item = row.Find("damagePercent")) if (!readUnsigned(*item, 600000u, hit.iDamagePercent)) return false;
-			if (const auto* item = row.Find("radiusM")) if (!readFinite(*item, -1000., 1000., hit.fRadiusM)) return false;
-			if (const auto* item = row.Find("innerRadiusM")) if (!readFinite(*item, -1000., 1000., hit.fInnerRadiusM)) return false;
-			if (const auto* item = row.Find("lengthM")) if (!readFinite(*item, -1000., 1000., hit.fLengthM)) return false;
-			if (const auto* item = row.Find("halfWidthM")) if (!readFinite(*item, -1000., 1000., hit.fHalfWidthM)) return false;
-			if (const auto* item = row.Find("angleDegrees")) if (!readFinite(*item, -1000., 1000., hit.fAngleDegrees)) return false;
-			if (const auto* item = row.Find("offsetForwardM")) if (!readFinite(*item, -1000., 1000., hit.fOffsetForwardM)) return false;
-			if (const auto* item = row.Find("offsetRightM")) if (!readFinite(*item, -1000., 1000., hit.fOffsetRightM)) return false;
-			if (const auto* item = row.Find("yawOffsetDegrees")) if (!readFinite(*item, -1000., 1000., hit.fYawOffsetDegrees)) return false;
-			if (const auto* item = row.Find("forcePush")) { if (!item->Is_Boolean()) return false; hit.ForcePush = item->Get_Boolean(); }
-			if (const auto* item = row.Find("pushDirection")) { if (!item->Is_String()) return false; hit.strPushDirection = item->Get_String(); }
-			if (const auto* item = row.Find("pushRangeM")) if (!readFinite(*item, 0., 100., hit.fPushRangeM)) return false;
-			if (const auto* item = row.Find("riseHeightM")) if (!readFinite(*item, 0., 100., hit.fRiseHeightM)) return false;
-			if (const auto* item = row.Find("pushMs")) if (!readUnsigned(*item, 5000u, hit.iPushMs)) return false;
+			// 선택 필드는 생략 시 ATTACK_HIT_TEMPLATE의 기본값을 사용하고, 존재하는 필드만 덮어쓴다.
+			if (!Has_ExactPropertiesWithOptional(row, { "hitId" },
+				{ "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs",
+				  "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM",
+				  "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM",
+				  "yawOffsetDegrees", "riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection" }))
+				return false;
+			if (const auto* item = row.Find("hitId"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strHitId = item->Get_String();
+			}
+			if (const auto* item = row.Find("trigger"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strTrigger = item->Get_String();
+			}
+			if (const auto* item = row.Find("shape"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strShape = item->Get_String();
+			}
+			if (const auto* item = row.Find("damageKind"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strDamageKind = item->Get_String();
+			}
+			if (const auto* item = row.Find("damageProfileId"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strDamageProfileId = item->Get_String();
+			}
+			// 시각은 ms, 크기와 이동 거리는 m, 회전은 degree로 읽는다.
+			if (const auto* item = row.Find("atMs"))
+			{
+				if (!readUnsigned(*item, 600000u, hit.iAtMs))
+					return false;
+			}
+			if (const auto* item = row.Find("endMs"))
+			{
+				if (!readUnsigned(*item, 600000u, hit.iEndMs))
+					return false;
+			}
+			if (const auto* item = row.Find("repeatCount"))
+			{
+				if (!readUnsigned(*item, 600000u, hit.iRepeatCount))
+					return false;
+			}
+			if (const auto* item = row.Find("repeatIntervalMs"))
+			{
+				if (!readUnsigned(*item, 600000u, hit.iRepeatIntervalMs))
+					return false;
+			}
+			if (const auto* item = row.Find("damagePercent"))
+			{
+				if (!readUnsigned(*item, 600000u, hit.iDamagePercent))
+					return false;
+			}
+			if (const auto* item = row.Find("radiusM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fRadiusM))
+					return false;
+			}
+			if (const auto* item = row.Find("innerRadiusM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fInnerRadiusM))
+					return false;
+			}
+			if (const auto* item = row.Find("lengthM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fLengthM))
+					return false;
+			}
+			if (const auto* item = row.Find("halfWidthM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fHalfWidthM))
+					return false;
+			}
+			if (const auto* item = row.Find("angleDegrees"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fAngleDegrees))
+					return false;
+			}
+			if (const auto* item = row.Find("offsetForwardM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fOffsetForwardM))
+					return false;
+			}
+			if (const auto* item = row.Find("offsetRightM"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fOffsetRightM))
+					return false;
+			}
+			if (const auto* item = row.Find("yawOffsetDegrees"))
+			{
+				if (!readFinite(*item, -1000., 1000., hit.fYawOffsetDegrees))
+					return false;
+			}
+			// forcePush의 생략과 false를 구분해 기존 피격 반응 정책을 보존한다.
+			if (const auto* item = row.Find("forcePush"))
+			{
+				if (!item->Is_Boolean())
+					return false;
+				hit.ForcePush = item->Get_Boolean();
+			}
+			if (const auto* item = row.Find("pushDirection"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strPushDirection = item->Get_String();
+			}
+			if (const auto* item = row.Find("pushRangeM"))
+			{
+				if (!readFinite(*item, 0., 100., hit.fPushRangeM))
+					return false;
+			}
+			if (const auto* item = row.Find("riseHeightM"))
+			{
+				if (!readFinite(*item, 0., 100., hit.fRiseHeightM))
+					return false;
+			}
+			if (const auto* item = row.Find("pushMs"))
+			{
+				if (!readUnsigned(*item, 5000u, hit.iPushMs))
+					return false;
+			}
 			hits.push_back(std::move(hit));
 		}
-		if (!LostArk::Shared::Validate_AttackHitTemplates(hits)) return false;
+		// 도형·반복·피해 정책의 의미 검증까지 성공한 목록만 호출자의 stage에 반영한다.
+		if (!LostArk::Shared::Validate_AttackHitTemplates(hits))
+			return false;
 		contacts = std::move(hits);
 		return true;
 	}
+
+	// 편집 문서 저장을 위해 attackContacts를 기존 JSON 필드와 기본값 생략 규칙으로 직렬화한다.
+	// 이 함수는 값을 검증하거나 Server로 전송하지 않으므로 호출자는 저장 경계의 검증을 거쳐야 한다.
 	std::string Client::Serialize_ValtanStageAttackContacts(const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
 	{
 		std::ostringstream output;
@@ -10491,7 +11548,8 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 		output << "[";
 		for (std::size_t index = 0; index < hits.size(); ++index)
 		{
-			const auto& hit = hits[index]; output << (index ? ", {" : "{");
+			const auto& hit = hits[index];
+			output << (index ? ", {" : "{");
 			output << "\"hitId\": \"" << CDataJson::Escape(hit.strHitId) << "\"";
 			output << ", \"trigger\": \"" << CDataJson::Escape(hit.strTrigger) << "\"";
 			output << ", \"shape\": \"" << CDataJson::Escape(hit.strShape) << "\"";
@@ -10510,10 +11568,14 @@ bool_t Client::CValtanPatternTree::Load_FromAuthoringPaths(
 			output << ", \"offsetForwardM\": " << hit.fOffsetForwardM;
 			output << ", \"offsetRightM\": " << hit.fOffsetRightM;
 			output << ", \"yawOffsetDegrees\": " << hit.fYawOffsetDegrees;
-			if (hit.ForcePush.has_value()) output << ", \"forcePush\": " << (*hit.ForcePush ? "true" : "false");
-			if (hit.strPushDirection != "AWAY_FROM_CONTACT") output << ", \"pushDirection\": \"" << hit.strPushDirection << "\"";
-			if (hit.fPushRangeM > 0.0) output << ", \"pushRangeM\": " << hit.fPushRangeM;
-			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u) output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
+			if (hit.ForcePush.has_value())
+				output << ", \"forcePush\": " << (*hit.ForcePush ? "true" : "false");
+			if (hit.strPushDirection != "AWAY_FROM_CONTACT")
+				output << ", \"pushDirection\": \"" << hit.strPushDirection << "\"";
+			if (hit.fPushRangeM > 0.0)
+				output << ", \"pushRangeM\": " << hit.fPushRangeM;
+			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u)
+				output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
 			output << "}";
 		}
 		output << "]";

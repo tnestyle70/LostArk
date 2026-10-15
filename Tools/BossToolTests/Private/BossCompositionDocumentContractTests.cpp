@@ -1,6 +1,6 @@
 #include "BossCompositionDocument.h"
 #include "KoukuSaydonActionWorkbench.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "AnimationTargetService.h"
 #include "CameraTool.h"
@@ -76,9 +76,9 @@ Client::CKoukuSaydonPatternAuditionService& Client::CKoukuSaydonPatternAuditionS
 { static CKoukuSaydonPatternAuditionService service; return service; }
 bool Client::CKoukuSaydonPatternAuditionService::Stop(std::string&)
 { throw std::runtime_error("CPU editor contracts unexpectedly stopped live Server audition."); }
-bool Client::CLevel_KakulSaydonArena::Duplicate_CameraShot(std::string_view, std::string_view, std::string&, std::string&)
+bool Client::CLevel_KoukuSaydonArena::Duplicate_CameraShot(std::string_view, std::string_view, std::string&, std::string&)
 { throw std::runtime_error("CPU editor contracts unexpectedly duplicated a live camera shot."); }
-bool Client::CLevel_KakulSaydonArena::Discard_UnsavedCameraShot(std::string_view, std::string&)
+bool Client::CLevel_KoukuSaydonArena::Discard_UnsavedCameraShot(std::string_view, std::string&)
 { throw std::runtime_error("CPU editor contracts unexpectedly discarded a live camera shot."); }
 float Client::CEffectPlayback::Calculate_ElementEndSeconds(const EFFECT_ELEMENT_DESC&, bool)
 { throw std::runtime_error("This CPU editor fixture does not provide the Effect playback lifetime contract."); }
@@ -117,46 +117,46 @@ Client::WORLD_GAMEPLAY_PLACEMENT* Client::CWorldGameplayDocument::Find(const std
 
 // CPU editor contracts never create a live Level or operate its camera UI.
 // Keep link-only dependencies strict so a new live call fails the contract.
-Client::CLevel_KakulSaydonArena* Client::CLevel_KakulSaydonArena::s_pActiveInstance = nullptr;
+Client::CLevel_KoukuSaydonArena* Client::CLevel_KoukuSaydonArena::s_pActiveInstance = nullptr;
 
-bool_t Client::CLevel_KakulSaydonArena::Reload_CameraShotAuthoring(std::string&)
+bool_t Client::CLevel_KoukuSaydonArena::Reload_CameraShotAuthoring(std::string&)
 {
 	return false;
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Ensure_CameraShotAuthoring(std::string&)
+bool_t Client::CLevel_KoukuSaydonArena::Ensure_CameraShotAuthoring(std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera authoring.");
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Create_CameraShot(
+bool_t Client::CLevel_KoukuSaydonArena::Create_CameraShot(
 	std::string_view, std::string&, std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera creation.");
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Update_CameraShot(
-	const KAKUL_CAMERA_SHOT&, std::string&)
+bool_t Client::CLevel_KoukuSaydonArena::Update_CameraShot(
+	const KOUKU_CAMERA_SHOT&, std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera update.");
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Capture_CameraShot(std::string_view, std::string&)
+bool_t Client::CLevel_KoukuSaydonArena::Capture_CameraShot(std::string_view, std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera capture.");
 }
 
-bool_t Client::CLevel_KakulSaydonArena::Save_CameraShots(std::string&)
+bool_t Client::CLevel_KoukuSaydonArena::Save_CameraShots(std::string&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested live Camera Save.");
 }
 
-void Client::CLevel_KakulSaydonArena::Stop_CompositionCamera(bool_t)
+void Client::CLevel_KoukuSaydonArena::Stop_CompositionCamera(bool_t)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly stopped a live Camera.");
 }
 
-Client::VALTAN_CINEMATIC_CAMERA_CUE Client::CLevel_KakulSaydonArena::CameraShot_ToCue(const KAKUL_CAMERA_SHOT&)
+Client::VALTAN_CINEMATIC_CAMERA_CUE Client::CLevel_KoukuSaydonArena::CameraShot_ToCue(const KOUKU_CAMERA_SHOT&)
 {
 	throw std::runtime_error("CPU editor harness unexpectedly requested a live Camera cue.");
 }
@@ -430,12 +430,12 @@ namespace
 
 		std::string status;
 		Require(fixture.catalog.Load_Pair(
-				"boss.composition.kakulsaydon",
-				"arena.sequencer.kakulsaydon", status),
+				"boss.composition.koukusaydon",
+				"arena.sequencer.koukusaydon", status),
 			("valid KoukuSaydon descriptor pair failed: " + status).c_str());
 		fixture.committed = Snapshot(fixture.catalog,
-			"boss.composition.kakulsaydon",
-			"arena.sequencer.kakulsaydon");
+			"boss.composition.koukusaydon",
+			"arena.sequencer.koukusaydon");
 
 		std::string wrongArenaPath = fixture.koukuSaydonArenaBaseline;
 		Require(ReplaceOnce(wrongArenaPath,
@@ -444,13 +444,13 @@ namespace
 			WriteText(fixture.koukuSaydonArenaPath, wrongArenaPath),
 			"could not stage the wrong Arena source path fixture");
 		Require(!fixture.catalog.Load_Pair(
-				"boss.composition.kakulsaydon",
-				"arena.sequencer.kakulsaydon", status) &&
+				"boss.composition.koukusaydon",
+				"arena.sequencer.koukusaydon", status) &&
 			status.find("source role/path closure") != std::string::npos,
 			"native Arena parser accepted a Python-rejected source path");
 		RequirePreserved(fixture.catalog, fixture.committed,
-			"boss.composition.kakulsaydon",
-			"arena.sequencer.kakulsaydon");
+			"boss.composition.koukusaydon",
+			"arena.sequencer.koukusaydon");
 
 		Require(WriteText(fixture.koukuSaydonArenaPath, fixture.koukuSaydonArenaBaseline),
 			"could not restore the Arena descriptor fixture");
@@ -461,13 +461,13 @@ namespace
 			WriteText(fixture.koukuSaydonBossPath, wrongBossRole),
 			"could not stage the wrong Boss source role fixture");
 		Require(!fixture.catalog.Load_Pair(
-				"boss.composition.kakulsaydon",
-				"arena.sequencer.kakulsaydon", status) &&
+				"boss.composition.koukusaydon",
+				"arena.sequencer.koukusaydon", status) &&
 			status.find("source role/path closure") != std::string::npos,
 			"native Boss parser accepted a Python-rejected source role");
 		RequirePreserved(fixture.catalog, fixture.committed,
-			"boss.composition.kakulsaydon",
-			"arena.sequencer.kakulsaydon");
+			"boss.composition.koukusaydon",
+			"arena.sequencer.koukusaydon");
 
 		Require(WriteText(fixture.koukuSaydonBossPath, fixture.koukuSaydonBossBaseline),
 			"could not restore the Boss descriptor fixture");
@@ -484,13 +484,13 @@ namespace
 		Require(WriteText(fixture.koukuSaydonArenaPath, extraArenaSource),
 			"could not stage the extra Arena source fixture");
 		Require(!fixture.catalog.Load_Pair(
-				"boss.composition.kakulsaydon",
-				"arena.sequencer.kakulsaydon", status) &&
+				"boss.composition.koukusaydon",
+				"arena.sequencer.koukusaydon", status) &&
 			status.find("source role/path closure") != std::string::npos,
 			"native Arena parser accepted a Python-rejected extra source");
 		RequirePreserved(fixture.catalog, fixture.committed,
-			"boss.composition.kakulsaydon",
-			"arena.sequencer.kakulsaydon");
+			"boss.composition.koukusaydon",
+			"arena.sequencer.koukusaydon");
 
 		Require(WriteText(fixture.koukuSaydonArenaPath,
 			fixture.koukuSaydonArenaBaseline),
@@ -604,7 +604,7 @@ namespace
 			if (row.bEnterCombatOnFinish) entries.push_back(&row);
 			else if (row.strGateId == "GATE1") legacyGateOne.push_back(&row);
 		}
-		Require(sequenceGood.strCompositionId == "boss.composition.kakulsaydon.sequencer" &&
+		Require(sequenceGood.strCompositionId == "boss.composition.koukusaydon.sequencer" &&
 			entries.size() == 3u && legacyGateOne.size() >= 2u,
 			"Sequence seed lost the three combat entries or legacy Gate 1 timelines");
 		const auto entryFor = [&](const std::string_view gate) -> const KOUKU_SAYDON_COMPOSITION_PATTERN& {
@@ -806,7 +806,7 @@ namespace
 				std::all_of(pattern.Stages.begin(), pattern.Stages.end(), [](const auto& stage) { return !stage.AnimationOccurrences.empty(); }); });
 		Require(fixture != source.Patterns.end(), "real multi-Stage fixture is missing");
 		auto mixed = *fixture;
-		mixed.strPatternId = "KAKULSAYDON_G1_NATIVE_MIXED_LEGACY";
+		mixed.strPatternId = "KOUKUSAYDON_G1_NATIVE_MIXED_LEGACY";
 		mixed.strAuthoringStatus = "DRAFT";
 		for (std::size_t index = 0u; index < mixed.Stages.size(); ++index)
 		{
@@ -858,24 +858,24 @@ namespace
 		RequireEditorStep(owner.Reload_FromPath(sourcePath, status), status, "load hierarchy scratch source");
 		auto candidate = owner.Get_LastGood();
 		KOUKU_SAYDON_COMPOSITION_FOLDER folder;
-		folder.strFolderId = "kakulsaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
+		folder.strFolderId = "koukusaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
 		folder.strGateId = "GATE2"; folder.strDisplayName = "Native Gate 2 folder";
 		candidate.Folders.push_back(folder);
 		auto siblingFolder = folder;
-		siblingFolder.strFolderId = "kakulsaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
+		siblingFolder.strFolderId = "koukusaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
 		siblingFolder.strDisplayName = "Native second Gate 2 folder";
 		candidate.Folders.push_back(siblingFolder);
 		auto foreignFolder = folder;
-		foreignFolder.strFolderId = "kakulsaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
+		foreignFolder.strFolderId = "koukusaydon.folder." + std::to_string(candidate.iNextFolderOrdinal++);
 		foreignFolder.strGateId = "GATE1";
 		foreignFolder.strDisplayName = "Native other Gate folder";
 		candidate.Folders.push_back(foreignFolder);
 		KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
-		bundle.strBundleId = "kakulsaydon.bundle." + std::to_string(candidate.iNextBundleOrdinal++);
+		bundle.strBundleId = "koukusaydon.bundle." + std::to_string(candidate.iNextBundleOrdinal++);
 		bundle.strGateId = folder.strGateId; bundle.strFolderId = folder.strFolderId;
 		bundle.strDisplayName = "Native parallel bundle";
 		auto emptyBundle = bundle;
-		emptyBundle.strBundleId = "kakulsaydon.bundle." + std::to_string(candidate.iNextBundleOrdinal++);
+		emptyBundle.strBundleId = "koukusaydon.bundle." + std::to_string(candidate.iNextBundleOrdinal++);
 		emptyBundle.strFolderId = siblingFolder.strFolderId;
 		emptyBundle.strDisplayName = "Native empty bundle";
 		candidate.Bundles.push_back(emptyBundle);
@@ -886,7 +886,7 @@ namespace
 		for (const auto* actor : {"MN_RPCZ_00", "MN_RPCT_06"})
 		{
 			KOUKU_SAYDON_COMPOSITION_PATTERN pattern;
-			pattern.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(candidate.iNextPatternOrdinal++);
+			pattern.strPatternId = "KOUKUSAYDON_G1_PATTERN_" + std::to_string(candidate.iNextPatternOrdinal++);
 			pattern.strDisplayName = std::string("Native child ") + actor; pattern.strAuthoringStatus = "DRAFT";
 			pattern.strCategory = "NORMAL"; pattern.strActorProfileId = actor; pattern.strGateId = "GATE2";
 			pattern.strTargetBossPlacementId = CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(pattern.strGateId, actor);
@@ -905,7 +905,7 @@ namespace
 		Require(reopened.Get_LastGood() == saved, "saved Gate 2 hierarchy failed exact reload");
 		auto invalid = saved;
 		auto duplicateTarget = invalid.Patterns[invalid.Patterns.size() - 2u];
-		duplicateTarget.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(invalid.iNextPatternOrdinal++);
+		duplicateTarget.strPatternId = "KOUKUSAYDON_G1_PATTERN_" + std::to_string(invalid.iNextPatternOrdinal++);
 		invalid.Patterns.push_back(duplicateTarget);
 		invalid.Bundles.back().Members.back().strPatternId = duplicateTarget.strPatternId;
 		Require(!CKoukuSaydonCompositionDocument::Validate(invalid, references, status), "distinct Patterns targeting one boss were admitted to a bundle");
@@ -923,9 +923,9 @@ namespace
 		const auto beforeCreation = workbench.Get_Composition();
 		const auto generationBeforeDestination = workbench.Get_DraftGeneration();
 		for (const auto& rejectedDestination : std::vector<std::pair<std::string, std::string>>{
-			{ "kakulsaydon.folder.999999", {} }, { foreignFolder.strFolderId, {} },
+			{ "koukusaydon.folder.999999", {} }, { foreignFolder.strFolderId, {} },
 			{ folder.strFolderId, emptyBundle.strBundleId }, { {}, bundle.strBundleId },
-			{ folder.strFolderId, "kakulsaydon.bundle.999999" } })
+			{ folder.strFolderId, "koukusaydon.bundle.999999" } })
 		{
 			Require(!workbench.Set_PatternCreationDestination(rejectedDestination.first,
 				rejectedDestination.second, status) && !status.empty() &&
@@ -954,7 +954,7 @@ namespace
 			"load saved direct Parent placement for invalid-reference checks");
 		const auto directSaved = directOwner.Get_LastGood();
 		const auto directSavedBytes = ReadText(sourcePath);
-		for (const auto& rejectedParent : { std::string("kakulsaydon.folder.999999"), foreignFolder.strFolderId })
+		for (const auto& rejectedParent : { std::string("koukusaydon.folder.999999"), foreignFolder.strFolderId })
 		{
 			auto invalidParent = directSaved;
 			invalidParent.Patterns.back().strFolderId = rejectedParent;
@@ -1028,7 +1028,7 @@ namespace
 		const auto reparentSaved = workbench.Get_Composition();
 		const auto reparentGeneration = workbench.Get_DraftGeneration();
 		const auto reparentBytes = ReadText(sourcePath);
-		for (const auto& rejectedParent : { std::string("kakulsaydon.folder.999999"), foreignFolder.strFolderId })
+		for (const auto& rejectedParent : { std::string("koukusaydon.folder.999999"), foreignFolder.strFolderId })
 			Require(!workbench.Set_PatternFolder(bundlePatternId, rejectedParent, status) && !status.empty() &&
 				workbench.Get_Composition() == reparentSaved && !workbench.Is_Dirty() &&
 				workbench.Get_DraftGeneration() == reparentGeneration && ReadText(sourcePath) == reparentBytes,
@@ -1224,7 +1224,7 @@ namespace
 		source.Worlds.front().AnchorPosition = { -0.319, 1.9, 737.531 };
 		source.Worlds.front().PositionOffset = { 0.0, 0.58, 0.0 };
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION area;
-		area.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+		area.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
 		area.strDisplayName = "Native Area Overlap";
 		area.strLogicType = "DURATION";
 		area.strJudgementKind = "AREA_OVERLAP";
@@ -1238,7 +1238,7 @@ namespace
 		for (std::size_t i = 0u; i < 4u; ++i)
 		{
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
-			resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+			resource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
 			resource.strDisplayName = "Native presentation " + std::to_string(i);
 			resource.eKind = static_cast<KOUKU_SAYDON_PRESENTATION_KIND>(i);
 			resource.strAssetId = i == 0u ? "boss.kouku.disarm" : i == 1u ? "Sound/native/test.wav" : i == 2u ? "native.camera.shot" : "";
@@ -1272,7 +1272,7 @@ namespace
 			pattern->PresentationOccurrences.push_back(box);
 		}
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE circle;
-		circle.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+		circle.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
 		circle.strDisplayName = "Native Circle"; circle.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
 		circle.strShape = "CIRCLE"; circle.fRadiusM = 4.25;
 		source.PresentationResources.push_back(circle);
@@ -2287,7 +2287,7 @@ namespace
 		for (std::size_t i = 0u; i < kinds.size(); ++i)
 		{
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
-			resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+			resource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
 			resource.strDisplayName = "Native lane " + std::to_string(i); resource.eKind = kinds[i];
 			resource.strAssetId = i == 1u ? "" : (i == 2u ? "Sound/Native/duplicate.wav" : "native.duplicate.asset." + std::to_string(i));
 			if (i == 4u) resource.strResourceKind.clear();
@@ -2301,7 +2301,7 @@ namespace
 			pattern.PresentationOccurrences.push_back(box);
 		}
 		KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
-		world.strWorldId = "kakulsaydon.g1.world." + std::to_string(source.iNextWorldOrdinal++);
+		world.strWorldId = "koukusaydon.g1.world." + std::to_string(source.iNextWorldOrdinal++);
 		world.strDisplayName = "Native placed card"; world.strSequenceInstanceId = "native.duplicate.world";
 		world.strCompanionEffectResourceId = source.PresentationResources.front().strResourceId;
 		source.Worlds.push_back(world);
@@ -2316,16 +2316,16 @@ namespace
 		persistentWorld.strOccurrenceId = patternId + ".world." + std::to_string(pattern.iNextWorldOccurrenceOrdinal++);
 		persistentWorld.iStartMs = 0u; persistentWorld.iDurationMs = 3000u; pattern.WorldOccurrences.push_back(persistentWorld);
 		KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION summon;
-		summon.strSummonId = "kakulsaydon.g1.summon." + std::to_string(source.iNextSummonOrdinal++);
+		summon.strSummonId = "koukusaydon.g1.summon." + std::to_string(source.iNextSummonOrdinal++);
 		summon.strDisplayName = "Native summon"; source.Summons.push_back(summon);
 		pattern.SummonOccurrences.push_back({ patternId + ".summon." + std::to_string(pattern.iNextSummonOccurrenceOrdinal++), summon.strSummonId, 300u, 200u });
 		KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION scene;
-		scene.strSceneProfileId = "kakulsaydon.g1.sceneprofile." + std::to_string(source.iNextSceneProfileOrdinal++);
+		scene.strSceneProfileId = "koukusaydon.g1.sceneprofile." + std::to_string(source.iNextSceneProfileOrdinal++);
 		scene.strDisplayName = "Native scene"; scene.strRenderingProfileId = "native.duplicate.scene"; source.SceneProfiles.push_back(scene);
 		pattern.SceneProfileOccurrences.push_back({ patternId + ".sceneprofile." + std::to_string(pattern.iNextSceneProfileOccurrenceOrdinal++), scene.strSceneProfileId, 350u, 400u, 75u });
 		const auto addLogic = [&](const char* type, const char* name) {
 			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION logic;
-			logic.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+			logic.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
 			logic.strLogicType = type; logic.strDisplayName = name; return logic;
 		};
 		auto trigger = addLogic("TRIGGER", "Native contact");
@@ -2516,7 +2516,7 @@ namespace
 		// WORLD box. Exercise the actual command and saved canonical document.
 		auto parentSource = source;
 		KOUKU_SAYDON_COMPOSITION_FOLDER cycleFolder;
-		cycleFolder.strFolderId = "kakulsaydon.folder." + std::to_string(parentSource.iNextFolderOrdinal++);
+		cycleFolder.strFolderId = "koukusaydon.folder." + std::to_string(parentSource.iNextFolderOrdinal++);
 		cycleFolder.strGateId = pattern.strGateId; cycleFolder.strDisplayName = "Native repeating Parent";
 		cycleFolder.strTimelinePatternId = patternId;
 		parentSource.Folders.push_back(cycleFolder);
@@ -2635,7 +2635,7 @@ namespace
 		source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
 		source.SceneProfiles.clear(); source.PresentationResources.clear();
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
-		resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+		resource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
 		resource.strDisplayName = "Group collider"; resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
 		source.PresentationResources.push_back(resource);
 		std::vector<std::string> ids;
@@ -2738,11 +2738,11 @@ namespace
 		auto& cylinder = colliderSource.PresentationResources.front();
 		cylinder.strShape = "CYLINDER"; cylinder.fRadiusM = 2.25; cylinder.HalfExtents = {1.0, 0.75, 1.0};
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION contact;
-		contact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
+		contact.strLogicId = "koukusaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
 		contact.strDisplayName = "Flame column tick"; contact.strLogicType = "TRIGGER";
 		contact.strTriggerKind = "ENTER_AREA"; contact.iRepeatIntervalMs = 200u;
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION damage;
-		damage.strLogicId = "kakulsaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
+		damage.strLogicId = "koukusaydon.g1.logic." + std::to_string(colliderSource.iNextLogicOrdinal++);
 		damage.strDisplayName = "Flame column rise"; damage.strLogicType = "RESULT";
 		damage.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; damage.iPercent = 7u;
 		damage.fPushHeightM = 4.0; damage.iPushMs = 800u; damage.bPushBallistic = true;
@@ -2894,7 +2894,7 @@ namespace
 			auto anchorSource = colliderSource;
 			auto& anchorPattern = anchorSource.Patterns.front();
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE anchorResource;
-			anchorResource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(anchorSource.iNextPresentationResourceOrdinal++);
+			anchorResource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(anchorSource.iNextPresentationResourceOrdinal++);
 			anchorResource.strDisplayName = "Clipboard birth Effect";
 			anchorResource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 			anchorResource.strAssetId = "effect.clipboard.birth"; anchorResource.strResourceKind = "V1_EFFECT";
@@ -2914,7 +2914,7 @@ namespace
 			anchorPattern.PresentationOccurrences.push_back(dependentEffect);
 			const auto sourcePatternBefore = anchorPattern;
 			auto destination = anchorPattern;
-			destination.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(anchorSource.iNextPatternOrdinal++);
+			destination.strPatternId = "KOUKUSAYDON_G1_PATTERN_" + std::to_string(anchorSource.iNextPatternOrdinal++);
 			destination.strDisplayName = "Clipboard birth destination";
 			destination.PresentationOccurrences.clear(); destination.LogicOccurrences.clear();
 			destination.iNextPresentationOccurrenceOrdinal = 1u; destination.iNextLogicOccurrenceOrdinal = 1u;
@@ -3073,7 +3073,7 @@ namespace
 		for (unsigned i = 0u; i < 2u; ++i)
 		{
 			KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION world;
-			world.strWorldId = "kakulsaydon.g1.world." + std::to_string(source.iNextWorldOrdinal++);
+			world.strWorldId = "koukusaydon.g1.world." + std::to_string(source.iNextWorldOrdinal++);
 			world.strDisplayName = i ? "Right gun" : "Left gun";
 			world.strSequenceInstanceId = "sequence.gun." + std::to_string(i);
 			source.Worlds.push_back(world);
@@ -3271,15 +3271,15 @@ namespace
 			owner->PresentationOccurrences.push_back(effect);
 		}
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION contact;
-		contact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+		contact.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
 		contact.strDisplayName = "Native Collider Apply contact"; contact.strLogicType = "TRIGGER";
 		source.Logics.push_back(contact);
 		KOUKU_SAYDON_COMPOSITION_FOLDER folder;
-		folder.strFolderId = "kakulsaydon.folder." + std::to_string(source.iNextFolderOrdinal++);
+		folder.strFolderId = "koukusaydon.folder." + std::to_string(source.iNextFolderOrdinal++);
 		folder.strGateId = owner->strGateId; folder.strDisplayName = "Preview transport fixture";
 		source.Folders.push_back(folder);
 		KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
-		bundle.strBundleId = "kakulsaydon.bundle." + std::to_string(source.iNextBundleOrdinal++);
+		bundle.strBundleId = "koukusaydon.bundle." + std::to_string(source.iNextBundleOrdinal++);
 		bundle.strGateId = folder.strGateId; bundle.strFolderId = folder.strFolderId;
 		bundle.strDisplayName = "Preview transport fixture";
 		bundle.Members.push_back({bundle.strBundleId + ".member." + std::to_string(bundle.iNextMemberOrdinal++), patternId, 100u});
@@ -3789,11 +3789,11 @@ namespace
 			}
 			auto triggerSource = expectedColliderSave;
 			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION firstContact;
-			firstContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
+			firstContact.strLogicId = "koukusaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
 			firstContact.strDisplayName = "Native first Trigger connection"; firstContact.strLogicType = "TRIGGER";
 			triggerSource.Logics.push_back(firstContact);
 			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION result;
-			result.strLogicId = "kakulsaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
+			result.strLogicId = "koukusaydon.g1.logic." + std::to_string(triggerSource.iNextLogicOrdinal++);
 			result.strDisplayName = "Native preserved contact result"; result.strLogicType = "RESULT";
 			result.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; result.iPercent = 10u;
 			triggerSource.Logics.push_back(result);
@@ -3927,7 +3927,7 @@ namespace
 				[&](const auto& row) { return row.strResourceId == firstColliderEdit.strResourceId; });
 			Require(originalResource != sectorSource.PresentationResources.end(), "Sector fixture lost its source Collider resource");
 			auto sectorResource = *originalResource;
-			sectorResource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(sectorSource.iNextPresentationResourceOrdinal++);
+			sectorResource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(sectorSource.iNextPresentationResourceOrdinal++);
 			sectorResource.strDisplayName = "Native linked Sector save"; sectorResource.strShape = "SECTOR";
 			sectorSource.PresentationResources.push_back(sectorResource);
 			auto sectorBox = firstColliderEdit; sectorBox.strResourceId = sectorResource.strResourceId;
@@ -4167,22 +4167,22 @@ namespace
 		source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
 		source.SceneProfiles.clear(); source.PresentationResources.clear();
 		auto parent = child;
-		parent.strPatternId = "kakulsaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
+		parent.strPatternId = "koukusaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
 		parent.strDisplayName = "Preserved Parent"; parent.iDurationMs = 6000u;
 		const auto parentId = parent.strPatternId;
 		KOUKU_SAYDON_COMPOSITION_FOLDER folder;
-		folder.strFolderId = "kakulsaydon.folder." + std::to_string(source.iNextFolderOrdinal++);
+		folder.strFolderId = "koukusaydon.folder." + std::to_string(source.iNextFolderOrdinal++);
 		folder.strGateId = "GATE1"; folder.strDisplayName = "Delete fixture";
 		folder.strTimelinePatternId = parentId; parent.strFolderId = folder.strFolderId;
 		child.strFolderId = folder.strFolderId;
 		parent.PatternOccurrences.push_back({parentId + ".pattern." + std::to_string(parent.iNextPatternOccurrenceOrdinal++), childId, 123u, 1000u, false});
 		auto untouched = child;
-		untouched.strPatternId = "kakulsaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
+		untouched.strPatternId = "koukusaydon.g1.pattern." + std::to_string(source.iNextPatternOrdinal++);
 		untouched.strDisplayName = "Unrelated Pattern";
 		source.Patterns = {child, parent, untouched}; source.Folders.push_back(folder);
 		source.PlayAllPatternIds = {childId, parentId, untouched.strPatternId};
 		KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
-		bundle.strBundleId = "kakulsaydon.bundle." + std::to_string(source.iNextBundleOrdinal++);
+		bundle.strBundleId = "koukusaydon.bundle." + std::to_string(source.iNextBundleOrdinal++);
 		bundle.strGateId = "GATE1"; bundle.strFolderId = folder.strFolderId; bundle.strDisplayName = "Preserved Bundle";
 		bundle.strAuthoringStatus = "PRODUCT";
 		bundle.Members.push_back({bundle.strBundleId + ".member." + std::to_string(bundle.iNextMemberOrdinal++), childId, 321u});
@@ -4215,7 +4215,7 @@ namespace
 
 		auto blocked = workbench.Get_Composition();
 		KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION logic;
-		logic.strLogicId = "kakulsaydon.g1.logic." + std::to_string(blocked.iNextLogicOrdinal++);
+		logic.strLogicId = "koukusaydon.g1.logic." + std::to_string(blocked.iNextLogicOrdinal++);
 		logic.strDisplayName = "Required followup"; logic.strLogicType = "RESULT";
 		logic.strOutcomeKind = "FOLLOWUP_PATTERN"; logic.strFollowupPatternId = untouched.strPatternId;
 		blocked.Logics.push_back(logic);
@@ -4604,7 +4604,7 @@ int Run_KoukuSequentialParentTimingContractTests()
         std::string status;
         RequireEditorStep(workbench.Reload(status), status, "load actual Parent fixture");
         const auto original = workbench.Get_Composition();
-        const std::string childId = "KAKULSAYDON_G1_PATTERN_52", parentId = "KAKULSAYDON_G1_PATTERN_92";
+        const std::string childId = "KOUKUSAYDON_G1_PATTERN_52", parentId = "KOUKUSAYDON_G1_PATTERN_92";
         const auto find = [&](auto& document, const std::string& id) -> auto& {
             const auto row = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& value) { return value.strPatternId == id; });
             Require(row != document.Patterns.end(), "Parent fixture Pattern is missing"); return *row;
@@ -4654,7 +4654,7 @@ int Run_KoukuSequentialParentTimingContractTests()
         std::cout << "ParentTiming actual P52 13009->9500/P92 50362->46853 + Save/Reload PASS\n";
 
         install(original);
-        const std::string albionId = "KAKULSAYDON_G1_PATTERN_39";
+        const std::string albionId = "KOUKUSAYDON_G1_PATTERN_39";
         const auto albion = EditorPattern(workbench, albionId);
         RequireEditorStep(workbench.Set_StageDuration(albionId, albion.Stages.back().strStageId,
             albion.Stages.back().iDurationMs - 1000u, status), status, "shrink actual Albion Stage by 1000 ms");
@@ -4662,15 +4662,15 @@ int Run_KoukuSequentialParentTimingContractTests()
         Require(EditorPattern(workbench, albionId).PresentationOccurrences == albion.PresentationOccurrences &&
             EditorPattern(workbench, albionId).LogicOccurrences == albion.LogicOccurrences, "Albion Stage edit changed lane clocks");
         verifyParent(find(original, parentId), EditorPattern(workbench, parentId));
-        verifyParent(find(original, "KAKULSAYDON_G1_PATTERN_93"), EditorPattern(workbench, "KAKULSAYDON_G1_PATTERN_93"));
+        verifyParent(find(original, "KOUKUSAYDON_G1_PATTERN_93"), EditorPattern(workbench, "KOUKUSAYDON_G1_PATTERN_93"));
         RequireEditorRoundtrip(workbench);
         std::cout << "ParentTiming actual Albion Stage shrink / two referencing Parents + Save/Reload PASS\n";
 
         // Current data uses independent Bingo flow entries. Reuse its real
         // board Logic and actor as a legacy complete-child Loop Parent fixture.
         auto bingo = original;
-        const std::string bingoParentId = "KAKULSAYDON_G1_PATTERN_129";
-        const std::string bingoChildId = "KAKULSAYDON_G1_PATTERN_108";
+        const std::string bingoParentId = "KOUKUSAYDON_G1_PATTERN_129";
+        const std::string bingoChildId = "KOUKUSAYDON_G1_PATTERN_108";
         auto& bingoParent = find(bingo, bingoParentId);
         const auto bingoDuration = lifetime(find(bingo, bingoChildId));
         const std::string loopId = bingoParentId + ".pattern.1";
@@ -4704,11 +4704,11 @@ int Run_KoukuSequentialParentTimingContractTests()
         const auto extendEnd = [&](auto& lane) { for (auto& row : lane)
             if (std::uint64_t(row.iStartMs) + row.iDurationMs == oldEnd) row.iDurationMs += 75u; };
         extendEnd(gapParent.LogicOccurrences); extendEnd(gapParent.WorldOccurrences); extendEnd(gapParent.PresentationOccurrences);
-        auto& fixed = find(gaps, "KAKULSAYDON_G1_PATTERN_93");
+        auto& fixed = find(gaps, "KOUKUSAYDON_G1_PATTERN_93");
         fixed.bPlayChildrenSequentially = false;
         install(gaps);
         const auto fixedBefore = EditorPattern(workbench, fixed.strPatternId);
-        const std::string repeatedId = "KAKULSAYDON_G1_PATTERN_124";
+        const std::string repeatedId = "KOUKUSAYDON_G1_PATTERN_124";
         RequireEditorStep(workbench.Set_PatternDuration(repeatedId,
             lifetime(EditorPattern(workbench, repeatedId)) + 100u, status), status, "extend twice-referenced child");
         verifyParent(gapParent, EditorPattern(workbench, parentId));
@@ -4745,7 +4745,7 @@ int Run_KoukuSequentialParentTimingContractTests()
         std::cout << "ParentTiming same-candidate conflicts / overflow / too-short end atomic rejection PASS\n";
 
         install(original);
-        const std::string frontId = "KAKULSAYDON_G1_PATTERN_50";
+        const std::string frontId = "KOUKUSAYDON_G1_PATTERN_50";
         const auto rotation = std::find_if(original.Logics.begin(), original.Logics.end(), [](const auto& logic) {
             return logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "BOSS_TRACK_TARGET" && logic.fFollowSpeedScale == 0.0; });
         Require(rotation != original.Logics.end(), "instant facing Logic missing from real catalog");
@@ -4870,7 +4870,7 @@ int Run_KoukuFixedDamageContractTests()
         auto bingoFlow = std::find_if(bingoSource.PatternFlows.begin(), bingoSource.PatternFlows.end(),
             [](const auto& row) { return row.strGateId == "BINGO"; });
         Require(bingoFlow != bingoSource.PatternFlows.end(), "Bingo control fixture needs a saved Flow");
-        bingoFlow->strBingoSpecialPatternId = "KAKULSAYDON_G1_PATTERN_107";
+        bingoFlow->strBingoSpecialPatternId = "KOUKUSAYDON_G1_PATTERN_107";
         RequireEditorStep(CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(
             bingoSource, bingoFlow->strBingoSpecialPatternId, status), status, "validate actual finite Bingo special Parent");
         KOUKU_SAYDON_COMPOSITION_DOCUMENT bingoParsed;
@@ -4896,7 +4896,7 @@ int Run_KoukuFixedDamageContractTests()
         source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
         source.SceneProfiles.clear(); source.PresentationResources.clear();
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE resource;
-        resource.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        resource.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
         resource.strDisplayName = "Fixed damage cylinder"; resource.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
         resource.strShape = "CYLINDER"; resource.fRadiusM = 2.0; resource.HalfExtents = {2.0, 3.0, 2.0};
         source.PresentationResources.push_back(resource);
@@ -4914,7 +4914,7 @@ int Run_KoukuFixedDamageContractTests()
             // Exercise the existing codec/editor on an isolated board fixture, without publishing live Data.
             auto boardFixture = source;
             KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION board;
-            board.strLogicId = "kakulsaydon.g1.logic." + std::to_string(boardFixture.iNextLogicOrdinal++);
+            board.strLogicId = "koukusaydon.g1.logic." + std::to_string(boardFixture.iNextLogicOrdinal++);
             board.strDisplayName = "Editable Bingo board"; board.strLogicType = "DURATION"; board.strJudgementKind = "BINGO_BOARD";
             boardFixture.Logics.push_back(board);
             auto& owner = boardFixture.Patterns.front();
@@ -5008,20 +5008,20 @@ int Run_KoukuFixedDamageContractTests()
             parentFixture.PresentationResources.clear();
             auto& control = parentFixture.Patterns.front();
             control.strGateId = "BINGO"; control.strActorProfileId = "MN_RPCT_05";
-            control.strTargetBossPlacementId = "boss.kakulsaydon.bingo.saydon";
+            control.strTargetBossPlacementId = "boss.koukusaydon.bingo.saydon";
             control.PresentationOccurrences.clear(); control.Stages.clear(); control.iDurationMs = 34u;
             control.LogicOccurrences.resize(1u); control.LogicOccurrences.front().iStartMs = 0u;
             control.LogicOccurrences.front().iDurationMs = 34u;
             const auto controlId = control.strPatternId, controlBoxId = control.LogicOccurrences.front().strOccurrenceId;
             auto normal = control;
             KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION ordinary;
-            ordinary.strLogicId = "kakulsaydon.g1.logic." + std::to_string(parentFixture.iNextLogicOrdinal++);
+            ordinary.strLogicId = "koukusaydon.g1.logic." + std::to_string(parentFixture.iNextLogicOrdinal++);
             ordinary.strDisplayName = "Ordinary timed rule"; ordinary.strLogicType = "DURATION"; ordinary.strJudgementKind = "EXTERNAL_SIGNAL";
             parentFixture.Logics.push_back(ordinary);
             std::vector<std::string> normalIds;
             for (unsigned i = 0u; i < 2u; ++i)
             {
-                normal.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(parentFixture.iNextPatternOrdinal++);
+                normal.strPatternId = "KOUKUSAYDON_G1_PATTERN_" + std::to_string(parentFixture.iNextPatternOrdinal++);
                 normal.strDisplayName = "Bingo normal " + std::to_string(i + 1u); normal.iDurationMs = 1000u;
                 normal.LogicOccurrences.front().strOccurrenceId = normal.strPatternId + ".logic.1";
                 normal.LogicOccurrences.front().strLogicId = ordinary.strLogicId; normal.LogicOccurrences.front().iDurationMs = 1000u;
@@ -5056,7 +5056,7 @@ int Run_KoukuFixedDamageContractTests()
             RequireEditorRoundtrip(parentEditor);
             Require(parentEditor.Get_Composition().PatternFlows.front() == editedFlow, "Bingo Flow Save/Reopen lost edits");
             const auto flowGood = parentEditor.Get_Composition(); const auto flowBytes = ReadText(sourcePath);
-            auto invalidFlow = editedFlow; invalidFlow.Entries[1].strTargetId = "KAKULSAYDON_G1_PATTERN_999999";
+            auto invalidFlow = editedFlow; invalidFlow.Entries[1].strTargetId = "KOUKUSAYDON_G1_PATTERN_999999";
             Require(!parentEditor.Set_BingoFlow(invalidFlow, status) && parentEditor.Get_Composition() == flowGood && ReadText(sourcePath) == flowBytes,
                 "missing Bingo Flow target partially committed");
             invalidFlow = editedFlow; invalidFlow.strLoopStartEntryId = "contract.missing";
@@ -5109,20 +5109,20 @@ int Run_KoukuFixedDamageContractTests()
                 "disabled board Save/Reopen lost its retained activation window");
         }
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION attack;
-        attack.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        attack.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         attack.strDisplayName = "Airborne hit codec"; attack.strLogicType = "TRIGGER";
         attack.strTriggerKind = "ALBION_BLUE_CIRCLE"; attack.iCountPerPlayer = 1u; attack.iEffectLifetimeMs = 7000u;
         LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
         hit.strHitId = "contract.rise"; hit.iAtMs = 500u; hit.fRiseHeightM = 3.25; hit.iPushMs = 1200u;
         attack.FixedHits = {hit}; source.Logics.push_back(attack);
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION legacyContact;
-        legacyContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        legacyContact.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         legacyContact.strDisplayName = "Legacy grab contact"; legacyContact.strLogicType = "TRIGGER"; legacyContact.strTriggerKind = "ENTER_AREA";
         auto damageContact = legacyContact;
-        damageContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        damageContact.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         damageContact.strDisplayName = "User-owned damage contact"; damageContact.strColliderDamageContactRole = "DAMAGE";
         auto knockbackContact = damageContact;
-        knockbackContact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        knockbackContact.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         knockbackContact.strDisplayName = "User-owned knockback contact"; knockbackContact.strColliderDamageContactRole = "KNOCKBACK";
         source.Logics.insert(source.Logics.end(), {legacyContact, damageContact, knockbackContact});
         Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(source)), "write isolated fixed damage fixture");
@@ -5232,7 +5232,7 @@ int Run_KoukuFixedDamageContractTests()
             [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
         protectedWindow->strLogicId = legacyContact.strLogicId;
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION wipe;
-        wipe.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        wipe.strLogicId = "koukusaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
         wipe.strDisplayName = "Independent Success mechanic"; wipe.strLogicType = "RESULT"; wipe.strOutcomeKind = "INSTANT_DEATH";
         protectedDocument.Logics.push_back(wipe); protectedWindow->OnSuccessLogicIds.push_back(wipe.strLogicId);
         Require(WriteText(sourcePath, CKoukuSaydonCompositionDocument::Serialize(protectedDocument)), "stage non-damage Success contact");
@@ -5249,7 +5249,7 @@ int Run_KoukuFixedDamageContractTests()
             [&](const auto& row) { return row.strOccurrenceId == stableWindowId; });
         heldWindow->OnSuccessLogicIds.pop_back();
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION hold;
-        hold.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        hold.strLogicId = "koukusaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
         hold.strDisplayName = "Capture lifetime"; hold.strLogicType = "DURATION"; hold.strJudgementKind = "ATTACHMENT_HOLD";
         protectedDocument.Logics.push_back(hold);
         KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE holdWindow;
@@ -5267,7 +5267,7 @@ int Run_KoukuFixedDamageContractTests()
         RequireEditorRoundtrip(workbench);
         protectedDocument = workbench.Get_Composition();
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION capture;
-        capture.strLogicId = "kakulsaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
+        capture.strLogicId = "koukusaydon.g1.logic." + std::to_string(protectedDocument.iNextLogicOrdinal++);
         capture.strDisplayName = "Actual grab"; capture.strLogicType = "RESULT"; capture.strOutcomeKind = "CAPTURE_PLAYER";
         capture.strAttachmentSlot = "BOSS_LEFT_HAND"; capture.GripLocalOffset = {.1, .2, .3};
         protectedDocument.Logics.push_back(capture);
@@ -5355,13 +5355,13 @@ int Run_KoukuFixedDamageContractTests()
         // gameplay template. Only unreferenced UI selection groups may collapse.
         auto grouped = workbench.Get_Composition();
         KOUKU_SAYDON_COMPOSITION_PATTERN semantic;
-        semantic.strPatternId = "KAKULSAYDON_G1_PATTERN_" + std::to_string(grouped.iNextPatternOrdinal++);
+        semantic.strPatternId = "KOUKUSAYDON_G1_PATTERN_" + std::to_string(grouped.iNextPatternOrdinal++);
         semantic.strDisplayName = "Semantic singleton groups"; semantic.strAuthoringStatus = "DRAFT";
         semantic.strCategory = "NORMAL"; semantic.iDurationMs = 10000u;
         semantic.strActorProfileId = pattern.strActorProfileId; semantic.strGateId = pattern.strGateId;
         semantic.strTargetBossPlacementId = pattern.strTargetBossPlacementId;
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE effect;
-        effect.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(grouped.iNextPresentationResourceOrdinal++);
+        effect.strResourceId = "koukusaydon.g1.presentation." + std::to_string(grouped.iNextPresentationResourceOrdinal++);
         effect.strDisplayName = "Semantic group Effect"; effect.strAssetId = "contract.semantic.effect";
         effect.strResourceKind = "LEAF"; effect.strDefaultAnchorKind = "MAP";
         grouped.PresentationResources.push_back(effect);
@@ -5377,15 +5377,15 @@ int Run_KoukuFixedDamageContractTests()
             semantic.PresentationOccurrences.push_back(row);
         }
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION selected;
-        selected.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        selected.strLogicId = "koukusaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
         selected.strDisplayName = "Selected group owner"; selected.strLogicType = "TRIGGER";
         selected.strTriggerKind = "ALBION_AIRBORNE"; selected.strAirbornePhase = "SELECT_PLAYER";
         selected.strAirborneTargetPositionPolicy = "SELECT"; selected.strSelectedEffectGroupId = selectedGroup;
         auto unplaced = selected;
-        unplaced.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        unplaced.strLogicId = "koukusaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
         unplaced.strDisplayName = "Unplaced catalog definition"; unplaced.strSelectedEffectGroupId = uiGroup;
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION fixedOwner;
-        fixedOwner.strLogicId = "kakulsaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
+        fixedOwner.strLogicId = "koukusaydon.g1.logic." + std::to_string(grouped.iNextLogicOrdinal++);
         fixedOwner.strDisplayName = "Disabled fixed group owner"; fixedOwner.strLogicType = "DURATION";
         fixedOwner.strJudgementKind = "SHOWTIME_PLAYER_TARGETS"; fixedOwner.strFixedSelectionGroupId = fixedGroup;
         fixedOwner.iSpawnIntervalMs = 500u; fixedOwner.fFollowSpeedScale = 1.0;
@@ -5496,15 +5496,15 @@ int Run_KoukuSoundTimelineContractTests()
         source.PatternFlows.clear(); source.Logics.clear(); source.Summons.clear(); source.Worlds.clear();
         source.SceneProfiles.clear(); source.PresentationResources.clear();
         KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE sound;
-        sound.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        sound.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
         sound.strDisplayName = "Sound timeline fixture"; sound.eKind = KOUKU_SAYDON_PRESENTATION_KIND::SOUND;
         sound.strAssetId = "Sound/fixture.wav"; sound.iDurationMs = 9000u;
         auto effect = sound;
-        effect.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        effect.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
         effect.strDisplayName = "Effect trim fixture"; effect.eKind = KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
         effect.strAssetId = "effect.timeline.fixture"; effect.strResourceKind = "V1_EFFECT";
         auto collider = sound;
-        collider.strResourceId = "kakulsaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
+        collider.strResourceId = "koukusaydon.g1.presentation." + std::to_string(source.iNextPresentationResourceOrdinal++);
         collider.strDisplayName = "Collider move fixture"; collider.eKind = KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
         collider.strAssetId.clear();
         source.PresentationResources = {sound, effect, collider};
@@ -5524,11 +5524,11 @@ int Run_KoukuSoundTimelineContractTests()
         const auto effectId = effectBox.strOccurrenceId;
         pattern.PresentationOccurrences.push_back(effectBox);
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION contact;
-        contact.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        contact.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         contact.strDisplayName = "Collider contact fixture"; contact.strLogicType = "TRIGGER";
         contact.strTriggerKind = "ENTER_AREA"; contact.iRepeatIntervalMs = 200u;
         KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION damage;
-        damage.strLogicId = "kakulsaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
+        damage.strLogicId = "koukusaydon.g1.logic." + std::to_string(source.iNextLogicOrdinal++);
         damage.strDisplayName = "Collider damage fixture"; damage.strLogicType = "RESULT";
         damage.strOutcomeKind = "MAX_HP_PERCENT_DAMAGE"; damage.iPercent = 7u;
         source.Logics = {contact, damage};

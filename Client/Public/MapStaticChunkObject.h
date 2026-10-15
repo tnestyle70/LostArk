@@ -33,6 +33,9 @@ struct MAP_CHUNK_CLAIM final
     CMapStaticChunkObject* owner = nullptr;
     std::vector<uint8_t> activeMembers;
     bool Is_Active(uint32_t member = UINT32_MAX) const;
+    // main thread의 표시 상태 변경과 Late_Update가 현재 선택만 비운다.
+    // 불변 geometry의 valid는 복구하지 않으며 final-camera 제출 전에 호출한다.
+    void Invalidate_FrameSelection() noexcept;
 };
 struct MAP_CHUNK_BUILD_STATS final
 {
@@ -60,7 +63,8 @@ public:
     {
         std::weak_ptr<CMapStaticBatchObject> batch;
         uint32_t mesh = 0u;
-        // Local batch instance index -> immutable proxy source slot.
+        // 현재 batch instance index에서 불변 HLOD/proxy source range를 찾는다.
+        // member별 claim으로 근거리 원본과 원경 선택을 중복 없이 분리한다.
         std::vector<uint32_t> sourceSlots;
     };
     struct DESC final : GAMEOBJECT_DESC
@@ -113,6 +117,8 @@ public:
 private:
     friend struct MAP_CHUNK_CLAIM;
     void Resolve_RenderSelection();
+    // 아직 publish하지 않은 후보 mask의 원본 draw 감소 하한을 계산한다.
+    uint32_t Count_ReplacementDraws(const struct MAP_CAMERA_CULL_SNAPSHOT& camera);
     void Resolve_ProxySelection(const struct MAP_CAMERA_CULL_SNAPSHOT& camera);
     CMapStaticChunkObject(ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context);
     CMapStaticChunkObject(const CMapStaticChunkObject& prototype);

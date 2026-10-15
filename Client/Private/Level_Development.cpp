@@ -13,10 +13,7 @@
 #include "EffectFailureDiagnostic.h"
 #include "Effect_PresentationService.h"
 #include "GameInstance.h"
-#pragma push_macro("new")
-#undef new
 #include "imgui.h"
-#pragma pop_macro("new")
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"

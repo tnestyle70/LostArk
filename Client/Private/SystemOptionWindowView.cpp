@@ -9,7 +9,7 @@ Engine_Enum.h's Engine::POINT would make ambiguous). */
 
 #include "DataJson.h"
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -220,7 +220,7 @@ void Client::CSystemOptionWindowView::Update_TabColumn()
 		}
 		if (bHovered && Is_Clicked(TAB_X, fY, TAB_W, TAB_ROW_H))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (Entry.bParent)
 			{
 				if (!Entry.bExcluded)
@@ -621,7 +621,7 @@ void Client::CSystemOptionWindowView::Update_Chrome()
 	m_pView->Set_SlotTexture("SO_Close", bHovered ? ART_CLOSE_OVER : ART_CLOSE_NORMAL);
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -714,7 +714,7 @@ void Client::CSystemOptionWindowView::Update_Buttons()
 				BUTTON_STATE::NORMAL));
 		if (!bHovered || !Is_Clicked(Button.fX, BUTTON_Y, BUTTON_W, BUTTON_H))
 			continue;
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		if (0 == strcmp(Button.pSlotId, "SO_ResetAllBtn"))
 			Reset_All();
 		else if (0 == strcmp(Button.pSlotId, "SO_ApplyBtn"))

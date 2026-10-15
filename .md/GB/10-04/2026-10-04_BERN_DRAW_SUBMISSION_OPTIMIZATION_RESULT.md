@@ -603,3 +603,192 @@ residency를 기록했다고 설명하지 않는다. frame 보관/저장 범위�
 최종 Debug Product 증분 compile/deploy는 PASS했으며 영수증은
 `out/BuildPipeline/runs/20261004T082217929Z-debug-product.json`이다.
 Client/UI를 실행하지 않아 새 사용자 캡처의 값 확인은 남아 있다.
+
+## G21. 2026-10-10 설치 모델의 거리·LOD 누락 실측과 복구
+
+이번에는 원인 조사 후 사용자가 거리 컬링·LOD·가림 검사를 실제 수정하고 Debug/Release를
+검증하도록 요청했다. 카메라 경로·FOV 저작 JSON, 팀장 scene 렌더링 옵션, Resources 모델과
+재질은 이번 최적화에서 변경하지 않았다. 화면·최종 FPS 확인과 아래 native 검사를 구분한다.
+
+### 현재 데이터에서 확인한 원인
+
+- 설치 Bern 전체50,021 placement, authored-visible48,507행과 실제WModel1,291경로/
+  1,755고유 geometry-submesh를 조사했다. sphere 분석에서 참조한 WModel은1,276개다.
+- 현재 CModel decoder와 실제0.01 preTransform·정규화·LOD input hash로 기존v2 cache를
+  대조했다. 재질 적격840mesh 중811개는4,096triangle 하한에서 제외됐다. 나머지29개 중
+  23개는15% 축약을 충족하지 못한 negative cache였으며 실제 축소LOD는6개뿐이었다.
+  이 설치 데이터의 첫 material variant 때문에 추가 차단된 경우는0개다.
+- 거리 컬링은 기본ON이지만 반경3m 이하 소품의 거리 조건과21.6px 최초 숨김 조건을
+  모두 요구했다. 첫 키에서 거리 조건을 넘은12,171개 중 최종 제외는1,565개였다.
+  거리 배율을1→0.5→0.25로 낮춰도 pixel 조건에 막혀 제외 개수가 같았다.
+- COcclusionCuller는 정상 camera inverse의 `_44=1±수 ULP`를 정확히1이 아니라고
+  거부했다. 현재16키를 Transform::LookAt 식과 DirectXMath inverse로 만든 fixture에서
+  독립 pose3/16, 순차 pose7/16이 실제 기존 Release DLL Begin에서 탈락했다.
+  실제 camera controller 호출·보간 전체 프레임·실제 FPS 실패율을 측정한 수치는 아니다.
+- 기존10-02 Debug/RTX4050 캡처에서는 기본 시점 대비 무비 저장본 앞20frame의 visible
+  instance1,035→8,101, map draw773→4,255, Map.Batch.Render21.61→105.50ms가
+  확인됐다. PS 호출은25.38M→23.17M로 증가하지 않았다. 이 과거 Debug/D3D debug ON
+  절대 시간을 현재 Release로 환산하지 않는다. 현재10-10 Release 게임 캡처는 없다.
+
+### 실제 반영
+
+1. 거리 기준 화면 지름의 세션 기본값을24→48px로 조정했다. 실효 지름은
+   clamp(기준 지름 / 거리 배율,4,128)이며 거리와 화면 크기에 배율이 함께 작용한다.
+   처음 숨김43.2px/숨김 유지48px, 기존 거리 hysteresis·revision·근평면 보호를 유지한다.
+   반경3m 초과 구조물과 지형은 계속 제외 대상 밖이며 원거리 작은 문·장식 등은 포함될 수 있다.
+   F7의 기준/실효 지름과 캡처 context가 실제 소비자와 같은 helper를 사용한다.
+2. 적격 불투명 SOURCE_BG의 생성 하한을512triangle로 내리고 기존 UV100/error0.001·0.002
+   두 단계 생성 결과를 보존한 채 UV10/error0.01·0.02의 원경 두 단계를 추가했다.
+   최대5range(원본 포함), cachev3이며 원본 VB·UV·normal·재질·경계를 유지하고 index만
+   축약한다. 기존v2 cache는 삭제하지 않는다. Bern 컷신과 일반 이동에1pixel 예산을 주고
+   기존10% 여유를 적용한다. 다른 맵의 선택 예산은0.25pixel이다. 공통 생성된 원경 단계는
+   다른 맵에서도 기존 예산을 만족하면 선택될 수 있다. LOD2 counter/표시는2+로 집계한다.
+3. 가림 검사 입력의 camera view만32 float epsilon 범위에서 동차 정규화한다. projective,
+   비유한 입력과 object world 검증은 유지하며 실패하면 이전 depth를 사용하지 않는다.
+
+### 같은 입력의 전후 측정
+
+아래 첫 키는 현재 저작 key0,1600×900,FOV45,거리 배율1이다. 원본 WModel 정점과
+placement TRS를 사용한다. 거리 결과는 실제 제품 함수 본문·DirectXMath로 검증했다.
+index와 그룹 합산은 sphere·asset/mirror/32m·선택 공식의 수치 proxy이며 GPU occlusion,
+bank 병합, 런타임 grace·억제 상태·그림자·실제 material draw/FPS를 포함하지 않는다.
+
+| 항목 | 수정 전 | 수정 후 |
+|---|---:|---:|
+| 거리 컬링 후 instance 후보 |14,607|7,942|
+| asset/mirror/32m 그룹 proxy |6,343|4,724|
+| LOD가 선택된 batch-mesh proxy |19|487|
+| 선택 index 합산 proxy |20,590,410|15,512,358|
+| 기본 spawn follow의 instance 후보 |752|752|
+
+첫 키 index 합산은24.662% 감소, instance 후보는45.628% 감소다. 이는 FPS 개선율이 아니다.
+FOV40의 같은 첫 키도 거리 후14,038→7,836개다. FOV·카메라를 바꿔 낸 결과가 아니다.
+첫6키 FOV45의 추가 제외량은6,665/5,929/5,302/4,543/3,694/2,557개다.
+16키의 거리 제외 수는 native와 모두 일치한다. float64 frustum proxy는 key7·12에서
+float32 native보다 각각1개 적으며 첫 키는 같은16,172개다.
+
+현재 catalog 재질 적격314mesh 중253개가 축소LOD를 생성하고61개는 원본을 유지한다.
+authored-visible에서 실제 사용되는 생성 가능 고유mesh는6→249개, occurrence-mesh는
+72→4,567개다. 추가 index buffer 총12,791,280byte이며 native 준비 fixture의 합계는
+cold1,769.9ms/warm109.2ms였다. GPU readback 등 검사 비용을 포함한 fixture 시간이며
+제품 로딩 시간이나 frame 비용이 아니다. 원래6개 미세LOD의 count/index/error는 동일하다.
+
+### 실행한 검증
+
+- 거리: 설치48,507행의 유효bounds/누락0,816조건,41경계·실패·hysteresis 검사 통과.
+  130개 camera/FOV 그룹에서 배율 감소에 따른 제외 개수 단조성을 확인했다.
+- LOD 후보: 실제Create/Select_Range·GPU buffer readback·positive/negative cache를
+  검증했고823개v3 cache의 header148byte/checksum/ranges를 확인했다.
+- 최종 제품 Debug와Release의 실제 CMesh::Create/Prepare_StaticLod/Select_StaticLod/
+  Render_Instanced를 RTX4050에서 화면 없이 호출했다. 각각12개 실제mesh×5조건=
+  60draw,585검사 통과. 양쪽 evidence JSON이 동일하고 각각24draw에서 축소IB가 선택됐다.
+  원본VB 유지, near→far IB 교체, NaN과near복귀의 원본IB 복원,3instance의 실제
+  GPU IAVertices/IAPrimitives가 선택 index와 일치함을 확인했다. 간단한 offscreen shader를
+  사용한 검사이며 제품 재질의 최종 이미지 비교가 아니다.
+- 가림: 수정 전107검사 중22실패를 재현했고 소스 직접 연결 및 설치 Debug/Release DLL에서
+  각각107검사 모두 통과했다. 앞/뒤/화면 밖/근평면 AABB,invalid view 뒤 이전 depth 폐기,
+  object world 검증을 포함한다. camera fixture의 far2000은 실제 Bern far와 별도다.
+- 기존 Bern camera contract4검사,최종git diff --check 통과. 변경C++은UTF-8 BOM없음·CRLF를
+  유지했다. 새 제품C++ 파일이 없으므로vcxproj/filters 추가가 없다.
+
+| Product compile/deploy | 결과 | 영수증 |
+|---|---|---|
+| Debug 통합 |PASS169,567ms|out/BuildPipeline/runs/20261010T021344357Z-debug-product.json|
+| Release 최종 |PASS188,446ms|out/BuildPipeline/runs/20261010T021733906Z-release-product.json|
+| Debug 최종 주석·LOD2+표시 |PASS22,115ms|out/BuildPipeline/runs/20261010T021809442Z-debug-product.json|
+
+코드페이지C4819/C4828와 외부DirectXTK PDB의LNK4099 경고가 남았으며 compile/link 실패는 없다.
+최종 Engine/Client DLL·EXE가 각 Debug/Release 제품 경로에 배포됐다. Client/UI를 실행하거나
+조작하지 않았다. Resources·저작 JSON·runtime DataFiles의 최적화 publish는 수행하지 않았다.
+
+### 함께 확인한 F1 재생과 Warlord
+
+F1 → Bern Entrance Camera → Start Bern Cutscene는 Debug/Release 공통 Level API로
+다음Update에 재생한다. cue staging,카메라 소유권,level transfer/restore 충돌과Esc/완료
+복원은 기존 경로다. 대응 정본은10-07 RELEASE_MOVIE_PROFILER PLAN/RESULT다.
+
+Warlord ALT+V 마지막clip은 누락된fm_a_stone_001.wmodel 때문에192개 문서 전체의
+stage가 거부됐던 문제다. 앞서 복구한 공유Resources 파일을 유지한 채 실제Debug codec/
+Product stage를 다시 실행해192개 모두PASS했다.6방향 배치 JSON/셰이더는 변경하지 않았다.
+이전 파생 파일의 tangent.w 보정과 완전 동일한 원본은 회수하지 못했으므로 작은 잔해의
+normal-map 조명 일치는 사용자 화면 확인 경계로 남는다.09-09 WARLORD_ASVF RESULT G24를 따른다.
+
+### 근거와 남은 확인
+
+`out/BernSubmissionInvestigation20261010/` 아래 capture/camera/structure/lod/affine와
+최종 build 로그에 입력hash·native 결과·GPU JSON을 보존했다. 핵심 파일은
+camera/native-verification-summary.json,lod/final-evidence-receipt.json,
+lod/final-camera-analysis.json,affine/contract-debug-final.log와contract-release-final.log다.
+
+LOD의1pixel은 저장된 단순화 오차를 투영식으로 제한하는 예산이며 최종 이미지pixel-diff
+보장이 아니다. 첫 키 선택치의 최대 계산 오차는0.898837pixel이었다. 새 소품 거리 문턱의
+팝핑·원경 세부 외형, Warlord6방향 GPU 표시와 실제 전체 게임FPS는 사용자 확인이 남는다.
+새Debug/Release Client에서 같은1600×900·FOV·adapter·전원 조건으로F7 Capture를 켜고
+F1로 재생한 뒤 초반 저하 구간의JSON을 저장한다.32초 컷신이 끝난 뒤에만 저장하면 bounded
+frame buffer에서 초반 구간이 밀릴 수 있으므로 초반 자료와 후반 자료를 구분한다.
+
+
+## G22. 2026-10-10 사용자 Release 재캡처와 큰 성 원경의 미완료 범위
+
+사용자가 G21 제품으로 워로드 해결을 확인하고 `베른컷신`과 `베른컷신_FHD` 캡처를 저장했다.
+이번 단계는 캡처 분석과 구현 계층 설명이며 제품 코드·카메라·렌더링 옵션은 변경하지 않았다.
+
+대상은 Client/Bin/ProfilerCaptures의
+`베른컷신_20261010_134406_565_frame1289_31168_0.json`과
+`베른컷신_FHD_20261010_134512_291_frame2565_31168_1.json`이다.
+두 파일은 각각1200frame, Release/PID31168/RTX4050/D3D debug OFF이며 보관된 GPU 결과는
+각각1200/1200유효, CPU/GPU scope 누락0이다. 개별 meshDraws는 전부 비어 있다.
+
+일반 시점에서 고부하 시점으로 draw가 급증하는 frame247과1679부터100frame을 분리했다.
+이 구간은 각 파일의 draw 상위100frame과 일치한다. 파일 전체 평균으로 초반 비용을 희석하지 않았다.
+
+| 프레임당 평균 | 1600×900 저장본247–346 | FHD 저장본1679–1778 |
+|---|---:|---:|
+| CPU frame |46.942ms|55.534ms|
+| GPU frame elapsed |47.174ms|56.278ms|
+| NONBLEND CPU |28.369ms|34.014ms|
+| Map.Batch.Material CPU |12.499ms|14.891ms|
+| Map.Batch.Pass CPU |2.857ms|3.550ms|
+| Map.Batch.Draw CPU |1.342ms|1.688ms|
+| 전체 계측 draw |5,605.05|5,828.56|
+| 거리 제외 instance |5,591.74|4,041.16|
+| LOD1+ draw |219.67|184.31|
+| LOD 계측 index 절감 |13.746%|11.795%|
+| Occlusion 제외 batch |48.39|52.82|
+| Occlusion CPU |2.971ms|3.445ms|
+| HLOD near/far draw |0/0|0/0|
+
+LOD 절감률은 screenLod를 받은 draw의 source/submitted index 범위이며 전체 맵 절감률이 아니다.
+GPU timestamp는 CPU 명령 공급 공백을 포함할 수 있고 부모·자식 CPU scope도 중첩된다.
+viewport·camera·옵션은 저장 순간만 기록되므로 같은 pose/time의 통제된 해상도 A/B가 아니다.
+특히 export camera를 초반 frame의 카메라로 사용하면 안 된다. 개별 asset·거리·선택LOD 기록이
+없어 성/식생 각각의 시간과 index 기여율은 이번 JSON으로 확정할 수 없다.
+
+현재 코드와 캡처가 함께 확인하는 미완료 범위는 다음과 같다.
+
+- MapStaticBatchObject.cpp의 StaticPropDistanceLimit는 radius>3m에서0을 반환한다.
+  G21의48pixel 변경은 작은 소품에만 적용되며 큰 성·탑을 처리하는 거리 정책은 추가하지 않았다.
+- 개별 메시 LOD는 실제 IB 선택과 감소 index 제출이 연결돼 있다. 다만 최소512triangle,
+  원본 정점/UV/normal/경계 보존, Bern 최대0.9pixel 실효오차와 batch의 가까운 bounds 제한이 있다.
+  index 감소만으로 재질 bind/pass/draw 호출 수가 함께 줄지는 않는다.
+- MapPlacementRuntime::Load는 Stage_Proxy만 부르고 MAP_CHUNK_POLICY::atlasEnabled는false다.
+  Stage_Proxy는 즉시 반환하므로 기본 경로의 원경 chunk 대체물은 없다. HLOD draw0과 일치한다.
+  기존 공간 청크 RESULT G20에서 atlas 품질/coverage를 통과하지 못해 비활성으로 남긴 상태이며,
+  proxy shader prototype도 활성 경로에 등록되지 않았다. bool 하나 변경으로 완료할 수 없다.
+- 앞선 저작 첫키/FOV45/1600×900의 geometry proxy를 대형군으로 나누면 거리 후7,942개 중
+  radius>3m가2,405개이고 이 중100m 초과가1,452개다. 대형군 source index9,707,799에서
+  선택9,056,265로6.711% 감소에 그친다. 이는 이번 실제 캡처의 asset별 draw/FPS 수치가 아니다.
+
+따라서 G21의 작은 소품·개별 LOD 개선을 사용자가 지적한 큰 성 원경의 해결 완료로 확대하지 않는다.
+후속 구현 책임은 Client의 기존 final-camera instance 선택/MapStaticChunkObject의 원본·대체물
+claim, Engine의 범용 LOD/CMesh buffer 제출, Renderer의 기존 occlusion filter로 나눈다.
+거리 제거는 bounds와 camera 사이 거리·화면 크기 판단이며 ray marching이 필요하지 않다.
+가려진 물체의 제거와 화면에 보이는 원경 실루엣의 저비용 대체를 구분한다. Pixel shader discard는
+이미 발생한 CPU 재질·draw 제출 비용을 제거하지 못한다. 기존 proxy의 품질/coverage와 큰 구조물
+정책을 실제 데이터로 해결하고, asset·거리·선택LOD별 제출 집계로 확인하는 것이 다음 구현 범위다.
+
+재현 스크립트, 원본SHA와 집계는
+`out/BernSubmissionInvestigation20261010/user-captures/analyze-user-captures.py` 및
+`capture-aggregate.json`에 보존했다. 추가 export-camera 수치의 한계는
+`lod/new-capture-export-large-geometry-proxy.json`에 기록했다. 이번에 Client/UI 조작·빌드·
+재시작을 하지 않았으며 사용자 실행 중 프로세스를 유지했다.

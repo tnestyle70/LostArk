@@ -1438,7 +1438,7 @@ bool_t CRenderingProfileService::Delete_Profile(string_view id, string& status)
 {
 	static constexpr const char* required[] = { "scene.loading.neutral.v1", "scene.lobby.neutral.v1",
 		"scene.character-select.warm-high-key.v1", "scene.bern.neutral-day.v1", "scene.valtan.cool-low-key.v1",
-		"scene.development.neutral.v1", "scene.kakulsaydon.g1.base.v1", "scene.maharaka.source-day.v1" };
+		"scene.development.neutral.v1", "scene.koukusaydon.g1.base.v1", "scene.maharaka.source-day.v1" };
 	if (id == m_strActiveProfileId || id == m_strLevelQualityProfileId || find(begin(required), end(required), id) != end(required) ||
 		find(m_ProtectedProfileIds.begin(), m_ProtectedProfileIds.end(), id) != m_ProtectedProfileIds.end())
 	{ status = "The active, Level base, or Composition-referenced profile cannot be deleted."; return false; }

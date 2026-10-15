@@ -195,9 +195,9 @@ float4 ArtistNative5248Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 35: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 36: source device depth mapped to centimetre view depth; reconstruction at 38.
+    // Native 36: source depth -> runtime view cm; source reconstruction 38.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 38-41: reconstructed view depth is supplied by the runtime adapter.
+    // Native 38-41: use runtime view depth.
     r0.x = r0.x;
     // 42: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -928,9 +928,9 @@ float4 ArtistNative5251Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 44: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 45: source device depth mapped to centimetre view depth; reconstruction at 47.
+    // Native 45: source depth -> runtime view cm; source reconstruction 47.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 47-50: reconstructed view depth is supplied by the runtime adapter.
+    // Native 47-50: use runtime view depth.
     r0.x = r0.x;
     // 51: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -1061,9 +1061,9 @@ float4 ArtistNative5253(ARTIST_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -1190,9 +1190,9 @@ float4 ArtistNative5253Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = ((v4.xxxy)/(v4.wwww)).zw;
     // 18: mad r0.zw, r0.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r0.zw = ((r0.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 19: source device depth mapped to centimetre view depth; reconstruction at 21.
+    // Native 19: source depth -> runtime view cm; source reconstruction 21.
     r1.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.zwzz).xy, 0.f).y * 100000.f;
-    // Native 21-24: reconstructed view depth is supplied by the runtime adapter.
+    // Native 21-24: use runtime view depth.
     r1.x = r1.x;
     // 25: add r1.x, r1.x, -v4.w
     r1.x = ((r1.xxxx)+(-(v4.wwww))).x;
@@ -1232,9 +1232,9 @@ float4 ArtistNative5253Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 43: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 44: source device depth mapped to centimetre view depth; reconstruction at 46.
+    // Native 44: source depth -> runtime view cm; source reconstruction 46.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 46-49: reconstructed view depth is supplied by the runtime adapter.
+    // Native 46-49: use runtime view depth.
     r0.x = r0.x;
     // 50: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -1361,9 +1361,9 @@ float4 ArtistNative5254(ARTIST_NATIVE_INPUT input)
     r0.zw = ((v7.xxxy)/(v7.wwww)).zw;
     // 33: mad r0.zw, r0.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r0.zw = ((r0.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 34: source device depth mapped to centimetre view depth; reconstruction at 36.
+    // Native 34: source depth -> runtime view cm; source reconstruction 36.
     r0.z = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.zwzz).xy, 0.f).y * 100000.f;
-    // Native 36-39: reconstructed view depth is supplied by the runtime adapter.
+    // Native 36-39: use runtime view depth.
     r0.z = r0.z;
     // 40: add r0.z, r0.z, -v7.w
     r0.z = ((r0.zzzz)+(-(v7.wwww))).z;
@@ -1647,9 +1647,9 @@ float4 ArtistNative5255Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 16: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 17: source device depth mapped to centimetre view depth; reconstruction at 19.
+    // Native 17: source depth -> runtime view cm; source reconstruction 19.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 19-22: reconstructed view depth is supplied by the runtime adapter.
+    // Native 19-22: use runtime view depth.
     r0.x = r0.x;
     // 23: ge r0.x, r1.z, r0.x
     r0.x = (asfloat((uint4)((r1.zzzz)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -2028,9 +2028,9 @@ float4 ArtistNative5257Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v3.w, r0.x
     r0.x = (asfloat((uint4)((v3.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -2124,9 +2124,9 @@ float4 ArtistNative5258(ARTIST_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 24: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 25: source device depth mapped to centimetre view depth; reconstruction at 27.
+    // Native 25: source depth -> runtime view cm; source reconstruction 27.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 27-30: reconstructed view depth is supplied by the runtime adapter.
+    // Native 27-30: use runtime view depth.
     r0.y = r0.y;
     // 31: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -2193,9 +2193,9 @@ float4 ArtistNative5258Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -2286,9 +2286,9 @@ float4 ArtistNative5259(ARTIST_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 23: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 24: source device depth mapped to centimetre view depth; reconstruction at 26.
+    // Native 24: source depth -> runtime view cm; source reconstruction 26.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 26-29: reconstructed view depth is supplied by the runtime adapter.
+    // Native 26-29: use runtime view depth.
     r0.y = r0.y;
     // 30: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -2359,9 +2359,9 @@ float4 ArtistNative5259Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -2774,9 +2774,9 @@ float4 ArtistNative5262Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v5.w, r0.x
     r0.x = (asfloat((uint4)((v5.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -2819,9 +2819,9 @@ float4 ArtistNative5263(ARTIST_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -2909,9 +2909,9 @@ float4 ArtistNative5264(ARTIST_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -3201,9 +3201,9 @@ float4 ArtistNative5265Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v3.w, r0.x
     r0.x = (asfloat((uint4)((v3.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -3460,9 +3460,9 @@ float4 ArtistNative5266Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 16: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 17: source device depth mapped to centimetre view depth; reconstruction at 19.
+    // Native 17: source depth -> runtime view cm; source reconstruction 19.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 19-22: reconstructed view depth is supplied by the runtime adapter.
+    // Native 19-22: use runtime view depth.
     r0.x = r0.x;
     // 23: ge r0.x, r1.z, r0.x
     r0.x = (asfloat((uint4)((r1.zzzz)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -3705,9 +3705,9 @@ float4 ArtistNative5267Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -4083,9 +4083,9 @@ float4 ArtistNative5269Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -4411,9 +4411,9 @@ float4 ArtistNative5270Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -4506,9 +4506,9 @@ float4 ArtistNative5272(ARTIST_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -4886,9 +4886,9 @@ float4 ArtistNative5274Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v3.w, r0.x
     r0.x = (asfloat((uint4)((v3.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -5980,9 +5980,9 @@ float4 ArtistNative5281Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -6279,9 +6279,9 @@ float4 ArtistNative5282Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 44: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 45: source device depth mapped to centimetre view depth; reconstruction at 47.
+    // Native 45: source depth -> runtime view cm; source reconstruction 47.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 47-50: reconstructed view depth is supplied by the runtime adapter.
+    // Native 47-50: use runtime view depth.
     r0.x = r0.x;
     // 51: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -6519,9 +6519,9 @@ float4 ArtistNative5283Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -6780,9 +6780,9 @@ float4 ArtistNative5284Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -7022,9 +7022,9 @@ float4 ArtistNative5286Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -7833,9 +7833,9 @@ float4 ArtistNative5290Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -7879,9 +7879,9 @@ float4 ArtistNative5291(ARTIST_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -8144,9 +8144,9 @@ float4 ArtistNative5292(ARTIST_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 56: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 57: source device depth mapped to centimetre view depth; reconstruction at 59.
+    // Native 57: source depth -> runtime view cm; source reconstruction 59.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 59-62: reconstructed view depth is supplied by the runtime adapter.
+    // Native 59-62: use runtime view depth.
     r0.y = r0.y;
     // 63: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -8207,9 +8207,9 @@ float4 ArtistNative5292Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -8796,9 +8796,9 @@ float4 ArtistNative5294Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 86: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 87: source device depth mapped to centimetre view depth; reconstruction at 89.
+    // Native 87: source depth -> runtime view cm; source reconstruction 89.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 89-92: reconstructed view depth is supplied by the runtime adapter.
+    // Native 89-92: use runtime view depth.
     r0.x = r0.x;
     // 93: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -8978,9 +8978,9 @@ float4 ArtistNative5295Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -9210,9 +9210,9 @@ float4 ArtistNative5296Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;
@@ -9583,9 +9583,9 @@ float4 ArtistNative5298Distortion(ARTIST_NATIVE_INPUT input)
     r0.zw = (min(r0.zzzw,float4(0.000000,0.000000,255.000000,255.000000))).zw;
     // 12: mul r0.zw, r0.zzzw, l(0.000000, 0.000000, 0.003922, 0.003922)
     r0.zw = ((r0.zzzw)*(float4(0.000000,0.000000,0.003922,0.003922))).zw;
-    // Native 13: source device depth mapped to centimetre view depth; reconstruction at 15.
+    // Native 13: source depth -> runtime view cm; source reconstruction 15.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 15-18: reconstructed view depth is supplied by the runtime adapter.
+    // Native 15-18: use runtime view depth.
     r0.x = r0.x;
     // 19: ge r0.x, v4.w, r0.x
     r0.x = (asfloat((uint4)((v4.wwww)>=(r0.xxxx)) * 0xffffffffu)).x;

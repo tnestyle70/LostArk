@@ -2,6 +2,10 @@
 """Focused contract for promoted manual Pattern Stage/Sequence authoring."""
 
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 
 import copy
 import json
@@ -1040,7 +1044,7 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
         )
 
     def test_workbench_append_uses_a_free_stable_occurrence_after_delete(self) -> None:
-        source = WORKBENCH_CPP.read_text(encoding="utf-8")
+        source = read_source_text(WORKBENCH_CPP, encoding="utf-8")
         allocator = source[
             source.index("std::string BuildNextCompositionSlotId(") :
             source.index("bool_t ComputeExactAnimationWallMs(")
@@ -1082,7 +1086,7 @@ class ValtanManualStageAuthoringContractTests(unittest.TestCase):
         )
 
     def test_last_sequence_slot_remove_becomes_manual_animation_none(self) -> None:
-        workbench = WORKBENCH_CPP.read_text(encoding="utf-8")
+        workbench = read_source_text(WORKBENCH_CPP, encoding="utf-8")
         details = workbench[
             workbench.index(
                 "void Client::CValtanActionWorkbench::Render_AnimationStageDetails("

@@ -2698,7 +2698,7 @@ function Read-CameraShotDocument {
         [math]::Floor([double]$document.revision) -ne [double]$document.revision) {
         throw "Camera shot header is invalid: $Path"
     }
-    # Level_KakulSaydonArena.cpp 의 상한과 동일하게 검사한다.
+    # Level_KoukuSaydonArena.cpp 의 상한과 동일하게 검사한다.
     $shots = @($document.shots)
     if ($shots.Count -gt 128) {
         throw "Camera shot document exceeds its limits: $Path"

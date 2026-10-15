@@ -1,4 +1,4 @@
-#include "Gameplay/CombatCollisionContract.h"
+﻿#include "Gameplay/CombatCollisionContract.h"
 
 #include <algorithm>
 #include <array>
@@ -49,6 +49,7 @@ namespace
 		return LengthSquared({ left.x - right.x, left.z - right.z });
 	}
 
+	// XZ 방향을 단위 forward와 수직 right로 바꾼다. 유효하지 않은 방향이면 출력 전에 false다.
 	bool NormalizeDirection(
 		const float forwardX,
 		const float forwardZ,
@@ -70,6 +71,7 @@ namespace
 		return true;
 	}
 
+	// 경계의 수치 오차를 거리 단위에서 더한 뒤 제곱 비교한다. 제곱 거리 자체에 epsilon을 더하지 않는다.
 	bool WithinInclusiveRadius(
 		const double distanceSquared,
 		const double radius) noexcept
@@ -79,6 +81,7 @@ namespace
 		return distanceSquared <= inclusiveRadius * inclusiveRadius;
 	}
 
+	// 두 지역 좌표를 사각형 범위로 clamp하면 최근접점이 된다. 점이 안쪽이면 거리 제곱은 0이다.
 	double DistanceSquaredToLocalRectangle(
 		const double localForward,
 		const double localRight,
@@ -96,6 +99,7 @@ namespace
 		return deltaForward * deltaForward + deltaRight * deltaRight;
 	}
 
+	// 선분 투영 비율을 [0,1]로 제한한다. 길이가 거의 0이면 시작점과의 거리로 계산한다.
 	double DistanceSquaredToSegment(
 		const VECTOR2& point,
 		const VECTOR2& start,
@@ -121,6 +125,7 @@ namespace
 	using POLYNOMIAL = std::array<double, 5>;
 	using POLYNOMIAL_ROOTS = std::array<double, 4>;
 
+	// coefficients[i]는 i차 계수다. Horner 방식으로 최고 차수부터 곱셈과 덧셈을 누적한다.
 	double EvaluatePolynomial(const POLYNOMIAL& coefficients, int degree,
 		const double value) noexcept
 	{
@@ -130,9 +135,9 @@ namespace
 		return result;
 	}
 
-	// A polynomial is monotone between consecutive roots of its derivative.
-	// Recursing down to degree one isolates every real quartic root, including
-	// double roots, without sampling an arc or allocating during a combat tick.
+	// 도함수의 근 사이에서는 다항식이 단조이므로 구간별 부호 변화에서 근을 찾는다.
+	// 1차까지 재귀해 임계점을 구하고 48회 이분법을 사용한다. 임계점 근처의 0 판정으로 중근도 후보에 넣는다.
+	// 차수는 최대 4이며 고정 배열을 사용한다. 오차 임계값이 있으므로 모든 입력의 정확한 근을 보장하는 기호 계산은 아니다.
 	int FindPolynomialRoots(const POLYNOMIAL& coefficients, int degree,
 		const double low, const double high, POLYNOMIAL_ROOTS& roots) noexcept
 	{
@@ -199,9 +204,10 @@ namespace
 		const double radiusX, const double radiusZ,
 		const double startAngle, const double endAngle) noexcept
 	{
-		// Reflect each quadrant into [0, pi/2], so t = tan(theta/2) stays
-		// in [0,1]. Distance extrema on (a sin(theta), b cos(theta)) satisfy
+		// 호출자가 사분면을 [0, pi/2]로 접어 t=tan(theta/2)를 [0,1]에 둔다.
+		// 타원 (a*sin(theta), b*cos(theta))에서 점 (x,z)까지 거리의 정지점은 다음 4차식을 만족한다.
 		// a*x*t^4 + 2*(b*z-a^2+b^2)*t^3 + 2*(a^2-b^2+b*z)*t-a*x=0.
+		// 호 양 끝과 이 정지점 후보들의 거리 제곱 중 최소값을 고른다.
 		const double ax = radiusX * point.x;
 		const double bz = radiusZ * point.z;
 		const double difference = radiusX * radiusX - radiusZ * radiusZ;
@@ -214,6 +220,7 @@ namespace
 		if (scale > 0.0)
 			for (double& value : coefficients)
 				value /= scale;
+		// 계수를 최대 절댓값으로 나눠 위 근 탐색의 절대 오차 판정에 전달한다.
 		const double low = std::tan(startAngle * 0.5);
 		const double high = std::tan(endAngle * 0.5);
 		const auto distanceAt = [&](const double t)
@@ -257,6 +264,7 @@ bool LostArk::Shared::CombatCollision::Is_Valid(
 	return IsValidCircle(circle);
 }
 
+// 두 원 중심 사이 거리와 반경 합을 비교한다. 입력이 잘못되면 겹침을 보고하지 않는다.
 bool LostArk::Shared::CombatCollision::Circles_Overlap(
 	const CIRCLE_XZ& circle,
 	const BODY_CIRCLE_XZ& target) noexcept
@@ -273,6 +281,7 @@ bool LostArk::Shared::CombatCollision::Circles_Overlap(
 		left.fCenterX, left.fCenterZ, left.fRadius, right);
 }
 
+// 바깥 원과 닿고 안쪽 빈 원 안에 완전히 들어가지 않으면 띠에 걸친다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsRing(
 	const BODY_CIRCLE_XZ& target,
 	const float centerX,
@@ -299,6 +308,7 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsRing(
 		distance + targetRadius + epsilon >= inner;
 }
 
+// 대상 중심을 단위 전방/오른쪽 기저로 투영한 뒤 지역 사각형의 최근접점 거리를 구한다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsForwardBox(
 	const BODY_CIRCLE_XZ& target,
 	const float originX,
@@ -328,6 +338,7 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsForwardBox(
 		target.fRadius);
 }
 
+// 두 중심 직사각형 중 가까운 경계까지의 거리를 대상 반경과 비교한다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsCross(
 	const BODY_CIRCLE_XZ& target,
 	const float centerX,
@@ -370,6 +381,7 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsCross(
 		target.fRadius);
 }
 
+// 회전한 세 띠 중 하나라도 대상 원과 닿으면 교차한다. 새 도형 객체를 동적으로 할당하지 않는다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
 	const BODY_CIRCLE_XZ& target,
 	const float centerX,
@@ -418,6 +430,7 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsSixDirections(
 	return WithinInclusiveRadius(minimumDistanceSquared, target.fRadius);
 }
 
+// Valtan 엄폐와 Mario 이동 구간 판정 등이 사용한다. 경계 접촉과 길이 0인 유효 선분도 포함한다.
 bool LostArk::Shared::CombatCollision::Segment_IntersectsCircle(
 	const float startX,
 	const float startZ,
@@ -438,6 +451,7 @@ bool LostArk::Shared::CombatCollision::Segment_IntersectsCircle(
 		circle.fRadius);
 }
 
+// 중심이 내부인지 먼저 확인하고, 두 방사 선분과 원호까지의 최소 거리로 몸체 반경 접촉을 판정한다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsCone(
 	const BODY_CIRCLE_XZ& target,
 	const float originX,
@@ -503,6 +517,8 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsCone(
 	return WithinInclusiveRadius(minimumDistanceSquared, target.fRadius);
 }
 
+// 큰 외접 원으로 후보를 거른 뒤 타원 지역 공간의 각도/내부를 확인한다.
+// 외부 중심은 두 방사 선분과 타원 호까지의 실제 거리로 몸체 원과의 접촉을 판정한다.
 bool LostArk::Shared::CombatCollision::Circle_IntersectsEllipticSector(
 	const BODY_CIRCLE_XZ& target,
 	const float originX, const float originZ,
@@ -544,8 +560,8 @@ bool LostArk::Shared::CombatCollision::Circle_IntersectsEllipticSector(
 			DistanceSquaredToSegment(point, {}, { x, z }),
 			DistanceSquaredToSegment(point, {}, { -x, z }));
 	}
-	// The body remains a circle in metres. Scaling its radius in normalized
-	// ellipse space would produce false hits along the narrow axis.
+	// 몸체는 m 단위의 원으로 유지한다. 정규화 타원 공간에서 몸체 반경까지 같은 비율로 바꾸면
+	// 좁은 축에서 실제로 닿지 않는 몸체를 명중으로 판정할 수 있다.
 	for (const double xSign : { -1.0, 1.0 })
 	{
 		minimum = (std::min)(minimum, DistanceSquaredToEllipseArc(

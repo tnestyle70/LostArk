@@ -247,6 +247,9 @@
     <Filter Include="98.Default">
       <UniqueIdentifier>{632da573-10d8-4ba6-a7c1-a51ab5facf24}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.Utility\17. CrashReport">
+      <UniqueIdentifier>{64089a1c-e575-4530-8f38-7d5423931b3a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\Engine_Defines.h">
@@ -426,6 +429,9 @@
     <ClInclude Include="..\public\Bounding_AABB.h">
       <Filter>02.Utility\04.Component\Collider\Bounding\AABB</Filter>
     </ClInclude>
+    <ClInclude Include="..\Public\WireBoxRenderer.h">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="..\Public\DebugDraw.h">
       <Filter>02.Utility\04.Component\Collider\DebugDraw</Filter>
     </ClInclude>
@@ -509,6 +515,9 @@
     </ClInclude>
     <ClInclude Include="..\Public\Sound\TrackedSoundChannel.h">
       <Filter>02.Utility\15. Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Public\CrashReport_Manager.h">
+      <Filter>02.Utility\17. CrashReport</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -647,6 +656,9 @@
     <ClCompile Include="..\private\Bounding_AABB.cpp">
       <Filter>02.Utility\04.Component\Collider\Bounding\AABB</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\WireBoxRenderer.cpp">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="..\Private\DebugDraw.cpp">
       <Filter>02.Utility\04.Component\Collider\DebugDraw</Filter>
     </ClCompile>
@@ -737,6 +749,9 @@
     <ClCompile Include="..\Private\Sound\Sound_Manager.cpp">
       <Filter>02.Utility\15. Sound</Filter>
     </ClCompile>
+    <ClCompile Include="..\Private\CrashReport_Manager.cpp">
+      <Filter>02.Utility\17. CrashReport</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Bin\ShaderFiles\Engine_Shader_Defines.hlsli">
@@ -778,11 +793,21 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Private\Model_StaticProxy.inl"><Filter>02.Utility\04.Component\Model</Filter></ClInclude>
-    <ClInclude Include="..\ThirdPartyLib\xatlas\xatlas.h"><Filter>04. External</Filter></ClInclude>
-    <ClCompile Include="..\ThirdPartyLib\xatlas\xatlas.cpp"><Filter>04. External</Filter></ClCompile>
-    <None Include="..\ThirdPartyLib\xatlas\LICENSE.md"><Filter>04. External</Filter></None>
-    <None Include="..\ThirdPartyLib\xatlas\README.md"><Filter>04. External</Filter></None>
+    <ClInclude Include="..\Private\Model_StaticProxy.inl">
+      <Filter>02.Utility\04.Component\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\xatlas\xatlas.h">
+      <Filter>04. External</Filter>
+    </ClInclude>
+    <ClCompile Include="..\ThirdPartyLib\xatlas\xatlas.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <None Include="..\ThirdPartyLib\xatlas\LICENSE.md">
+      <Filter>04. External</Filter>
+    </None>
+    <None Include="..\ThirdPartyLib\xatlas\README.md">
+      <Filter>04. External</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Public\MeshLod.h">
@@ -817,7 +842,7 @@
     <ClCompile Include="..\Private\Engine_Pch.cpp">
       <Filter>98.Default</Filter>
     </ClCompile>
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
+    <ClInclude Include="..\..\Tools\Build\PCH.h">
       <Filter>98.Default</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1084,18 +1109,66 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Public\CpuJobPool.h"><Filter>02.Utility</Filter></ClInclude>
-    <ClCompile Include="..\Private\CpuJobPool.cpp"><Filter>02.Utility</Filter></ClCompile>
-    <ClInclude Include="..\Public\OcclusionCuller.h"><Filter>02.Utility\03.Renderer</Filter></ClInclude>
-    <ClCompile Include="..\Private\OcclusionCuller.cpp"><Filter>02.Utility\03.Renderer</Filter></ClCompile>
-    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.h"><Filter>04. External</Filter></ClInclude>
-    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\CompilerSpecific.inl"><Filter>04. External</Filter></ClInclude>
-    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingCommon.inl"><Filter>04. External</Filter></ClInclude>
-    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.cpp"><Filter>04. External</Filter></ClCompile>
-    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX2.cpp"><Filter>04. External</Filter></ClCompile>
-    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX512.cpp"><Filter>04. External</Filter></ClCompile>
-    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\README.md"><Filter>04. External</Filter></None>
-    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\UPSTREAM_README.md"><Filter>04. External</Filter></None>
-    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\license.txt"><Filter>04. External</Filter></None>
+    <ClInclude Include="..\Public\CpuJobPool.h">
+      <Filter>02.Utility</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\CpuJobPool.cpp">
+      <Filter>02.Utility</Filter>
+    </ClCompile>
+    <ClInclude Include="..\Public\OcclusionCuller.h">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\OcclusionCuller.cpp">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClCompile>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.h">
+      <Filter>04. External</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\CompilerSpecific.inl">
+      <Filter>04. External</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingCommon.inl">
+      <Filter>04. External</Filter>
+    </ClInclude>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCulling.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX2.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ThirdPartyLib\MaskedOcclusionCulling\MaskedOcclusionCullingAVX512.cpp">
+      <Filter>04. External</Filter>
+    </ClCompile>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\README.md">
+      <Filter>04. External</Filter>
+    </None>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\UPSTREAM_README.md">
+      <Filter>04. External</Filter>
+    </None>
+    <None Include="..\ThirdPartyLib\MaskedOcclusionCulling\license.txt">
+      <Filter>04. External</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Public\GpuSceneVisibility.h">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClInclude>
+    <ClCompile Include="..\Private\GpuSceneVisibility.cpp">
+      <Filter>02.Utility\03.Renderer</Filter>
+    </ClCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_GpuSceneVisibility.hlsl">
+      <Filter>03.ShaderFiles\04.Geometry</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_GpuHiZCopy.hlsl">
+      <Filter>03.ShaderFiles\04.Geometry</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Bin\ShaderFiles\Shader_GpuHiZReduce.hlsl">
+      <Filter>03.ShaderFiles\04.Geometry</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Private\Profiler_Geometry.inl">
+      <Filter>02.Utility\13. Profiler</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -582,7 +582,7 @@ function Assert-RenderingProfileDocument([object]$Document) {
         'scene.bern.neutral-day.v1',
         'scene.valtan.cool-low-key.v1',
         'scene.development.neutral.v1',
-        'scene.kakulsaydon.g1.base.v1',
+        'scene.koukusaydon.g1.base.v1',
         'scene.maharaka.source-day.v1')
     foreach ($requiredId in $requiredIds) {
         if (-not $ids.Contains($requiredId)) {

@@ -524,7 +524,7 @@ def project(evidence,index,notifies,occurrences,records,destination,material_pat
                     distanceTessellationStepWorldUnits=float(imported.prop(props,'distancetessellationstepsize',0))*.01)
         if o['rendererShape']=='animationTrail':
             catalog=read(ROOT/'Data/Actors/BossCatalog.json')
-            actor=next(a for a in catalog['bosses'] if a['archetypeId']=='BOSS_KAKULSAYDON_G1_SAYDON')
+            actor=next(a for a in catalog['bosses'] if a['archetypeId']=='BOSS_KOUKUSAYDON_G1_SAYDON')
             assert actor['bodyModel']=='Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
             body_scale=float(actor['bodyModelPreScale'])/.01
             assert math.isfinite(body_scale) and body_scale>0
@@ -588,7 +588,7 @@ if __name__ == '__main__':
     print('Source occurrences',dict(collections.Counter(o['actionId'] for o in occurrences)))
     if options.output:
         previews = {sid: source_model_preview(ACTION, sid, stages, 'GATE1', 'MN_RPCT_05',
-            'boss.kakulsaydon.g1.saydon') for sid, (stages, _) in SELECTED.items()}
+            'boss.koukusaydon.g1.saydon') for sid, (stages, _) in SELECTED.items()}
         project(options.evidence_root,index,notifies,occurrences,records,options.output,options.native_material_patch,previews)
     if options.required_textures:prepare_textures(options.evidence_root,options.required_textures)
     if options.prepare_geometry:prepare_geometry(options.evidence_root)

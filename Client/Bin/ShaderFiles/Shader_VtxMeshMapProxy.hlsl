@@ -209,10 +209,130 @@ PS_OUT PS_PROXY(VS_PROXY_OUT input)
     return output;
 }
 
+// 공유 low geometry는 원본 material atlas와 UV32/J32에서 native 조명을 다시 평가한다.
+Texture2D g_OriginalTangent;
+Texture2D g_OriginalBinormal;
+Texture2D g_OriginalNormal;
+Texture2D g_NativeStoneExtra;
+Texture2D g_MapProxyUvJacobian;
+PS_OUT PS_PROXY_SHARED(VS_PROXY_OUT input)
+{
+    PS_OUT output = (PS_OUT)0;
+    const float4 diffuse = g_MapProxyDiffuseAtlas.Sample(MapProxyAtlasSampler, input.atlasUV);
+    const float4 normalPower = g_MapProxyNormalAtlas.Sample(MapProxyAtlasSampler, input.atlasUV);
+    const float4 specularScale = g_MapProxySpecularAtlas.Sample(MapProxyAtlasSampler, input.atlasUV);
+    float3 indirect = 0.f; // compact admission requires static emissive == 0
+    float4 averageShadow = 0.f; // 좌표는 색처럼 mip/filter하지 않는다.
+    float3 coefficients = 0.f; // live RNM is evaluated below
+
+    input.tangent=normalize(g_OriginalTangent.Sample(MapProxyAtlasSampler,input.atlasUV).xyz);
+    input.binormal=normalize(g_OriginalBinormal.Sample(MapProxyAtlasSampler,input.atlasUV).xyz);
+    input.normal=normalize(g_OriginalNormal.Sample(MapProxyAtlasSampler,input.atlasUV).xyz);
+    uint aw,ah;g_OriginalNormal.GetDimensions(aw,ah);
+    const uint2 pixel=min(uint2(saturate(input.atlasUV)*uint2(aw,ah)),uint2(aw-1u,ah-1u));
+    uint2 metadata=uint2(round(float2(g_OriginalTangent.Load(int3(pixel,0)).w,g_OriginalBinormal.Load(int3(pixel,0)).w)));
+    metadata.y*=65536u; // compact finite half state0/1 to native family flag
+
+
+
+
+    // 원본 atlas는 local T/B/N이다. actual placement마다 같은 원본 instance 행렬로 방향을 옮긴다.
+    const MAP_PROXY_SOURCE instance=g_MapProxySources[input.sourceIndex];
+    const float4x4 world=float4x4(instance.world0,instance.world1,instance.world2,instance.world3);
+    const float4x4 inverse=float4x4(instance.inverse0,instance.inverse1,instance.inverse2,instance.inverse3);
+    input.tangent=MapGeometryNormalizeOrZero(mul(float4(input.tangent,0),world).xyz);
+    input.binormal=MapGeometryNormalizeOrZero(mul(float4(input.binormal,0),world).xyz);
+    input.normal=MapGeometryNormalizeOrZero(mul(float4(input.normal,0),inverse).xyz);
+    // 실제 source triangle의 UV affine map을 low atlas texel 중심에서 연장한다.
+    // UV island 사이의 값 평균/화면 quad 차분은 사용하지 않는다.
+    const float2 rawCenterUV=g_MapProxyAverageAtlas.Load(int3(pixel,0)).xy;
+    const float4 jacobian=g_MapProxyUvJacobian.Load(int3(pixel,0));
+    const float2 delta=input.atlasUV-(float2(pixel)+.5f)/float2(aw,ah);
+    const float2 rawUV=rawCenterUV+float2(dot(jacobian.xy,delta),dot(jacobian.zw,delta));
+    const float2 atlasDx=ddx(input.atlasUV),atlasDy=ddy(input.atlasUV);
+    const float2 rawDx=float2(dot(jacobian.xy,atlasDx),dot(jacobian.zw,atlasDx));
+    const float2 rawDy=float2(dot(jacobian.xy,atlasDy),dot(jacobian.zw,atlasDy));
+    const float2 lightmapUV=rawUV*instance.lightmapScaleBias.xy+instance.lightmapScaleBias.zw;
+    const float2 shadowUV=rawUV*instance.shadowScaleBias.xy+instance.shadowScaleBias.zw;
+    const bool hasLighting=g_HasBakedLighting!=0u&&instance.averageScale.w!=0.f;
+    averageShadow=float4(0.f,0.f,0.f,(g_HasStaticShadow!=0u?EvaluateMapStaticShadowDistance(g_StaticShadowTexture.SampleGrad(SourceStaticShadowSampler,shadowUV,rawDx*instance.shadowScaleBias.xy,rawDy*instance.shadowScaleBias.xy).r):1.f));coefficients=0.f;
+    if(hasLighting){averageShadow.rgb=g_BakedAverageTexture.SampleGrad(SurfaceLightmapSampler,lightmapUV,rawDx*instance.lightmapScaleBias.xy,rawDy*instance.lightmapScaleBias.xy).rgb*instance.averageScale.rgb;
+        coefficients=g_BakedDirectionalTexture.SampleGrad(SurfaceLightmapSampler,lightmapUV,rawDx*instance.lightmapScaleBias.xy,rawDy*instance.lightmapScaleBias.xy).rgb*instance.directionalScale.rgb;}
+    metadata.y=(metadata.y&65536u)|(hasLighting?1u:0u)|(g_HasStaticShadow!=0u?2u:0u)|((g_StaticShadowChannel&15u)<<2u);
+    if((metadata.y&65536u)!=0u){
+        const float3 mixed=SourceStoneUnit(g_NativeStoneExtra.Sample(MapProxyAtlasSampler,input.atlasUV).xyz);
+        const float3 weights=SourceStoneDirectionalWeights(mixed);
+        indirect+=diffuse.rgb*averageShadow.rgb*dot(coefficients,weights*weights);
+    }else indirect+=diffuse.rgb*specularScale.a*averageShadow.rgb*MapSourceDirectionalLightmapWeight(normalize(normalPower.xyz),coefficients);
+
+    if((metadata.y&65536u)!=0u)
+    {
+        const bool baked=(metadata.y&1u)!=0u,hasShadow=(metadata.y&2u)!=0u;
+        const float4 extra=g_NativeStoneExtra.Sample(MapProxyAtlasSampler,input.atlasUV);
+        const float3x3 tangentToWorld=float3x3(MapGeometryNormalizeOrZero(input.tangent),MapGeometryNormalizeOrZero(input.binormal),MapGeometryNormalizeOrZero(input.normal));
+        const float3 bakedNormal=SourceStoneUnit(extra.xyz);
+        const float3 view=SourceStoneUnit(mul(tangentToWorld,g_vCamPosition.xyz-input.worldPosition.xyz));
+        const float3 reflected=2.f*dot(bakedNormal,view)*bakedNormal-view;
+        const float3 weights=SourceStoneDirectionalWeights(reflected);
+        const float3 specular=baked?averageShadow.rgb*specularScale.rgb*dot(coefficients,pow(weights,normalPower.w+1.f)):0.f;
+        output.vDiffuse=diffuse;
+        output.vNormal=float4(SourceStoneUnit(mul(normalPower.xyz,tangentToWorld))*.5f+.5f,0.f);
+        output.vDepth=float4(input.projection.z/input.projection.w,input.projection.w/1000.f,normalPower.w,7.f);
+        output.vPickPos=input.worldPosition;
+        float packed=EncodeMapSurfaceGeometricNormal(input.normal,baked);
+        if(hasShadow)packed=asfloat((asuint(packed)&0x007fffffu)|((127u+((metadata.y>>2u)&15u))<<23u));
+        output.vPickPos.w=packed;
+        output.vEmissive=float4(indirect+specular,hasShadow?1.f-averageShadow.a:0.f);
+        output.vMaterialSpecular=float4(specularScale.rgb,extra.w);
+        output.vCharacterSurface=float4(diffuse.rgb,0.f);
+        output.vCharacterGeometry=float4(mul(extra.xyz,tangentToWorld),(metadata.x&1024u)!=0u?1.f:0.f);
+        return output;
+    }
+    const uint flags = metadata.x & 1023u;
+    const bool baked = (metadata.y & 1u) != 0u;
+    const bool hasShadow = (metadata.y & 2u) != 0u;
+    const float3 tangentNormal = normalize(normalPower.xyz);
+    const float3x3 tangentToWorld = float3x3(MapGeometryNormalizeOrZero(input.tangent),
+        MapGeometryNormalizeOrZero(input.binormal), MapGeometryNormalizeOrZero(input.normal));
+    const float3 worldNormal = normalize(mul(tangentNormal, tangentToWorld));
+    output.vDiffuse = diffuse;
+    if (g_SurfaceDebugView == 4u) output.vDiffuse.rgb = 0.f;
+    output.vNormal = float4(worldNormal * .5f + .5f, 0.f);
+    output.vDepth = float4(input.projection.z / input.projection.w,
+        input.projection.w / 1000.f, normalPower.w, 8.f);
+    output.vPickPos = input.worldPosition;
+    float packedNormal = EncodeMapSurfaceGeometricNormal(input.normal, baked);
+    if (hasShadow)
+        packedNormal = asfloat((asuint(packedNormal) & 0x007fffffu) |
+            ((127u + ((metadata.y >> 2u) & 15u)) << 23u));
+    output.vPickPos.w = packedNormal;
+    float3 radiance = indirect;
+    if (baked && (flags & 4u) != 0u)
+    {
+        // The original view-dependent RNM specular remains live. Baking it into
+        // indirect would freeze the lobe at the camera used during preparation.
+        const float3 tangentView = normalize(mul(tangentToWorld, g_vCamPosition.xyz - input.worldPosition.xyz));
+        const float3 reflected = reflect(-tangentView, tangentNormal);
+        const float3 lobes = saturate(float3(
+            dot(reflected.yz, float2(0.81649658f, 0.57735027f)),
+            dot(reflected, float3(-0.70710678f, -0.40824829f, 0.57735027f)),
+            dot(reflected, float3(0.70710678f, -0.40824829f, 0.57735027f))));
+        radiance += specularScale.rgb * averageShadow.rgb * dot(coefficients, pow(lobes, normalPower.w + 1.f));
+    }
+    output.vEmissive = float4(radiance, hasShadow ? 1.f - averageShadow.a : 0.f);
+    output.vMaterialSpecular = specularScale;
+    output.vCharacterSurface = float4(0.f, 0.f, 0.f, float(flags));
+    return output;
+}
+
+
+
 VertexShader MapProxyBakeVS = compile vs_5_0 VS_PROXY_BAKE();
 VertexShader MapProxyVS = compile vs_5_0 VS_PROXY();
 PixelShader MapProxyBakePS = compile ps_5_0 PS_PROXY_BAKE();
 PixelShader MapProxyPS = compile ps_5_0 PS_PROXY();
+
+PixelShader MapProxySharedPS = compile ps_5_0 PS_PROXY_SHARED();
 
 technique11 DefaultTechnique
 {
@@ -251,5 +371,32 @@ technique11 DefaultTechnique
         VertexShader = MapProxyVS;
         GeometryShader = NULL;
         PixelShader = MapProxyPS;
+    }
+    pass SharedBack
+    {
+        SetRasterizerState(RS_Default);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapProxyVS;
+        GeometryShader = NULL;
+        PixelShader = MapProxySharedPS;
+    }
+    pass SharedFront
+    {
+        SetRasterizerState(RS_Cull_CW);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapProxyVS;
+        GeometryShader = NULL;
+        PixelShader = MapProxySharedPS;
+    }
+    pass SharedTwoSided
+    {
+        SetRasterizerState(RS_Cull_None);
+        SetDepthStencilState(DSS_Default, 0);
+        SetBlendState(BS_Default, float4(0.f, 0.f, 0.f, 0.f), 0xffffffff);
+        VertexShader = MapProxyVS;
+        GeometryShader = NULL;
+        PixelShader = MapProxySharedPS;
     }
 }

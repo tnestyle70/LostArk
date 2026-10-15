@@ -1,16 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include "Engine_Defines.h"
-#pragma push_macro("new")
-#undef new
 #include "Assimp/material.h"
-#pragma pop_macro("new")
 
 #include "BinaryAsset/ModelAssetData.h"
 #include <span>
 
 NS_BEGIN(Engine)
 
+// CModel이 공유하는 재질로, 텍스처와 표면 상수를 보관해 선택한 CShader의 입력에 바인딩한다.
+// 텍스처 수명은 ComPtr로 유지하고 개별 외형 변경은 Clone_ForOverrides의 별도 재질 상태에 적용한다.
 class CMaterial : public std::enable_shared_from_this<CMaterial>
 {
 private:
@@ -39,54 +38,31 @@ public:
         std::span<const CMaterial* const> materials, bool_t staticCluster = false) const;
     HRESULT Bind_StaticShadow(shared_ptr<class CShader> shader);
     HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader);
-    // Light constants and textures for a forward pass that also runs the base program.
+    // base program도 실행하는 forward pass에 조명 상수·텍스처를 바인딩한다.
     HRESULT Bind_SourceCharacterForwardLight(shared_ptr<class CShader> shader);
     static void Reset_SourceCharacterFrame(float presentationTime = 0.f);
     static uint32_t Get_SourceCharacterFrameCount();
     static HRESULT Bind_SourceCharacterLight(shared_ptr<class CShader> shader, uint32_t index);
-	/* Swaps one of this material's texture slots for another view at runtime, for the
-	character-creation choices that repaint a face rather than replace a mesh -- iris, lip,
-	cheek, eye make and decals. Both the legacy A/B slots and the surface program's own slots
-	honour it, so a material takes the override whichever path binds it. A null view clears
-	the override and the authored texture comes back. Nothing is written to the loaded
-	texture, so two characters sharing a material prototype do not share the choice: the
-	override lives on the cloned material. */
+	/* 복제 재질의 legacy·surface texture 슬롯을 override한다. 원본 texture는 바꾸지 않으며 null이면 원본 view로 복원한다. */
 	void Set_TextureOverride(aiTextureType eType, uint32_t iTextureIndex,
 		ComPtr<ID3D11ShaderResourceView> pTexture);
 	void Clear_TextureOverrides();
 	bool_t Has_TextureOverrides() const { return !m_TextureOverrides.empty(); }
-	/* The creation screen repaints a dyed material: the authored colour stays in the asset
-	and the chosen one rides on the clone, so two characters sharing a prototype keep their
-	own. Only a material that already dyes accepts one -- an undyed material has no mask to
-	paint through, and forcing a colour on it would flatten its own texture. */
+	/* 염색 mask가 있는 재질만 복제본에 선택 색을 적용한다. 원본 색은 보존해 prototype을 공유하는 캐릭터의 선택을 분리한다. */
 	void Set_DyeColorOverride(const float4_t& vDiffuse, const float4_t& vRegionA);
 	void Clear_DyeColorOverride();
-	/* Hair only: how much of the second colour blends in and how far up the strand it
-	reaches. Kept apart from the colours so the two sliders can move without the screen
-	having to know what the hairstyle was authored in. */
+	/* 머리카락 두 번째 색의 혼합량·적용 범위를 색 자체와 별도로 조절한다. */
 	void Set_DyeTwoTone(f32_t fStrength, f32_t fRange);
-	/* A plain multiply on the sampled diffuse, for the surfaces the source game tints
-	without a region mask -- skin (var_base_skincolor_ui) and eyes (var_eye_iriscolor_ui),
-	both authored at identity so nothing changes until a colour is chosen. */
+	/* 피부·눈처럼 영역 mask 없는 surface의 diffuse에 색을 곱한다. 기본 identity에서는 원래 값이 유지된다. */
 	void Set_DiffuseTint(const float4_t& vTint) { m_vDiffuseTint = vTint; }
 	const float4_t& Get_DiffuseTint() const { return m_vDiffuseTint; }
-	/* The creation screen's skin and make-up choices are named parameters of the retail head
-	material, and the native program reads them already packed into its constant rows. The
-	Client owns that packing (Client/Public/SourceCharacterMaterialParameters.h) because the
-	names and the arithmetic between them are LostArk's; the Engine only carries the result.
-	The program and its texture masks stay the material's own -- only the constants move, so a
-	choice can never turn a face into a different surface. Non-finite or absurd values are
-	refused rather than reaching the GPU. */
+	/* LostArk 고유 이름·수식의 상수 packing은 Client가 맡고 Engine은 결과만 전달한다. program·mask는 유지하며 비유한 값·허용 범위 밖 값은 거부한다. */
 	bool_t Set_SourceCharacterConstants(const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
-	/* One texture register of that program, for the lip, eye make-up, cheek and decal stamps
-	the screen puts on a face. Like Set_TextureOverride this rides on the clone rather than the
-	loaded texture, so two characters sharing a material prototype keep their own choice, and a
-	null view restores what the asset loaded. A register the material's masks do not use is
-	refused: binding one would be a silent no-op. */
+	/* 얼굴 stamp의 texture register override를 복제본에 보관한다. null이면 원본으로 복원하고 재질이 사용하지 않는 register는 거부한다. */
 	bool_t Set_SourceCharacterTextureOverride(
 		uint32_t iRegister, ComPtr<ID3D11ShaderResourceView> pTexture);
 	void Clear_SourceCharacterOverrides();
-    // Constants and override maps are instance-owned; GPU texture views stay shared.
+    // 상수·override map은 instance별로 보관하고 GPU texture view는 공유한다.
     shared_ptr<CMaterial> Clone_ForOverrides() const
     { return shared_ptr<CMaterial>(new CMaterial(*this)); }
 	bool_t Has_SourceCharacterProgram() const
@@ -96,8 +72,7 @@ public:
 	bool_t Has_DyeColor() const { return m_ColorTint.isEnabled; }
 	const string& Get_Name() const { return m_strName; }
 	uint64_t Get_NameHash() const { return m_iNameHash; }
-	/* Identity (isEnabled false) for every material without a WMA3 colour
-	mask. The mask texture itself lives in the aiTextureType_BASE_COLOR slot. */
+	/* WMA3 color mask가 없으면 isEnabled=false다. mask texture는 BASE_COLOR 슬롯에 있다. */
 	const MODEL_COLOR_TINT& Get_ColorTint() const { return m_ColorTint; }
 
 private:
@@ -106,9 +81,9 @@ private:
 	string										m_strName;
 	uint64_t									m_iNameHash = {};
 
-    // The cache holds weak references; material lifetime owns GPU texture data.
+    // cache는 weak 참조만 보관하고 GPU texture 수명은 재질이 유지한다.
     vector<shared_ptr<ComPtr<ID3D11ShaderResourceView>>> m_SharedTextureViews;
-    // Immutable source dependencies for derived static material atlas cache keys.
+    // 파생 정적 재질 atlas의 cache key에 사용할 불변 원본 의존성이다.
     vector<filesystem::path> m_StaticProxySourcePaths;
     struct STATIC_PROXY_FILE_STAMP final
     {
@@ -121,20 +96,18 @@ private:
 	/* Sparse: only the slots the creation screen actually repainted. */
 	unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_TextureOverrides;
 	MODEL_COLOR_TINT							m_ColorTint;
-	/* What the asset shipped, so clearing the choice restores it exactly. */
+	/* 선택 해제 시 정확히 복원할 원본 asset 값이다. */
 	MODEL_COLOR_TINT							m_AuthoredColorTint;
 	float4_t									m_vDiffuseTint = { 1.f, 1.f, 1.f, 1.f };
 	MODEL_SURFACE_PARAMETERS m_Surface;
     std::array<ComPtr<ID3D11ShaderResourceView>, SOURCE_CHARACTER_TEXTURE_COUNT> m_SourceCharacterTextures;
-    /* Sparse: only the registers a creation choice repainted. The authored views stay in
-    m_SourceCharacterTextures above, so clearing restores them exactly. */
+    /* 편집한 register만 별도로 보관한다. 원본 view는 m_SourceCharacterTextures에 남겨 선택 해제 시 복원한다. */
     unordered_map<uint32_t, ComPtr<ID3D11ShaderResourceView>> m_SourceCharacterTextureOverrides;
-    /* What the asset shipped, so clearing the choices puts the whole program back. */
+    /* 선택 해제 시 program 전체를 복원할 원본 asset 상수다. */
     MODEL_SOURCE_CHARACTER_PARAMETERS m_AuthoredSourceCharacter;
     HRESULT Bind_SourceCharacterInputs(shared_ptr<class CShader> shader, bool lightPass, uint32_t row);
 	uint32_t m_iDiffuseMirrorU = 0u;
-	/* Separate views keep the legacy A/B inputs unchanged when the source
-	   material specifies a different colour-space interpretation. */
+	/* 원본 재질의 색 공간 해석이 다를 때 별도 view를 사용해 legacy A/B 입력을 유지한다. */
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceDiffuse;
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceSpecular;
 	ComPtr<ID3D11ShaderResourceView> m_SurfaceReflection;

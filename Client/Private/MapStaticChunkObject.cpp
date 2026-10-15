@@ -1,9 +1,7 @@
 #include "MapStaticChunkObject.h"
-#pragma push_macro("new")
-#undef new
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
 #include "MapStaticBatchObject.h"
+#include "MapGpuScene.h"
 #include "MapAssetRenderUtils.h"
 #include "MapStaticProxyBaker.h"
 #include "GameInstance.h"
@@ -49,6 +47,29 @@ namespace
         return std::isfinite(density) && density > 0. && density <= texelsPerUnit;
     }
 
+
+    // source의 실제 world bounds와 독립 측정 오차를 화면 픽셀로 보수적으로
+    // 변환한다. 근평면/비표준 투영/1px 초과는 원본을 남겨 팝핑을 방지한다.
+    bool ClusterSourceFits(const MAP_CAMERA_CULL_SNAPSHOT& camera, const float2_t& viewport,
+        const Engine::CModel::STATIC_CLUSTER_SOURCE_RANGE& source)
+    {
+        const auto& p = camera.projection;
+        if (!(camera.lodViewScale > 0.f) || p._14 != 0.f || p._24 != 0.f || p._34 != 1.f || p._44 != 0.f ||
+            p._12 != 0.f || p._21 != 0.f || p._13 != 0.f || p._23 != 0.f || p._41 != 0.f || p._42 != 0.f ||
+            !(p._11 > 0.f) || !(p._22 > 0.f) || !(p._33 > 1.f) || !(p._43 < 0.f)) return false;
+        float3_t center{}, view{};
+        XMStoreFloat3(&center, (XMLoadFloat3(&source.boundsMin) + XMLoadFloat3(&source.boundsMax)) * .5f);
+        const float radius = std::nextafter(XMVectorGetX(XMVector3Length(XMLoadFloat3(&source.boundsMax) - XMLoadFloat3(&center))), INFINITY);
+        XMStoreFloat3(&view, XMVector3TransformCoord(XMLoadFloat3(&center), XMLoadFloat4x4(&camera.lodView)));
+        const double r = double(radius) * camera.lodViewScale, error = double(source.maximumWorldError) * camera.lodViewScale;
+        const double depth = double(view.z) - r;
+        const double lateral = (std::max)(std::abs(double(view.x)), std::abs(double(view.y))) + r;
+        const double pixels = (std::max)(double(p._11) * viewport.x, double(p._22) * viewport.y) * .5;
+        if (!(depth > -double(p._43) / p._33 + error) || !(pixels > 0.) || !(error >= 0.)) return false;
+        const double projected = pixels * error * (depth + lateral) / (depth * (depth - error));
+        return std::isfinite(projected) && projected <= 1.;
+    }
+
     bool SameProfile(const MAP_ASSET_RENDER_PROFILE& a, const MAP_ASSET_RENDER_PROFILE& b)
     {
         return a.renderMode == b.renderMode && a.cullMode == b.cullMode &&
@@ -63,7 +84,7 @@ namespace
     uint64_t GeometryBytes(const Engine::CModel::STATIC_CLUSTER_STATS& s)
     {
         return uint64_t(s.clusterVertices) * (sizeof(VTXMESH) + sizeof(uint32_t)) +
-            uint64_t(s.nearIndices + uint64_t(s.hasFarGeometry ? s.farIndices : 0)) * sizeof(uint32_t) +
+            uint64_t(s.nearIndices + uint64_t(s.hasFarGeometry ? s.farIndices : 0) * 2u) * sizeof(uint32_t) +
             uint64_t(s.sourceCount) * sizeof(VTXMESHINSTANCE);
     }
 }
@@ -74,6 +95,19 @@ bool MAP_CHUNK_CLAIM::Is_Active(uint32_t member) const
     if (owner) owner->Resolve_RenderSelection();
     return valid && frameActive && (member == UINT32_MAX ||
         (member < activeMembers.size() && activeMembers[member] != 0u));
+}
+
+void MAP_CHUNK_CLAIM::Invalidate_FrameSelection() noexcept
+{
+    // 배치의 임시 숨김은 source range와 GPU geometry를 바꾸지 않는다.
+    // 다음 Is_Active가 바뀐 visible source로 다시 선택하도록 프레임 캐시만 버린다.
+    frameActive = false;
+    std::fill(activeMembers.begin(), activeMembers.end(), uint8_t(0));
+    if (owner)
+    {
+        owner->m_Far = false;
+        owner->m_SelectionResolved = false;
+    }
 }
 
 CMapStaticChunkObject::CMapStaticChunkObject(ComPtr<ID3D11Device> device, ComPtr<ID3D11DeviceContext> context)
@@ -120,6 +154,10 @@ HRESULT CMapStaticChunkObject::Initialize(void* arg)
     {
         const auto& stats = *m_Model->Get_StaticClusterStats();
         minimum = stats.boundsMin; maximum = stats.boundsMax; m_GpuBytes = GeometryBytes(stats);
+        if (m_Model->Get_StaticClusterSourceRanges().size() != stats.sourceCount || m_Members.empty()) return E_INVALIDARG;
+        m_VisibleSourceSlots.reserve(stats.sourceCount);
+        m_DrawRepresentatives.reserve(m_Members.size()); m_DrawRepresentativeLods.reserve(m_Members.size());
+        m_CandidateActiveMembers.resize(m_Members.size()); m_Claim->activeMembers.resize(m_Members.size());
     }
     XMStoreFloat3(&m_Center, (XMLoadFloat3(&minimum) + XMLoadFloat3(&maximum)) * .5f);
     m_Radius = std::nextafter(XMVectorGetX(XMVector3Length(XMLoadFloat3(&maximum) - XMLoadFloat3(&m_Center))), INFINITY);
@@ -141,10 +179,7 @@ bool_t CMapStaticChunkObject::Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATI
 
 void CMapStaticChunkObject::Late_Update(float)
 {
-    m_Far = false;
-    m_SelectionResolved = false;
-    m_Claim->frameActive = false;
-    std::fill(m_Claim->activeMembers.begin(), m_Claim->activeMembers.end(), uint8_t(0));
+    m_Claim->Invalidate_FrameSelection();
 #ifdef _DEBUG
     m_Submitted = false;
 #endif
@@ -172,6 +207,32 @@ void CMapStaticChunkObject::Late_Update(float)
     }
 }
 
+uint32_t CMapStaticChunkObject::Count_ReplacementDraws(const MAP_CAMERA_CULL_SNAPSHOT& camera)
+{
+    m_DrawRepresentatives.clear();
+    for(uint32_t i=0u;i<m_Members.size();++i)
+    {
+        if(!m_CandidateActiveMembers[i])continue;
+        const auto& member=m_Members[i];
+        const auto batch=member.batch.lock();
+        if(!batch)return 0u;
+        if(const auto scene=batch->m_GpuScene.lock(); scene && scene->Can_Use(*batch) &&
+            !scene->Can_ReplaceHlodMesh(*batch,member.mesh,*m_Claim,m_CandidateActiveMembers,camera))continue;
+        // GPU bin 수나 CPU LOD 차이를 이득으로 부풀리지 않고 호환 원본은 하나로 센다.
+        // 일부 GPU source만 대체하면 원본 draw가 남으므로 위에서 0으로 계산한다.
+        const bool combined=std::any_of(m_DrawRepresentatives.begin(),m_DrawRepresentatives.end(),[&](uint32_t otherIndex)
+        {
+            const auto& otherMember=m_Members[otherIndex];
+            const auto other=otherMember.batch.lock();
+            return other && otherMember.mesh==member.mesh &&
+                (other->m_pModelCom->Can_ShareStaticInstanceStateWith(*batch->m_pModelCom) ||
+                 other->m_pModelCom->Can_BatchStaticLightingWith(*batch->m_pModelCom));
+        });
+        if(!combined)m_DrawRepresentatives.push_back(i);
+    }
+    return static_cast<uint32_t>(m_DrawRepresentatives.size());
+}
+
 void CMapStaticChunkObject::Resolve_RenderSelection()
 {
     if (m_SelectionResolved) return;
@@ -185,73 +246,76 @@ void CMapStaticChunkObject::Resolve_RenderSelection()
         m_Center, m_Radius, m_FrustumState, decision, nullptr, MAP_FRUSTUM_CULL_DETAIL::VISIBILITY_ONLY) &&
         !decision.shouldRender) return;
     if (m_Proxy) { Resolve_ProxySelection(*camera); return; }
-    m_Far = false;
-    const auto& s = *m_Model->Get_StaticClusterStats();
-    if (camera && m_Claim->policy->hlodEnabled && s.hasFarGeometry && camera->lodViewScale > 0.f)
-    {
-        const auto& p = camera->projection;
-        const auto viewport = CGameInstance::Get().Get_ViewportSize();
-        if (p._14 == 0.f && p._24 == 0.f && p._34 == 1.f && p._44 == 0.f &&
-            p._12 == 0.f && p._21 == 0.f && p._13 == 0.f && p._23 == 0.f &&
-            p._41 == 0.f && p._42 == 0.f && p._11 > 0.f && p._22 > 0.f && p._33 > 1.f && p._43 < 0.f)
-        {
-            float3_t viewCenter{};
-            XMStoreFloat3(&viewCenter, XMVector3TransformCoord(XMLoadFloat3(&m_Center), XMLoadFloat4x4(&camera->lodView)));
-            const double radius = double(m_Radius) * camera->lodViewScale;
-            const double error = double(s.maximumWorldError) * camera->lodViewScale;
-            const double depth = double(viewCenter.z) - radius;
-            const double lateral = (std::max)(std::abs(double(viewCenter.x)), std::abs(double(viewCenter.y))) + radius;
-            const double pixels = (std::max)(double(p._11) * viewport.x, double(p._22) * viewport.y) * .5;
-            // Bound both depth and lateral movement, including off-axis perspective.
-            if (depth > -double(p._43) / p._33 + error && pixels > 0. && error >= 0.)
-            {
-                const double projected = pixels * error * (depth + lateral) / (depth * (depth - error));
-                m_Far = std::isfinite(projected) && projected <= 1.;
-            }
-        }
-    }
+
+    if (!m_Claim->policy->hlodEnabled || !m_Model->Get_StaticClusterStats()->hasFarGeometry) return;
     Engine::CProfilerScope selection(CGameInstance::Get().Get_Profiler(), "Map.Chunk.Select");
-    uint64_t originalIndices = 0u;
-    uint32_t originalDraws = 0u;
-    std::array<const Engine::CModel*, 8> bankRepresentatives{};
-    std::array<uint32_t, 8> bankLods{}, bankMembers{}, bankMeshes{};
-    size_t bankCount = 0u;
-    for (const auto& member : m_Members)
+    m_VisibleSourceSlots.clear(); m_DrawRepresentatives.clear(); m_DrawRepresentativeLods.clear();
+    std::fill(m_CandidateActiveMembers.begin(), m_CandidateActiveMembers.end(), uint8_t(0));
+    m_SelectedIndices = 0u; m_OriginalVisibleIndices = 0u; m_SelectedSourceDraws = 0u;
+    const auto ranges = m_Model->Get_StaticClusterSourceRanges();
+    const auto viewport = CGameInstance::Get().Get_ViewportSize();
+    // 가까운 기본 카메라에서 어차피 탈락할 source 때문에 CPU visible VB를
+    // 준비하지 않는다. 불변 source 오차/bounds만 읽으며 한 source라도 가능하면
+    // 후보를 남긴다. 실제 가시 source 전부의 판정은 아래에서 다시 수행한다.
+    for(uint32_t i=0u;i<m_Members.size();++i)
     {
+        const auto& member=m_Members[i];
+        const auto batch=member.batch.lock();
+        if(!batch)return;
+        const auto scene=batch->m_GpuScene.lock();
+        const auto baseCount=scene && scene->Can_Use(*batch) ? scene->Get_HlodMeshIndexLimit(*batch,member.mesh) :
+            batch->m_pModelCom->Get_MeshIndexCount(member.mesh);
+        for(const auto slot:member.sourceSlots)
+            if(slot<ranges.size() && ranges[slot].indexCount && ranges[slot].indexCount<baseCount &&
+                ClusterSourceFits(*camera,viewport,ranges[slot]))
+            {m_CandidateActiveMembers[i]=1u;break;}
+    }
+    if(Count_ReplacementDraws(*camera)<MINIMUM_CHUNK_SOURCE_DRAWS)return;
+    for (uint32_t memberIndex = 0u; memberIndex < m_Members.size(); ++memberIndex)
+    {
+        const auto& member = m_Members[memberIndex];
         const auto batch = member.batch.lock();
-        if (!batch || FAILED(batch->Prepare_FinalCameraVisibility(camera))) return;
-        const auto visible = batch->Get_VisibleInstanceCount();
-        if (visible == 0u) continue;
+        if (!batch) return;
+        if(!m_CandidateActiveMembers[memberIndex])continue;
+        m_CandidateActiveMembers[memberIndex]=0u;
+        const auto gpuScene=batch->m_GpuScene.lock();
+        const bool gpuEligible=gpuScene && gpuScene->Can_Use(*batch);
+        if (FAILED(batch->Prepare_FinalCameraVisibility(camera))) return;
+        const auto visible = batch->Get_VisibleInstanceIndices();
+        if (visible.empty()) continue;
+        if (visible.size() != batch->Get_VisibleInstanceCount()) return;
         Engine::MESH_SCREEN_LOD_DESC lod{};
         const bool hasLod = batch->m_RenderProfile.opacity >= 1.f && batch->Build_ScreenLodView(*camera, lod);
         const auto* view = batch->Uses_MeshScreenLod(member.mesh, hasLod) ? &lod : nullptr;
         const auto& model = *batch->m_pModelCom;
-        originalIndices += uint64_t(model.Get_StaticMeshSelectedIndexCount(member.mesh, view)) * visible;
-        const auto level = model.Get_StaticMeshLodLevel(member.mesh, view);
-        size_t bank = 0u;
-        for (; bank < bankCount; ++bank)
-            if (bankMembers[bank] < 8u && bankMeshes[bank] == member.mesh && bankLods[bank] == level &&
-                (bankRepresentatives[bank]->Can_BatchStaticLightingWith(model) ||
-                 bankRepresentatives[bank]->Can_ShareStaticInstanceStateWith(model))) break;
-        // Count compatible instancing as one draw even if intervening original
-        // objects would prevent adjacency. This deliberately underestimates the
-        // baseline so a replacement cannot claim those draws as its savings.
-        if (bank == bankCount)
+        const auto originalCount = model.Get_StaticMeshSelectedIndexCount(member.mesh, view);
+        const auto sourceLimit=gpuEligible ? (std::min)(originalCount,
+            gpuScene->Get_HlodMeshIndexLimit(*batch,member.mesh)) : originalCount;
+        const size_t start = m_VisibleSourceSlots.size();
+        uint64_t memberIndices = 0u, originalIndices = 0u;
+        bool accepted = originalCount > 0u;
+        for (const uint32_t instanceIndex : visible)
         {
-            ++originalDraws;
-            if (bankCount < bankRepresentatives.size())
-            {
-                bankRepresentatives[bankCount] = &model; bankLods[bankCount] = level;
-                bankMeshes[bankCount] = member.mesh; bankMembers[bankCount++] = 1u;
-            }
+            if (!accepted || instanceIndex >= member.sourceSlots.size()) { accepted = false; break; }
+            const uint32_t source = member.sourceSlots[instanceIndex];
+            if (source >= ranges.size() || !ranges[source].indexCount || ranges[source].indexCount >= sourceLimit ||
+                !ClusterSourceFits(*camera, viewport, ranges[source])) { accepted = false; break; }
+            m_VisibleSourceSlots.push_back(source); memberIndices += ranges[source].indexCount;
+            originalIndices += sourceLimit;
         }
-        else ++bankMembers[bank];
+        // member의 보이는 source 전부가 엄격 감소할 때만 원본 mesh를 숨긴다.
+        // 한 source라도 근거리/LOD 불리/미포함이면 해당 member 전체를 원본에 둔다.
+        if (!accepted) { m_VisibleSourceSlots.resize(start); continue; }
+        m_CandidateActiveMembers[memberIndex] = 1u;
+        m_SelectedIndices += memberIndices; m_OriginalVisibleIndices += originalIndices;
     }
-    const uint64_t chosenIndices = m_Far ? s.farIndices : s.nearIndices;
-    // Captured near merges cost more than the small draw saving. Admit only
-    // replacements that remove at least two conservative baseline draws and
-    // do not increase geometry over the camera-visible original mesh LODs.
-    m_Claim->frameActive = originalDraws >= MINIMUM_CHUNK_SOURCE_DRAWS && chosenIndices <= originalIndices;
+    // 실제 가시성/LOD 탈락 후의 후보로 다시 판정한다. GPU 원본 일부가 남는
+    // 그룹은 draw 절약으로 세지 않고, 최소 두 draw 감소와 index 엄격 감소를 요구한다.
+    m_SelectedSourceDraws = Count_ReplacementDraws(*camera);
+    if (m_SelectedSourceDraws < MINIMUM_CHUNK_SOURCE_DRAWS || m_SelectedIndices >= m_OriginalVisibleIndices ||
+        m_VisibleSourceSlots.empty() || m_Model->Prepare_StaticClusterVisibleSources(m_VisibleSourceSlots) != S_OK) return;
+    m_Claim->activeMembers.swap(m_CandidateActiveMembers);
+    m_Far = true; m_Claim->frameActive = true;
 }
 
 void CMapStaticChunkObject::Resolve_ProxySelection(const MAP_CAMERA_CULL_SNAPSHOT& camera)
@@ -268,7 +332,11 @@ void CMapStaticChunkObject::Resolve_ProxySelection(const MAP_CAMERA_CULL_SNAPSHO
     {
         const auto& member = m_Members[memberIndex];
         const auto batch = member.batch.lock();
-        if (!batch || FAILED(batch->Prepare_FinalCameraVisibility(&camera))) return;
+        if (!batch) return;
+        // 전역 GPU cohort가 이미 여러 batch를 한 draw로 묶으면 이 member만
+        // 빼도 원본 draw는 남는다. 그런 member에 HLOD draw를 더하지 않는다.
+        if (batch->m_bGpuMergedVisibility && batch->Is_GpuVisibilityActive()) continue;
+        if (FAILED(batch->Prepare_FinalCameraVisibility(&camera))) return;
         const auto visible = batch->Get_VisibleInstanceIndices();
         if (visible.empty()) continue;
         if (visible.size() != batch->Get_VisibleInstanceCount()) return;
@@ -360,17 +428,37 @@ HRESULT CMapStaticChunkObject::Render()
         nullptr, nullptr, MAP_MATERIAL_BINDING_MODE::INSTANCED)) ||
         FAILED(m_Model->Bind_StaticClusterSources(m_Shader)) ||
         FAILED(m_Shader->Begin(CMapAssetRenderUtils::Select_Pass(m_Profile, m_Mirrored)))) return E_FAIL;
-    const HRESULT result = m_Model->Render_StaticCluster(m_Far);
+    const HRESULT result = m_Model->Render_StaticClusterVisible();
+    if (result == S_OK && m_SelectedIndices && timeSource->m_FrameState &&
+        timeSource->m_FrameState->geometryDiagnostics)
+    {
+        auto& diagnostics = *timeSource->m_FrameState->geometryDiagnostics;
+        try
+        {
+            MAP_GEOMETRY_DIAGNOSTIC_DRAW draw;
+            draw.path = "native_hlod"; draw.assetId = timeSource->m_AssetId;
+            draw.meshIndex = 0u; draw.lod = UINT32_MAX;
+            draw.indexCount = m_SelectedIndices; draw.instanceCount = 1u;
+            draw.vertexBufferCount = m_Model->Get_MeshVertexCount(0u);
+            const auto ranges = m_Model->Get_StaticClusterSourceRanges();
+            draw.sourcePlacementIds.reserve(m_VisibleSourceSlots.size());
+            for (const uint32_t slot : m_VisibleSourceSlots)
+                if (slot < ranges.size()) draw.sourcePlacementIds.push_back(ranges[slot].sourceId);
+            draw.sourceIdsKnown = draw.sourcePlacementIds.size() == m_VisibleSourceSlots.size();
+            if (!draw.sourceIdsKnown) draw.sourcePlacementIds.clear();
+            diagnostics.Record(std::move(draw));
+        }
+        catch (...) { ++diagnostics.droppedDraws; }
+    }
 #ifdef _DEBUG
     m_Submitted = SUCCEEDED(result);
 #endif
     if (SUCCEEDED(result) && profiler)
     {
-        const auto& s = *m_Model->Get_StaticClusterStats();
-        profiler->Add_Counter(m_Far ? Engine::EProfilerCounter::MapChunkFarDraws : Engine::EProfilerCounter::MapChunkNearDraws);
-        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkSourceDraws, m_SourceDraws);
-        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkSubmittedIndices, m_Far ? s.farIndices : s.nearIndices);
-        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkOriginalIndices, s.nearIndices);
+        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkFarDraws);
+        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkSourceDraws, m_SelectedSourceDraws);
+        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkSubmittedIndices, m_SelectedIndices);
+        profiler->Add_Counter(Engine::EProfilerCounter::MapChunkOriginalIndices, m_OriginalVisibleIndices);
     }
     return result;
 }
@@ -383,7 +471,7 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
     const auto start = std::chrono::steady_clock::now();
     Engine::CProfilerScope preparation(CGameInstance::Get().Get_Profiler(), "Map.Chunk.Prepare");
     struct MEMBER { std::shared_ptr<CMapStaticBatchObject> batch; uint32_t mesh; };
-    struct GROUP { std::vector<MEMBER> members; uint64_t estimate = 0; };
+    struct GROUP { std::vector<MEMBER> members; uint64_t estimate = 0; uint32_t conservativeDraws = 0u; };
     std::map<std::tuple<int64_t, int64_t, bool>, std::vector<GROUP>> cells;
     for (const auto& b : batches)
     {
@@ -394,6 +482,7 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
         auto& groups = cells[{static_cast<int64_t>(std::floor(center.x / CellMetres)),
             static_cast<int64_t>(std::floor(center.z / CellMetres)), b->m_bMirrored}];
         b->m_ChunkClaims.resize(b->m_pModelCom->Get_NumMeshes());
+        b->m_ChunkClaimMemberIndices.resize(b->m_pModelCom->Get_NumMeshes(), UINT32_MAX);
         for (uint32_t mesh = 0; mesh < b->m_pModelCom->Get_NumMeshes(); ++mesh)
         {
             if (!b->m_pModelCom->Can_ShareStaticClusterMaterialWith(mesh, *b->m_pModelCom, mesh)) continue;
@@ -412,9 +501,26 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
     std::vector<GROUP*> ranked;
     for (auto& [cell, groups] : cells)
         for (auto& g : groups)
-            if (g.members.size() >= MINIMUM_CHUNK_SOURCE_DRAWS) ranked.push_back(&g);
+        {
+            // 같은 geometry/RNM bank는 원본 instancing 하나로 세어 생성 전에
+            // draw 이득이 명확한 그룹만 남긴다. 런타임은 실제 LOD/가시성으로 재검사한다.
+            std::vector<size_t> representatives;
+            for (size_t i = 0u; i < g.members.size(); ++i)
+            {
+                const auto& member = g.members[i];
+                const bool combined = std::any_of(representatives.begin(), representatives.end(), [&](size_t index) {
+                    const auto& first = g.members[index];
+                    return first.mesh == member.mesh &&
+                        (first.batch->m_pModelCom->Can_ShareStaticInstanceStateWith(*member.batch->m_pModelCom) ||
+                         first.batch->m_pModelCom->Can_BatchStaticLightingWith(*member.batch->m_pModelCom));
+                });
+                if (!combined) representatives.push_back(i);
+            }
+            g.conservativeDraws = static_cast<uint32_t>(representatives.size());
+            if (g.conservativeDraws >= MINIMUM_CHUNK_SOURCE_DRAWS) ranked.push_back(&g);
+        }
     std::stable_sort(ranked.begin(), ranked.end(), [](const GROUP* a, const GROUP* b) {
-        return double(a->members.size() - 1) / double(a->estimate) > double(b->members.size() - 1) / double(b->estimate);
+        return double(a->conservativeDraws - 1u) / double(a->estimate) > double(b->conservativeDraws - 1u) / double(b->estimate);
     });
     output.reserve(output.size() + ranked.size());
     auto cache = Engine::CModel::Create_StaticClusterBuildCache();
@@ -426,9 +532,15 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
 #ifdef _DEBUG
         std::vector<std::string> sourceAssetIds;
 #endif
+        std::vector<SOURCE_MEMBER> mappedMembers;
+        mappedMembers.reserve(group->members.size());
         for (const auto& member : group->members)
-            for (const auto& instance : member.batch->m_Instances)
+        {
+            SOURCE_MEMBER mapped; mapped.batch = member.batch; mapped.mesh = member.mesh;
+            mapped.sourceSlots.resize(member.batch->m_Instances.size(), UINT32_MAX);
+            for (uint32_t i = 0u; i < member.batch->m_Instances.size(); ++i)
             {
+                const auto& instance = member.batch->m_Instances[i];
                 if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed) continue;
                 VTXMESHINSTANCE gpu{};
                 gpu.World = instance.World; gpu.WorldInvTranspose = instance.WorldInvTranspose;
@@ -438,22 +550,26 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
                 gpu.vStaticShadowScaleBias = instance.BakedLighting.shadowScaleBias;
                 gpu.vSourceWindOwnerPosition = instance.SourceWind.actorPositionSourceCm;
                 gpu.vSourceWindDimensionsAndRadius = instance.SourceWind.objectDimensionsAndRadiusSourceCm;
+                mapped.sourceSlots[i] = static_cast<uint32_t>(sources.size());
                 sources.push_back({member.batch->m_pModelCom.get(), member.mesh, instance.PlacementId, gpu});
 #ifdef _DEBUG
                 sourceAssetIds.push_back(member.batch->m_AssetId);
 #endif
             }
+            mappedMembers.push_back(std::move(mapped));
+        }
         std::shared_ptr<Engine::CModel> model;
         Engine::CModel::STATIC_CLUSTER_STATS built{};
         if (sources.size() < 2u || Engine::CModel::Create_StaticCluster(sources, {}, *cache, model, built) != S_OK ||
-            !model || GeometryBytes(built) > budget - stats.gpuBytes) { ++stats.rejectedGroups; continue; }
+            !model || !built.hasFarGeometry || GeometryBytes(built) > budget - stats.gpuBytes)
+        { ++stats.rejectedGroups; continue; }
         const auto& first = group->members.front().batch;
         DESC d;
         d.prototypeLevelIndex = levelIndex; d.model = model; d.timeSource = first; d.profile = first->m_RenderProfile;
         d.culling = culling; d.mirrored = first->m_bMirrored;
         d.claim = std::make_shared<MAP_CHUNK_CLAIM>(); d.claim->policy = policy;
         d.sourceDraws = static_cast<uint32_t>(group->members.size());
-        for (const auto& member : group->members) d.members.push_back({member.batch, member.mesh});
+        d.members = std::move(mappedMembers);
 #ifdef _DEBUG
         d.sourceAssetIds = std::move(sourceAssetIds);
 #endif
@@ -465,7 +581,13 @@ void CMapStaticChunkObject::Stage(uint32_t levelIndex,
         { CGameInstance::Get().Remove_GameObject_from_Layer(levelIndex, LayerTag, object); ++stats.rejectedGroups; continue; }
         output.push_back(chunk);
         // Claims publish only after both model buffers and the live object exist.
-        for (const auto& member : group->members) member.batch->m_ChunkClaims[member.mesh] = d.claim;
+        for (uint32_t i = 0u; i < group->members.size(); ++i)
+        {
+            const auto& member = group->members[i];
+            member.batch->m_bTrackProxySources = true;
+            member.batch->m_ChunkClaims[member.mesh] = d.claim;
+            member.batch->m_ChunkClaimMemberIndices[member.mesh] = i;
+        }
         ++stats.chunks; stats.sourceDraws += d.sourceDraws; stats.sources += built.sourceCount;
         stats.farChunks += built.hasFarGeometry ? 1u : 0u; stats.gpuBytes += GeometryBytes(built);
         stats.nearIndices += built.nearIndices; stats.farIndices += built.hasFarGeometry ? built.farIndices : built.nearIndices;

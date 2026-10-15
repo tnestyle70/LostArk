@@ -1255,7 +1255,7 @@ formatVersion: 1
 authority: REFERENCE_ONLY
 ```
 
-Pattern ID는 `kakulsaydon.<Profile>.pattern.<N>`, clip occurrence ID는
+Pattern ID는 `koukusaydon.<Profile>.pattern.<N>`, clip occurrence ID는
 `<PatternId>.clip.<N>`이며 monotonic ordinal로 발급하고 삭제 뒤 재사용하지 않는다. Load는
 `parse -> validate -> stage -> commit`, Save는 `validate -> sibling temp durable write -> strict
 reparse/exact compare -> reference revision 재확인 -> atomic replace`를 따른다. 잘못된 profile,
@@ -1533,7 +1533,7 @@ RenderingProfiles의 optional `environment`는 `cubeTexture`(Resources-relative 
 commit하며, 누락 profile은 이전 cube를 해제한다. 로드 실패는 이전 profile을 유지한다. 같은 cube의 품질 편집은
 SRV를 재사용하고 명시 Reload에서 다시 읽는다. CMaterial의 source base가 이 scene 입력을 소비하며,
 material-owned2D IBL과는 별도다. cube가 없는 다른 씬에 Character Select의 cube를 자동 적용하지 않는다.
-씬프로필_암전은 기존 scene.kakulsaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
+씬프로필_암전은 기존 scene.koukusaydon.find-true-dark.v1의 표시 이름이다. 진짜 세이튼 찾기·댄스타임·룰렛은
 이 Scene Profile과 스포트라이트_캐릭터/스포트라이트_세이튼을 사용하며, 각 box의 시간과 anchor가 적용 범위를 소유한다.
 
 `dissolveStart/dissolveEnd`는 정규화 수명 내 dissolve-out 시작/종료 시점이며

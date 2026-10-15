@@ -58,9 +58,12 @@ Write-Output 'ok: publisher landing-frame contract (10 cases)'
 # The source player cannot clone an actor merely because its resource is
 # present. The raid must register the factory before Level activation, without
 # requiring the user to open Map Tool first.
-loader_source = (ROOT / "Client/Private/Loader.cpp").read_text(encoding="utf-8-sig")
+try:
+    loader_source = (ROOT / "Client/Private/Loader.cpp").read_text(encoding="utf-8-sig")
+except UnicodeDecodeError:
+    loader_source = (ROOT / "Client/Private/Loader.cpp").read_text(encoding="cp949")
 valtan_loader = loader_source.split("HRESULT CLoader::Ready_For_ValtanArena()", 1)[1].split(
-    "HRESULT CLoader::Ready_For_KakulSaydonArena()", 1
+    "HRESULT CLoader::Ready_For_KoukuSaydonArena()", 1
 )[0]
 assert 'CWorldSequenceObject::PROTOTYPE_TAG' in valtan_loader
 assert valtan_loader.index('CWorldSequenceObject::PROTOTYPE_TAG') < valtan_loader.index(

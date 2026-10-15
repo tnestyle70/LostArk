@@ -289,7 +289,7 @@ Server 질의는 자기 높이(`player.fPositionY` 등)를 마지막 인자(`sta
 하고, 힌트가 없는 질의는 겹친 구간에서 매니페스트 순서 첫 번째 영역이 답한다. 겹치지 않는 영역과
 영역이 없는 Area는 종전과 같다. Client 제품 Loader는 영역 격자를 읽지 않고 기본 격자만 쓴다.
 
-쿠크 2관문의 `BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 저장한 높이에서 서는 보스다.
+쿠크 2관문의 `BOSS_KOUKUSAYDON_G2_BIG_SAYDON`은 저장한 높이에서 서는 보스다.
 Navigation publisher도 Server `Build_WorldEntity`와 같은 해당 Area/archetype의 높이 정책을 사용하며,
 유한한 좌표·영역 안의 XZ·walkable 검사는 그대로 적용한다. 다른 보스와 playerSpawn은 지면 높이를 검사한다.
 
@@ -672,7 +672,7 @@ powershell -ExecutionPolicy Bypass -File Tools/MapPipeline/Publish-MapAuthoring.
 ```
 
 명시적 전체 쿠크 배포 `Tools/Build/Invoke-BuildDomainOwner.ps1 -Owner KoukuSaydon`도
-`map.kakulsaydon`을 포함한다. 기존 BuildDomains의 해당 Area 출력·필수 출력은
+`map.koukusaydon`을 포함한다. 기존 BuildDomains의 해당 Area 출력·필수 출력은
 mapassets, mapplacements, deployassets, deployplacements, maplights, mapmaterials,
 worldsequences, camerashots의8개이며, 누락된 출력은 기존 receipt로 생략하지 않는다.
 일반 Client 컴파일은 계속 자동 배포를 하지 않는다. 컴파일 성공과 실행용 데이터 준비는

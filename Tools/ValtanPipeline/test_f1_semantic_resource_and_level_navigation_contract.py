@@ -149,9 +149,9 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
         for forbidden in (
             "Change_Level",
             "CNetworkManager",
-            "Send_DebugEnterKakulSaydonArena",
-            "LOBBY_STAGE::KAKUL",
-            "Debug_Request_KakulSaydonArena()",
+            "Send_DebugEnterKoukuSaydonArena",
+            "LOBBY_STAGE::KOUKU",
+            "Debug_Request_KoukuSaydonArena()",
             "press KoukuSaydon again after admission",
         ):
             self.assertNotIn(forbidden, request)
@@ -163,7 +163,7 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             'LEVEL::CHARACTER_SELECT, "Character Select"',
             'LEVEL::BERN, "Bern"',
             'LEVEL::VALTAN_ARENA, "Valtan"',
-            'LEVEL::KAKULSAYDON_ARENA, "KoukuSaydon"',
+            'LEVEL::KOUKUSAYDON_ARENA, "KoukuSaydon"',
             'LEVEL::COLOSSEUM, "Entrance PvP Arena"',
             'LEVEL::MAHARAKA, "Maharaka"',
             "ImGui::BeginDisabled(disable)",
@@ -224,16 +224,16 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             self.assertNotIn(forbidden, enter)
         self.assertIn("bool_t Submit_StageEntry(LOBBY_STAGE", self.character_select_h)
 
-    def test_kakul_wrapper_is_the_character_select_sink_owner(self) -> None:
+    def test_kouku_wrapper_is_the_character_select_sink_owner(self) -> None:
         wrapper = function_body(
             self.character_select_cpp,
-            "bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()",
+            "bool_t CLevel_CharacterSelect::Debug_Request_KoukuSaydonArena()",
         )
         for token in (
             "MODE::SERVER_ARENA",
             "CLevelTransitionService::Is_Pending()",
-            "m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(",
-            "m_iNextKakulArenaRequestSequence",
+            "m_pWorldEntityCommandSink->Request_EnterKoukuSaydonArena(",
+            "m_iNextKoukuArenaRequestSequence",
         ):
             self.assertIn(token, wrapper)
         self.assertNotIn("CNetworkManager", wrapper)
@@ -241,7 +241,7 @@ class F1SemanticResourceAndLevelNavigationContractTests(unittest.TestCase):
             self.character_select_cpp,
             "void CLevel_CharacterSelect::Render_SelectionPanel()",
         )
-        self.assertIn("Debug_Request_KakulSaydonArena()", panel)
+        self.assertIn("Debug_Request_KoukuSaydonArena()", panel)
 
     def test_level_panel_precedes_resource_files(self) -> None:
         render = function_body(

@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
 #include "GameRoom.h"
@@ -39,7 +39,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_RoomPing()
 {
 	TESTS tests{};
 	C2S_ROOM_PING request;
-	request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 	request.fPositionX = -2.45f; request.fPositionY = 1.32f; request.fPositionZ = 945.17f;
 	CPacketWriter writer;
 	tests.Require(Write_Message(writer, request) && Is_Known_Packet_Type(PACKET_TYPE::C2S_ROOM_PING) &&
@@ -66,8 +66,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_RoomPing()
 		tests.Require(!Write_Message(rejected, invalid) && rejected.Get_Buffer().empty(),
 			"Invalid ping world, sequence, nonfinite and out-of-bounds points fail before serialization");
 	}
-	auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
-	auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
+	auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 	tests.Require(room->Is_Ready() && otherRoom->Is_Ready(), "Ping isolation fixture loads two independent rooms in the same world");
 	std::vector<std::shared_ptr<CClientSession>> sessions;
 	for (unsigned id = 1u; id <= 4u; ++id)
@@ -205,7 +205,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 			"Classify protocol mismatch, malformed message, and unknown packet separately");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
 		CGameRoom& room = *roomStorage;
 		auto missingSkillBindingSession = std::make_shared<CClientSession>(
@@ -1342,7 +1342,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SessionTransport(TESTS&
 			"Isolate a sender socket failure to its session and notify close exactly once");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
 		CGameRoom& room = *roomStorage;
 		auto moveCommand = [](const SESSION_ID sessionId,

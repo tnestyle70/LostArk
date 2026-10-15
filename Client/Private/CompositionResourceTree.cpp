@@ -1,17 +1,22 @@
+﻿// 트리 표시와 drag source/target·payload 검사를 사용한다.
 #include "imgui.h"
 
 #include "CompositionResourceTree.h"
 
+// 분류 검색·정렬과 drop 영역 최소 크기를 계산한다.
 #include <algorithm>
+// 추가한 vector의 마지막 자식 iterator를 구한다.
 #include <iterator>
 
 namespace
 {
     constexpr const char* TransferPayload = "COMPOSITION_RESOURCE_V1";
+    // UI 스레드의 현재 drag snapshot을 공유 보유한다. drop 뒤에도 다음 drag 교체 또는 프로세스 종료까지 남는다.
     Client::COMPOSITION_TRANSFER DragTransfer;
     std::uint64_t DragToken = 0;
 }
 
+// 새 resource drag에서만 캡처하고 token을 발행한다. callback이 빈 참조를 주면 payload를 만들지 않는다.
 void Client::Offer_CompositionResourceDrag(const char* label,
     const std::function<COMPOSITION_TRANSFER()>& capture)
 {
@@ -33,12 +38,13 @@ void Client::Offer_CompositionResourceDrag(const char* label,
     ImGui::EndDragDropSource();
 }
 
+// payload 형식·전달 완료·크기·현재 token을 모두 확인한 뒤 보관된 snapshot 참조를 복사한다.
 Client::COMPOSITION_TRANSFER Client::Accept_CompositionResourceDropInWindow()
 {
     const ImGuiPayload* active = ImGui::GetDragDropPayload();
     if (!active || !active->IsDataType(TransferPayload)) return {};
-    // A non-interactive item supplies the pane-sized target using public ImGui
-    // APIs. It exists only during a resource drag and captures no mouse clicks.
+    // resource drag가 있을 때만 창 내용 영역 크기의 비대화형 ImGui 항목을 만든다.
+    // drop 검사 뒤 원래 cursor 위치로 돌려놓는다.
     const ImVec2 cursor = ImGui::GetCursorScreenPos();
     const ImVec2 position = ImGui::GetWindowPos();
     const ImVec2 size = ImGui::GetWindowSize();
@@ -111,7 +117,7 @@ void Client::RenderResourceTree(
 	for (const COMPOSITION_RESOURCE_TREE_NODE& Child : Node.Children)
 	{
 		ImGui::PushID(Child.strStablePath.c_str());
-		// Search changes the visible count, not the category's expansion identity.
+		// 검색으로 leaf 개수가 바뀌어도 분류 경로를 ImGui ID로 유지한다.
 		if (ImGui::TreeNodeEx("##ResourceCategory", ImGuiTreeNodeFlags_SpanAvailWidth,
 				"%s (%zu)", Child.strSegment.c_str(), Child.iRecursiveLeafCount))
 		{

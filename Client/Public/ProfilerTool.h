@@ -219,11 +219,22 @@ public:
 	void Render(Engine::CProfiler* pProfiler);
 	void Request_Save(Engine::CProfiler& Profiler);
 	void Update_SaveState();
+    // MainApp의 world render 전후만 호출한다. 상세 기록은 명시적 컷신 캡처에서만 켜진다.
+    void Begin_CutsceneDiagnosticFrame();
+    void End_CutsceneDiagnosticFrame(bool renderSucceeded);
+    bool Is_CutsceneRecording() const;
 	[[nodiscard]] bool_t Is_Saving() const noexcept { return m_Exporter.IsSaving(); }
 	[[nodiscard]] const std::string& Get_CaptureStatus() const noexcept { return m_strCaptureStatus; }
 
 private:
 	void Refresh(Engine::CProfiler& Profiler);
+    void Render_CutsceneControls();
+    void Update_CutsceneCapture();
+    void Stop_CutsceneCapture(const char* reason);
+    // 일반 저장도 이미 수집한 거리 표본의 종료·불변화·기존 exporter를 재사용한다.
+    bool Request_CutsceneSave();
+    void Fail_CutsceneSave(const char* reason) noexcept;
+    void Finish_CutsceneSave(const FProfilerCaptureSaveResult& result) noexcept;
     size_t Save_FrameWindow() const noexcept;
 	const char_t* Scope_Name(uint32_t iNameId) const;
 	std::string Thread_Label(uint32_t iThreadId) const;
@@ -249,6 +260,8 @@ private:
     void Render_Memory(Engine::CProfiler& Profiler);
 
 private:
+    struct FCutsceneState;
+    std::shared_ptr<FCutsceneState> m_Cutscene;
 	bool_t m_bOpen = true;
     FProfilerCaptureContext m_CaptureContext;
     bool_t m_bSaveWindowOnly = false;

@@ -25,21 +25,18 @@ namespace
 	constexpr std::uint64_t MILLISECONDS_PER_SECOND = 1000u;
 	constexpr std::uint8_t MAX_PATTERN_FOLLOWUP_DEPTH = 32u;
 	constexpr float PATH_POINT_STOP_DISTANCE = 0.1f;
-	/* The converted Valtan model carries no jump clip, so the leap is a Server
-	transform arc instead of root motion. Both the apex and the landing point
-	come from the pattern's compiled serverMotion anchor, never from a constant
-	here and never from the boss placement. */
+	// 도약은 Server가 위치 곡선으로 진행하며 도약 중에는 클립 루트모션을 중복 적용하지 않는다.
+	// 높이와 착지점은 게시된 pattern.Motion에서 받아 사용한다.
 
-	/* A leap is declared by the pattern's compiled motion rather than by its
-	name, so any pattern that authors one gets the same arc. The rise is always
-	the first stage; the authored travel stage owns descent, and any stages in
-	between hold the boss at the apex. */
+	// 패턴 이름 대신 게시된 이동 종류로 도약 여부를 판정한다.
+	// 첫 stage에서 상승하고, 지정된 이동 stage에서 하강하며 그 사이에는 정점을 유지한다.
 	bool Is_LeapPattern(const BOSS_PATTERN_DEFINITION& pattern)
 	{
 		return BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind ||
 			BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == pattern.Motion.eKind;
 	}
 
+	// Configure_PortalMotion이 현재 stage에 포탈 전용 이동 상태를 열지 결정하는 분류다.
 	bool Is_PortalMotion(const BOSS_PATTERN_STAGE_MOTION_KIND kind)
 	{
 		return BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH == kind ||
@@ -48,6 +45,7 @@ namespace
 
 	constexpr std::uint32_t LEAP_TAKEOFF_STAGE_INDEX = 0u;
 
+	// EnterPatternStage가 다음 평가 tick을 예약한다. 미설정을 뜻하는 0은 반환하지 않는다.
 	std::uint32_t NextServerTickSkippingReservedZero(
 		const std::uint32_t serverTick)
 	{
@@ -55,6 +53,7 @@ namespace
 			1u : serverTick + 1u;
 	}
 
+	// 표시되는 누적 피해 진행도가 바뀔 때 전투 snapshot revision을 진행시킨다. 0은 예약한다.
 	std::uint32_t NextBossCombatRevision(
 		const std::uint32_t revision) noexcept
 	{
@@ -62,6 +61,8 @@ namespace
 			1u : revision + 1u;
 	}
 
+	// stage 진입/패턴 시작/종료가 호출하는 누적 피해 응답 상태의 공통 갱신 경계다.
+	// 임계값까지 잘라 표시한 진행도나 임계값 자체가 달라질 때만 BossCombat revision을 바꾼다.
 	void SetPatternBossResponseState(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_BOSS_RESPONSE_KIND kind,
@@ -97,6 +98,8 @@ namespace
 		}
 	}
 
+	// Update와 조준 갱신이 공유하는 stage 평가 횟수다.
+	// 첫 평가 tick부터 현재 tick까지를 세며, 시작 직후 평가 포함 여부는 EnterPatternStage가 정한다.
 	std::uint64_t StageElapsedTicks(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick)
@@ -105,8 +108,8 @@ namespace
 			boss.iPatternStageFirstEvaluationTick;
 		if (0u == firstTick || 0u == serverTick)
 			return 0u;
-		/* The Server reserves zero and wraps UINT32_MAX directly to one. Count
-		only that nonzero tick cardinality, then include the first evaluation. */
+		// 0은 예약값이므로 UINT32_MAX 다음은 1이다.
+		// 이 순환 규칙으로 지난 tick 수를 세고 첫 평가 tick도 포함한다.
 		const std::uint64_t ageTicks = serverTick >= firstTick ?
 			static_cast<std::uint64_t>(serverTick - firstTick) :
 			static_cast<std::uint64_t>(
@@ -115,6 +118,8 @@ namespace
 		return ageTicks + 1u;
 	}
 
+	// 30Hz tick과 저작 ms를 각각 1000 및 30배 해 같은 단위의 정수로 비교한다.
+	// 예약 판정/마감의 경계에서 소수점 누적 오차를 피하고 곱셈은 64bit로 수행한다.
 	bool HasElapsedMilliseconds(
 		const std::uint64_t elapsedTicks,
 		const std::uint32_t milliseconds)
@@ -124,6 +129,7 @@ namespace
 			static_cast<std::uint64_t>(milliseconds) * SERVER_TICK_HZ;
 	}
 
+	// Advance_ArenaBreakLeap이 직접 위치를 갱신할 이륙/이동 stage인지 검사한다.
 	bool Is_LeapArcStage(const SERVER_WORLD_ENTITY& boss)
 	{
 		return boss.fPatternLeapApexHeight > 0.f &&
@@ -131,9 +137,8 @@ namespace
 				boss.iPatternLeapTravelStageIndex == boss.iPatternStageIndex);
 	}
 
-	/* Progress through one authored subwindow in [0,1]. The publisher proves
-	the bounds against the owning stage, while this remains defensive for a
-	manually constructed contract-test entity. */
+	// 저작한 부분 시간 구간을 0~1 진행률로 바꾼다.
+	// 잘못된 구간이나 비유한 경과 시간은 끝값으로 처리하여 나눗셈을 막는다.
 	float StageWindowRatio(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t startMs,
@@ -150,9 +155,8 @@ namespace
 			static_cast<float>(endMs - startMs)));
 	}
 
-	/* TAKEOFF rises in place; DROP carries the boss to the pattern's compiled
-	landing anchor while it falls, so IMPACT always lands on the same point the
-	camera frames and the walls fly away from. */
+	// 이륙 stage에서는 제자리에서 상승하고, 이동 stage에서는 착지점으로 가며 내려온다.
+	// X/Z는 선형 보간하고 Y는 정점에서 착지점까지 제곱 진행률로 보간한다.
 	void Advance_ArenaBreakLeap(SERVER_WORLD_ENTITY& boss)
 	{
 		if (!Is_LeapArcStage(boss))
@@ -196,6 +200,8 @@ namespace
 		boss.fPositionY = apexY + (boss.fLeapLandingY - apexY) * ratio * ratio;
 	}
 
+	// 대기/추적/사망 action이 달라질 때만 경과 시간을 초기화한다.
+	// 같은 action으로의 반복 요청은 시작 tick을 다시 쓰지 않는다.
 	void Transition(
 		SERVER_WORLD_ENTITY& boss,
 		const SERVER_ENTITY_ACTION action,
@@ -208,6 +214,7 @@ namespace
 		boss.iActionStartTick = 0u == serverTick ? 1u : serverTick;
 	}
 
+	// FailMechanic이 재예약 전에 대기열 안의 동일 stable pattern ID를 검사한다.
 	bool ContainsPatternId(
 		const std::vector<std::string>& ids,
 		const std::string& patternId)
@@ -215,6 +222,8 @@ namespace
 		return ids.end() != std::find(ids.begin(), ids.end(), patternId);
 	}
 
+	// 기믹 상태 전이와 선택 기록이 boss 소유의 실행 기록을 pattern ID로 찾는다.
+	// 반환 포인터는 해당 vector 요소를 차용하며 vector 재배치 이후까지 보관하면 안 된다.
 	SERVER_BOSS_MECHANIC_OCCURRENCE* FindMechanicOccurrence(
 		SERVER_WORLD_ENTITY& boss,
 		const std::string& patternId)
@@ -222,10 +231,14 @@ namespace
 		const auto found = std::find_if(
 			boss.MechanicOccurrences.begin(), boss.MechanicOccurrences.end(),
 			[&patternId](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
-			{ return occurrence.strPatternId == patternId; });
+			{
+				return occurrence.strPatternId == patternId;
+			});
 		return boss.MechanicOccurrences.end() == found ? nullptr : &*found;
 	}
 
+	// 기믹 상태 전이와 선택 기록이 boss 소유의 실행 기록을 pattern ID로 찾는다.
+	// 반환 포인터는 해당 vector 요소를 차용하며 vector 재배치 이후까지 보관하면 안 된다.
 	const SERVER_BOSS_MECHANIC_OCCURRENCE* FindMechanicOccurrence(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::string& patternId)
@@ -233,10 +246,14 @@ namespace
 		const auto found = std::find_if(
 			boss.MechanicOccurrences.begin(), boss.MechanicOccurrences.end(),
 			[&patternId](const SERVER_BOSS_MECHANIC_OCCURRENCE& occurrence)
-			{ return occurrence.strPatternId == patternId; });
+			{
+				return occurrence.strPatternId == patternId;
+			});
 		return boss.MechanicOccurrences.end() == found ? nullptr : &*found;
 	}
 
+	// BeginPattern이 pattern sequence를 발급한 뒤 QUEUED 기록을 ACTIVE로 전환한다.
+	// 해당 기록이 없거나 이미 다른 상태이면 변경하지 않는다.
 	void MarkMechanicActive(
 		SERVER_WORLD_ENTITY& boss,
 		const std::string& patternId,
@@ -254,6 +271,8 @@ namespace
 		occurrence->iPatternSequence = boss.iPatternSequence;
 	}
 
+	// FinishPattern이 정상 종료한 현재 sequence와 일치하는 ACTIVE 기록만 완료한다.
+	// 이전 실행이나 다른 sequence의 기록을 완료 처리하지 않는다.
 	void CompleteActiveMechanic(
 		SERVER_WORLD_ENTITY& boss,
 		const std::string& patternId,
@@ -272,6 +291,8 @@ namespace
 		occurrence->iFinishedTick = serverTick;
 	}
 
+	// 패턴 취소와 외부 실패 통지가 공유하는 기믹 기록 갱신이다.
+	// 대상 부재는 재예약하고, 그 밖의 기록된 실패는 reset이 필요한 상태로 남긴다.
 	void FailMechanic(
 		SERVER_WORLD_ENTITY& boss,
 		const std::string& patternId,
@@ -282,11 +303,9 @@ namespace
 			FindMechanicOccurrence(boss, patternId);
 		if (SERVER_BOSS_MECHANIC_FAILURE::NO_VALID_TARGET == failure)
 		{
-			/* Target availability is transient encounter state, not a corrupt
-			   mechanic ledger. Re-arm an owned health occurrence at the front of
-			   its stable queue; an ordered Product step keeps its own cursor in
-			   FinishPattern. Both paths wait in IDLE and retry only after target
-			   admission succeeds again. */
+			// 대상이 일시적으로 없어진 경우에는 기믹 정의 손상으로 기록하지 않는다.
+			// 소유 중인 체력 기믹은 대기열 맨 앞에 다시 넣고, 순서형 커서는 FinishPattern이 보존한다.
+			// 이후 대상이 다시 허용되면 같은 실행 항목을 재시도한다.
 			if (nullptr != occurrence &&
 				(SERVER_BOSS_MECHANIC_STATE::ACTIVE == occurrence->eState ||
 				 SERVER_BOSS_MECHANIC_STATE::QUEUED == occurrence->eState))
@@ -314,9 +333,8 @@ namespace
 		boss.bMechanicLedgerRequiresReset = true;
 	}
 
-	/* Pattern selection and targetless waiting share this one admission rule so
-	   a temporarily unavailable player cannot oscillate between IDLE and attack
-	   state on adjacent fixed ticks. */
+	// 패턴 선택과 대상 부재 판단이 같은 참가 조건을 사용한다.
+	// 일시적으로 전투 불가능한 플레이어 때문에 인접 tick마다 대기와 공격이 엇갈리는 것을 막는다.
 	bool IsEngageablePlayer(const SERVER_PLAYER& player)
 	{
 		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
@@ -324,6 +342,8 @@ namespace
 			LostArk::Shared::PLAYER_ACTION_STATE::FALLING != player.eAction;
 	}
 
+	// Update와 조준 갱신이 사용할 가장 가까운 참가 가능 플레이어를 XZ 거리 제곱으로 찾는다.
+	// players의 요소를 차용하며 대상이 없으면 nullptr, 요청된 거리 출력에는 최대 float를 남긴다.
 	SERVER_PLAYER* SelectNearestEngageableTarget(
 		const SERVER_WORLD_ENTITY& boss,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -357,6 +377,8 @@ namespace
 		return nearest;
 	}
 
+	// 같은 원본 주 action ID를 공유하면 재사용 대기를 함께 적용한다.
+	// 원본 ID가 없는 정의끼리는 stable pattern ID로 구분한다.
 	bool IsSamePatternCooldownFamily(
 		const SERVER_BOSS_PATTERN_COOLDOWN& cooldown,
 		const BOSS_PATTERN_DEFINITION& pattern)
@@ -370,6 +392,7 @@ namespace
 			cooldown.strPatternId == pattern.strPatternId;
 	}
 
+	// 일반 선택의 후보 검사에서 남은 재사용 대기 tick을 읽는다. 없거나 준비 시각을 지났으면 0이다.
 	std::uint32_t PatternCooldownRemainingTicks(
 		const SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -378,7 +401,9 @@ namespace
 		const auto found = std::find_if(
 			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
 			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
-			{ return IsSamePatternCooldownFamily(cooldown, pattern); });
+			{
+				return IsSamePatternCooldownFamily(cooldown, pattern);
+			});
 		if (boss.PatternCooldowns.end() == found ||
 			static_cast<std::int32_t>(serverTick - found->iReadyTick) >= 0)
 		{
@@ -387,6 +412,7 @@ namespace
 		return found->iReadyTick - serverTick;
 	}
 
+	// BeginPattern이 실제 실행을 시작할 때 해당 family의 준비 tick을 추가하거나 갱신한다.
 	void StartPatternCooldown(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -399,7 +425,9 @@ namespace
 		auto found = std::find_if(
 			boss.PatternCooldowns.begin(), boss.PatternCooldowns.end(),
 			[&pattern](const SERVER_BOSS_PATTERN_COOLDOWN& cooldown)
-			{ return IsSamePatternCooldownFamily(cooldown, pattern); });
+			{
+				return IsSamePatternCooldownFamily(cooldown, pattern);
+			});
 		if (boss.PatternCooldowns.end() == found)
 		{
 			SERVER_BOSS_PATTERN_COOLDOWN cooldown{};
@@ -413,16 +441,22 @@ namespace
 		found->iReadyTick = readyTick;
 	}
 
+	// 선택/분기/현재 실행 검사가 Catalog에서 받은 정의 목록을 stable pattern ID로 조회한다.
+	// 반환 포인터는 전달받은 정의 vector의 수명 안에서만 유효하다.
 	const BOSS_PATTERN_DEFINITION* FindPattern(
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
 		const std::string& patternId)
 	{
 		const auto found = std::find_if(patterns.begin(), patterns.end(),
 			[&patternId](const BOSS_PATTERN_DEFINITION& pattern)
-			{ return pattern.strPatternId == patternId; });
+			{
+				return pattern.strPatternId == patternId;
+			});
 		return patterns.end() == found ? nullptr : &*found;
 	}
 
+	// Update에서 대상이 없어도 이미 시작한 아레나 무작위 연속 생성을 이어갈지 검사한다.
+	// 현재 action과 stage가 일치하고 ENTER의 다중 volley가 예약된 경우에만 허용한다.
 	bool CanContinueTargetlessScheduledArenaStage(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns)
@@ -454,6 +488,7 @@ namespace
 			});
 	}
 
+	// 잡기와 해제 action을 함께 가진 패턴인지 검사한다. 잡은 대상을 풀기 전 중단하지 않기 위한 분류다.
 	bool PatternOwnsGrabLifecycle(
 		const BOSS_PATTERN_DEFINITION& pattern)
 	{
@@ -476,6 +511,8 @@ namespace
 		return hasCapture && hasRelease;
 	}
 
+	// Update가 잡기 패턴을 대상 부재로 취소하기 전에 호출한다.
+	// 해제 stage, 이미 확정된 잡기 실행 또는 현재 sequence가 소유한 잡힌 플레이어가 있으면 계속한다.
 	bool CanContinueTargetlessOwnedGrabPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -519,6 +556,7 @@ namespace
 			boss, players).iGrabbedCount;
 	}
 
+	// SET_PLAYER_BIND의 ENTER와 EXIT를 모두 가진 정의만 묶기 생명주기를 소유한 것으로 본다.
 	bool PatternOwnsBindLifecycle(
 		const BOSS_PATTERN_DEFINITION& pattern)
 	{
@@ -542,6 +580,8 @@ namespace
 		return hasEnter && hasExit;
 	}
 
+	// 살아 있는 플레이어의 묶기 owner와 sequence가 이 보스의 현재 실행과 일치하는지 검사한다.
+	// 묶어서 일반 대상이 없어졌다는 이유로 해제까지의 패턴을 취소하지 않기 위한 조건이다.
 	bool CanContinueTargetlessOwnedBindPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -571,6 +611,8 @@ namespace
 			});
 	}
 
+	// ApplyStageBranch가 같은 패턴 안의 다음 action을 stage와 index로 해석한다.
+	// 못 찾으면 nullptr을 반환하며 outStageIndex는 갱신하지 않는다.
 	const BOSS_PATTERN_STAGE_DEFINITION* FindStageByActionId(
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const std::string& actionId,
@@ -586,6 +628,7 @@ namespace
 		return nullptr;
 	}
 
+	// 고정/무작위 대상 재조회에는 참가 조건 외에 GRABBED도 제외한다. IsEngageablePlayer와 적용 위치가 다르다.
 	bool IsTargetable(const SERVER_PLAYER& player)
 	{
 		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
@@ -594,6 +637,7 @@ namespace
 			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction;
 	}
 
+	// 저장된 NetEntityId를 이번 tick의 players에서 다시 찾아 유효성을 검사한다. 포인터를 장기 저장하지 않는다.
 	SERVER_PLAYER* FindPatternTarget(
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const LostArk::Shared::NET_ENTITY_ID netEntityId)
@@ -607,6 +651,7 @@ namespace
 		return nullptr;
 	}
 
+	// 선택/조준 갱신 시 대상을 마지막으로 확인한 위치를 boss에 복사한다. 도약 착지와 포탈 경로가 소비한다.
 	void RememberPatternTargetPosition(
 		SERVER_WORLD_ENTITY& boss,
 		const SERVER_PLAYER& target)
@@ -617,6 +662,7 @@ namespace
 		boss.fPatternTargetLastPositionZ = target.fPositionZ;
 	}
 
+	// 대상 선택 실패나 패턴 종료 시 마지막 위치의 유효 플래그와 좌표를 함께 비운다.
 	void ClearPatternTargetPosition(SERVER_WORLD_ENTITY& boss)
 	{
 		boss.bHasPatternTargetLastPosition = false;
@@ -625,6 +671,7 @@ namespace
 		boss.fPatternTargetLastPositionZ = 0.f;
 	}
 
+	// stage 전환 또는 패턴 정리 때 적용했던 stage 높이 보정의 기준 Y로 되돌린다.
 	void RestorePatternStageVerticalOffset(SERVER_WORLD_ENTITY& boss)
 	{
 		if (boss.bPatternStageVerticalOffsetApplied &&
@@ -636,6 +683,7 @@ namespace
 		boss.fPatternStageVerticalBaseY = 0.f;
 	}
 
+	// stage 보정을 먼저 제거한 뒤 pattern 보정을 제거한다. 진입 때 쌓인 두 보정을 역순으로 해제한다.
 	void RestorePatternVerticalOffset(SERVER_WORLD_ENTITY& boss)
 	{
 		RestorePatternStageVerticalOffset(boss);
@@ -648,15 +696,19 @@ namespace
 		boss.fPatternVerticalBaseY = 0.f;
 	}
 
+	// 입력한 월드 XZ 지점을 향한 yaw(degree)를 갱신한다. 같은 위치에 가까우면 기존 방향을 유지한다.
 	void FacePoint(SERVER_WORLD_ENTITY& boss, const float x, const float z)
 	{
 		const float deltaX = x - boss.fPositionX;
 		const float deltaZ = z - boss.fPositionZ;
 		if (deltaX * deltaX + deltaZ * deltaZ <= 0.000001f)
 			return;
+		//boss의 yawdegrees를 atan2로 입력 매개 변수로 받은 x, z를 사용해서 
+		//boss의 yaw degrees를 갱신한다.
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	}
 
+	// 패턴 시작/추적이 사용할 조준 원점을 결정하고 대상 방향으로 boss yaw를 갱신한다.
 	void FacePatternTarget(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -667,9 +719,8 @@ namespace
 		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_ANCHOR == pattern.Motion.eKind &&
 			pattern.Motion.bMoveToAnchorBeforeTakeoff)
 		{
-			/* The boss moves toward this anchor during the first takeoff window,
-			   but a center-owned telegraph must not change its pivot while that
-			   movement is still in progress. */
+			// 이륙 전에 중앙 anchor로 이동하는 패턴은 그 anchor를 조준 기준으로 삼는다.
+			// 몸체가 이동하는 동안에도 중앙을 기준으로 하는 판정 방향의 원점이 흔들리지 않게 한다.
 			originX = pattern.Motion.fLandingX;
 			originZ = pattern.Motion.fLandingZ;
 		}
@@ -686,6 +737,8 @@ namespace
 		boss.fYawDegrees = std::atan2(deltaX, deltaZ) * RADIANS_TO_DEGREES;
 	}
 
+	// 차용한 후보 포인터 목록을 PlayerId로 정렬한 뒤 patternSequence로 하나를 선택한다.
+	// 같은 후보 집합과 sequence는 같은 결과를 만들며 암호학적 난수를 제공하는 함수는 아니다.
 	SERVER_PLAYER* SelectDeterministicRandomTarget(
 		std::vector<SERVER_PLAYER*>& candidates,
 		const std::uint32_t patternSequence)
@@ -707,6 +760,7 @@ namespace
 		return candidates[static_cast<std::size_t>(random % candidates.size())];
 	}
 
+	// 패턴 시작 시 현재 대상 가능 플레이어만 모아 sequence 기반 선택 함수에 전달한다.
 	SERVER_PLAYER* SelectRandomTarget(
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const std::uint32_t patternSequence)
@@ -721,6 +775,8 @@ namespace
 		return SelectDeterministicRandomTarget(candidates, patternSequence);
 	}
 
+	// 시작 방향과 대상 방향의 내적이 음수인 뒤쪽 후보를 먼저 고른다.
+	// 뒤쪽 후보가 없으면 전체 대상 가능 플레이어의 무작위 선택으로 이어진다.
 	SERVER_PLAYER* SelectRandomTargetBehind(
 		const SERVER_WORLD_ENTITY& boss,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -754,6 +810,8 @@ namespace
 			SelectRandomTarget(players, patternSequence) : selected;
 	}
 
+	// BeginPattern이 한 실행의 대상 ID/마지막 위치/시작 방향을 확정한다.
+	// 대상 정책과 조준 정책은 별개이므로 대상 선택 후 anchor 조준 또는 대상 조준을 적용한다.
 	void BeginPatternTargetAndAim(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -798,6 +856,8 @@ namespace
 		}
 	}
 
+	// Update와 stage 진입 직후 갱신이 현재 정의의 대상/조준 정책을 적용한다.
+	// stage의 최근접 추적이 우선하며, 조준 종료 tick을 지났으면 저장된 방향을 유지한다.
 	void UpdatePatternTargetAndAim(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -811,14 +871,15 @@ namespace
 		std::uint64_t endTicks = 0u;
 		if (stage && (stage->bHasAimEnd || stage->bHasAimResponseScale))
 		{
-			// Stage-entry refresh has clock zero; the first simulation tick is
-			// evaluated separately. The integer clock also survives uint32 wrap.
+			// stage 진입 직후의 조준 갱신은 경과 tick을 0으로 본다.
+			// 첫 시뮬레이션 평가는 별도로 세며, 정수 tick의 순환도 StageElapsedTicks가 처리한다.
 			elapsedTicks = serverTick == boss.iActionStartTick &&
 				boss.iPatternStageFirstEvaluationTick != serverTick ? 0u :
 				StageElapsedTicks(boss, serverTick);
 			const auto endMs = stage->bHasAimEnd ? stage->iAimEndMs : stage->iDurationMs;
 			endTicks = (static_cast<std::uint64_t>(endMs) * SERVER_TICK_HZ + 999u) / 1000u;
-			if (elapsedTicks >= endTicks) return;
+			if (elapsedTicks >= endTicks)
+				return;
 			previousTicks = (std::min)(previousTicks, elapsedTicks);
 			boss.iPatternAimLastElapsedTicks = elapsedTicks;
 		}
@@ -832,7 +893,7 @@ namespace
 		if (boss.iPatternStageIndex < pattern.Stages.size() &&
 			pattern.Stages[boss.iPatternStageIndex].bTrackNearestTarget)
 		{
-			// Stage aim uses the current body pivot, including a completed center move.
+			// stage의 최근접 조준은 중앙 이동이 끝난 위치를 포함한 현재 몸체 원점을 사용한다.
 			SERVER_PLAYER* selected = SelectNearestEngageableTarget(boss, players);
 			boss.iPatternTargetEntityId = nullptr == selected ?
 				LostArk::Shared::INVALID_NET_ENTITY_ID : selected->iNetEntityId;
@@ -868,6 +929,9 @@ namespace
 		}
 	}
 
+	// Update가 넘긴 현재 체력 줄과 이전 평가 기록으로 새 체력 기믹을 예약한다.
+	// 체력 경계 내림차순, trigger 순서, pattern ID 순으로 정렬하여 대기열 순서를 안정화한다.
+	// 정의 revision/세대가 유효하지 않거나 기록 상한을 넘으면 reset 필요 상태를 남긴다.
 	void QueueCrossedHealthBarPatterns(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
@@ -920,9 +984,8 @@ namespace
 			}
 			SERVER_BOSS_MECHANIC_OCCURRENCE occurrence{};
 			occurrence.strPatternId = pattern->strPatternId;
-			/* Capture the catalog that performed this threshold evaluation. The
-			boss may still publish an older running occurrence revision while the
-			process-active generation is being reconciled. */
+			// 이번 체력 경계 평가에 사용한 Catalog revision을 실행 기록에 고정한다.
+			// 현재 실행 중인 패턴의 revision과 새로 활성화된 정의 세대가 다를 수 있기 때문이다.
 			occurrence.PinnedDefinitionRevision = definitionRevision;
 			occurrence.iTriggerHealthBar = pattern->iTriggerHealthBar;
 			occurrence.iQueuedTick = serverTick;
@@ -941,6 +1004,7 @@ namespace
 		VALTAN_DECISION_TRACE Trace;
 	};
 
+	// SelectNormalPattern의 tick/sequence 입력을 섞는다. 선택 과정을 trace 값으로 재현할 수 있다.
 	std::uint64_t MixDecisionRandom(std::uint64_t value)
 	{
 		value ^= value >> 30u;
@@ -951,6 +1015,7 @@ namespace
 		return value;
 	}
 
+	// 결정 직전 boss 상태와 가장 앞선 대기 항목을 복사한다. 선택 자체나 boss 상태는 변경하지 않는다.
 	VALTAN_DECISION_TRACE MakeDecisionTraceHeader(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick,
@@ -990,6 +1055,9 @@ namespace
 		return trace;
 	}
 
+	// 일반 가중치 선택과 대상 부재의 제외 이유 기록에 사용한다. 반환 정의는 patterns에서 차용한다.
+	// 강제 제외 조건과 연속 사용 제한을 나눠, 다른 후보가 없을 때만 연속 사용 제한을 완화한다.
+	// 후보 기록 상한은 trace만 제한하며 실제 선택 후보 목록을 자르지는 않는다.
 	VALTAN_PATTERN_SELECTION_RESULT SelectNormalPattern(
 		const SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
@@ -1016,17 +1084,17 @@ namespace
 		evaluationOrder.reserve(patterns.size());
 		if (hasManagedSelectionSet)
 		{
-			/* Ticket intervals are an authored contract, so managed candidates are
-			evaluated in their explicit ordinal order rather than Encounter PATTERN
-			row order. Out-of-set definitions follow only so the trace can explain
-			their exclusion; they never enter the roll. */
+			// 가중치 구간의 순서는 저작된 candidate 순서를 따른다.
+			// 선택 집합 밖의 정의는 제외 이유를 기록하기 위해 뒤에 붙이며 추첨에는 넣지 않는다.
 			for (const BOSS_PATTERN_ROTATION_CANDIDATE& candidate :
 				managedRotation->Candidates)
 			{
 				const auto definition = std::find_if(
 					patterns.begin(), patterns.end(),
 					[&candidate](const BOSS_PATTERN_DEFINITION& pattern)
-					{ return pattern.strPatternId == candidate.strPatternId; });
+					{
+						return pattern.strPatternId == candidate.strPatternId;
+					});
 				if (patterns.end() != definition)
 					evaluationOrder.push_back(&*definition);
 			}
@@ -1038,8 +1106,11 @@ namespace
 						managedRotation->Candidates.end(),
 						[&pattern](
 							const BOSS_PATTERN_ROTATION_CANDIDATE& candidate)
-						{ return candidate.strPatternId == pattern.strPatternId; });
-				if (!belongsToManagedSet) evaluationOrder.push_back(&pattern);
+						{
+							return candidate.strPatternId == pattern.strPatternId;
+						});
+				if (!belongsToManagedSet)
+					evaluationOrder.push_back(&pattern);
 			}
 		}
 		else
@@ -1058,7 +1129,9 @@ namespace
 					managedRotation->Candidates.end(),
 					[&pattern](
 						const BOSS_PATTERN_ROTATION_CANDIDATE& row)
-					{ return row.strPatternId == pattern.strPatternId; });
+					{
+						return row.strPatternId == pattern.strPatternId;
+					});
 				if (managedRotation->Candidates.end() != candidate)
 					managedCandidate = &*candidate;
 			}
@@ -1140,6 +1213,8 @@ namespace
 			if (!maximumConsecutiveRejected)
 				repeatAllowed.push_back({ &pattern, authoredSelectionWeight });
 		}
+		// 거리/phase/갑옷/재사용 대기 등 강제 조건은 풀지 않는다.
+		// 연속 사용 제한을 지키는 후보만 비었을 때 그 제한 하나를 완화한다.
 		const bool relaxMaximumConsecutive =
 			repeatAllowed.empty() && !eligible.empty();
 		trace.bMaximumConsecutiveRelaxed = relaxMaximumConsecutive;
@@ -1162,6 +1237,8 @@ namespace
 				candidate.bSoftRepeatRelaxed = true;
 			}
 		}
+		// 누적 가중치의 반열린 구간 [begin, end)에 ticket이 들어가는 후보를 고른다.
+		// 목록 순서가 구간 경계를 정하므로 추첨 입력과 구간을 함께 trace에 남긴다.
 		std::uint64_t totalWeight = 0u;
 		for (const WEIGHTED_PATTERN_VIEW& pattern : candidates)
 			totalWeight += pattern.iSelectionWeight;
@@ -1191,7 +1268,9 @@ namespace
 			auto traced = std::find_if(
 				trace.Candidates.begin(), trace.Candidates.end(),
 				[pattern](const VALTAN_DECISION_CANDIDATE_TRACE& candidate)
-				{ return candidate.strPatternId == pattern->strPatternId; });
+				{
+					return candidate.strPatternId == pattern->strPatternId;
+				});
 			if (trace.Candidates.end() != traced)
 			{
 				traced->iEffectiveWeight = weighted.iSelectionWeight;
@@ -1213,9 +1292,8 @@ namespace
 			trace.strSelectedPatternId = selectedPattern->strPatternId;
 			return { selectedPattern, std::move(trace) };
 		}
-		/* Validation guarantees positive candidate weights and selectedTicket is
-		   modulo totalWeight. Keep this defensive fallback, but only after every
-		   candidate received its complete interval for the Balance Tool trace. */
+		// 선택 ticket은 totalWeight 미만이며 모든 후보의 가중치 구간을 기록한다.
+		// 끝까지 선택되지 않았다면 마지막 후보를 반환하는 기존 방어 경로를 유지한다.
 		trace.eResult = VALTAN_DECISION_RESULT::SELECTED;
 		trace.strSelectedPatternId = candidates.back().pPattern->strPatternId;
 		for (VALTAN_DECISION_CANDIDATE_TRACE& candidate : trace.Candidates)
@@ -1230,6 +1308,7 @@ namespace
 		return { candidates.back().pPattern, std::move(trace) };
 	}
 
+	// 순서형 sequence의 다음 항목 전 추적 대기 tick을 선택한다. 마지막 항목 뒤에는 대기를 만들지 않는다.
 	std::uint32_t ResolveSequencePursuitTicksAfter(
 		const BOSS_PATTERN_SEQUENCE_DEFINITION& sequence,
 		const std::uint32_t stepIndex)
@@ -1244,6 +1323,10 @@ namespace
 		return sequence.iInterStepPursuitTicks;
 	}
 
+	// Update의 IDLE/CHASE 경로에서 다음 정의를 선택하며 큐와 순서 커서를 필요에 따라 변경한다.
+	// 입장 연출, 예약 후속 패턴, 명시 sequence, 입장 공격, 강제 큐를 앞에서부터 검사한다.
+	// 이후 rotation 모드에 맞춰 순환/가중치/일회 소개를 처리하고 조건부 전체 가중치 선택으로 이어진다.
+	// nullptr은 대기일 수도 정의 오류일 수도 있으므로 Trace 결과와 reset 상태를 함께 소비해야 한다.
 	const BOSS_PATTERN_DEFINITION* SelectPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns,
@@ -1270,9 +1353,9 @@ namespace
 				trace.eResult = VALTAN_DECISION_RESULT::MECHANIC_RESET_REQUIRED;
 				return nullptr;
 			}
-			// Automatic health rotations start at the first authored occurrence after
-			// this cutscene. The legacy entrance attack would insert a second
-			// whirlwind before that occurrence, so consume it only on this path.
+			// 자동 체력별 순환은 입장 연출 뒤에 저작된 첫 실행 항목부터 시작한다.
+			// 이 경로에서는 기존 입장 공격을 별도로 넣지 않도록 소비 상태를 함께 기록한다.
+			// 이 소비 처리는 아래의 입장 연출 선택 경로에만 적용한다.
 			boss.bEntranceCinematicConsumed = true;
 			boss.bIntroPatternConsumed = true;
 			trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
@@ -1285,7 +1368,8 @@ namespace
 			trace.Candidates.push_back(std::move(candidate));
 			return cinematic;
 		}
-		if (healthRotations) scriptedSequence = nullptr;
+		if (healthRotations)
+			scriptedSequence = nullptr;
 		if (boss.PendingPatternFollowup.Is_Pending())
 		{
 			const SERVER_BOSS_PATTERN_FOLLOWUP pending =
@@ -1345,10 +1429,9 @@ namespace
 			trace.Candidates.push_back(std::move(candidate));
 			return followup;
 		}
-		/* An explicit Product sequence is the complete automatic program. It owns
-		the intro slot, may reference normal or health-bar mechanics, and has no
-		weighted fallback after its terminal step. Forced Debug queues and the
-		explicit entrance/health-bar override retain their existing audition path. */
+		// 명시된 자동 sequence는 입장부터 마지막 항목까지의 실행 순서를 소유한다.
+		// 마지막 항목 뒤에는 가중치 선택으로 넘어가지 않는다.
+		// Debug 강제 대기열과 입장/체력 기믹 시험 재생은 별도 조건으로 이 경로를 우회한다.
 		if (!boss.bScriptedPatternPlayback &&
 			!boss.bAutomaticPatternSequenceAuditionOverride &&
 			boss.PendingPatternIds.empty() && nullptr != scriptedSequence)
@@ -1421,11 +1504,9 @@ namespace
 			trace.Candidates.push_back(std::move(candidate));
 			return step;
 		}
-		/* Legacy entry and explicit audition retain the range-gated entrance
-		attack before the health-bar queue or weighted roll. Automatic entry with
-		a cinematic already consumed it above and proceeds to the authored loop.
-		A missing pattern is consumed anyway, so a broken catalog cannot stall
-		the boss on every tick. */
+		// 기존 입장 및 명시적인 시험 재생은 체력 기믹 대기열보다 입장 공격을 먼저 검사한다.
+		// 위에서 입장 연출을 선택한 자동 경로는 이미 입장 공격을 소비했다.
+		// 입장 정의가 없어도 소비 상태를 남겨 같은 누락을 매 tick 기다리지 않는다.
 		if (!boss.bIntroPatternConsumed &&
 			(nullptr == scriptedSequence ||
 			 boss.bAutomaticPatternSequenceAuditionOverride))
@@ -1443,8 +1524,8 @@ namespace
 			}
 			else if (BOSS_PATTERN_SELECTION::NORMAL != intro->eSelection)
 			{
-				/* Catalog admission rejects this. Keep the runtime edge fail-closed
-				if a future caller ever supplies an unvalidated definition set. */
+				// 검증되지 않은 정의가 전달되어도 NORMAL이 아닌 입장 공격은 실행하지 않는다.
+				// 제외 이유를 기록하고 입장 항목을 소비한다.
 				VALTAN_DECISION_CANDIDATE_TRACE candidate{};
 				candidate.strPatternId = intro->strPatternId;
 				candidate.iExclusionMask =
@@ -1472,14 +1553,14 @@ namespace
 			}
 			else if (boss.iCurrentHp < boss.iMaximumHp)
 			{
-				/* Combat started without the entrance ever coming into range, so it
-				is dropped instead of holding a boss that is already being hit. */
+				// 입장 공격의 사거리에 들어오기 전에 이미 피해를 받았다면 입장 공격을 생략한다.
+				// 진행 중인 전투를 입장 조건으로 계속 막지 않기 위한 경로다.
 				boss.bIntroPatternConsumed = true;
 			}
 			else
 			{
-				/* Nothing may run ahead of the entrance, so the pending intro
-				owns this tick even though it selected no pattern. */
+				// 아직 입장 사거리를 기다리는 동안에는 뒤의 대기열이나 일반 선택을 실행하지 않는다.
+				// 이번 tick의 선택 결과만 대기 상태로 기록한다.
 				trace.eSource = VALTAN_DECISION_SOURCE::INTRO;
 				trace.eResult =
 					VALTAN_DECISION_RESULT::WAITING_FOR_INTRO_RANGE;
@@ -1490,6 +1571,7 @@ namespace
 				return nullptr;
 			}
 		}
+		// 큐 맨 앞의 stable ID부터 소비한다. 정의를 찾지 못하면 실패 기록을 남기고 reset 여부를 검사한다.
 		while (!boss.PendingPatternIds.empty())
 		{
 			const std::string patternId = boss.PendingPatternIds.front();
@@ -1547,14 +1629,14 @@ namespace
 		if (boss.bAutomaticPatternSequenceAuditionHold &&
 			nullptr != scriptedSequence)
 		{
-			/* ARM_HEALTH_BAR deliberately waits here until the Debug trigger moves
-			the boss across its staged threshold and queues the forced mechanic. */
+			// ARM_HEALTH_BAR 시험에서는 Debug 명령으로 체력 경계를 넘긴다.
+			// 강제 기믹이 대기열에 들어올 때까지 일반 자동 선택을 보류한다.
 			trace.eSource = VALTAN_DECISION_SOURCE::NONE;
 			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
 			return nullptr;
 		}
-		// A completed normal pattern advances one ordinal. Health mechanics above
-		// take priority; changing bands starts the new loop at its first occurrence.
+		// 순서형 일반 패턴은 정상 완료 때 FinishPattern이 다음 순번으로 진행시킨다.
+		// 위의 체력 기믹 대기열이 우선이며, 순환 ID가 바뀌면 새 목록의 첫 항목부터 시작한다.
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::ORDERED_LOOP == rotation->eSelectionMode &&
 			!rotation->PatternIds.empty())
@@ -1591,10 +1673,9 @@ namespace
 			trace.eResult = VALTAN_DECISION_RESULT::NO_ELIGIBLE_PATTERN;
 			return nullptr;
 		}
-		/* Managed ranges are weighted from their first normal choice. The window's
-		candidate rows own enabled/weight while each pattern continues to own range,
-		phase, armour, cooldown, and consecutive-use conditions. Scripted health-bar
-		mechanics already returned from the queue above. */
+		// WEIGHTED_POOL은 첫 일반 선택부터 가중치를 사용한다.
+		// candidate는 활성 여부와 가중치를, 패턴은 거리/phase/갑옷/재사용 대기/연속 사용 조건을 소유한다.
+		// 앞의 강제 체력 기믹은 이미 대기열 경로에서 처리했다.
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::WEIGHTED_POOL ==
 				rotation->eSelectionMode)
@@ -1610,12 +1691,9 @@ namespace
 			trace = std::move(result.Trace);
 			return result.pPattern;
 		}
-		/* The authored list introduces the band rather than looping it. Every
-		pattern the band brings is shown once, in order, so nothing the encounter
-		adds can be missed; the stretch then hands over to the weighted roll, which
-		draws from the whole eligible moveset instead of the list alone. A mechanic
-		that interrupts the introduction resumes where it left off because the
-		cursor lives on the boss, and a new band restarts it. */
+		// ORDERED_INTRO_THEN_WEIGHTED는 목록을 한 번 순서대로 소개한 뒤 가중치 선택으로 넘어간다.
+		// 소개 커서는 boss에 남으므로 체력 기믹이 끼어들어도 이어서 진행하고, 순환 ID 변경 시 초기화한다.
+		// 소개 뒤의 선택은 목록에 한정되지 않고 조건을 만족하는 전체 일반 패턴을 대상으로 한다.
 		if (!boss.bScriptedPatternPlayback && nullptr != rotation &&
 			BOSS_PATTERN_ROTATION_SELECTION_MODE::
 				ORDERED_INTRO_THEN_WEIGHTED == rotation->eSelectionMode &&
@@ -1649,8 +1727,8 @@ namespace
 					trace.Candidates.push_back(std::move(candidate));
 					return step;
 				}
-				/* An unresolved or non-normal step is skipped rather than stalling
-				the introduction, and the weighted roll covers the gap. */
+				// 정의를 찾지 못하거나 NORMAL이 아닌 소개 항목은 커서를 되돌리지 않는다.
+				// 이번 선택은 아래의 가중치 경로로 이어진다.
 				if (trace.Candidates.size() <
 					CValtanBrain::MAX_DECISION_CANDIDATE_COUNT)
 				{
@@ -1671,9 +1749,8 @@ namespace
 		return result.pPattern;
 	}
 
-	/* A GROGGY stage is the stun a charge earns by meeting a wall, so only an
-	impact may enter it. A charge that runs its full travel without hitting
-	anything falls through to the recovery behind the stun instead. */
+	// 시간 만료만으로는 이벤트 진입 전용 stage에 들어가지 않는다.
+	// 다음 순번부터 Is_EventEnteredStage인 항목을 건너뛰고 일반 시간 진행 stage를 찾는다.
 	std::uint32_t NextClockStageIndex(
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const std::uint32_t currentStageIndex)
@@ -1687,6 +1764,7 @@ namespace
 		return next;
 	}
 
+	// EnterPatternStage가 내부 stage 종류를 기존 복제 action으로 변환한다.
 	SERVER_ENTITY_ACTION ToServerAction(const BOSS_PATTERN_STAGE_KIND kind)
 	{
 		switch (kind)
@@ -1698,19 +1776,18 @@ namespace
 		case BOSS_PATTERN_STAGE_KIND::RECOVERY:
 			return SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
 		case BOSS_PATTERN_STAGE_KIND::PART_BREAK:
-			/* The boss is reacting, not attacking, so it replicates as the
-			recovery the client already renders for that. */
+			// PART_BREAK는 공격이 아니라 반응이므로 복제 action은 기존 회복 상태를 사용한다.
 			return SERVER_ENTITY_ACTION::PATTERN_RECOVERY;
 		case BOSS_PATTERN_STAGE_KIND::GROGGY:
-			/* The stage still plays its authored action, so it replicates as the
-			same active stage the client already renders. Only the server needs to
-			know this one is the armour-break window. */
+			// GROGGY의 저작 action은 계속 재생하므로 복제 action은 활성 상태를 사용한다.
+			// 갑옷 파괴 창 여부는 Server의 별도 stage 상태로 관리한다.
 			return SERVER_ENTITY_ACTION::PATTERN_ACTIVE;
 		default:
 			return SERVER_ENTITY_ACTION::PATTERN_WINDUP;
 		}
 	}
 
+	// EnterPatternStage가 이전 돌진 stage의 끝점을 먼저 확정한다. 잠기지 않은 경로나 잘못된 수치는 건너뛴다.
 	void CompletePortalTargetRushAtDeadline(SERVER_WORLD_ENTITY& boss)
 	{
 		if (!boss.bPortalMotionActive ||
@@ -1731,10 +1808,8 @@ namespace
 			boss.iPatternStageDurationMs) * MILLISECONDS_TO_SECONDS;
 		if (boss.fActionElapsedSeconds + 0.0001f < durationSeconds)
 			return;
-		/* The Brain advances the stage at the exact deadline before GameRoom gets
-		its usual motion pass. Commit that final fixed-tick segment here so the
-		typed distance is reached once, then let the next stage retarget from the
-		completed endpoint. */
+		// Brain의 stage 전환은 GameRoom의 일반 이동 처리보다 먼저 일어난다.
+		// 마감에 남은 마지막 이동을 여기서 끝점으로 확정하여 다음 stage가 완료 위치에서 시작하게 한다.
 		const float yawRadians = boss.fYawDegrees * DEGREES_TO_RADIANS;
 		boss.fPositionX = boss.fPortalStartX +
 			std::sin(yawRadians) * boss.fPortalRushDistanceM;
@@ -1742,10 +1817,21 @@ namespace
 			std::cos(yawRadians) * boss.fPortalRushDistanceM;
 	}
 
+	// 공개 wrapper를 거쳐 GameRoom의 stage action commit에서 호출한다.
+	// 마지막 대상 위치를 기준으로 방향과 포탈 끝점을 한 번 잠그며 경로가 성립하지 않으면 false다.
+	//포탈의 시작 위치를 stage가 시작할 때 target의 위치로 고정한다. 
 	bool LockPortalTargetRushAtStageStart(SERVER_WORLD_ENTITY& boss)
 	{
+		//이미 boss의 portal rush target이 locked되어있어서, 다시 target을 설정할 필요가 없는 경우
 		if (boss.bPortalRushTargetLocked)
 			return true;
+		//portalmotion이 active되어있지 않거나, pattern stage motion kind가 
+		//portal target rush가 아니거나, pattern target의 last position을 가지지 못했거나
+		//boss의 x z, yaw degrees, pattern target의 last position x z, 
+		//portal rush speed meter per second portal rush distance가 isfinite가 아닐 경우 
+		//그리고 boss의 portalrushspeed meter per second가 0.f와 작거나 같을 경우에 return false
+		//굳이 이렇게까지? 조건을 걸었으면, 그 근거가 될만한 명분이 반드시 존재해야 하는데, 
+		//어떤 명분이 존재하는 거지?
 		if (!boss.bPortalMotionActive ||
 			BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH !=
 				boss.ePatternStageMotionKind ||
@@ -1762,12 +1848,12 @@ namespace
 		{
 			return false;
 		}
-		/* The paired V2 portals are both born on the Stage edge, so the Server
-		   must commit the same immutable facing and endpoint before that edge is
-		   replicated. retargetDelayMs still delays travel and hit evaluation; it
-		   no longer delays choosing the route. */
+
+		// 포탈 쌍이 stage 전환에 맞춰 생성되므로 그 경계를 복제하기 전에 방향과 끝점을 고정한다.
+		// retargetDelayMs는 이동과 판정의 시작을 늦추며, 경로 선택 자체를 늦추지는 않는다.
 		if (boss.bHasPatternTargetLastPosition)
 		{
+			//facepoint를 target의 last position x, z로 고정한다. 
 			FacePoint(boss, boss.fPatternTargetLastPositionX,
 				boss.fPatternTargetLastPositionZ);
 		}
@@ -1778,16 +1864,22 @@ namespace
 			std::sin(yawRadians) * boss.fPortalRushDistanceM;
 		const float portalEndZ = boss.fPortalStartZ +
 			std::cos(yawRadians) * boss.fPortalRushDistanceM;
+
 		if (!std::isfinite(portalEndX) || !std::isfinite(portalEndZ))
 			return false;
+
 		boss.fPortalEndX = portalEndX;
 		boss.fPortalEndZ = portalEndZ;
+		//이 lasthitsample이 의미하는 바는 뭘까? 
 		boss.fPortalLastHitSampleX = boss.fPortalStartX;
 		boss.fPortalLastHitSampleZ = boss.fPortalStartZ;
 		boss.bPortalRushTargetLocked = true;
 		return true;
 	}
 
+	// 패턴 시작/시간 만료/이벤트 분기가 공통으로 호출하는 stage 진입 경계다.
+	// 이전 stage 결과와 높이를 정리하고 정의를 boss 실행 상태에 복사한 뒤 판정 소비 횟수와 대상 이력을 초기화한다.
+	// stage ID는 저장 식별자이고 stageIndex는 현재 정의 vector를 읽는 실행 위치다.
 	void EnterPatternStage(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
@@ -1885,8 +1977,7 @@ namespace
 		else if (boss.fPatternLeapApexHeight > 0.f &&
 			stageIndex < boss.iPatternLeapTravelStageIndex)
 		{
-			/* An authored airborne hold keeps the same apex and horizontal origin
-			   until the descent stage begins. */
+			// 하강 stage 전까지 공중 대기 stage는 같은 정점 높이와 수평 원점을 유지한다.
 			boss.fPositionX = boss.fLeapOriginX;
 			boss.fPositionY = boss.fLeapOriginY + boss.fLeapApexHeight;
 			boss.fPositionZ = boss.fLeapOriginZ;
@@ -1894,9 +1985,8 @@ namespace
 		else if (boss.fLeapApexHeight > 0.f &&
 			stageIndex > boss.iPatternLeapTravelStageIndex)
 		{
-			/* Commit the landing once when leaving the descent. Later stages may
-			move on their own; replaying this snap on every stage would undo that
-			motion and pull the boss back to the original landing anchor. */
+			// 하강 stage를 떠날 때 착지점을 한 번 확정한다.
+			// 이후 stage마다 이 위치를 다시 적용하면 후속 이동을 되돌리므로 정점 상태도 해제한다.
 			boss.fPositionX = boss.fLeapLandingX;
 			boss.fPositionY = boss.fLeapLandingY;
 			boss.fPositionZ = boss.fLeapLandingZ;
@@ -1905,8 +1995,8 @@ namespace
 		Advance_ArenaBreakLeap(boss);
 		if (BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER == stage.Motion.eKind)
 		{
-			// Explicit aim windows own facing even while the body moves to center.
-			// In particular, an endMs=0 tail must not re-face on stage entry.
+			// 명시적인 조준 시간 구간은 중앙으로 이동하는 동안에도 방향 갱신을 제어한다.
+			// 특히 endMs=0인 후속 구간은 stage 진입만으로 다시 목표를 바라보면 안 된다.
 			if (!stage.bHasAimEnd && !stage.bHasAimResponseScale)
 				FacePoint(boss, boss.fSpawnPositionX, boss.fSpawnPositionZ);
 			boss.fPatternStageOriginX = boss.fPositionX;
@@ -1924,6 +2014,8 @@ namespace
 		}
 	}
 
+	// 선택 성공 또는 피날레 재시작이 실행 revision과 새 sequence를 확정하고 첫 stage에 진입한다.
+	// Catalog에서 검증된 비어 있지 않은 Stages가 입력 전제이며, 재사용 대기는 선택 시도가 아닌 이 지점에서 시작한다.
 	void BeginPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -1932,9 +2024,8 @@ namespace
 		const LostArk::Shared::GameplayDataRevision& definitionRevision,
 		const std::uint32_t serverTick)
 	{
-		/* A new occurrence must never inherit an offset or response latch from a
-		previous aborted definition. The ordinary path already restored these in
-		FinishPattern; this guard also closes direct reset/re-entry callers. */
+		// 이전 실행이 취소되었더라도 높이 보정과 반응 누적 상태를 새 패턴에 넘기지 않는다.
+		// 일반 종료는 FinishPattern에서 정리하며, 여기서는 직접 재진입 경로도 같은 초기 상태로 맞춘다.
 		RestorePatternVerticalOffset(boss);
 		SetPatternBossResponseState(
 			boss, BOSS_PATTERN_BOSS_RESPONSE_KIND::NONE, 0u, 0u, false);
@@ -1970,13 +2061,10 @@ namespace
 			boss.strLastPatternId = pattern.strPatternId;
 			boss.iConsecutivePatternUses = 1u;
 		}
-		/* The target has to be locked before the landing is chosen, because a
-		leap that follows its target lands where that lock put it. */
+		// 대상 위치로 도약하는 패턴은 먼저 대상을 선택해야 그 위치를 착지점으로 저장할 수 있다.
 		BeginPatternTargetAndAim(boss, pattern, players, nearestTarget);
-		/* A pattern that owns a compiled landing anchor lands on it, and one that
-		follows its target lands where the lock found it. The authored position is
-		the anchor a targetless leap falls back to, so the arc always has a real
-		destination. Everything else keeps standing on its authored placement. */
+		// LEAP_TO_TARGET은 저장한 대상 위치를, 나머지 도약은 저작된 착지 anchor를 사용한다.
+		// 대상 위치가 없는 도약도 저작 anchor로 진행한다. 비도약 패턴은 도약 상태를 초기화한다.
 		if (BOSS_PATTERN_MOTION_KIND::LEAP_TO_TARGET == pattern.Motion.eKind &&
 			boss.bHasPatternTargetLastPosition)
 		{
@@ -2024,15 +2112,14 @@ namespace
 			boss.iPatternLeapTravelStartMs = 0u;
 			boss.iPatternLeapTravelEndMs = 0u;
 		}
-		/* BeginPattern continues through Update below, so the first stage consumes
-		this entry tick. Every other stage entry returns or happens at the end of
-		the current Update and starts evaluating on the following tick. */
+		// BeginPattern 뒤에도 같은 Update가 계속되므로 첫 stage는 진입 tick에 평가한다.
+		// 그 밖의 stage 전환은 현재 Update를 끝내거나 마지막에 발생하므로 다음 tick부터 평가한다.
 		EnterPatternStage(
 			boss, pattern.Stages.front(), 0u, serverTick, true);
 	}
 
-	/* Linear between the two samples that bracket the time, holding the ends.
-	The curve is authored in metres of forward travel from the stage start. */
+	// stage 시작부터 누적된 전방 이동 거리(m)를 양쪽 시간 샘플 사이에서 선형 보간한다.
+	// 첫/마지막 시간 밖에서는 끝 샘플 값을 유지한다.
 	void Sample_StageRootMotionForward(
 		const std::vector<ROOT_MOTION_SAMPLE>& samples,
 		const float elapsedSeconds,
@@ -2069,6 +2156,9 @@ namespace
 		outForward = samples.back().fForward;
 	}
 
+	// 정상 완료/중도 취소가 사용하는 공통 정리다. 완료 기록, 기믹 기록, 순서 커서를 갱신한 뒤 실행 상태를 비운다.
+	// 대상 부재는 같은 항목 재시도를 보존하지만 그 밖의 순서형 실패는 reset을 요구한다.
+	// 플레이어 잡기 부착의 실제 해제나 stage action commit은 이 함수를 호출한 GameRoom의 후속 책임이다.
 	void FinishPattern(
 		SERVER_WORLD_ENTITY& boss,
 		const std::uint32_t serverTick,
@@ -2109,15 +2199,13 @@ namespace
 			}
 			else if (waitForTarget)
 			{
-				/* Keep the ordered cursor on this occurrence. A newly admitted
-				   target starts the same stable step again; no Product contract was
-				   invalidated merely because the party was temporarily unavailable. */
+				// 순서형 커서를 현재 실행 항목에 둔다.
+				// 새로 허용된 대상이 생기면 같은 항목을 다시 시작하며 일시적인 대상 부재를 정의 오류로 보지 않는다.
 				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 			}
 			else
 			{
-				/* Exact ordering is safer than skipping a failed stage and presenting
-				the next mechanic as though the sequence completed normally. */
+				// 그 밖의 순서형 실행 실패는 다음 항목으로 건너뛰지 않고 reset 필요 상태로 남긴다.
 				boss.bMechanicLedgerRequiresReset = true;
 				boss.iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 			}
@@ -2125,8 +2213,7 @@ namespace
 		}
 		if (boss.fLeapApexHeight > 0.f)
 		{
-			/* An aborted leap must not leave the boss standing in mid-air, so
-			drop it back onto the anchor it was falling toward. */
+			// 도약이 취소되어도 몸체가 공중에 남지 않도록 저장된 착지점에 놓는다.
 			boss.fPositionX = boss.fLeapLandingX;
 			boss.fPositionY = boss.fLeapLandingY;
 			boss.fPositionZ = boss.fLeapLandingZ;
@@ -2191,11 +2278,9 @@ namespace
 		boss.bPatternChargeImpact = false;
 		boss.bPatternInvulnerable = false;
 		boss.bPendingArmorBreakReaction = false;
-		/* A terminal branch is also a movement/target ownership boundary. In
-		   particular, a missed grab must not leave the boss publishing the locked
-		   catch target or carrying a pre-pattern chase path while the ordered flow
-		   admits its next occurrence. The next Update reacquires an engageable
-		   target and rebuilds navigation from the current authoritative pose. */
+		// 종료는 대상과 이동 경로의 소유 경계이기도 하다.
+		// 잡기 실패 뒤에 잠근 대상이나 이전 추적 경로가 남지 않도록 모두 해제한다.
+		// 다음 Update가 현재 Server 위치를 기준으로 대상을 다시 찾고 경로를 계산한다.
 		boss.iTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
 		boss.iPatternTargetEntityId =
@@ -2207,6 +2292,9 @@ namespace
 		Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 	}
 
+	// 게시된 결과/시간 만료/외부 충돌이 선택한 분기를 실행한다.
+	// 다음 action, 후속 pattern 또는 종료 중 하나로 연결하며, 잘못된 목적지는 공통 취소 경로로 정리한다.
+	// true는 분기를 처리했다는 뜻으로 정상 완료만을 뜻하지 않는다.
 	bool ApplyStageBranch(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -2248,8 +2336,8 @@ namespace
 				boss.iPatternFollowupRootSequence;
 			boss.PendingPatternFollowup.iDepth =
 				static_cast<std::uint8_t>(nextDepth);
-			/* Finish owns the Product ordered cursor. The successor is selected from
-			this exact receipt next tick and therefore never advances that cursor. */
+			// 순서형 커서는 FinishPattern이 한 번 진행한다.
+			// 후속 패턴은 다음 tick에 정확한 완료 기록을 확인해 선택하므로 같은 커서를 다시 진행하지 않는다.
 			FinishPattern(boss, serverTick, true);
 			return true;
 		}
@@ -2263,8 +2351,8 @@ namespace
 			FindStageByActionId(pattern, branch.strNextActionId, nextStageIndex);
 		if (nullptr == next)
 		{
-			/* The publisher rejects this graph, but a corrupt bootstrap must not
-			leave the room in a stage that can never finish. */
+			// 분기 목적 stage를 찾지 못하면 현재 패턴을 취소한다.
+			// 끝나지 않는 stage에 머무르지 않도록 공통 종료 경로로 상태를 정리한다.
 			FinishPattern(
 				boss, serverTick, false,
 				SERVER_BOSS_MECHANIC_FAILURE::INVALID_RUNNING_DEFINITION);
@@ -2274,14 +2362,16 @@ namespace
 		return true;
 	}
 
+	// Update가 BossCombatRuntime에 게시된 현재 action의 결과를 정의 순서로 소비한다.
+	// 잡힌 인원과 TIMEOUT 분기는 여기서 제외하고 stage 마감 경로에서 처리한다.
 	bool ApplyPublishedOutcomeBranch(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
 		const BOSS_PATTERN_STAGE_DEFINITION& stage,
 		const std::uint32_t serverTick)
 	{
-		/* A landed result wins over a deadline on the same fixed tick. TIMEOUT is
-		evaluated only after the current stage has advanced its clock and hits. */
+		// 게시된 판정 결과는 같은 tick의 시간 만료보다 먼저 처리한다.
+		// TIMEOUT은 이 Update에서 시간과 공격 판정을 처리한 뒤 검사한다.
 		for (const BOSS_PATTERN_STAGE_BRANCH& branch : stage.Branches)
 		{
 			if (BOSS_PATTERN_STAGE_OUTCOME::TIMEOUT == branch.eOutcome ||
@@ -2295,9 +2385,8 @@ namespace
 			if (BOSS_PATTERN_STAGE_OUTCOME::PART_DESTROYED ==
 				branch.eOutcome)
 			{
-				/* PlayerSkillSystem keeps this legacy edge for patterns that do not
-				   yet publish a PART_DESTROYED branch. A typed branch consumed the
-				   same outcome, so it also consumes the fallback latch. */
+				// PART_DESTROYED 분기가 같은 파괴 결과를 소비했다.
+				// PlayerSkillSystem이 남긴 기존 갑옷 파괴 반응 플래그도 함께 해제한다.
 				boss.bPendingArmorBreakReaction = false;
 			}
 			return ApplyStageBranch(boss, pattern, branch, serverTick);
@@ -2305,6 +2394,8 @@ namespace
 		return false;
 	}
 
+	// Update가 피해 도형 없는 카운터 창을 일반 플레이어/보스 카운터 경로에 연결한다.
+	// 플레이어 복사본에서 스킬 응답을 검사하고 보스 승인 후에만 원본 플레이어를 교체한다.
 	bool TryConsumeDamageLessCounterProxy(
 		SERVER_WORLD_ENTITY& boss,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -2320,11 +2411,9 @@ namespace
 				return BOSS_PATTERN_STAGE_OUTCOME::COUNTER_HIT ==
 					branch.eOutcome;
 			});
-		/* A counter proxy represents an incoming, damage-less interaction for a
-		   guard-style COUNTER skill. The ordinary player-hit path remains the
-		   authority for counter power and proxy geometry; this bridge only supplies
-		   the hit that a NONE stage deliberately does not own. Exact stage/runtime
-		   agreement makes a stale or partially restored proxy fail closed. */
+		// counter proxy는 일반 피해 도형이 없는 stage에서 방어형 COUNTER 상호작용을 연결한다.
+		// 카운터 허용 여부와 도형 판단은 기존 Apply_PlayerHit 경로가 소유한다.
+		// stage 정의와 현재 실행 상태가 일치할 때만 이 무피해 입력을 전달한다.
 		if (!ownsCounterBranch ||
 			BOSS_PATTERN_HIT_SHAPE::NONE != stage.eHitShape ||
 			!stage.bHasCounterProxy || !boss.bPatternHasCounterProxy ||
@@ -2379,8 +2468,8 @@ namespace
 				continue;
 			}
 
-			/* Try_Counter mutates the action to stage two. Stage that mutation until
-			   the existing boss counter authority accepts the same source position. */
+			// Try_Counter는 플레이어 action을 바꾸므로 우선 복사본에서 수행한다.
+			// 보스의 기존 카운터 처리도 성공한 뒤에만 실제 플레이어에 반영한다.
 			SERVER_PLAYER stagedPlayer = player;
 			if (!CPlayerSkillSystem::Try_Counter(
 				stagedPlayer, catalog, serverTick))
@@ -2407,9 +2496,11 @@ namespace
 				LostArk::Shared::DAMAGE_EVENT success{};
 				success.iTargetNetEntityId = boss.iNetEntityId;
 				success.iSourcePlayerId = player.iPlayerId;
-				success.fPositionX = boss.fPositionX; success.fPositionY = boss.fPositionY;
+				success.fPositionX = boss.fPositionX;
+				success.fPositionY = boss.fPositionY;
 				success.fPositionZ = boss.fPositionZ;
-				success.isOutgoing = true; success.isCounterSuccess = true;
+				success.isOutgoing = true;
+				success.isCounterSuccess = true;
 				outDamageEvents.push_back(success);
 			}
 			player = std::move(stagedPlayer);
@@ -2418,6 +2509,7 @@ namespace
 		return false;
 	}
 
+	// stage 마감에서 확정된 잡기 명단을 먼저 정의 순서로 검사하고, 해당 분기가 없으면 TIMEOUT을 찾는다.
 	bool ApplyTimeoutBranch(
 		SERVER_WORLD_ENTITY& boss,
 		const BOSS_PATTERN_DEFINITION& pattern,
@@ -2425,8 +2517,8 @@ namespace
 		const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 		const std::uint32_t serverTick)
 	{
-		/* Capture requests from earlier ticks have committed before this deadline.
-		A late capture may never skip the authored rush or pre-impact duration. */
+		// 잡힌 인원에 따른 분기는 stage의 마감에서 평가한다.
+		// 이전 tick의 잡기 확정 결과를 사용하며 잡기 성공만으로 저작된 돌진 시간을 생략하지 않는다.
 		const SERVER_BOSS_GRAB_ROSTER roster =
 			CValtanBrain::Classify_GrabbedPlayers(boss, players);
 		for (const BOSS_PATTERN_STAGE_BRANCH& candidate : stage.Branches)
@@ -2450,6 +2542,7 @@ namespace
 			ApplyStageBranch(boss, pattern, *branch, serverTick);
 	}
 
+	// Update의 전투 이탈 거리 상한을 위해 정의 목록의 최대 사거리를 구한다.
 	float MaximumPatternRange(
 		const std::vector<BOSS_PATTERN_DEFINITION>& patterns)
 	{
@@ -2459,15 +2552,16 @@ namespace
 		return maximum;
 	}
 
+	// 패턴을 고르지 못한 CHASE 상태가 이번 고정 시간만큼 navigation 경로를 진행한다.
+	// 허용된 이동을 한 번 수행하면 true, 경로 완료/구간 실패 때는 경로를 비우고 false다.
 	bool MoveAlongPath(
 		SERVER_WORLD_ENTITY& boss,
 		const CServerNavigation& navigation,
 		const float fixedDeltaSeconds)
 	{
-		/* Path nodes can outlive a floor collapse. Validate the live segment and
-		ground each actual step instead of snapping Y to a distant cached node.
-		A boss already over a collapsed sector keeps its former deck while walking
-		to the same-level recovery point; only players enter the fall lifecycle. */
+		// 경로를 만든 뒤 바닥이 붕괴할 수 있으므로 이번 이동 구간을 현재 navigation으로 다시 검사한다.
+		// 붕괴 구역 위의 보스는 이전 높이를 유지하며 같은 높이의 복구 지점으로 이동한다.
+		// 모든 중간 샘플이 통과한 뒤에만 몸체 위치를 확정한다.
 		const auto commitStep = [&boss, &navigation](
 			const float x, const float z, const float detachedY)
 			{
@@ -2550,10 +2644,8 @@ namespace
 		return false;
 	}
 
-	/* The stele answers the blow instead of the player. The test is the straight
-	   line from the boss to the player against the standing prop's circle, so a
-	   player beside the stele is still exposed and one directly behind it is not.
-	   A stage that is authored to pierce cover never reaches here. */
+	// 아래 판정 원점/방향은 피해 도형과 엄폐 검사가 함께 사용한다.
+	// 엄폐는 판정 원점에서 플레이어까지의 선분과 살아 있는 엄폐 원의 교차로 검사한다.
 	struct PATTERN_HIT_TRANSFORM final
 	{
 		float fPositionX = 0.f;
@@ -2561,6 +2653,8 @@ namespace
 		float fYawDegrees = 0.f;
 	};
 
+	// 현재 boss 위치 또는 stage 시작 위치 중 선언된 기준을 골라 도형 원점을 만든다.
+	// 전방/오른쪽 offset은 m, yaw offset은 degree이며 결과는 명중과 엄폐 검사에서 공유한다.
 	PATTERN_HIT_TRANSFORM ResolvePatternHitTransform(
 		const SERVER_WORLD_ENTITY& boss)
 	{
@@ -2587,6 +2681,7 @@ namespace
 		};
 	}
 
+	// ApplyPatternHit이 엄폐 관통이 아닌 공격에만 호출한다. 판정 원점과 플레이어 사이를 막는 원이 하나라도 있는지 읽는다.
 	bool IsShieldedByCover(
 		const PATTERN_HIT_TRANSFORM& hitTransform,
 		const SERVER_PLAYER& player,
@@ -2604,6 +2699,8 @@ namespace
 			});
 	}
 
+	// 기존 stage 공통 도형과 플레이어 몸체 원의 XZ 교차를 검사한다. HP나 판정 횟수는 변경하지 않는다.
+	// 포탈 BOX는 마지막 판정 위치부터 현재 위치까지의 전진 구간을 길이에 포함한다.
 	bool ContainsPatternHit(
 		const SERVER_WORLD_ENTITY& boss,
 		const SERVER_PLAYER& player,
@@ -2682,6 +2779,7 @@ namespace
 		}
 	}
 
+	// stage 판정 기준 위에 개별 contact의 지역 offset과 yaw를 더한다. 입력 base는 값 복사라 원본 boss는 바뀌지 않는다.
 	PATTERN_HIT_TRANSFORM ResolveContactTransform(PATTERN_HIT_TRANSFORM base,
 		const LostArk::Shared::ATTACK_HIT_TEMPLATE& contact)
 	{
@@ -2692,6 +2790,8 @@ namespace
 		return base;
 	}
 
+	// 개별 AttackContacts 도형을 공용 ServerCombatGeometry 형식으로 옮겨 몸체와 교차 검사한다.
+	// contact의 저장 시간/범위 검증은 Catalog 진입에서 끝났다는 전제로 도형을 선택한다.
 	bool ContainsStageContact(const LostArk::Shared::ATTACK_HIT_TEMPLATE& contact,
 		const SERVER_PLAYER& player, const PATTERN_HIT_TRANSFORM& pose)
 	{
@@ -2699,17 +2799,26 @@ namespace
 		shape.eKind = contact.strShape == "CIRCLE" ? SERVER_COMBAT_SHAPE_KIND::CIRCLE :
 			contact.strShape == "RING" ? SERVER_COMBAT_SHAPE_KIND::RING :
 			contact.strShape == "BOX" ? SERVER_COMBAT_SHAPE_KIND::FORWARD_BOX : SERVER_COMBAT_SHAPE_KIND::CONE;
-		if (contact.strShape == "CIRCLE" || contact.strShape == "RING") shape.fOuterRadius = float(contact.fRadiusM);
-		if (contact.strShape == "RING" || contact.strShape == "CONE") shape.fInnerRadius = float(contact.fInnerRadiusM);
-		if (contact.strShape == "BOX" || contact.strShape == "CONE") shape.fLength = float(contact.fLengthM);
-		if (contact.strShape == "BOX") shape.fHalfWidth = float(contact.fHalfWidthM);
-		if (contact.strShape == "CONE") shape.fAngleDegrees = float(contact.fAngleDegrees);
+		if (contact.strShape == "CIRCLE" || contact.strShape == "RING")
+			shape.fOuterRadius = float(contact.fRadiusM);
+		if (contact.strShape == "RING" || contact.strShape == "CONE")
+			shape.fInnerRadius = float(contact.fInnerRadiusM);
+		if (contact.strShape == "BOX" || contact.strShape == "CONE")
+			shape.fLength = float(contact.fLengthM);
+		if (contact.strShape == "BOX")
+			shape.fHalfWidth = float(contact.fHalfWidthM);
+		if (contact.strShape == "CONE")
+			shape.fAngleDegrees = float(contact.fAngleDegrees);
 		const float yaw = pose.fYawDegrees * DEGREES_TO_RADIANS;
 		return CServerCombatGeometry::Overlaps_Pose(shape, pose.fPositionX, pose.fPositionZ,
 			std::sin(yaw), std::cos(yaw), {player.fPositionX, player.fPositionZ,
 			LostArk::Shared::WorldCollision::PLAYER_HALF_EXTENT_X});
 	}
 
+	// Update가 예약 기회 또는 활성 구간마다 호출하는 실제 타격 경로다.
+	// 개별 contact가 있으면 그 도형/피해/밀기 정의를 사용하고 없으면 boss의 stage 공통 정의를 사용한다.
+	// 대상별 중복/도형/엄폐/카운터 검사 후 ServerCombatHitRuntime이 HP와 피해 event를 처리한다.
+	// 잡기 요청은 출력 vector에 모으고 GameRoom이 확정하며, 이 함수는 예약 기회 카운터를 증가시키지 않는다.
 	void ApplyPatternHit(
 		SERVER_WORLD_ENTITY& boss,
 		std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -2755,8 +2864,7 @@ namespace
 				 boss.PortalStageHitTargets.end() != std::find(
 					boss.PortalStageHitTargets.begin(),
 					boss.PortalStageHitTargets.end(), player.iNetEntityId));
-			/* A successful player counter answers the hit instead of taking it,
-			so it is consulted before any damage is resolved. */
+			// 일반 카운터가 성공하면 피해 대신 응답한 것이므로 피해 적용보다 먼저 검사한다.
 			if (0u == player.iCurrentHp || (encounterWipe && player.Is_Guide()) ||
 				(!encounterWipe && ((!instantDeath && !player.isCombatReady) || alreadyHit ||
 				 !(contact ? ContainsStageContact(*contact, player, hitTransform) : ContainsPatternHit(boss, player, hitTransform)) ||
@@ -2794,7 +2902,10 @@ namespace
 				incoming.bKnockdown = false;
 				incoming.iDownMs = 0u;
 				if (contact->strPushDirection == "AWAY_FROM_BOSS")
-				{ incoming.fSourceX = boss.fPositionX; incoming.fSourceZ = boss.fPositionZ; }
+				{
+					incoming.fSourceX = boss.fPositionX;
+					incoming.fSourceZ = boss.fPositionZ;
+				}
 			}
 			incoming.iServerTick = serverTick;
 			incoming.bEstherGuardBlockable =
@@ -2821,16 +2932,21 @@ namespace
 	}
 }
 
+// CGameRoom::Predict_GuideContactRisk가 가이드의 후보 위치에서 향후 horizonMs 동안의 위험도를 묻는다.
+// 미래 이동을 시뮬레이션하지 않고 현재 확정 위치로 도형을 검사하므로 실제 명중 예측 보장은 아니다.
+// boss/players/HP는 바꾸지 않고 임시 sampled와 위험도 합계만 계산한다.
 float LostArk::Server::CValtanBrain::Predict_ContactRisk(
     const SERVER_WORLD_ENTITY& boss, const BOSS_PATTERN_DEFINITION& pattern,
     const SERVER_PLAYER& probe, const std::uint32_t serverTick, const std::uint32_t horizonMs)
 {
     if (!boss.iCurrentHp || boss.strPatternId != pattern.strPatternId ||
-        boss.iPatternStageIndex >= pattern.Stages.size() || !boss.iActionStartTick) return 0.f;
-    // Future stage roots use the currently committed boss pose. This is a threat
-    // estimate; only ApplyPatternHit can decide actual contact and damage.
+        boss.iPatternStageIndex >= pattern.Stages.size() || !boss.iActionStartTick)
+        return 0.f;
+    // 미래 stage는 현재 확정된 보스 위치를 기준으로 위험도를 추정한다.
+    // 이 값은 이동 후보 평가용이며 실제 명중과 피해는 ApplyPatternHit 경로에서 결정한다.
     SERVER_WORLD_ENTITY sampled;
-    sampled.fPositionX = boss.fPositionX; sampled.fPositionZ = boss.fPositionZ;
+    sampled.fPositionX = boss.fPositionX;
+    sampled.fPositionZ = boss.fPositionZ;
     sampled.fYawDegrees = boss.fYawDegrees;
     const float ageMs = static_cast<float>(serverTick - boss.iActionStartTick) * 1000.f / SERVER_TICK_HZ;
     float startMs = -ageMs, risk = 0.f;
@@ -2852,7 +2968,9 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
             {
                 const auto& contact = stage.AttackContacts[hit];
                 const float at = startMs + contact.iAtMs;
-                if (at >= 0.f && at <= horizonMs && ContainsStageContact(contact, probe, ResolveContactTransform(base, contact))) risk += 1.f;
+                if (at >= 0.f && at <= horizonMs &&
+                    ContainsStageContact(contact, probe, ResolveContactTransform(base, contact)))
+                    risk += 1.f;
             }
             startMs += stage.iDurationMs;
             continue;
@@ -2870,7 +2988,11 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
             {
                 const float at = startMs + (hit < stage.HitOffsetsMs.size() ? stage.HitOffsetsMs[hit] :
                     stage.iHitDelayMs + hit * stage.iHitIntervalMs);
-                if (at >= 0.f && at <= horizonMs) { impending = true; break; }
+                if (at >= 0.f && at <= horizonMs)
+                {
+                    impending = true;
+                    break;
+                }
             }
         }
         if (impending && stage.eHitShape != BOSS_PATTERN_HIT_SHAPE::NONE && !stage.strDamageProfileId.empty())
@@ -2881,7 +3003,9 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
                     boss.PatternActiveWindowHitTargets : boss.PortalStageHitTargets;
                 const bool consumed = (stage.eHitActivationKind == BOSS_PATTERN_HIT_ACTIVATION_KIND::ACTIVE_WINDOW || boss.bPortalMotionActive) &&
                     std::find(hitTargets.begin(), hitTargets.end(), probe.iNetEntityId) != hitTargets.end();
-                if (!consumed && ContainsPatternHit(boss, probe, ResolvePatternHitTransform(boss))) risk += 1.f;
+                if (!consumed &&
+                    ContainsPatternHit(boss, probe, ResolvePatternHitTransform(boss)))
+                    risk += 1.f;
             }
             else
             {
@@ -2898,7 +3022,8 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
                 sampled.fPatternStageOriginX = boss.fPositionX;
                 sampled.fPatternStageOriginZ = boss.fPositionZ;
                 sampled.fPatternStageOriginYawDegrees = boss.fYawDegrees;
-                if (ContainsPatternHit(sampled, probe, ResolvePatternHitTransform(sampled))) risk += 1.f;
+                if (ContainsPatternHit(sampled, probe, ResolvePatternHitTransform(sampled)))
+                    risk += 1.f;
             }
         }
         startMs += stage.iDurationMs;
@@ -2906,6 +3031,8 @@ float LostArk::Server::CValtanBrain::Predict_ContactRisk(
     return risk;
 }
 
+// 시간 만료/이동 막힘 분기와 GameRoom 잡기 stage action이 현재 잡힌 명단을 분류한다.
+// 살아 있는 대상 수와 현재 보스/sequence/손 부착이 일치하는 수를 따로 센다. 잘못된 부착은 ALL 판정을 막는다.
 LostArk::Server::SERVER_BOSS_GRAB_ROSTER
 LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
 	const SERVER_WORLD_ENTITY& boss,
@@ -2915,7 +3042,8 @@ LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
 	SERVER_BOSS_GRAB_ROSTER result{};
 	for (const auto& [playerId, player] : players)
 	{
-		if (player.Is_Guide()) continue;
+		if (player.Is_Guide())
+			continue;
 		(void)playerId;
 		const bool alive = 0u != player.iCurrentHp &&
 			PLAYER_ACTION_STATE::DEAD != player.eAction &&
@@ -2952,6 +3080,7 @@ LostArk::Server::CValtanBrain::Classify_GrabbedPlayers(
 	return result;
 }
 
+// 선택과 표시가 사용하는 현재 체력 줄을 올림 나눗셈으로 구한다. HP/최대 HP/줄 수가 0이면 0이다.
 std::uint32_t LostArk::Server::CValtanBrain::Calculate_HealthBar(
 	const SERVER_WORLD_ENTITY& boss)
 {
@@ -2966,6 +3095,7 @@ std::uint32_t LostArk::Server::CValtanBrain::Calculate_HealthBar(
 		boss.iMaximumHp);
 }
 
+// GameRoom의 체력 줄 지정 경로가 사용할 HP 경계를 구한다. 범위 밖의 줄 입력은 0을 반환한다.
 std::uint32_t LostArk::Server::CValtanBrain::Resolve_HealthBarHp(
 	const SERVER_WORLD_ENTITY& boss,
 	const std::uint32_t healthBar)
@@ -2976,9 +3106,8 @@ std::uint32_t LostArk::Server::CValtanBrain::Resolve_HealthBarHp(
 	{
 		return 0u;
 	}
-	/* Floor of the exact boundary. Calculate_HealthBar rounds up, and the
-	discarded remainder is always smaller than one bar, so this HP reads back as
-	healthBar rather than the bar below it. */
+	// 최대 HP와 체력 줄 비율의 곱을 64bit로 계산하고 경계 HP는 내림으로 구한다.
+	// Calculate_HealthBar는 반대로 올림하며, 유효한 입력의 결과가 0이면 1HP를 반환한다.
 	const std::uint64_t scaled =
 		static_cast<std::uint64_t>(boss.iMaximumHp) * healthBar;
 	const std::uint32_t resolved =
@@ -2986,6 +3115,10 @@ std::uint32_t LostArk::Server::CValtanBrain::Resolve_HealthBarHp(
 	return 0u == resolved ? 1u : resolved;
 }
 
+// CGameRoom::Update_WorldEntities가 고정 tick마다 보스와 방의 플레이어 상태를 전달한다.
+// catalog은 현재 실행 정의, activeThresholdCatalog는 새 체력 기믹 평가에 사용할 수 있는 정의다.
+// 사망/대기/정의/대상 검사를 먼저 하고, IDLE/CHASE에서 선택한 뒤 실행 stage의 조준/판정/분기를 진행한다.
+// 피해는 공용 hit runtime으로 적용하고 잡기/owner hit 요청은 출력에 모아 호출자가 후속 처리한다.
 void LostArk::Server::CValtanBrain::Update(
 	SERVER_WORLD_ENTITY& boss,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -3069,9 +3202,8 @@ void LostArk::Server::CValtanBrain::Update(
 		Record_DecisionTrace(std::move(trace));
 		return;
 	}
-	/* A completed Debug audition is an authoritative hold. Stop before health
-	   threshold admission or any selector can replace that terminal state with a
-	   Product occurrence on the following fixed tick. */
+	// 완료된 Debug 시험 재생의 대기는 Server 상태다.
+	// 다음 tick의 체력 경계 평가나 자동 선택이 이 상태를 덮지 않도록 먼저 반환한다.
 	if (boss.bAutomaticPatternSequenceAuditionHold)
 	{
 		boss.bAutomaticPatternSequencePausedForRevive = false;
@@ -3088,9 +3220,8 @@ void LostArk::Server::CValtanBrain::Update(
 		static_cast<std::uint64_t>(boss.iMaximumHp) *
 			bossProfile->PhasePolicy.iThresholdPercent)
 	{
-		/* The phase ships inside the boss combat snapshot, so it moves through
-		the runtime that owns that snapshot's revision rather than being written
-		here. */
+		// phase는 보스 전투 snapshot의 일부이며 별도 revision 관리가 필요하다.
+		// 그 revision을 관리하는 CBossCombatRuntime을 통해 갱신한다.
 		(void)CBossCombatRuntime::Set_GameplayPhase(boss, 2u);
 	}
 	const std::uint32_t currentHealthBar = Calculate_HealthBar(boss);
@@ -3113,9 +3244,8 @@ void LostArk::Server::CValtanBrain::Update(
 		BOSS_PATTERN_SEQUENCE_MODE::ORDERED_ONCE_THEN_IDLE == thresholdSequence->eMode &&
 		!boss.bAutomaticPatternSequenceAuditionOverride)
 	{
-		/* An authored sequence has no HP/bar selector. Advancing only the legacy
-		bookkeeping prevents old threshold rows from being replayed after a catalog
-		refresh; no health value can enqueue or reorder an automatic step. */
+		// ORDERED_ONCE_THEN_IDLE은 HP로 자동 항목을 추가하거나 순서를 바꾸지 않는다.
+		// 정의 갱신 뒤 과거 체력 경계를 다시 예약하지 않도록 마지막 평가 기록만 갱신한다.
 		boss.iLastEvaluatedHealthBar = currentHealthBar;
 		boss.iLastHealthMechanicGenerationEpoch =
 			activeThresholdGenerationEpoch;
@@ -3168,9 +3298,8 @@ void LostArk::Server::CValtanBrain::Update(
 		(boss.PendingPatternFollowup.Is_Pending() ||
 		 (boss.iPatternFollowupDepth > 0u && !boss.strPatternId.empty()));
 	const auto* runningDefinition = FindPattern(*patterns, boss.strPatternId);
-	/* A terminal stage whose every scheduled hit has already been applied has
-	   no target-dependent work left: a wipe that killed every raider completes
-	   on its own clock instead of aborting as NO_VALID_TARGET. */
+	// 마지막 stage의 예약 판정 기회를 모두 처리했다면 남은 종료 시간을 진행할 수 있다.
+	// 마지막 대상을 처치한 뒤에도 NO_VALID_TARGET으로 취소하지 않기 위한 조건이다.
 	const bool terminalStageDamageCommitted =
 		nullptr == target && !players.empty() &&
 		nullptr != runningDefinition &&
@@ -3181,8 +3310,8 @@ void LostArk::Server::CValtanBrain::Update(
 	const bool highJump = "VALTAN_HIGH_JUMP" == boss.strPatternId;
 	const bool finalHitCommitted = 0u != boss.iPatternHitCount &&
 		boss.iAppliedPatternHitCount >= boss.iPatternHitCount;
-	/* These final strikes own their remaining motion and recovery in stable-ID
-	   auditions as well as ordered play, even when they killed the last target. */
+	// 이 마지막 타격들은 순서형 실행과 ID 지정 시험 재생 모두에서 남은 이동/회복을 끝낸다.
+	// 마지막 대상을 처치한 경우도 포함한다.
 	const bool continueTargetlessCommittedFinalStrike =
 		nullptr == target && !players.empty() && (floorWipe || highJump) &&
 		("RECOVERY" == boss.strPatternStageId ||
@@ -3202,10 +3331,8 @@ void LostArk::Server::CValtanBrain::Update(
 		terminalStageDamageCommitted ||
 		continueTargetlessPatternFollowup ||
 		independentFinaleOrChild;
-	/* An explicitly terminal stage may finish its already-committed arena work
-	   without an engageable target. Every other targetless running occurrence is
-	   closed as a recoverable NO_VALID_TARGET wait; FinishPattern preserves the
-	   ordered cursor or re-queues the owned health occurrence. */
+	// 위에서 허용한 독립 진행 조건 외에 대상이 없거나 사거리를 벗어나면 현재 패턴을 끝낸다.
+	// NO_VALID_TARGET은 재시도 가능한 대기로 처리하며, FinishPattern이 순서형 커서나 체력 기믹 대기열을 보존한다.
 	if ((!continueTargetlessRunningStage && nullptr == target) ||
 		(!sequenceIgnoresEngageDistance && nullptr != target &&
 		 targetDistanceSquared > engageDistance * engageDistance))
@@ -3283,9 +3410,8 @@ void LostArk::Server::CValtanBrain::Update(
 			}
 			if (!boss.bIntroPatternConsumed)
 			{
-				/* The entrance is authored around the spawn point, so the boss holds
-				there until a player reaches its range instead of walking the arena
-				approach to meet them. */
+				// 입장 공격을 아직 소비하지 않았다면 현재 위치에서 사거리를 기다린다.
+				// 입장 조건을 맞추려고 일반 추적 이동을 시작하지 않는다.
 				Transition(boss, SERVER_ENTITY_ACTION::IDLE, serverTick);
 				boss.MovePath.clear();
 				return;
@@ -3329,9 +3455,9 @@ void LostArk::Server::CValtanBrain::Update(
 					 std::abs(start.y - boss.fPositionY) <= 1.f);
 				const bool found = admittedStart && navigation.Find_Path(
 					start.x, start.z, target->fPositionX, target->fPositionZ, path, start.y);
-				/* Find_Path projects its source and omits that first cell. A boss
-				   standing over removed ground must walk to it before consuming the
-				   route, even when the player's own destination is unreachable. */
+				// Find_Path는 시작 위치를 투영하고 첫 셀을 결과에서 생략한다.
+				// 붕괴 지형의 보스는 그 복구 시작점까지 먼저 걸어가도록 경로 맨 앞에 넣는다.
+				// 목표까지의 전체 경로를 찾지 못해도 허용된 복구 구간은 사용할 수 있다.
 				if (admittedStart && recovering)
 					path.insert(path.begin(), start);
 				if (found || (admittedStart && recovering))
@@ -3346,8 +3472,8 @@ void LostArk::Server::CValtanBrain::Update(
 			return;
 		}
 		boss.MovePath.clear();
-		// Four-direction attacks retain their authored starting basis, including
-		// the admission edge before BeginPattern applies the declared aim policy.
+		// 사방 공격은 저작된 시작 방향을 유지한다.
+		// BeginPattern의 조준 정책 적용 전에도 최근접 대상 방향으로 미리 회전시키지 않는다.
 		if (nullptr != target && selected->strPatternId != "VALTAN_SEQUENCE_FOUR" &&
 			BOSS_PATTERN_TARGET_POLICY::LOCK_RANDOM_ALIVE_BEHIND_ON_START !=
 			selected->eTargetPolicy)
@@ -3402,14 +3528,14 @@ void LostArk::Server::CValtanBrain::Update(
 		return;
 	}
 
-	/* A plate coming off replaces the pattern's ordinary recovery, so the
-	reaction is the pattern's own PART_BREAK stage rather than whatever
-	happens to sit behind the stun. */
+	// 갑옷 파괴 반응이 대기 중이면 현재 패턴에 선언된 PART_BREAK stage를 찾는다.
+	// 일반 시간 진행으로 우연히 다음에 놓인 stage를 반응으로 사용하지 않는다.
 	if (boss.bPendingArmorBreakReaction)
 	{
 		boss.bPendingArmorBreakReaction = false;
 		for (std::uint32_t reactionIndex = 0u;
-			reactionIndex < currentPattern->Stages.size(); ++reactionIndex)
+			reactionIndex < currentPattern->Stages.size();
+			++reactionIndex)
 		{
 			if (BOSS_PATTERN_STAGE_KIND::PART_BREAK !=
 				currentPattern->Stages[reactionIndex].eStageKind)
@@ -3425,9 +3551,8 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	const std::uint64_t elapsedStageTicks =
 		StageElapsedTicks(boss, serverTick);
-	/* Keep the presentation/motion clock derived from the same integer stage
-	clock. It may still be represented as float, but no gameplay boundary ever
-	depends on accumulated floating-point deltas. */
+	// 표시/이동용 초 단위 시간도 같은 정수 stage tick에서 계산한다.
+	// 예약 판정과 stage 마감은 누적 float delta 대신 정수 시간 비교를 사용한다.
 	boss.fActionElapsedSeconds =
 		static_cast<float>(elapsedStageTicks) /
 		static_cast<float>(SERVER_TICK_HZ);
@@ -3470,6 +3595,9 @@ void LostArk::Server::CValtanBrain::Update(
 			outOwnerHits->push_back(std::move(hit));
 		}
 	}
+	// 이 카운터는 명중한 대상 수가 아니라 처리한 예약 판정 기회 수다.
+	// 한 tick에 여러 시각이 지났으면 while로 모두 소비하지만 과거 위치를 재현하지는 않는다.
+	// 각 ApplyPatternHit은 지금의 boss/players 위치로 검사하며 miss여도 아래 카운터가 증가한다.
 	while (boss.iAppliedPatternHitCount < boss.iPatternHitCount)
 	{
 		const std::uint32_t hitOffsetMs =
@@ -3486,7 +3614,9 @@ void LostArk::Server::CValtanBrain::Update(
 		ApplyPatternHit(
 			boss, players, catalog, serverTick, coverCircles,
 			outDamageEvents, outCaptureRequests, contact);
-		if (nullptr != outOwnerHits && (contact ? contact->strShape == "CONE" : BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape))
+		if (nullptr != outOwnerHits &&
+			(contact ? contact->strShape == "CONE" :
+				BOSS_PATTERN_HIT_SHAPE::CONE == boss.ePatternHitShape))
 		{
 			const auto pose = contact ? ResolveContactTransform(ResolvePatternHitTransform(boss), *contact) : ResolvePatternHitTransform(boss);
 			SERVER_BOSS_PATTERN_HIT hit;
@@ -3506,6 +3636,7 @@ void LostArk::Server::CValtanBrain::Update(
 			boss.fPortalLastHitSampleX = boss.fPositionX;
 			boss.fPortalLastHitSampleZ = boss.fPositionZ;
 		}
+		// 이번 기회가 피해를 주지 못했어도 다시 시도하지 않는다. 다음 stage 진입 시 0으로 초기화한다.
 		++boss.iAppliedPatternHitCount;
 	}
 	if (!HasElapsedMilliseconds(
@@ -3513,9 +3644,9 @@ void LostArk::Server::CValtanBrain::Update(
 	{
 		return;
 	}
-	/* The room commits this tick's captures before resolving an early nav edge.
-	   On an ordinary deadline, wait one tick rather than classifying an uncommitted
-	   capture as a miss. No additional hit is applied on that extra tick. */
+	// 이번 tick에 만든 잡기 요청은 Brain 반환 뒤 GameRoom이 확정한다.
+	// 일반 마감에서는 미확정 요청을 잡기 실패로 분류하지 않도록 다음 tick까지 기다린다.
+	// 이미 소비한 예약 판정 기회는 그 대기 tick에 다시 적용하지 않는다.
 	if (BOSS_PATTERN_PLAYER_RESPONSE::CAPTURE == currentStage.ePlayerResponse &&
 		nullptr != outCaptureRequests && !outCaptureRequests->empty())
 		return;
@@ -3535,11 +3666,12 @@ void LostArk::Server::CValtanBrain::Update(
 	}
 	EnterPatternStage(
 		boss, currentPattern->Stages[nextStageIndex], nextStageIndex, serverTick);
-	// Publish the new aim stage with its admitted target on the entry snapshot;
-	// zero-offset target-follow cues must not observe a targetless first tick.
+	// 새 조준 stage의 대상도 진입 snapshot에 맞춰 갱신한다.
+	// 시간 0부터 대상을 따르는 cue가 첫 snapshot에서 대상을 놓치지 않도록 한다.
 	refreshEnteredStageAim();
 }
 
+// 일반 패턴 후보 필터가 갑옷 plate의 남은 내구도로 착용 여부를 검사한다. 상태는 변경하지 않는다.
 bool LostArk::Server::CValtanBrain::Is_ArmorRequirementMet(
 	const SERVER_WORLD_ENTITY& boss,
 	const BOSS_PATTERN_ARMOR_REQUIREMENT requirement)
@@ -3559,6 +3691,7 @@ bool LostArk::Server::CValtanBrain::Is_ArmorRequirementMet(
 		wearsAnyPlate : !wearsAnyPlate;
 }
 
+// 일반 패턴 후보 필터가 요구 phase를 검사한다. PHASE_TWO는 2 이상을 허용한다.
 bool LostArk::Server::CValtanBrain::Is_PhaseRequirementMet(
 	const SERVER_WORLD_ENTITY& boss,
 	const BOSS_PATTERN_PHASE_REQUIREMENT requirement)
@@ -3575,6 +3708,7 @@ bool LostArk::Server::CValtanBrain::Is_PhaseRequirementMet(
 	return false;
 }
 
+// GameRoom의 실행 commit 실패가 현재 pattern ID를 지정하여 공통 공개 실패 처리로 전달한다.
 void LostArk::Server::CValtanBrain::Fail_ActiveMechanic(
 	SERVER_WORLD_ENTITY& boss,
 	const SERVER_BOSS_MECHANIC_FAILURE failure,
@@ -3583,6 +3717,8 @@ void LostArk::Server::CValtanBrain::Fail_ActiveMechanic(
 	Fail_Mechanic(boss, boss.strPatternId, failure, serverTick);
 }
 
+// GameRoom의 정의/전환 실패가 지정한 기믹을 실패 처리한다.
+// 현재 실행 ID와 일치하면 높이 보정 복구와 취소 기록을 추가하지만 FinishPattern의 전체 초기화를 대신하지는 않는다.
 void LostArk::Server::CValtanBrain::Fail_Mechanic(
 	SERVER_WORLD_ENTITY& boss,
 	const std::string& patternId,
@@ -3591,9 +3727,8 @@ void LostArk::Server::CValtanBrain::Fail_Mechanic(
 {
 	if (!patternId.empty() && patternId == boss.strPatternId)
 	{
-		/* Preflight and commit failures report through this public abort edge
-		without reaching FinishPattern. Restore occurrence-owned height here so a
-		failed room transaction cannot strand the authoritative body in the air. */
+		// GameRoom의 사전 검사/commit 실패는 FinishPattern을 거치지 않고 이 공개 실패 경로로 들어올 수 있다.
+		// 현재 실행에 속한 높이 보정을 되돌리고 취소 기록을 남긴다.
 		RestorePatternVerticalOffset(boss);
 		boss.PatternTerminalReceipt.iPatternSequence = boss.iPatternSequence;
 		boss.PatternTerminalReceipt.iRootPatternSequence =
@@ -3605,6 +3740,8 @@ void LostArk::Server::CValtanBrain::Fail_Mechanic(
 	FailMechanic(boss, patternId, failure, serverTick);
 }
 
+// 링 버퍼에서 보존 중인 가장 오래된 기록을 0으로 하는 index를 조회한다.
+// 반환 포인터는 Brain 내부 저장소를 차용하므로 이후 기록에 의해 내용이 덮일 수 있다.
 const LostArk::Server::VALTAN_DECISION_TRACE*
 LostArk::Server::CValtanBrain::Get_DecisionTrace(
 	const std::size_t age) const noexcept
@@ -3617,6 +3754,7 @@ LostArk::Server::CValtanBrain::Get_DecisionTrace(
 	return &m_DecisionTraces[(oldest + age) % MAX_DECISION_TRACE_COUNT];
 }
 
+// GameRoom의 결정 기록 복제/조회가 최근 항목을 읽는다. 기록이 없으면 nullptr이다.
 const LostArk::Server::VALTAN_DECISION_TRACE*
 LostArk::Server::CValtanBrain::Get_LatestDecisionTrace() const noexcept
 {
@@ -3624,6 +3762,8 @@ LostArk::Server::CValtanBrain::Get_LatestDecisionTrace() const noexcept
 		Get_DecisionTrace(m_iDecisionTraceCount - 1u);
 }
 
+// Update가 만든 선택 결과를 고정 크기 링 버퍼에 이동 저장한다.
+// 기록 상한을 넘으면 오래된 항목을 덮으며, 게임플레이 상태와 별도로 진단 sequence를 진행한다.
 void LostArk::Server::CValtanBrain::Record_DecisionTrace(
 	VALTAN_DECISION_TRACE&& trace) const
 {
@@ -3639,6 +3779,8 @@ void LostArk::Server::CValtanBrain::Record_DecisionTrace(
 		m_iDecisionTraceCount + 1u, MAX_DECISION_TRACE_COUNT);
 }
 
+// 돌진 충돌 contract test에서 강제 속도로 다음 XZ 위치를 계산하는 공개 함수다.
+// boss를 변경하지 않으며 false인 경우 출력 좌표를 사용하면 안 된다.
 bool LostArk::Server::CValtanBrain::Try_BuildImpactMotion(
 	const SERVER_WORLD_ENTITY& boss,
 	const float fixedDeltaSeconds,
@@ -3659,6 +3801,9 @@ bool LostArk::Server::CValtanBrain::Try_BuildImpactMotion(
 	return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
 }
 
+// GameRoom이 Brain Update 뒤에 요청하는 XZ 이동 제안이다. 실제 위치 commit과 충돌 처리는 호출자가 맡는다.
+// 직접 위치 갱신 중인 도약/횡단을 제외하고 중앙 이동, 포탈 돌진, 루트모션, 고정 전진을 순서대로 검사한다.
+// 실패 시 출력이 일부 계산되었을 수 있으므로 true일 때만 제안값을 사용한다.
 bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	const SERVER_WORLD_ENTITY& boss,
 	const float fixedDeltaSeconds,
@@ -3667,20 +3812,16 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 {
 	if (!std::isfinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0.f)
 		return false;
-	/* The leap timeline already writes the authoritative X/Z transform for its
-	first two stages. Applying the clip's small baked root curve afterwards in
-	GameRoom would turn a vertical TAKEOFF into a drift and move a target landing
-	off the position captured at pattern start. IMPACT and later stages clear the
-	leap apex and may consume their own root motion normally. */
+	// 도약 곡선이나 아레나 횡단이 직접 X/Z를 갱신하는 동안에는 별도 이동을 제안하지 않는다.
+	// 여기에 클립 루트모션까지 더하면 시작 위치와 착지점이 달라지기 때문이다.
+	// 도약 정점 상태가 해제된 후속 stage는 자기 루트모션을 사용할 수 있다.
 	if (boss.fLeapApexHeight > 0.f ||
 		BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_CROSS_ARENA ==
 			boss.ePatternStageMotionKind)
 		return false;
 
-	/* The room consumes this proposal through its ordinary navigation step.
-	Use the current fixed-step endpoint so the final active tick reaches the
-	center before the Brain advances the stage on the next tick. Authored clip
-	root motion is not added to this explicit owner-relative travel. */
+	// 중앙 이동의 제안값은 GameRoom이 실제 이동 처리에 사용한다.
+	// 다음 고정 간격까지 포함한 진행률로 끝점을 계산하며, 이 경로에는 클립 루트모션을 더하지 않는다.
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER ==
 		boss.ePatternStageMotionKind)
 	{
@@ -3701,9 +3842,8 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 		return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
 	}
 
-	/* Target-rush travel is an explicit Server gameplay contract.  It begins
-	after the authored retarget delay and therefore wins over any residual clip
-	root curve; adding both would move the boss farther than distanceM. */
+	// 포탈 대상 돌진은 저작된 지연 뒤에 정해진 속도와 거리로 진행한다.
+	// 이 분기가 남은 클립 루트모션보다 우선하므로 두 이동을 중복 적용하지 않는다.
 	if (BOSS_PATTERN_STAGE_MOTION_KIND::PORTAL_TARGET_RUSH ==
 		boss.ePatternStageMotionKind)
 	{
@@ -3735,12 +3875,8 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 		return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
 	}
 
-	/* A stage whose clip already carries the travel steps along that curve,
-	the same contract a player skill uses: the difference between the curve at
-	the previous tick and at this one is the step, so the body and the mesh
-	arrive together instead of the transform sliding out from under the pose.
-	A stage that authored its own distance keeps the constant slide, because
-	those two carry Valtan far past anything the bound clip animates. */
+	// 루트모션 샘플이 있으면 이전 tick과 현재 tick의 누적 거리 차를 이번 이동량으로 사용한다.
+	// 샘플이 없고 FORWARD 이동이 선언된 경우에는 stage 거리/시간으로 구한 속도를 사용한다.
 	float distance = 0.f;
 	if (!boss.PatternStageRootMotion.empty())
 	{
@@ -3776,6 +3912,8 @@ bool LostArk::Server::CValtanBrain::Try_BuildStageMotion(
 	return std::isfinite(outProposedX) && std::isfinite(outProposedZ);
 }
 
+// GameRoom의 피날레 반복 처리에서 같은 고정 revision의 패턴을 새 sequence로 다시 시작한다.
+// 피날레 종류/생존/시간/sequence 조건이 맞지 않으면 상태를 바꾸지 않고 false다.
 bool LostArk::Server::CValtanBrain::Restart_FinaleCycle(
 	SERVER_WORLD_ENTITY& boss,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -3788,13 +3926,14 @@ bool LostArk::Server::CValtanBrain::Restart_FinaleCycle(
 		(std::numeric_limits<std::uint32_t>::max)() == boss.iPatternSequence)
 		return false;
 	const auto revision = boss.PinnedDefinitionRevision;
-	/* Restart has no precomputed nearest-target input. Route that null through
-	   the same target-policy admission as an ordinary occurrence so nearest
-	   locks use the boss's current position instead of map iteration order. */
+	// 재시작 호출에는 미리 계산한 최근접 대상이 없다.
+	// BeginPattern의 같은 대상 정책을 다시 거쳐 현재 보스 위치를 기준으로 선택한다.
 	BeginPattern(boss, pattern, players, nullptr, revision, serverTick);
 	return true;
 }
 
+// EnterPatternStage가 새 이동 정의를 boss의 포탈 실행 상태로 복사한다.
+// 대상 돌진은 시작점만 준비하고 별도 잠금 호출이 경로를 확정한다. 횡단은 모서리와 반대 경계로 위치를 설정한다.
 void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	SERVER_WORLD_ENTITY& boss,
 	const BOSS_PATTERN_STAGE_DEFINITION& stage)
@@ -3849,12 +3988,15 @@ void LostArk::Server::CValtanBrain::Configure_PortalMotion(
 	boss.fPortalLastHitSampleZ = boss.fPositionZ;
 }
 
+// GameRoom의 stage action commit이 대상 재선택 이후 호출하는 공개 진입점이다. 내부 경로 잠금 결과를 전달한다.
 bool LostArk::Server::CValtanBrain::Lock_PortalTargetRushAtStageStart(
 	SERVER_WORLD_ENTITY& boss)
 {
 	return LockPortalTargetRushAtStageStart(boss);
 }
 
+// GameRoom이 벽 충돌을 확정한 뒤 현재 stage의 WALL_CONTACT 분기를 적용한다.
+// 분기를 처리하면 강제 이동 속도를 0으로 두며, 벽 파괴/후속 stage action의 transaction은 GameRoom이 소유한다.
 bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	SERVER_WORLD_ENTITY& boss,
 	const CGameplayCatalog& catalog,
@@ -3887,6 +4029,8 @@ bool LostArk::Server::CValtanBrain::Complete_ImpactStage(
 	return true;
 }
 
+// GameRoom이 잡기 돌진의 navigation 막힘을 확인한 뒤 호출한다.
+// NAVIGATION_BLOCKED 분기가 있어야 진입하며, 확정 명단에 맞는 ALL/ANY 잡기 분기를 우선 적용한다.
 bool LostArk::Server::CValtanBrain::Complete_NavigationBlockedStage(
 	SERVER_WORLD_ENTITY& boss,
 	const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -3901,7 +4045,9 @@ bool LostArk::Server::CValtanBrain::Complete_NavigationBlockedStage(
 	const auto& stage = pattern->Stages[boss.iPatternStageIndex];
 	const auto blocked = std::find_if(stage.Branches.begin(), stage.Branches.end(),
 		[](const BOSS_PATTERN_STAGE_BRANCH& branch)
-		{ return BOSS_PATTERN_STAGE_OUTCOME::NAVIGATION_BLOCKED == branch.eOutcome; });
+		{
+			return BOSS_PATTERN_STAGE_OUTCOME::NAVIGATION_BLOCKED == branch.eOutcome;
+		});
 	if (blocked == stage.Branches.end())
 		return false;
 	const SERVER_BOSS_GRAB_ROSTER roster = Classify_GrabbedPlayers(boss, players);
@@ -3915,7 +4061,9 @@ bool LostArk::Server::CValtanBrain::Complete_NavigationBlockedStage(
 			continue;
 		const auto branch = std::find_if(stage.Branches.begin(), stage.Branches.end(),
 			[outcome](const BOSS_PATTERN_STAGE_BRANCH& candidate)
-			{ return outcome == candidate.eOutcome; });
+			{
+				return outcome == candidate.eOutcome;
+			});
 		if (branch != stage.Branches.end())
 			return ApplyStageBranch(boss, *pattern, *branch, serverTick);
 	}

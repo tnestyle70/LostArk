@@ -63,7 +63,7 @@ class NativeCompositionFacadeContractTests(unittest.TestCase):
         )
         for token in (
             '"boss.composition.valtan" == compositionId',
-            '"boss.composition.kakulsaydon" == compositionId',
+            '"boss.composition.koukusaydon" == compositionId',
             'L"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json"',
             'L"Compositions/Sequences/KoukuSaydonArena.sequencer.json"',
             "stagedBoss.Load(bossPath, status)",

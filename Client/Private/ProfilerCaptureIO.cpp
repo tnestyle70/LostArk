@@ -1,4 +1,7 @@
 #include "ProfilerCaptureIO.h"
+#include "MapGeometryDiagnostics.h"
+// 선택적으로 첨부된 컷신 경로·거리별 geometry 관측값을 기존 원자적 writer로 기록한다.
+#include "ProfilerCutsceneCapture.h"
 #include "DataJson.h"
 
 #include <array>
@@ -129,6 +132,38 @@ namespace
             "animationSampleRequests", "animationSampleReuseHits",
             "effectParticleRootInverseRequests", "effectParticleRootInverseReuseHits",
             "effectParticleCallerJobs", "effectParticleWorkerJobs", "effectParticleAssistants",
+            "mapLowGeometryLeaseActive",
+            "mapLowGeometryUnsupportedBatches",
+            "mapLowGeometrySupportedBatches",
+            "mapLowGeometryPreparedBatches",
+            "mapLowGeometryPreparationRejectedBatches",
+            "mapLowGeometryPreparationFailedBatches",
+            "mapLowGeometryPreparationReportFailures",
+            "mapLowGeometryVisitedBatches",
+            "mapLowGeometryBindingDisabledBatches",
+            "mapLowGeometryNoCameraBatches",
+            "mapLowGeometryMeshLodDisabledBatches",
+            "mapLowGeometryEnvironmentReplacedBatches",
+            "mapLowGeometrySourceMaterialsDisabledBatches",
+            "mapLowGeometryDebugViewBatches",
+            "mapLowGeometryMapPbrBatches",
+            "mapLowGeometryBindingCollectionBatches",
+            "mapLowGeometryFrustumOverrideBatches",
+            "mapLowGeometryInvalidCameraBatches",
+            "mapLowGeometryTestedInstances",
+            "mapLowGeometryVisibilityRejectedInstances",
+            "mapLowGeometryDistanceRejectedInstances",
+            "mapLowGeometryDepthRejectedInstances",
+            "mapLowGeometryPixelRejectedInstances",
+            "mapLowGeometryFrustumRejectedInstances",
+            "mapLowGeometryCandidateInstances",
+            "mapLowGeometryPreflightFailedBatches",
+            "mapLowGeometrySelectedInstances",
+            "mapLowGeometryDrawCalls",
+            "mapLowGeometrySubmittedIndices",
+            "mapLowGeometryLateFailures",
+            "mapLowGeometryFallbackDrawCalls",
+            "mapLowGeometryFallbackIndices",
 	};
     static_assert(CounterNames.size() == static_cast<size_t>(Engine::EProfilerCounter::Count),
         "Every profiler counter must have exactly one JSON key.");
@@ -278,10 +313,11 @@ namespace
     void WriteMeasurementSemantics(std::ostream& stream)
     {
         stream << "  \"measurementSemantics\": {\n"
+            << "    \"lowGeometry\": \"Preparation counters are current Level-owned holdings, not per-frame load attempts. leaseActive is the final cutscene lease value in the frame. Selection counters cover visited prepared batches and replace earlier contributions from the same batch in the same frame. Batch policy reasons can overlap; instance rejections count the first failed test only. candidateInstances pass geometry gates, selectedInstances pass binding preflight, and neither proves a draw. drawCalls/submittedIndices count successful low-geometry DrawIndexed submissions; fallback counters count actual original LOD0 submissions after a late failure. No counter claims visible pixels, VS invocations, or total-scene savings. metadata.lowGeometryPreparation is the current load report sampled at export, not historical frame state.\",\n"
             << "    \"drawCoverage\": \"CPU-issued draw submissions through instrumented Engine VIBuffer and CMesh paths; excludes DirectXTK internal draws and separately counted ImGui draws. Submission does not prove final pixel visibility.\",\n"
             << "    \"ambientCatchup\": \"Only admitted offscreen-pausable level-owned ambient loops use a 0.1s visual-delta limit after playback rate. effectAmbientClampedUpdates counts limited visible advances; effectAmbientDiscardedMicroseconds sums omitted visual time over effects, not frame wall time or saved CPU time. effectAmbientFixedSteps and effectAmbientMaxFixedSteps count committed 1/60 steps from integer simulation-step deltas, excluding initial Seek and hidden updates. They remain available when raw CPU scopes drop. Invalid input contributes no omitted-time sample.\",\n"
             << "    \"instances\": \"Instances counts instanced Engine submissions only; meshInstances also counts one instance for a non-instanced CMesh draw.\",\n"
-            << "    \"indices\": \"Indices includes instance multiplication. indirectDrawCalls and indirectIndexUpperBound are reserved fields with no current producer, so zero is unmeasured. An upper bound must never be treated as exact submitted indices.\",\n"
+            << "    \"indices\": \"Indices includes instance multiplication for CPU-known draw submissions. CMesh indirect draws produce indirectDrawCalls and indirectIndexUpperBound; their GPU-owned surviving instance count is not synchronously read back. Indirect upper bounds are not exact submitted indices and are not added to indices.\",\n"
             << "    \"uniqueMeshes\": \"Distinct CMesh objects submitted in one frame, including shared geometry counted once; not asset IDs, scene objects or visible meshes. Internal addresses are not exported. droppedMeshSamples counts omitted distinct-key attempts; uniqueMeshes is then a lower bound.\",\n"
             << "    \"uniqueMeshCapacity\": " << Engine::CProfiler::MAX_UNIQUE_MESHES_PER_FRAME << ",\n"
             << "    \"meshDraws\": \"Optional detailed CMesh submission trace in issue order, capped at 512 samples per frame. Mesh and pass names are display labels, not stable asset IDs. IndexCount is per instance. Per-draw GPU time is not measured. UINT32_MAX passNameId means no observed enclosing GPU scope.\",\n"
@@ -393,6 +429,40 @@ namespace
         return true;
     }
 
+    // 공용 JSON escape·취소·숫자 출력 helper를 같은 번역 단위에서 재사용한다.
+#include "ProfilerCaptureIO_Cutscene.inl"
+
+    // 준비 시점의 불변 보고서 하나를 metadata에 저장한다. 프레임별 선택/제출은 counter가 정본이다.
+    void WriteLowGeometryPreparation(std::ostream& stream, const Client::FProfilerCaptureContext& context)
+    {
+        stream << ",\n    \"lowGeometryPreparation\": ";
+        if (!context.LowGeometryPreparation)
+        {
+            stream << "null";
+            return;
+        }
+        const auto& report = *context.LowGeometryPreparation;
+        stream << "{\"sampledAtExport\":true,\"totalBatches\":" << report.totalBatches
+            << ",\"unsupportedBatches\":" << report.unsupportedBatches
+            << ",\"supportedBatches\":" << report.supportedBatches
+            << ",\"preparedBatches\":" << report.preparedBatches
+            << ",\"rejectedBatches\":" << report.rejectedBatches
+            << ",\"failedBatches\":" << report.failedBatches
+            << ",\"droppedFailures\":" << report.droppedFailures
+            << ",\"indexError\":\"" << EscapeJson(report.indexError)
+            << "\",\"stagingError\":\"" << EscapeJson(report.stagingError) << "\",\"failures\":[";
+        bool first = true;
+        for (const auto& failure : report.failures)
+        {
+            if (!first) stream << ',';
+            first = false;
+            stream << "{\"assetId\":\"" << EscapeJson(failure.assetId)
+                << "\",\"hresult\":" << failure.hresult
+                << ",\"reason\":\"" << EscapeJson(failure.reason) << "\"}";
+        }
+        stream << "]}";
+    }
+
     void WriteContext(std::ostream& stream, const Client::FProfilerCaptureContext& context)
     {
 #ifdef _DEBUG
@@ -442,7 +512,9 @@ namespace
             if (!first) stream << ','; first = false;
             stream << '"' << EscapeJson(key) << "\":\"" << EscapeJson(value) << '"';
         }
-        stream << "},\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes, focus and settings. FPS limits are checkbox-resolved user limits (0 means disabled); effectiveFpsLimit selects by foreground process ownership and excludes the separate minimized-frame message wait.\"\n  },\n";
+        stream << "}";
+        WriteLowGeometryPreparation(stream, context);
+        stream << ",\n    \"note\": \"Current runtime context only; historical frames may have different levels, cameras, viewport sizes, focus and settings. FPS limits are checkbox-resolved user limits (0 means disabled); effectiveFpsLimit selects by foreground process ownership and excludes the separate minimized-frame message wait.\"\n  },\n";
     }
 
 bool SaveJsonImpl(
@@ -489,6 +561,7 @@ bool SaveJsonImpl(
     WriteCaptureWindow(Stream, Snapshot);
     WriteSummary(Stream, Snapshot);
     if (!WriteMovement(Stream, Context, pOutError, pCancel)) return false;
+    if (!WriteCutsceneGeometry(Stream, Context, pCancel, pOutError)) return false;
 	Stream << "  \"droppedCpuScopes\": " << Snapshot.DroppedCpuScopes << ",\n";
 	Stream << "  \"droppedGpuFrames\": " << Snapshot.DroppedGpuFrames << ",\n";
 	Stream << "  \"droppedGpuScopes\": " << Snapshot.DroppedGpuScopes << ",\n";

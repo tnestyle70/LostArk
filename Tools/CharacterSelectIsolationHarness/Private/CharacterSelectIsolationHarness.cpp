@@ -41,6 +41,8 @@ namespace
 		std::uint16_t iPort = 7777u;
 		std::uint32_t iTimeoutMilliseconds = 4000u;
 		std::uint32_t iBernPartySize = 0u;
+		std::uint32_t iKoukuSourceRevision = 0u;
+		bool isKoukuParty = false;
 		bool isG02IdentityFast = false;
 		bool isPresentationContractOnly = false;
 	};
@@ -72,6 +74,7 @@ namespace
 		bool hasTimeout = false;
 		bool hasG02IdentityFast = false;
 		bool hasBernPartySize = false;
+		bool hasPartyTarget = false;
 		bool hasPresentationContractOnly = false;
 		for (int index = 1; index < argumentCount; ++index)
 		{
@@ -130,6 +133,27 @@ namespace
 				hasBernPartySize = true;
 				continue;
 			}
+			if ("--kouku-source-revision" == argument && options.iKoukuSourceRevision == 0u && index + 1 < argumentCount)
+			{
+				if (!Parse_Unsigned(arguments[++index], options.iKoukuSourceRevision) || options.iKoukuSourceRevision == 0u)
+				{
+					error = "--kouku-source-revision requires the positive published Product revision";
+					return false;
+				}
+				continue;
+			}
+			if ("--party-target" == argument && !hasPartyTarget && index + 1 < argumentCount)
+			{
+				const std::string_view target(arguments[++index]);
+				if (target != "valtan" && target != "koukusaydon")
+				{
+					error = "--party-target must be valtan or koukusaydon";
+					return false;
+				}
+				options.isKoukuParty = target == "koukusaydon";
+				hasPartyTarget = true;
+				continue;
+			}
 			if ("--presentation-contract-only" == argument &&
 				!hasPresentationContractOnly)
 			{
@@ -141,7 +165,23 @@ namespace
 			error = "Usage: CharacterSelectIsolationHarness [--host IPv4] "
 				"[--port 1..65535] [--timeout-ms 1000..4000] "
 				"[--g02-identity-fast | --bern-party-size 2|4 | "
-				"--presentation-contract-only]";
+				"--presentation-contract-only] [--party-target valtan|koukusaydon]";
+			return false;
+		}
+		if (hasPartyTarget && (!hasBernPartySize ||
+			(options.isKoukuParty && options.iBernPartySize != 4u)))
+		{
+			error = "--party-target requires a party scenario; koukusaydon requires four sessions";
+			return false;
+		}
+		if (options.isKoukuParty && options.iTimeoutMilliseconds != 4000u)
+		{
+			error = "KoukuSaydon requires --timeout-ms 4000 for published pattern timing";
+			return false;
+		}
+		if (options.isKoukuParty != (options.iKoukuSourceRevision != 0u))
+		{
+			error = "KoukuSaydon needs --kouku-source-revision from the isolated published bootstrap";
 			return false;
 		}
 		if (hasG02IdentityFast && hasBernPartySize)
@@ -306,6 +346,94 @@ namespace
 			return Send_Message(
 				PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY, request, error);
 		}
+
+		// 투표 ID와 입장 대상은 서버 응답을 그대로 사용해 다른 세대의 응답을 배제.
+		void Expect_Transfer(const WORLD_ID world)
+		{
+			m_ePendingTransfer = world;
+		}
+		bool Send_KoukuDamagePattern(const std::uint32_t sourceRevision, std::string& error)
+		{
+			C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request{};
+			request.iRequestSequence = 25u;
+			request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
+			request.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+			request.Scope.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1";
+			request.Scope.strGateId = "GATE1";
+			request.Scope.strBossPlacementId = "boss.koukusaydon.g1.saydon";
+			request.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
+			request.Scope.ExpectedGameplayRevision = m_EnterAccepted.ActiveGameplayRevision;
+			request.Scope.iExpectedSourceRevision = sourceRevision;
+			request.strPatternId = "KOUKUSAYDON_G1_PATTERN_6";
+			return Send_Message(PACKET_TYPE::C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST, request, error);
+		}
+		const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& Get_PatternResult() const { return m_PatternResult; }
+		bool Send_KoukuEntry(const std::string_view npc, std::string& error)
+		{
+			C2S_RAID_ENTRY_PROPOSE request{};
+			request.iRequestSequence = 10u;
+			request.strNpcPlacementId = npc;
+			request.eTarget = RAID_ENTRY_TARGET::KOUKUSAYDON;
+			return Send_Message(PACKET_TYPE::C2S_RAID_ENTRY_PROPOSE, request, error);
+		}
+		bool Accept_RaidEntry(const std::uint32_t proposal, std::string& error)
+		{
+			C2S_RAID_ENTRY_RESPOND request{};
+			request.iRequestSequence = 11u;
+			request.iProposalId = proposal;
+			request.bAccepted = true;
+			return Send_Message(PACKET_TYPE::C2S_RAID_ENTRY_RESPOND, request, error);
+		}
+		const S2C_RAID_ENTRY_PROMPT& Get_RaidPrompt() const { return m_RaidPrompt; }
+		const S2C_RAID_ENTRY_VOTE& Get_RaidVote() const { return m_RaidVote; }
+		const S2C_GATE_PROGRESS_STATE& Get_GateVote() const { return m_GateVote; }
+		bool Send_ExitVote(std::string& error)
+		{
+			C2S_GATE_PROGRESS_PROPOSE request{};
+			request.iRequestSequence = 30u;
+			request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+			request.eKind = GATE_PROGRESS_KIND::EXIT;
+			return Send_Message(PACKET_TYPE::C2S_GATE_PROGRESS_PROPOSE, request, error);
+		}
+		bool Accept_ExitVote(const std::uint32_t proposal, std::string& error)
+		{
+			C2S_GATE_PROGRESS_RESPOND request{};
+			request.iRequestSequence = 31u;
+			request.iProposalId = proposal;
+			request.bAccepted = true;
+			return Send_Message(PACKET_TYPE::C2S_GATE_PROGRESS_RESPOND, request, error);
+		}
+		// 서로 겹치지 않는 시험 위치도 Server의 navigation·높이·충돌 승인을 거침.
+		bool Send_DebugPosition(const std::size_t memberIndex, std::string& error)
+		{
+			C2S_DEBUG_TELEPORT_TO_POSITION request{};
+			request.iRequestSequence = 20u;
+			request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+			request.fPositionX = -5.f + 2.f * static_cast<float>(memberIndex);
+			request.fPositionY = 1.3f;
+			request.fPositionZ = 730.f;
+			return Send_Message(PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION, request, error);
+		}
+		const S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& Get_DebugPositionResult() const { return m_DebugPositionResult; }
+		NET_ENTITY_ID Get_PlacementEntity(const std::string_view placement) const
+		{
+			const auto found = m_WorldEntityIdByPlacement.find(std::string(placement));
+			return found == m_WorldEntityIdByPlacement.end() ? INVALID_NET_ENTITY_ID : found->second;
+		}
+		std::uint32_t Get_EntityHp(const NET_ENTITY_ID entity) const
+		{
+			const auto found = m_EntityHp.find(entity);
+			return found == m_EntityHp.end() ? 0u : found->second;
+		}
+		bool Has_OwnDamageTo(const NET_ENTITY_ID target) const
+		{
+			return m_OwnDamageTargets.contains(target);
+		}
+		bool Has_ProbeSkill() const { return m_hasProbeSkill; }
+		bool Has_IncomingDamage() const { return m_hasIncomingDamage && m_hasOwnHpLoss; }
+		bool Has_Died() const { return m_hasDied; }
+		std::uint32_t Get_OwnHp() const { return m_iOwnHp; }
+		PLAYER_ID Get_PlayerId() const { return m_EnterAccepted.iPlayerId; }
 
 		bool Send_PartyInvite(
 			const std::uint32_t requestSequence,
@@ -619,13 +747,15 @@ namespace
 						m_eExpectedWorld != accepted.eWorldId) ||
 					(m_hasEnterAccepted &&
 						!(WORLD_ID::BERN == m_eExpectedWorld &&
-							WORLD_ID::VALTAN_ARENA == accepted.eWorldId)))
+							WORLD_ID::VALTAN_ARENA == accepted.eWorldId) &&
+						m_ePendingTransfer != accepted.eWorldId))
 				{
 					error = m_strLabel + ": invalid or duplicate enter acceptance";
 					return false;
 				}
 				m_EnterAccepted = accepted;
 				m_eExpectedWorld = accepted.eWorldId;
+				m_ePendingTransfer = WORLD_ID::END;
 				m_LatestPlayerEntityIds.clear();
 				m_LatestHumanPlayerEntityIds.clear();
 				m_LatestWorldEntityIds.clear();
@@ -721,6 +851,13 @@ namespace
 					{
 						m_fOwnPositionX = player.fPositionX;
 						m_fOwnPositionZ = player.fPositionZ;
+						m_iOwnHp = player.iCurrentHp;
+						if (m_eExpectedWorld == WORLD_ID::KOUKUSAYDON_ARENA)
+						{
+							m_hasOwnHpLoss |= player.iCurrentHp < player.iMaximumHp;
+							m_hasDied |= player.iCurrentHp == 0u;
+							m_hasProbeSkill |= player.iSkillId == CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID;
+						}
 					}
 				}
 				m_LatestWorldEntityIds.clear();
@@ -728,6 +865,7 @@ namespace
 				for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
 				{
 					m_LatestWorldEntityIds.insert(entity.iNetEntityId);
+					m_EntityHp.insert_or_assign(entity.iNetEntityId, entity.iCurrentHp);
 					m_LatestWorldEntityPositions.insert_or_assign(
 						entity.iNetEntityId,
 						std::pair{ entity.fPositionX, entity.fPositionZ });
@@ -735,6 +873,24 @@ namespace
 				m_iDamageEventCount += snapshot.DamageEvents.size();
 				for (const DAMAGE_EVENT& damage : snapshot.DamageEvents)
 				{
+					// 회복·흡수·카드 미로 수치는 HP 피해 증거에서 제외.
+					const bool hpDamage = damage.iAmount > 0u &&
+						damage.eCardMazeSuit == MECHANIC_CARD_SYMBOL::NONE &&
+						(damage.eHitFlag == DAMAGE_HIT_FLAG::NORMAL ||
+						 damage.eHitFlag == DAMAGE_HIT_FLAG::CRITICAL ||
+						 damage.eHitFlag == DAMAGE_HIT_FLAG::DAMAGE_REDUCED ||
+						 damage.eHitFlag == DAMAGE_HIT_FLAG::CRITICAL_DAMAGE_REDUCED);
+					if (m_eExpectedWorld == WORLD_ID::KOUKUSAYDON_ARENA && hpDamage)
+					{
+						if (damage.isOutgoing && damage.iSourcePlayerId == Get_PlayerId())
+						{
+							m_OwnDamageTargets.insert(damage.iTargetNetEntityId);
+						}
+						if (!damage.isOutgoing && damage.iTargetNetEntityId == Get_NetEntityId())
+						{
+							m_hasIncomingDamage = true;
+						}
+					}
 					if (damage.isOutgoing)
 						m_OutgoingDamageTargetIds.insert(
 							damage.iTargetNetEntityId);
@@ -776,6 +932,52 @@ namespace
 				return true;
 			}
 
+			if (PACKET_TYPE::S2C_RAID_ENTRY_PROMPT == frame.ePacketType)
+			{
+				if (!Read_Message(reader, m_RaidPrompt) || reader.Get_RemainingSize() != 0u)
+				{
+					error = m_strLabel + ": malformed raid prompt";
+					return false;
+				}
+				return true;
+			}
+			if (PACKET_TYPE::S2C_RAID_ENTRY_VOTE == frame.ePacketType)
+			{
+				if (!Read_Message(reader, m_RaidVote) || reader.Get_RemainingSize() != 0u)
+				{
+					error = m_strLabel + ": malformed raid vote";
+					return false;
+				}
+				return true;
+			}
+			if (PACKET_TYPE::S2C_GATE_PROGRESS_STATE == frame.ePacketType)
+			{
+				if (!Read_Message(reader, m_GateVote) || reader.Get_RemainingSize() != 0u)
+				{
+					error = m_strLabel + ": malformed gate vote";
+					return false;
+				}
+				return true;
+			}
+
+			if (PACKET_TYPE::S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT == frame.ePacketType)
+			{
+				if (!Read_Message(reader, m_PatternResult) || reader.Get_RemainingSize() != 0u)
+				{
+					error = m_strLabel + ": malformed published pattern result";
+					return false;
+				}
+				return true;
+			}
+			if (PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT == frame.ePacketType)
+			{
+				if (!Read_Message(reader, m_DebugPositionResult) || reader.Get_RemainingSize() != 0u)
+				{
+					error = m_strLabel + ": malformed Debug position result";
+					return false;
+				}
+				return true;
+			}
 			// Despawn, boss and class-change packets are legal but do not carry an
 			// isolation assertion for this harness.
 			return true;
@@ -796,6 +998,19 @@ namespace
 		std::string m_strLabel;
 		SOCKET m_hSocket = INVALID_SOCKET;
 		WORLD_ID m_eExpectedWorld = WORLD_ID::END;
+		WORLD_ID m_ePendingTransfer = WORLD_ID::END;
+		S2C_RAID_ENTRY_PROMPT m_RaidPrompt{};
+		S2C_RAID_ENTRY_VOTE m_RaidVote{};
+		S2C_GATE_PROGRESS_STATE m_GateVote{};
+		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT m_DebugPositionResult{};
+		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT m_PatternResult{};
+		std::map<NET_ENTITY_ID, std::uint32_t> m_EntityHp;
+		std::set<NET_ENTITY_ID> m_OwnDamageTargets;
+		std::uint32_t m_iOwnHp = 0u;
+		bool m_hasProbeSkill = false;
+		bool m_hasIncomingDamage = false;
+		bool m_hasOwnHpLoss = false;
+		bool m_hasDied = false;
 		CPacketStreamParser m_StreamParser;
 		S2C_ENTER_ACCEPTED m_EnterAccepted{};
 		S2C_PARTY_ROSTER m_PartyRoster{};
@@ -1393,6 +1608,331 @@ namespace
 		return true;
 	}
 
+	// 실제 4개 소켓의 투표·입장 응답만 사용. Client 렌더링 준비 완료는 보내지 않음.
+	bool Enter_KoukuParty(const std::span<CTestClient*> clients,
+		const std::chrono::milliseconds timeout, std::string& error)
+	{
+		CTestClient* leader = clients.front();
+		const NET_ENTITY_ID proposer = leader->Get_NetEntityId();
+		for (CTestClient* client : clients)
+		{
+			client->Expect_Transfer(WORLD_ID::KOUKUSAYDON_ARENA);
+		}
+		if (!leader->Send_KoukuEntry("npc.bern.beda.guide", error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, timeout, [&](std::string&)
+			{
+				const std::uint32_t proposal = leader->Get_RaidPrompt().iProposalId;
+				for (const CTestClient* client : clients)
+				{
+					const S2C_RAID_ENTRY_PROMPT& prompt = client->Get_RaidPrompt();
+					if (proposal == 0u || prompt.iProposalId != proposal ||
+						prompt.eTarget != RAID_ENTRY_TARGET::KOUKUSAYDON ||
+						prompt.iProposerNetEntityId != proposer)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "Kouku four matching entry prompts", error))
+		{
+			return false;
+		}
+		const std::uint32_t proposal = leader->Get_RaidPrompt().iProposalId;
+		for (CTestClient* client : clients)
+		{
+			if (!client->Accept_RaidEntry(proposal, error))
+			{
+				return false;
+			}
+		}
+		return Pump_Until(clients, timeout, [&](std::string& probeError)
+			{
+				for (const CTestClient* client : clients)
+				{
+					const S2C_RAID_ENTRY_VOTE& vote = client->Get_RaidVote();
+					if (vote.iProposalId == proposal && vote.bClosed &&
+						vote.eResult != RAID_ENTRY_VOTE_RESULT::ALL_ACCEPTED)
+					{
+						probeError = "Kouku entry vote did not accept all four sessions";
+						return PROBE_RESULT::FAIL;
+					}
+					if (vote.iProposalId != proposal || !vote.bClosed ||
+						vote.iAccepted != 4u || vote.iTotal != 4u)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "Kouku four accepted entry votes", error);
+	}
+
+	bool Run_KoukuCombatAndExit(const std::span<CTestClient*> clients,
+		const std::chrono::milliseconds timeout, const std::uint32_t sourceRevision, std::string& error)
+	{
+		CTestClient* leader = clients.front();
+		constexpr std::string_view BOSS = "boss.koukusaydon.g1.saydon";
+		std::cout << "[SETUP] Four distinct Debug positions near authored stage.sl04 and published boss spawn; "
+			"not natural traversal, raid readiness or raid clear\n";
+		for (std::size_t index = 0u; index < clients.size(); ++index)
+		{
+			std::cout << "[EVIDENCE] arena member=" << index << " playerId=" << clients[index]->Get_PlayerId()
+				<< " netId=" << clients[index]->Get_NetEntityId() << " hp=" << clients[index]->Get_OwnHp()
+				<< " x=" << clients[index]->Get_OwnPositionX() << " z=" << clients[index]->Get_OwnPositionZ() << '\n';
+			if (!clients[index]->Send_DebugPosition(index, error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout, [&](std::string& probeError)
+			{
+				for (std::size_t index = 0u; index < clients.size(); ++index)
+				{
+					const CTestClient* client = clients[index];
+					const S2C_DEBUG_TELEPORT_TO_POSITION_RESULT& result = client->Get_DebugPositionResult();
+					if (result.iRequestSequence != 20u)
+					{
+						probeError = "Debug position reply pending for member " + std::to_string(index);
+						return PROBE_RESULT::WAIT;
+					}
+					if (result.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || result.eResult != DEBUG_TELEPORT_RESULT::ACCEPTED)
+					{
+						probeError = "Debug position rejected for member " + std::to_string(index) +
+							", result=" + std::to_string(static_cast<unsigned>(result.eResult));
+						return PROBE_RESULT::FAIL;
+					}
+					const float dx = client->Get_OwnPositionX() - result.fPositionX;
+					const float dz = client->Get_OwnPositionZ() - result.fPositionZ;
+					if (dx * dx + dz * dz > 0.25f)
+					{
+						probeError = "Debug position snapshot pending for member " + std::to_string(index) +
+							", x=" + std::to_string(client->Get_OwnPositionX()) + ", z=" + std::to_string(client->Get_OwnPositionZ());
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "four typed Debug position approvals and server snapshots", error))
+		{
+			return false;
+		}
+		for (std::size_t index = 0u; index < clients.size(); ++index)
+		{
+			std::cout << "[EVIDENCE] Debug position member=" << index
+				<< " result=" << static_cast<unsigned>(clients[index]->Get_DebugPositionResult().eResult)
+				<< " x=" << clients[index]->Get_OwnPositionX() << " z=" << clients[index]->Get_OwnPositionZ() << '\n';
+		}
+		if (!leader->Send_SpawnRequest(BOSS, error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, timeout, [&](std::string&)
+			{
+				if (!leader->Has_SpawnResult(BOSS, WORLD_ENTITY_SPAWN_RESULT::SPAWNED) &&
+					!leader->Has_SpawnResult(BOSS, WORLD_ENTITY_SPAWN_RESULT::ALREADY_EXISTS))
+				{
+					return PROBE_RESULT::WAIT;
+				}
+				const NET_ENTITY_ID boss = leader->Get_PlacementEntity(BOSS);
+				for (const CTestClient* client : clients)
+				{
+					if (boss == INVALID_NET_ENTITY_ID || client->Get_PlacementEntity(BOSS) != boss ||
+						!client->Has_WorldEntity(boss) || client->Get_EntityHp(boss) == 0u)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "published Kouku boss on all four server snapshots", error))
+		{
+			return false;
+		}
+		const NET_ENTITY_ID boss = leader->Get_PlacementEntity(BOSS);
+		const std::uint32_t beforeHp = leader->Get_EntityHp(boss);
+		float bossX = 0.f;
+		float bossZ = 0.f;
+		if (!leader->Get_WorldEntityPosition(boss, bossX, bossZ))
+		{
+			error = "Kouku boss position missing";
+			return false;
+		}
+		for (CTestClient* client : clients)
+		{
+			if (!client->Send_Move(21u, bossX, bossZ, error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout * 3, [&](std::string&)
+			{
+				for (const CTestClient* client : clients)
+				{
+					float x = 0.f;
+					float z = 0.f;
+					if (!client->Get_WorldEntityPosition(boss, x, z))
+					{
+						return PROBE_RESULT::WAIT;
+					}
+					const float dx = client->Get_OwnPositionX() - x;
+					const float dz = client->Get_OwnPositionZ() - z;
+					if (dx * dx + dz * dz > 9.f)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "four players approach published Kouku boss", error))
+		{
+			return false;
+		}
+		for (CTestClient* client : clients)
+		{
+			if (!client->Get_WorldEntityPosition(boss, bossX, bossZ) ||
+				!client->Send_UseSkill(22u, CHARACTER_SELECT_DAMAGE_PROBE_SKILL_ID, bossX, bossZ, error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout * 3, [&](std::string& probeError)
+			{
+				std::size_t contributors = 0u;
+				for (const CTestClient* client : clients)
+				{
+					contributors += client->Has_ProbeSkill() && client->Has_OwnDamageTo(boss) ? 1u : 0u;
+				}
+				probeError = "own skill/damage contributors=" + std::to_string(contributors);
+				return contributors == 4u && leader->Get_EntityHp(boss) < beforeHp ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "four authoritative skills and attributed boss HP damage", error))
+		{
+			return false;
+		}
+		// 게시 댄스 패턴의 실제 입력 시간 초과 피해를 관측. HP나 전투 조건을 직접 변경하지 않음.
+		std::cout << "[SETUP] PLAY_SELECTED published KOUKUSAYDON_G1_PATTERN_6; sourceRevision="
+			<< sourceRevision << "; pose timeout uses the existing server damage rules\n";
+		if (!leader->Send_KoukuDamagePattern(sourceRevision, error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, timeout, [&](std::string& probeError)
+			{
+				const S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT& result = leader->Get_PatternResult();
+				if (result.iRequestSequence != 25u)
+				{
+					return PROBE_RESULT::WAIT;
+				}
+				if (result.eResult != KOUKUSAYDON_PATTERN_AUDITION_RESULT::QUEUED ||
+					result.iBossNetEntityId != boss || result.iPinnedSourceRevision != sourceRevision ||
+					result.strResolvedPatternId != "KOUKUSAYDON_G1_PATTERN_6")
+				{
+					probeError = "published pattern was not admitted: " + result.strReason;
+					return PROBE_RESULT::FAIL;
+				}
+				return PROBE_RESULT::PASS;
+			}, "published pattern typed server approval", error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, timeout * 4, [&](std::string&)
+			{
+				return std::any_of(clients.begin(), clients.end(), [](const CTestClient* client)
+					{ return client->Has_IncomingDamage(); }) ? PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "authoritative incoming damage event and player HP loss", error))
+		{
+			return false;
+		}
+		for (std::size_t index = 0u; index < clients.size(); ++index)
+		{
+			std::cout << "[EVIDENCE] member=" << index << " playerId=" << clients[index]->Get_PlayerId()
+				<< " ownSkill=" << clients[index]->Has_ProbeSkill()
+				<< " outgoingToBoss=" << clients[index]->Has_OwnDamageTo(boss)
+				<< " incoming=" << clients[index]->Has_IncomingDamage()
+				<< " hp=" << clients[index]->Get_OwnHp() << " death=" << clients[index]->Has_Died() << '\n';
+		}
+		std::cout << "[PASS] four-player authoritative combat after explicit Debug setup; bossHP "
+			<< beforeHp << " -> " << leader->Get_EntityHp(boss) << '\n';
+		std::cout << "[LIMIT] Death is observation-only; no forced kill, full gate clear or GUI proof\n";
+
+		for (CTestClient* client : clients)
+		{
+			client->Expect_Transfer(WORLD_ID::BERN);
+		}
+		if (!leader->Send_ExitVote(error))
+		{
+			return false;
+		}
+		if (!Pump_Until(clients, timeout, [&](std::string&)
+			{
+				const std::uint32_t proposal = leader->Get_GateVote().iProposalId;
+				for (const CTestClient* client : clients)
+				{
+					const S2C_GATE_PROGRESS_STATE& vote = client->Get_GateVote();
+					if (proposal == 0u || vote.iProposalId != proposal || vote.bClosed ||
+						vote.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA ||
+						vote.eKind != GATE_PROGRESS_KIND::EXIT || vote.iTotal != 4u)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+				}
+				return PROBE_RESULT::PASS;
+			}, "Kouku four exit vote participants", error))
+		{
+			return false;
+		}
+		const std::uint32_t exitProposal = leader->Get_GateVote().iProposalId;
+		for (CTestClient* client : clients)
+		{
+			if (!client->Accept_ExitVote(exitProposal, error))
+			{
+				return false;
+			}
+		}
+		if (!Pump_Until(clients, timeout * 5, [&](std::string&)
+			{
+				std::set<NET_ENTITY_ID> expected;
+				for (const CTestClient* client : clients)
+				{
+					if (client->Get_AcceptanceCount() != 3u || client->Get_CurrentWorld() != WORLD_ID::BERN)
+					{
+						return PROBE_RESULT::WAIT;
+					}
+					expected.insert(client->Get_NetEntityId());
+				}
+				return expected.size() == 4u && std::all_of(clients.begin(), clients.end(),
+					[&](const CTestClient* client) { return client->Has_ExactHumanPlayerSnapshot(expected); }) ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "Kouku exit accepted and four Bern human snapshots", error))
+		{
+			return false;
+		}
+		for (std::size_t index = 0u; index < clients.size(); ++index)
+		{
+			std::cout << "[EVIDENCE] Bern return member=" << index << " playerId=" << clients[index]->Get_PlayerId()
+				<< " netId=" << clients[index]->Get_NetEntityId() << " acceptanceCount=" << clients[index]->Get_AcceptanceCount()
+				<< " hp=" << clients[index]->Get_OwnHp() << '\n';
+		}
+		// 한 소켓 종료가 남은 세 명의 서버 스냅샷에서 실제 제거되는지 확인.
+		clients.back()->Close();
+		const std::span<CTestClient*> remaining = clients.first(clients.size() - 1u);
+		std::set<NET_ENTITY_ID> remainingIds;
+		for (const CTestClient* client : remaining)
+		{
+			remainingIds.insert(client->Get_NetEntityId());
+		}
+		if (!Pump_Until(remaining, timeout, [&](std::string&)
+			{
+				return std::all_of(remaining.begin(), remaining.end(), [&](const CTestClient* client)
+					{ return client->Has_ExactHumanPlayerSnapshot(remainingIds); }) ?
+					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
+			}, "disconnected member removed from all remaining Bern snapshots", error))
+		{
+			return false;
+		}
+		std::cout << "[PASS] Kouku exit vote returned four real sessions to Bern; disconnect removed one\n";
+		return true;
+	}
+
 	bool Run_BernPartyTransferProof(
 		const HARNESS_OPTIONS& options,
 		const std::size_t memberCount,
@@ -1401,6 +1941,7 @@ namespace
 		const auto timeout =
 			std::chrono::milliseconds(options.iTimeoutMilliseconds);
 		const auto transitionTimeout = timeout * 5;
+		const WORLD_ID targetWorld = options.isKoukuParty ? WORLD_ID::KOUKUSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
 		const std::array classes{
 			CHARACTER_CLASS_ID::LANCE_MASTER, CHARACTER_CLASS_ID::GUNSLINGER,
 			CHARACTER_CLASS_ID::ARTIST, CHARACTER_CLASS_ID::WARLORD };
@@ -1412,7 +1953,7 @@ namespace
 		{
 			auto client = Connect_Client(options,
 				"Party-" + std::to_string(memberCount) + "-" + std::to_string(index),
-				WORLD_ID::BERN, classes[index], error);
+				WORLD_ID::BERN, options.isKoukuParty ? CHARACTER_CLASS_ID::LANCE_MASTER : classes[index], error);
 			if (nullptr == client)
 				return false;
 			clients.push_back(client.get());
@@ -1491,7 +2032,8 @@ namespace
 				return dx * dx + dz * dz <= 8.41f ?
 					PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
 			}, "party leader guide approach", error) ||
-			!leader->Send_ConfirmNpcEntry(1u, GUIDE, error))
+			!(options.isKoukuParty ? Enter_KoukuParty(clients, timeout, error) :
+				leader->Send_ConfirmNpcEntry(1u, GUIDE, error)))
 		{
 			return false;
 		}
@@ -1507,7 +2049,7 @@ namespace
 						return PROBE_RESULT::FAIL;
 					}
 					if (client->Get_AcceptanceCount() != 2u ||
-						client->Get_CurrentWorld() != WORLD_ID::VALTAN_ARENA)
+						client->Get_CurrentWorld() != targetWorld)
 					{
 						return PROBE_RESULT::WAIT;
 					}
@@ -1521,7 +2063,7 @@ namespace
 							return client->Has_ExactHumanPlayerSnapshot(expected) &&
 								client->Has_ExactPartyRoster(targetRoster);
 						}) ? PROBE_RESULT::PASS : PROBE_RESULT::WAIT;
-			}, "party Valtan roster and leader preservation", error))
+			}, "party target roster and leader preservation", error))
 		{
 			return false;
 		}
@@ -1555,7 +2097,11 @@ namespace
 			return false;
 		}
 		std::cout << "[PASS] " << memberCount << "-member Bern party retained exact "
-			"roster/leader and live commands after Valtan transfer\n";
+			"roster/leader and live commands after " << (options.isKoukuParty ? "KoukuSaydon" : "Valtan") << " transfer\n";
+		if (options.isKoukuParty)
+		{
+			return Run_KoukuCombatAndExit(clients, timeout, options.iKoukuSourceRevision, error);
+		}
 		return true;
 	}
 }

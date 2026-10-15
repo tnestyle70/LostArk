@@ -143,9 +143,9 @@ float4 WarlordNative1153(WARLORD_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 24: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 25: source device depth mapped to centimetre view depth; reconstruction at 27.
+    // Native 25: source depth -> runtime view cm; source reconstruction 27.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 27-30: reconstructed view depth is supplied by the runtime adapter.
+    // Native 27-30: use runtime view depth.
     r0.y = r0.y;
     // 31: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -228,9 +228,9 @@ float4 WarlordNative1154(WARLORD_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 16: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 17: source device depth mapped to centimetre view depth; reconstruction at 19.
+    // Native 17: source depth -> runtime view cm; source reconstruction 19.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 19-22: reconstructed view depth is supplied by the runtime adapter.
+    // Native 19-22: use runtime view depth.
     r0.y = r0.y;
     // 23: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -303,9 +303,9 @@ float4 WarlordNative1155(WARLORD_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 15: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 16: source device depth mapped to centimetre view depth; reconstruction at 18.
+    // Native 16: source depth -> runtime view cm; source reconstruction 18.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 18-21: reconstructed view depth is supplied by the runtime adapter.
+    // Native 18-21: use runtime view depth.
     r0.y = r0.y;
     // 22: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -515,9 +515,9 @@ float4 WarlordNative1156(WARLORD_NATIVE_INPUT input)
     r1.zw = ((v7.xxxy)/(v7.wwww)).zw;
     // 66: mad r1.zw, r1.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r1.zw = ((r1.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 67: source device depth mapped to centimetre view depth; reconstruction at 69.
+    // Native 67: source depth -> runtime view cm; source reconstruction 69.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r1.zwzz).xy, 0.f).y * 100000.f;
-    // Native 69-72: reconstructed view depth is supplied by the runtime adapter.
+    // Native 69-72: use runtime view depth.
     r0.y = r0.y;
     // 73: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -922,9 +922,9 @@ float4 WarlordNative1158(WARLORD_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 59: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 60: source device depth mapped to centimetre view depth; reconstruction at 62.
+    // Native 60: source depth -> runtime view cm; source reconstruction 62.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 62-65: reconstructed view depth is supplied by the runtime adapter.
+    // Native 62-65: use runtime view depth.
     r0.y = r0.y;
     // 66: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -1066,9 +1066,9 @@ float4 WarlordNative1160(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -1154,9 +1154,9 @@ float4 WarlordNative1161(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -1334,9 +1334,9 @@ float4 WarlordNative1162(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -1852,9 +1852,9 @@ float4 WarlordNative1165(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -2356,9 +2356,9 @@ float4 WarlordNative1168(WARLORD_NATIVE_INPUT input)
     r0.zw = ((v7.xxxy)/(v7.wwww)).zw;
     // 33: mad r0.zw, r0.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r0.zw = ((r0.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 34: source device depth mapped to centimetre view depth; reconstruction at 36.
+    // Native 34: source depth -> runtime view cm; source reconstruction 36.
     r0.z = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.zwzz).xy, 0.f).y * 100000.f;
-    // Native 36-39: reconstructed view depth is supplied by the runtime adapter.
+    // Native 36-39: use runtime view depth.
     r0.z = r0.z;
     // 40: add r0.z, r0.z, -v7.w
     r0.z = ((r0.zzzz)+(-(v7.wwww))).z;
@@ -2445,9 +2445,9 @@ float4 WarlordNative1169(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -2811,9 +2811,9 @@ float4 WarlordNative1171(WARLORD_NATIVE_INPUT input)
     r0.yz = ((v7.xxyx)/(v7.wwww)).yz;
     // 37: mad r0.yz, r0.yyzy, cb2[0].xxyx, cb2[0].wwzw
     r0.yz = ((r0.yyzy)*(passValues[0].xxyx)+(passValues[0].wwzw)).yz;
-    // Native 38: source device depth mapped to centimetre view depth; reconstruction at 40.
+    // Native 38: source depth -> runtime view cm; source reconstruction 40.
     r0.y = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.yzyy).xy, 0.f).y * 100000.f;
-    // Native 40-43: reconstructed view depth is supplied by the runtime adapter.
+    // Native 40-43: use runtime view depth.
     r0.y = r0.y;
     // 44: add r0.y, r0.y, -v7.w
     r0.y = ((r0.yyyy)+(-(v7.wwww))).y;
@@ -3075,9 +3075,9 @@ float4 WarlordNative1172(WARLORD_NATIVE_INPUT input)
     r0.zw = ((v7.xxxy)/(v7.wwww)).zw;
     // 72: mad r0.zw, r0.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r0.zw = ((r0.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 73: source device depth mapped to centimetre view depth; reconstruction at 75.
+    // Native 73: source depth -> runtime view cm; source reconstruction 75.
     r0.z = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.zwzz).xy, 0.f).y * 100000.f;
-    // Native 75-78: reconstructed view depth is supplied by the runtime adapter.
+    // Native 75-78: use runtime view depth.
     r0.z = r0.z;
     // 79: add r0.z, r0.z, -v7.w
     r0.z = ((r0.zzzz)+(-(v7.wwww))).z;
@@ -3667,9 +3667,9 @@ float4 WarlordNative1176(WARLORD_NATIVE_INPUT input)
     r0.zw = ((v7.xxxy)/(v7.wwww)).zw;
     // 23: mad r0.zw, r0.zzzw, cb2[0].xxxy, cb2[0].wwwz
     r0.zw = ((r0.zzzw)*(passValues[0].xxxy)+(passValues[0].wwwz)).zw;
-    // Native 24: source device depth mapped to centimetre view depth; reconstruction at 26.
+    // Native 24: source depth -> runtime view cm; source reconstruction 26.
     r0.z = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.zwzz).xy, 0.f).y * 100000.f;
-    // Native 26-29: reconstructed view depth is supplied by the runtime adapter.
+    // Native 26-29: use runtime view depth.
     r0.z = r0.z;
     // 30: add r0.z, r0.z, -v7.w
     r0.z = ((r0.zzzz)+(-(v7.wwww))).z;
@@ -3739,9 +3739,9 @@ float4 WarlordNative1177(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -4198,9 +4198,9 @@ float4 WarlordNative1180(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -4838,9 +4838,9 @@ float4 WarlordNative1183(WARLORD_NATIVE_INPUT input)
     r0.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 2: mad r0.xy, r0.xyxx, cb2[0].xyxx, cb2[0].wzww
     r0.xy = ((r0.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 3: source device depth mapped to centimetre view depth; reconstruction at 5.
+    // Native 3: source depth -> runtime view cm; source reconstruction 5.
     r0.x = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r0.xyxx).xy, 0.f).y * 100000.f;
-    // Native 5-8: reconstructed view depth is supplied by the runtime adapter.
+    // Native 5-8: use runtime view depth.
     r0.x = r0.x;
     // 9: add r0.x, r0.x, -v7.w
     r0.x = ((r0.xxxx)+(-(v7.wwww))).x;
@@ -5963,9 +5963,9 @@ float4 WarlordNative1190(WARLORD_NATIVE_INPUT input)
     r1.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 27: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
     r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 28: source device depth mapped to centimetre view depth; reconstruction at 30.
+    // Native 28: source depth -> runtime view cm; source reconstruction 30.
     r0.w = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r1.xyxx).xy, 0.f).y * 100000.f;
-    // Native 30-33: reconstructed view depth is supplied by the runtime adapter.
+    // Native 30-33: use runtime view depth.
     r0.w = r0.w;
     // 34: add r0.w, r0.w, -v7.w
     r0.w = ((r0.wwww)+(-(v7.wwww))).w;
@@ -6585,9 +6585,9 @@ float4 WarlordNative1195(WARLORD_NATIVE_INPUT input)
     r1.xy = ((v7.xyxx)/(v7.wwww)).xy;
     // 27: mad r1.xy, r1.xyxx, cb2[0].xyxx, cb2[0].wzww
     r1.xy = ((r1.xyxx)*(passValues[0].xyxx)+(passValues[0].wzww)).xy;
-    // Native 28: source device depth mapped to centimetre view depth; reconstruction at 30.
+    // Native 28: source depth -> runtime view cm; source reconstruction 30.
     r0.w = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, (r1.xyxx).xy, 0.f).y * 100000.f;
-    // Native 30-33: reconstructed view depth is supplied by the runtime adapter.
+    // Native 30-33: use runtime view depth.
     r0.w = r0.w;
     // 34: add r0.w, r0.w, -v7.w
     r0.w = ((r0.wwww)+(-(v7.wwww))).w;

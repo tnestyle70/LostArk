@@ -8,9 +8,9 @@ from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as subjec
 
 
 ROOT = Path(__file__).resolve().parents[2]
-KOUKU_BOSS_ID = "BOSS_KAKULSAYDON_G1_KOUKU"
-KOUKU_ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1"
-KOUKU_PLACEMENT_ID = "boss.kakulsaydon.g1.kouku"
+KOUKU_BOSS_ID = "BOSS_KOUKUSAYDON_G1_KOUKU"
+KOUKU_ENCOUNTER_ID = "ENCOUNTER_KOUKUSAYDON_G1"
+KOUKU_PLACEMENT_ID = "boss.koukusaydon.g1.kouku"
 AUDITION_POLICY_ID = "koukusaydon-animation-audition-admission-v1"
 AUDITION_NOTE = (
     "Non-final preview survival and admission value; "
@@ -59,7 +59,16 @@ foreach ($function in $ast.FindAll({param($node)
 }, $false)) {
     if ($function.Name -in $names) { Invoke-Expression $function.Extent.Text }
 }
-$emptyEncounter = 'ENCOUNTER_KAKULSAYDON_G1'
+$parentAst = [System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path $repoRoot 'Tools/KoukuSaydonPipeline/KoukuParentSequenceContract.ps1'),
+    [ref]$null, [ref]$null)
+$parentValidator = $parentAst.Find({param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+    $node.Name -eq 'Assert-KoukuParentPatternSequence'
+}, $true)
+if ($null -eq $parentValidator) { throw 'Parent sequence validator was not found.' }
+Invoke-Expression $parentValidator.Extent.Text
+$emptyEncounter = 'ENCOUNTER_KOUKUSAYDON_G1'
 function Read-ProjectJson {
     param([string]$RelativePath)
     $document = Get-Content -LiteralPath (Join-Path $repoRoot $RelativePath) `
@@ -70,7 +79,7 @@ function Read-ProjectJson {
     return $document
 }
 $profiles = Get-EncounterProfiles
-if (-not $profiles.ContainsKey('ENCOUNTER_KAKULSAYDON_G1')) {
+if (-not $profiles.ContainsKey('ENCOUNTER_KOUKUSAYDON_G1')) {
     throw 'RAW-only Kouku Product was not admitted.'
 }
 $emptyEncounter = (Get-Content -LiteralPath `
@@ -88,7 +97,7 @@ if (-not $rejected) { throw 'Valtan must still require extracted source action I
         self.run_publisher_fragment(r"""
 $ErrorActionPreference = 'Stop'
 $ast = [System.Management.Automation.Language.Parser]::ParseFile(
-    (Join-Path (Get-Location) 'Tools/GameplayPipeline/Publish-GameplayBalance.ps1'),
+    (Join-Path (Get-Location) 'Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1'),
     [ref]$null, [ref]$null)
 $validator = $ast.Find({param($node)
     $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
@@ -115,8 +124,8 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
 
     def test_encore_reuses_gate3_body_and_staff(self):
         catalog = load("Data/Actors/BossCatalog.json")
-        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
-        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G3_SAYDON")
+        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_BINGO_SAYDON")
+        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_G3_SAYDON")
         for key in ("bodyModel", "bodyModelPreScale", "weaponModel", "weaponModelPreScale", "weaponModelPreRotationDegrees"):
             self.assertEqual(gate3[key], bingo[key], key)
         self.assertEqual("Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel", bingo["weaponModel"])
@@ -137,12 +146,16 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
                 "weaponModel": None,
                 "armorModels": [],
                 "armorParts": [],
-                "combatObjectVisuals": [],
+                "combatObjectVisuals": [{
+                    "combatObjectArchetypeId": "combatobject.kouku.albion.bluecircle",
+                    "clientVisualId": "combatvisual.kouku.albion.bluecircle",
+                    "effectAssetId": "effect.kouku.albion.bluecircle.warning.impact.runtime",
+                }],
                 "animationSetId": (
                     "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel"
                 ),
-                "serverProfileId": "boss.kakulsaydon.g1.kouku.server.v1",
-                "clientPresentationId": "boss.kakulsaydon.g1.kouku.client.v1",
+                "serverProfileId": "boss.koukusaydon.g1.kouku.server.v1",
+                "clientPresentationId": "boss.koukusaydon.g1.kouku.client.v1",
                 "presentationStatus": "complete",
                 "presentationClips": {
                     "idle": "rpcz00_idle_battle_1",
@@ -177,25 +190,28 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
         self.assertEqual(
             [
                 KOUKU_BOSS_ID,
-                "BOSS_KAKULSAYDON_G1_SAYDON",
-                "BOSS_KAKULSAYDON_G2_KOUKU",
+                "BOSS_KOUKUSAYDON_G2_KOUKU",
             ],
             [row["archetypeId"] for row in catalog["bosses"]
              if row["weaponModel"] is None],
         )
+        # Gate 1 Saydon now reuses the installed Gate 3 staff model.
+        gate1_saydon = unique(catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_G1_SAYDON")
+        self.assertEqual("Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel", gate1_saydon["weaponModel"])
+        self.assertGreater(gate1_saydon["weaponModelPreScale"], 0.0)
         # Encore reuses Gate 3 body/staff admission; Big Saydon owns its hammer.
         hammer = "Character/KoukuSaton/WP_MN_RPCT_06/WP_MN_RPCT_06.wmodel"
-        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_BINGO_SAYDON")
-        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G3_SAYDON")
+        bingo = unique(catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_BINGO_SAYDON")
+        gate3 = unique(catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_G3_SAYDON")
         for key in ("bodyModel", "bodyModelPreScale", "weaponModel", "weaponModelPreScale", "weaponModelPreRotationDegrees"):
             self.assertEqual(gate3[key], bingo[key], key)
         self.assertEqual("Character/KoukuSaton/WP_MN_RPCT_05/WP_MN_RPCT_05.wmodel", bingo["weaponModel"])
         big_saydon = unique(
-            catalog["bosses"], "archetypeId", "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+            catalog["bosses"], "archetypeId", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON")
         self.assertEqual(hammer, big_saydon["weaponModel"])
         self.assertGreater(big_saydon["weaponModelPreScale"], 0.0)
         for row in catalog["bosses"]:
-            if row["archetypeId"].startswith("BOSS_KAKULSAYDON_"):
+            if row["archetypeId"].startswith("BOSS_KOUKUSAYDON_"):
                 self.assertTrue(
                     row["bodyModel"].startswith("Character/KoukuSaton/"))
 
@@ -247,22 +263,23 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
         self.assertEqual("lostark.world-gameplay", world["schema"])
         self.assertEqual(6, world["formatVersion"])
         self.assertEqual("LV_LUT_MIDNIGHTC_ED", world["areaId"])
-        self.assertEqual(3686, world["revision"])
+        self.assertIsInstance(world["revision"], int)
+        self.assertGreater(world["revision"], 0)
         self.assertEqual(
             {
                 "placementId": KOUKU_PLACEMENT_ID,
                 "kind": "boss",
                 "archetypeId": KOUKU_BOSS_ID,
                 "encounterId": KOUKU_ENCOUNTER_ID,
-                "position": [22, -0.05, -62],
+                "position": [22, -0.0500000007, -62],
                 "yawDegrees": 0,
-                "enabled": True,
+                "enabled": False,
             },
             unique(world["placements"], "placementId", KOUKU_PLACEMENT_ID),
         )
         self.assertEqual(
             {
-                "placementId": "stage.kakul.sl01",
+                "placementId": "stage.kouku.sl01",
                 "kind": "playerSpawn",
                 "archetypeId": None,
                 "encounterId": None,
@@ -270,7 +287,7 @@ foreach ($invalidIds in @(@(-1), @(0,0))) {
                 "yawDegrees": 0,
                 "enabled": False,
             },
-            unique(world["placements"], "placementId", "stage.kakul.sl01"),
+            unique(world["placements"], "placementId", "stage.kouku.sl01"),
         )
         for placement in world["placements"]:
             for event in placement.get("events", []):

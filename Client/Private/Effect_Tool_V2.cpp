@@ -8,7 +8,7 @@
 #include "ActorCatalog.h"
 #include "AnimationPreviewAssets.h"
 #include "AnimationTargetService.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "Level_ValtanArena.h"
 #include "BinaryAsset/ModelAssetData.h"
 #include "BinaryAsset/ModelDecoderRegistry.h"
@@ -1683,33 +1683,33 @@ namespace
 
 	/* Binding owner is the physical skeleton; MN_RPCT_00 shares MN_RPCT_05's
 	   rig and clips, so both save to MN_RPCT_05. */
-	struct KAKUL_PREVIEW_TARGET final
+	struct KOUKU_PREVIEW_TARGET final
 	{
 		const char* pAssetName;
 		const char* pLabel;
 		const char* pBindingArchetypeId;
 	};
 
-	constexpr std::array<KAKUL_PREVIEW_TARGET, 4u> KAKUL_PREVIEW_TARGETS = {
-		KAKUL_PREVIEW_TARGET{ "MN_RPCZ_00", "Kakul clown, 91 clips", "MN_RPCZ_00" },
-		KAKUL_PREVIEW_TARGET{ "MN_RPCT_05", "Saydon with Kakul parts, 249 clips", "MN_RPCT_05" },
-		KAKUL_PREVIEW_TARGET{ "MN_RPCT_00", "Saydon plain body, same rig as 05", "MN_RPCT_05" },
-		KAKUL_PREVIEW_TARGET{ "MN_RPCT_06", "Large Saydon, own rig, 34 clips", "MN_RPCT_06" },
+	constexpr std::array<KOUKU_PREVIEW_TARGET, 4u> KOUKU_PREVIEW_TARGETS = {
+		KOUKU_PREVIEW_TARGET{ "MN_RPCZ_00", "Kouku clown, 91 clips", "MN_RPCZ_00" },
+		KOUKU_PREVIEW_TARGET{ "MN_RPCT_05", "Saydon with Kouku parts, 249 clips", "MN_RPCT_05" },
+		KOUKU_PREVIEW_TARGET{ "MN_RPCT_00", "Saydon plain body, same rig as 05", "MN_RPCT_05" },
+		KOUKU_PREVIEW_TARGET{ "MN_RPCT_06", "Large Saydon, own rig, 34 clips", "MN_RPCT_06" },
 	};
 
-	constexpr const char* ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KAKULSAYDON_";
+	constexpr const char* ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KOUKUSAYDON_";
 	constexpr std::array<const char*, 6u> ARENA_BOSS_ARCHETYPES = {
-		"BOSS_KAKULSAYDON_G1_SAYDON",
-		"BOSS_KAKULSAYDON_G1_KOUKU",
-		"BOSS_KAKULSAYDON_G2_BIG_SAYDON",
-		"BOSS_KAKULSAYDON_G2_KOUKU",
-		"BOSS_KAKULSAYDON_G3_SAYDON",
-		"BOSS_KAKULSAYDON_BINGO_SAYDON",
+		"BOSS_KOUKUSAYDON_G1_SAYDON",
+		"BOSS_KOUKUSAYDON_G1_KOUKU",
+		"BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
+		"BOSS_KOUKUSAYDON_G2_KOUKU",
+		"BOSS_KOUKUSAYDON_G3_SAYDON",
+		"BOSS_KOUKUSAYDON_BINGO_SAYDON",
 	};
 
-	const KAKUL_PREVIEW_TARGET* Find_KakulPreviewTarget(const std::string_view strAssetName)
+	const KOUKU_PREVIEW_TARGET* Find_KoukuPreviewTarget(const std::string_view strAssetName)
 	{
-		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
+		for (const KOUKU_PREVIEW_TARGET& Entry : KOUKU_PREVIEW_TARGETS)
 		{
 			if (strAssetName == Entry.pAssetName)
 				return &Entry;
@@ -1834,7 +1834,7 @@ namespace
 	{
 		if (const auto pCharacter = Client::CAnimationTargetService::Resolve_SceneCharacter())
 			return pCharacter;
-		if (const auto* pArena = Client::CLevel_KakulSaydonArena::Get_Active())
+		if (const auto* pArena = Client::CLevel_KoukuSaydonArena::Get_Active())
 			return pArena->Get_LocalCharacter();
 		if (const auto* pArena = Client::CLevel_ValtanArena::Get_Active())
 			return pArena->Get_LocalCharacter();
@@ -1873,8 +1873,8 @@ bool_t Client::CEffect_Tool_V2::Spawn_Target(const std::string& strArchetypeId)
 		bSpawned = Spawn_ValtanTarget(vPosition);
 	else if (0u == strArchetypeId.rfind(ARENA_BOSS_ARCHETYPE_PREFIX, 0u))
 		bSpawned = Attach_ArenaBossTarget(strArchetypeId, vPosition);
-	else if (const KAKUL_PREVIEW_TARGET* pKakul = Find_KakulPreviewTarget(strArchetypeId))
-		bSpawned = Spawn_PreviewBodyTarget(pKakul->pAssetName, pKakul->pBindingArchetypeId, vPosition);
+	else if (const KOUKU_PREVIEW_TARGET* pKouku = Find_KoukuPreviewTarget(strArchetypeId))
+		bSpawned = Spawn_PreviewBodyTarget(pKouku->pAssetName, pKouku->pBindingArchetypeId, vPosition);
 	else if (nullptr != CActorCatalog::Find_VehicleByArchetype(strArchetypeId))
 		bSpawned = Spawn_VehicleTarget(strArchetypeId, vPosition);
 	else
@@ -1914,7 +1914,7 @@ bool_t Client::CEffect_Tool_V2::Attach_ArenaBossTarget(
 	float3_t& OutPosition)
 {
 #ifdef _DEBUG
-	const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active();
+	const CLevel_KoukuSaydonArena* pArena = CLevel_KoukuSaydonArena::Get_Active();
 	const std::shared_ptr<CNpc> pNpc =
 		nullptr == pArena ? nullptr : pArena->Debug_FindArenaBossNpc(strArchetypeId);
 	if (nullptr == pNpc || nullptr == pNpc->Get_Model())
@@ -3335,7 +3335,7 @@ void Client::CEffect_Tool_V2::Stop_KoukuTimeline()
 void Client::CEffect_Tool_V2::Render_KoukuPatternSection()
 {
 	if (EFFECT_V2_TARGET_KIND::PREVIEW_BODY != m_Target.eKind || !m_Target.Is_Valid() ||
-		nullptr == Find_KakulPreviewTarget(m_Target.strArchetypeId))
+		nullptr == Find_KoukuPreviewTarget(m_Target.strArchetypeId))
 	{
 		return;
 	}
@@ -3578,7 +3578,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		}
 		ImGui::Separator();
 #ifdef _DEBUG
-		if (const CLevel_KakulSaydonArena* pArena = CLevel_KakulSaydonArena::Get_Active())
+		if (const CLevel_KoukuSaydonArena* pArena = CLevel_KoukuSaydonArena::Get_Active())
 		{
 			ImGui::TextDisabled("Live arena bosses (Server-spawned, real body/scale)");
 			for (const char* pArchetypeId : ARENA_BOSS_ARCHETYPES)
@@ -3599,7 +3599,7 @@ void Client::CEffect_Tool_V2::Render_AttachWindow()
 		}
 #endif
 		ImGui::TextDisabled("Preview bodies (tool-spawned, admission scale)");
-		for (const KAKUL_PREVIEW_TARGET& Entry : KAKUL_PREVIEW_TARGETS)
+		for (const KOUKU_PREVIEW_TARGET& Entry : KOUKU_PREVIEW_TARGETS)
 		{
 			const std::string strLabel = std::string(Entry.pAssetName) + "  (" + Entry.pLabel + ")";
 			if (ImGui::Selectable(strLabel.c_str(), Entry.pAssetName == m_strSelectedArchetypeId))

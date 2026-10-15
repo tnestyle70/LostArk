@@ -162,7 +162,7 @@ void LostArk::Server::CGameRoom::Begin_PlayerFall(
 		(Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M);
 	player.fFallDeathPlaneY = (player.bKnockbackBallistic ? player.fKnockbackSupportY : player.fPositionY) - fallDepth;
 	player.eAction = PLAYER_ACTION_STATE::FALLING;
-	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && !player.iMarioStage;
+	player.bKoukuFallDeath = m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA && !player.iMarioStage;
 	player.bWaterpangFall = false;
 	player.bWaterpangLaunch = false;
 	player.iActionStartTick = 0u == updateTick ? 1u : updateTick;
@@ -245,7 +245,7 @@ bool LostArk::Server::CGameRoom::Capture_PlayerAttachment(
 		{
 			return entity.iNetEntityId == ownerEntityId;
 		});
-	auto* owner = sourcePatternSequence && m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+	auto* owner = sourcePatternSequence && m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA ?
 		Find_KoukuOccurrenceOwner(ownerEntityId, sourcePatternSequence) :
 		(liveOwner == m_WorldEntities.end() ? nullptr : &*liveOwner);
 	if (nullptr == owner ||
@@ -494,7 +494,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerAttachment(
 		{
 			return entity.iNetEntityId == ownerEntityId;
 		});
-	const auto* owner = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ?
+	const auto* owner = m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA ?
 		Find_KoukuOccurrenceOwner(ownerEntityId, player.iAttachmentPatternSequence) :
 		(body == m_WorldEntities.end() ? nullptr : &*body);
 	const bool liveOwner = nullptr != owner &&
@@ -668,15 +668,15 @@ bool LostArk::Server::CGameRoom::Restore_PatternBoundPlayer(
 const LostArk::Server::WORLD_BOOTSTRAP_PLACEMENT*
 LostArk::Server::CGameRoom::Resolve_KoukuFallCenter(const SERVER_PLAYER& player) const
 {
-	if (m_eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA || player.iMarioStage ||
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA || player.iMarioStage ||
 		player.eKoukuAreaHudMode == LostArk::Shared::KOUKU_HUD_MODE::MAZE) return nullptr;
 	// Refinement grid rectangles are only bake coverage, not arena bounds.
 	// The casino continues onto the base grid. Classify the separated authored
 	// stages by their spawn anchors, not by Gate2Fine's small rectangle.
 	const WORLD_BOOTSTRAP_PLACEMENT* nearest = nullptr;
 	float distance = (std::numeric_limits<float>::max)();
-	for (const char* id : { "stage.kakul.sl01", "stage.kakul.sl02", "stage.kakul.sl03",
-		"stage.kakul.sl04", "stage.kakul.sl05" })
+	for (const char* id : { "stage.kouku.sl01", "stage.kouku.sl02", "stage.kouku.sl03",
+		"stage.kouku.sl04", "stage.kouku.sl05" })
 	{
 		const auto* marker = Find_Placement(id);
 		if (!marker || marker->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) continue;
@@ -685,7 +685,7 @@ LostArk::Server::CGameRoom::Resolve_KoukuFallCenter(const SERVER_PLAYER& player)
 		const float candidate = dx * dx + dz * dz;
 		if (candidate < distance) { nearest = marker; distance = candidate; }
 	}
-	return nearest && nearest->strPlacementId == "stage.kakul.sl03" ? nearest : nullptr;
+	return nearest && nearest->strPlacementId == "stage.kouku.sl03" ? nearest : nullptr;
 }
 
 bool LostArk::Server::CGameRoom::Try_KoukuWalkOffFloor(
@@ -693,7 +693,7 @@ bool LostArk::Server::CGameRoom::Try_KoukuWalkOffFloor(
 	const float fixedDeltaSeconds, const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m_ServerNavigation.Is_Loaded() ||
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !m_ServerNavigation.Is_Loaded() ||
 		!player.iCurrentHp || player.TriggerMove.isActive || player.bArenaEjectionActive ||
 		(player.iVehicleId == ANCIENT_SEA_VEHICLE_ID && player.eAction == PLAYER_ACTION_STATE::VEHICLE_SKILL &&
 		 player.eVehicleFlightPhase != VEHICLE_FLIGHT_PHASE::GROUNDED)) return false;
@@ -758,7 +758,7 @@ bool LostArk::Server::CGameRoom::Update_PlayerFall(
 		rule the cooldown deadlines use. */
 		const std::int32_t sinceDeadline = static_cast<std::int32_t>(
 			updateTick - player.iFallDeathTick);
-		const bool reachedDeath = (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA ||
+		const bool reachedDeath = (m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA ||
 			(m_eWorldId == WORLD_ID::MAHARAKA && player.bWaterpangFall)) ?
 			(!std::isfinite(player.fFallDeathPlaneY) || player.fPositionY <= player.fFallDeathPlaneY) : sinceDeadline >= 0;
 		if (!std::isfinite(player.fPositionY) || reachedDeath)
@@ -871,7 +871,7 @@ void LostArk::Server::CGameRoom::Update_Players(const float fixedDeltaSeconds)
 		Update_MarioBombContacts(player, updateTick);
 		Update_MarioBouncingBallContacts(player, updateTick);
 		Update_MaharakaWaterpangHazards(player, updateTick);
-		if (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA && player.iCurrentHp &&
+		if (m_eWorldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA && player.iCurrentHp &&
 			!player.iMarioStage && !player.TriggerMove.isActive &&
 			player.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FALLING)
 		{
@@ -1504,7 +1504,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 			return;
 		}
 		const float fallDepth = Resolve_KoukuFallCenter(player) ? KOUKU_CASINO_FALL_DEPTH_M : KOUKU_FALL_DEPTH_M;
-		if (!bounded && m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+		if (!bounded && m_eWorldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA &&
 			player.fPositionY <= player.fKnockbackSupportY - fallDepth)
 		{
 			const std::uint32_t tick = (std::numeric_limits<std::uint32_t>::max)() == m_iServerTick ? 1u : m_iServerTick + 1u;
@@ -1596,7 +1596,7 @@ void LostArk::Server::CGameRoom::Advance_PlayerKnockback(
 	}
 	if (m_ServerNavigation.Is_Loaded() &&
 		(m_eWorldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA || waterpangPush ||
-		 (m_eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+		 (m_eWorldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA &&
 		  player.bKnockbackCanLeaveArena && !player.iMarioStage)))
 	{
 		/* Valtan hits and authored Kouku arena-exit hits cross walking boundaries. Keep actual walls

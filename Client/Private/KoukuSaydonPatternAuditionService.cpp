@@ -16,11 +16,11 @@ namespace
 
 	constexpr std::uint64_t VERDICT_TIMEOUT_MILLISECONDS = 5000u;
 	constexpr std::uint64_t QUEUED_START_TIMEOUT_MILLISECONDS = 15000u;
-	constexpr std::string_view ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1";
+	constexpr std::string_view ENCOUNTER_ID = "ENCOUNTER_KOUKUSAYDON_G1";
 	constexpr std::string_view BOSS_PLACEMENT_ID =
-		"boss.kakulsaydon.g1.kouku";
+		"boss.koukusaydon.g1.kouku";
 	constexpr std::string_view BOSS_ARCHETYPE_ID =
-		"BOSS_KAKULSAYDON_G1_KOUKU";
+		"BOSS_KOUKUSAYDON_G1_KOUKU";
 
 	KOUKUSAYDON_PATTERN_AUDITION_SCOPE Make_Scope(
 		const std::string_view placementId,
@@ -29,7 +29,7 @@ namespace
 		const std::uint32_t sourceRevision)
 	{
 		KOUKUSAYDON_PATTERN_AUDITION_SCOPE scope{};
-		scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		scope.strEncounterId = ENCOUNTER_ID;
 		scope.strBossPlacementId = placementId;
 		scope.strBossArchetypeId = archetypeId;

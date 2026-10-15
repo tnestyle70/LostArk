@@ -353,7 +353,7 @@ def compose_independent(evidence):
                 sourceSkillDecalId=chain['decalId'], sourceMaterial=chain['sourceMaterial'],
                 sourceAttackEffectAssetId='effect.kouku.gate3.showtime.' + attack,
                 pairing='ORIGINAL_FIXED_AREA_WARNING_AND_IMPACT',
-                resourceId='kakulsaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20]))
+                resourceId='koukusaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20]))
     install_independent_documents(documents)
     return records
 
@@ -440,7 +440,7 @@ def compose(evidence):
             radiusM=radius, innerRadiusM=row['sourceArea']['AreaRemoveRange'] * .01,
             fullAngleDegrees=45 if row['shape'] == 'sector' else 360,
             materialOverrides=overrides, pairing=row['pairing'], elementCount=len(document['elements']),
-            resourceId='kakulsaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20])
+            resourceId='koukusaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20])
         records.append(record)
     source.write(evidence / 'authored_groups.json', dict(groups=records, manualVisualValidation='USER_PENDING'))
     return records

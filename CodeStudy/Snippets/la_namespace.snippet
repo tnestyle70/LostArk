@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>LostArk namespace</Title>
+      <Shortcut>la_namespace</Shortcut>
+      <Description>Engine 또는 Client의 NS_BEGIN/NS_END 범위. 매크로 제공 헤더는 대상 파일이 직접 포함한다.</Description>
+      <Author>LostArk</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal><ID>namespaceName</ID><ToolTip>현재 계층에 맞게 Engine 또는 Client를 입력한다.</ToolTip><Default>Client</Default></Literal>
+      </Declarations>
+      <Code Language="CPP"><![CDATA[NS_BEGIN($namespaceName$)
+
+$end$
+
+NS_END]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

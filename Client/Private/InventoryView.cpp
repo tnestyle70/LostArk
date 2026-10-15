@@ -1,13 +1,10 @@
 #include "InventoryView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "ItemCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
@@ -378,7 +375,7 @@ void Client::CInventoryView::Update_CloseButton()
 		float4_t(1.4f, 1.4f, 1.4f, 1.f) : float4_t(1.f, 1.f, 1.f, 1.f));
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -467,7 +464,7 @@ void Client::CInventoryView::Update_CategoryTabs()
 			Router.Claim_Mouse_This_Frame();
 			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_strSelectedCategoryId = bSelected ? string{} : Category.pSlotId;
 			}
 		}

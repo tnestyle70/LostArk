@@ -54,7 +54,7 @@ function Assert-KoukuSaydonSourceRevision([string]$Phase) {
 $domainIds = if ($Owner -eq 'Client') {
     @(
         'koukusaydon.product',
-        'map.kakulsaydon',
+        'map.koukusaydon',
         'composition.presentation',
         'world.gameplay',
         'navigation'
@@ -63,7 +63,7 @@ $domainIds = if ($Owner -eq 'Client') {
 elseif ($Owner -eq 'KoukuSaydon') {
     @(
         'koukusaydon.product',
-        'map.kakulsaydon',
+        'map.koukusaydon',
         'world.gameplay',
         'gameplay.balance'
     )
@@ -89,20 +89,20 @@ function Get-OwnerBuildDomain([string]$Id) {
     # Use the same world publisher and codec, with only this encounter's outputs.
     # Its action/output fingerprint distinguishes this receipt from an all-world run.
     $scoped = $domain | ConvertTo-Json -Depth 30 | ConvertFrom-Json
-    $scoped.action.arguments = @($scoped.action.arguments) + @('-WorldId', 'KAKULSAYDON_ARENA')
+    $scoped.action.arguments = @($scoped.action.arguments) + @('-WorldId', 'KOUKUSAYDON_ARENA')
     $scoped.outputs = @(
-        'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap',
-        'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.spawngroupsbootstrap',
-        'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.encounterpropsbootstrap',
-        'Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.npcpresentation.json',
-        'Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json',
+        'Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.worldbootstrap',
+        'Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.spawngroupsbootstrap',
+        'Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.encounterpropsbootstrap',
+        'Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.npcpresentation.json',
+        'Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.stagemarkers.json',
         'Client/Bin/DataFiles/World/LV_LUT_MIDNIGHTC_ED.viewer.world.json',
         'Client/Bin/DataFiles/World/SequenceViewer.labels.json'
     )
     $scoped.requiredOutputPatterns = @(
-        'Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap',
-        'Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.npcpresentation.json',
-        'Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json',
+        'Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.worldbootstrap',
+        'Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.npcpresentation.json',
+        'Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.stagemarkers.json',
         'Client/Bin/DataFiles/World/LV_LUT_MIDNIGHTC_ED.viewer.world.json',
         'Client/Bin/DataFiles/World/SequenceViewer.labels.json'
     )

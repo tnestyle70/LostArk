@@ -1,48 +1,75 @@
+// 시퀀스 목록·검색·실행 버튼을 Debug 도구로 표시한다.
 #include "imgui.h"
+// MainApp이 보관한 목록·선택·대기 요청과 플레이어 도착 cue의 멤버 함수를 구현한다.
 #include "MainApp.h"
 
 #ifdef _DEBUG
+// 표시 이름과 시퀀스 목록 JSON을 읽는다.
 #include "DataJson.h"
+// 현재 Level과 profiler를 조회한다.
 #include "GameInstance.h"
+// 목록 갱신·응답 처리·UI 구성의 비용을 별도 구간으로 기록한다.
 #include "Profiler.h"
+// 지도 저작 정본과 게시된 데이터 위치를 조회한다.
 #include "MapAssetCatalog.h"
+// 로컬 Map Editor 미리보기 경로인지 판별한다.
 #include "MapEditorWorkspaceService.h"
+// 편집기에서 같은 Area·시퀀스를 준비하고 미리보기 명령을 전달한다.
 #include "MapTool.h"
+// 월드 trigger placement와 연결된 typed event 목록을 읽는다.
 #include "WorldGameplayDocument.h"
-#include "Level_KakulSaydonArena.h"
+// 현재 쿠크 아레나의 command sink와 플레이어 controller를 조회한다.
+#include "Level_KoukuSaydonArena.h"
+// 현재 발탄 아레나의 command sink와 플레이어 controller를 조회한다.
 #include "Level_ValtanArena.h"
+// 월드 playback 요청과 응답을 기존 Server 명령 경계로 전달한다.
 #include "PlayerCommandSink.h"
+// 게시 쿠크 패턴 목록을 읽고 선택 패턴을 기존 실행 경로로 요청한다.
 #include "KoukuSaydonBossTool.h"
+// ROOM_PLAYER_ARRIVAL logic의 저작 시각·목적지·플레이어 slot을 읽는다.
 #include "KoukuSaydonCompositionDocument.h"
+// 사용자의 위치 이동과 방 플레이어 도착 명령을 Server에 요청한다.
 #include "PlayerController.h"
+// 입력·응답이 같은 월드 연결 세대인지 확인한다.
 #include "NetworkManager.h"
+// 발탄 패턴의 기존 재생·재시작 경로를 호출한다.
 #include "ValtanBossTool.h"
+// 상한을 확인한 이름·시퀀스 문서 bytes를 읽는다.
 #include <fstream>
+// stable 선택 검색과 cue 시각 정렬에 사용한다.
 #include <algorithm>
+// 검색어의 ASCII 영문만 소문자로 바꾼다.
 #include <cctype>
+// template ID로 표시 이름을 조회한다.
 #include <unordered_map>
 
 using namespace Client;
 namespace
 {
-constexpr const char* AREAS[] = { "LV_LUT_MIDNIGHTC_ED", "LV_LUT_HEARTRB_ED" };
-constexpr const char* AREA_NAMES[] = { "쿠크세이튼", "발탄" };
-constexpr const char* KINDS[] = { "트리거", "맵 시퀀스", "보스 패턴" };
+// 아레나 index는 목록·표시 이름·Server world 선택에서 함께 사용한다. 저장 identity는 행의 stable ID다.
+constexpr const char *AREAS[] = {"LV_LUT_MIDNIGHTC_ED", "LV_LUT_HEARTRB_ED"};
+constexpr const char *AREA_NAMES[] = {"쿠크세이튼", "발탄"};
+constexpr const char *KINDS[] = {"트리거", "맵 시퀀스", "보스 패턴"};
 using PlaybackOp = LostArk::Shared::DEBUG_WORLD_PLAYBACK_OPERATION;
 using PlaybackResult = LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT;
 
-std::string JsonText(const DATA_JSON_VALUE& value, const char* key)
+// 선택 문자열 field를 복사한다. 누락·다른 타입은 빈 문자열이며 원본 JSON을 변경하지 않는다.
+std::string JsonText(const DATA_JSON_VALUE &value, const char *key)
 {
-	const auto* field = value.Find(key);
+	const auto *field = value.Find(key);
 	return field && field->Is_String() ? field->Get_String() : std::string{};
 }
+// 검색용 복사본의 ASCII 영문만 접는다. 한글 UTF-8 bytes는 보존한다.
 std::string SearchText(std::string value)
 {
-	// ASCII folding leaves UTF-8 Hangul bytes unchanged.
-	for (auto& ch : value) if (static_cast<unsigned char>(ch) < 128) ch = static_cast<char>(std::tolower(ch));
+	// 128 미만의 ASCII만 변환하므로 UTF-8 한글을 이루는 상위 bytes는 바뀌지 않는다.
+	for (auto &ch : value)
+		if (static_cast<unsigned char>(ch) < 128)
+			ch = static_cast<char>(std::tolower(ch));
 	return value;
 }
-std::string LocationName(const std::string& id, const int area)
+// 표시용으로 Mario 1~4 식별자를 분류하고 나머지는 Area 이름을 사용한다. 실제 실행 대상 ID는 바꾸지 않는다.
+std::string LocationName(const std::string &id, const int area)
 {
 	const auto key = SearchText(id);
 	for (int stage = 1; stage <= 4; ++stage)
@@ -51,31 +78,47 @@ std::string LocationName(const std::string& id, const int area)
 			return std::to_string(stage) + "마리오";
 	return AREA_NAMES[area];
 }
-std::string FriendlyName(const std::string& name)
+// 알려진 소수 연출 이름에 한글 설명을 붙인다. 원본 이름과 stable ID를 대체하는 저장 계약은 아니다.
+std::string FriendlyName(const std::string &name)
 {
 	const auto key = SearchText(name);
-	if (key == "paper_2") return "종이무대 펼침 | " + name;
-	if (key == "lever_on") return "레버 당기기 | " + name;
-	if (key == "lever_off") return "레버 되돌리기 | " + name;
+	if (key == "paper_2")
+		return "종이무대 펼침 | " + name;
+	if (key == "lever_on")
+		return "레버 당기기 | " + name;
+	if (key == "lever_off")
+		return "레버 되돌리기 | " + name;
 	return name;
 }
-const char* ResultText(const PlaybackResult result)
+// Server가 보낸 typed 실행 결과를 사용자 문구에 대응시킨다. 알 수 없는 결과는 성공으로 표시하지 않는다.
+const char *ResultText(const PlaybackResult result)
 {
 	switch (result)
 	{
-	case PlaybackResult::ACCEPTED: return "서버가 실행을 승인했습니다. 같은 아레나 참가자에게 전달됩니다.";
-	case PlaybackResult::DISABLED: return "서버의 Debug 기능이 비활성화되어 있습니다.";
-	case PlaybackResult::WRONG_WORLD: return "선택한 보스의 아레나에 입장해야 합니다.";
-	case PlaybackResult::INVALID_TARGET: return "서버 배포 데이터에 없거나 비활성화된 항목입니다. Publish 후 서버를 재시작해 주세요.";
-	case PlaybackResult::INVALID_PLAYER: return "플레이어가 없거나 사망/강제 이동 중입니다.";
-	case PlaybackResult::ALREADY_USED: return "한 번 실행된 트리거입니다. Replay로 다시 요청할 수 있습니다.";
-	case PlaybackResult::ACTION_REJECTED: return "동작 실행이 거절됐습니다. 위치·대상·이미 활성화된 소환 상태를 확인해 주세요.";
-	case PlaybackResult::STALE_REQUEST: return "중복되거나 오래된 요청입니다.";
-	default: return "알 수 없는 실행 결과입니다.";
+	case PlaybackResult::ACCEPTED:
+		return "서버가 실행을 승인했습니다. 같은 아레나 참가자에게 전달됩니다.";
+	case PlaybackResult::DISABLED:
+		return "서버의 Debug 기능이 비활성화되어 있습니다.";
+	case PlaybackResult::WRONG_WORLD:
+		return "선택한 보스의 아레나에 입장해야 합니다.";
+	case PlaybackResult::INVALID_TARGET:
+		return "서버 배포 데이터에 없거나 비활성화된 항목입니다. Publish 후 서버를 재시작해 주세요.";
+	case PlaybackResult::INVALID_PLAYER:
+		return "플레이어가 없거나 사망/강제 이동 중입니다.";
+	case PlaybackResult::ALREADY_USED:
+		return "한 번 실행된 트리거입니다. Replay로 다시 요청할 수 있습니다.";
+	case PlaybackResult::ACTION_REJECTED:
+		return "동작 실행이 거절됐습니다. 위치·대상·이미 활성화된 소환 상태를 확인해 주세요.";
+	case PlaybackResult::STALE_REQUEST:
+		return "중복되거나 오래된 요청입니다.";
+	default:
+		return "알 수 없는 실행 결과입니다.";
 	}
 }
-}
+} // namespace
 
+// Debug 패널 최초 열기·Refresh에서 두 Area의 trigger·연출·보스 패턴 목록을 다시 만든다.
+// 종류별 읽기 실패는 해당 이전 행을 보존하며, 표시 이름 실패는 원본 ID를 사용할 수 있게 격리한다.
 void CMainApp::RefreshSequenceViewer()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Refresh");
@@ -93,68 +136,91 @@ void CMainApp::RefreshSequenceViewer()
 		std::ifstream stream(labelsPath, std::ios::binary);
 		if (labelsFileError || size > 1024u * 1024u || !stream ||
 			!CDataJson::Parse(std::string(std::istreambuf_iterator<char>(stream), {}), labels, labelsError) ||
-			JsonText(labels, "schema") != "lostark.sequence-viewer-labels" ||
-			!labels.Find("formatVersion") || !labels.Find("formatVersion")->Is_Number() ||
-			labels.Find("formatVersion")->Get_Number() != 1.0 ||
+			JsonText(labels, "schema") != "lostark.sequence-viewer-labels" || !labels.Find("formatVersion") ||
+			!labels.Find("formatVersion")->Is_Number() || labels.Find("formatVersion")->Get_Number() != 1.0 ||
 			!labels.Find("entries") || !labels.Find("entries")->Is_Array())
 		{
 			labels = {};
 			labelsError = "표시 이름 파일 오류: 원본 ID로 표시합니다. " + labelsError;
 		}
 	}
+	// Area마다 지역 목록에 종류별 결과를 모아 교체한다. 한 종류의 실패 때문에 정상인 다른 종류까지 버리지 않는다.
 	for (int area = 0; area < 2; ++area)
 	{
 		std::vector<SEQUENCE_VIEWER_ROW> staged;
 		std::string report, error;
 		CWorldGameplayDocument gameplay;
-		auto path = CMapAssetCatalog::Get_MapAuthoringRoot().parent_path() /
-			L"Worlds" / AREAS[area] / L"Gameplay.world.json";
+		auto path =
+			CMapAssetCatalog::Get_MapAuthoringRoot().parent_path() / L"Worlds" / AREAS[area] / L"Gameplay.world.json";
 		std::error_code sourceError;
 		if (!std::filesystem::is_regular_file(path, sourceError))
 			path = CMapAssetCatalog::Get_MapDataRoot().parent_path() / "World" /
-				(std::string(AREAS[area]) + ".viewer.world.json");
+				   (std::string(AREAS[area]) + ".viewer.world.json");
 		if (gameplay.Load(path, AREAS[area], error))
 		{
-			for (const auto& trigger : gameplay.Get_Placements())
+			for (const auto &trigger : gameplay.Get_Placements())
 			{
-				if (trigger.eKind != WORLD_PLACEMENT_KIND::TRIGGER_BOX) continue;
+				if (trigger.eKind != WORLD_PLACEMENT_KIND::TRIGGER_BOX)
+					continue;
 				SEQUENCE_VIEWER_ROW row;
-				row.id = trigger.placementId; row.name = trigger.placementId;
+				row.id = trigger.placementId;
+				row.name = trigger.placementId;
 				row.location = LocationName(row.id, area);
-				row.position = trigger.position; row.hasPosition = true;
+				row.position = trigger.position;
+				row.hasPosition = true;
 				row.enabled = trigger.isEnabled;
 				if (trigger.triggerEvents.size() != 1)
-				{ row.enabled = false; row.error = "지원되는 동작 한 개가 필요합니다."; }
+				{
+					row.enabled = false;
+					row.error = "지원되는 동작 한 개가 필요합니다.";
+				}
 				else
 				{
-					const auto& event = trigger.triggerEvents.front();
+					const auto &event = trigger.triggerEvents.front();
 					switch (event.eKind)
 					{
 					case WORLD_TRIGGER_EVENT_KIND::PLAY_SEQUENCE:
-						row.action = "연출 재생"; row.sequenceId = event.targetId; break;
-					case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER: row.action = "플레이어 이동 / 점프"; break;
-					case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL: row.action = "다른 맵으로 이동"; break;
-					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP: row.action = "몬스터 그룹 소환"; break;
-					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER: row.action = "보스 전투 활성화"; break;
-					case WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE: row.action = "카드미로 망원경 (망치 타격)"; break;
-					default: row.enabled = false; row.error = "지원하지 않는 트리거 동작"; break;
+						row.action = "연출 재생";
+						row.sequenceId = event.targetId;
+						break;
+					case WORLD_TRIGGER_EVENT_KIND::MOVE_PLAYER:
+						row.action = "플레이어 이동 / 점프";
+						break;
+					case WORLD_TRIGGER_EVENT_KIND::CHANGE_LEVEL:
+						row.action = "다른 맵으로 이동";
+						break;
+					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_SPAWN_GROUP:
+						row.action = "몬스터 그룹 소환";
+						break;
+					case WORLD_TRIGGER_EVENT_KIND::ACTIVATE_ENCOUNTER:
+						row.action = "보스 전투 활성화";
+						break;
+					case WORLD_TRIGGER_EVENT_KIND::CLAIM_CARD_MAZE_TELESCOPE:
+						row.action = "카드미로 망원경 (망치 타격)";
+						break;
+					default:
+						row.enabled = false;
+						row.error = "지원하지 않는 트리거 동작";
+						break;
 					}
 					row.related = event.targetId;
 				}
-				if (!trigger.isEnabled) row.error = "저작 데이터에서 비활성화되어 있습니다.";
+				if (!trigger.isEnabled)
+					row.error = "저작 데이터에서 비활성화되어 있습니다.";
 				staged.push_back(std::move(row));
 			}
 		}
 		else
 		{
 			report = "트리거 읽기 실패 (이전 목록 유지): " + error;
-			for (const auto& previous : m_SequenceViewerRows[area])
-				if (previous.kind == 0) staged.push_back(previous);
+			for (const auto &previous : m_SequenceViewerRows[area])
+				if (previous.kind == 0)
+					staged.push_back(previous);
 		}
 
-		// Inventory only: actual playback is revalidated by the existing player/server.
+		// 이 문서는 조회 목록만 구성한다. 실제 재생 가능 여부는 기존 player와 Server가 다시 검증한다.
 		auto sequencePath = CMapAssetCatalog::Get_MapAuthoringRoot() / "Authoring" / AREAS[area] /
-			(std::string(AREAS[area]) + ".worldsequences.json");
+							(std::string(AREAS[area]) + ".worldsequences.json");
 		std::error_code ec;
 		if (!std::filesystem::is_regular_file(sequencePath, ec))
 			sequencePath = CMapAssetCatalog::Get_MapDataRoot() / (std::string(AREAS[area]) + ".worldsequences.json");
@@ -168,109 +234,146 @@ void CMainApp::RefreshSequenceViewer()
 			if (!ec && bytes <= 16u * 1024u * 1024u && input)
 				text.assign(std::istreambuf_iterator<char>(input), {});
 			if (CDataJson::Parse(text, document, error) && JsonText(document, "areaId") == AREAS[area] &&
-				document.Find("instances") && document.Find("instances")->Is_Array() &&
-				document.Find("templates") && document.Find("templates")->Is_Array())
+				document.Find("instances") && document.Find("instances")->Is_Array() && document.Find("templates") &&
+				document.Find("templates")->Is_Array())
 			{
 				std::unordered_map<std::string, std::string> names;
 				sequencesLoaded = true;
-				for (const auto& item : document.Find("templates")->Get_Array())
+				for (const auto &item : document.Find("templates")->Get_Array())
 					names.emplace(JsonText(item, "sequenceId"), FriendlyName(JsonText(item, "displayName")));
-				for (const auto& item : document.Find("instances")->Get_Array())
+				for (const auto &item : document.Find("instances")->Get_Array())
 				{
-					SEQUENCE_VIEWER_ROW row; row.kind = 1;
-					row.id = JsonText(item, "instanceId"); row.sequenceId = row.id;
+					SEQUENCE_VIEWER_ROW row;
+					row.kind = 1;
+					row.id = JsonText(item, "instanceId");
+					row.sequenceId = row.id;
 					const auto found = names.find(JsonText(item, "templateId"));
 					row.name = found == names.end() ? row.id : found->second;
-					row.location = LocationName(row.id, area); row.action = "맵 연출 재생";
-					const auto* enabled = item.Find("enabled");
+					row.location = LocationName(row.id, area);
+					row.action = "맵 연출 재생";
+					const auto *enabled = item.Find("enabled");
 					row.enabled = enabled && enabled->Is_Boolean() && enabled->Get_Boolean() && found != names.end();
-					if (!row.enabled) row.error = "비활성화되었거나 템플릿 연결이 없습니다.";
-					for (const auto& trigger : staged)
+					if (!row.enabled)
+						row.error = "비활성화되었거나 템플릿 연결이 없습니다.";
+					for (const auto &trigger : staged)
 						if (trigger.kind == 0 && trigger.sequenceId == row.id)
 						{
-							if (!row.hasPosition) { row.position = trigger.position; row.location = trigger.location; row.hasPosition = true; }
-							if (!row.related.empty()) row.related += ", ";
+							if (!row.hasPosition)
+							{
+								row.position = trigger.position;
+								row.location = trigger.location;
+								row.hasPosition = true;
+							}
+							if (!row.related.empty())
+								row.related += ", ";
 							row.related += trigger.id;
 						}
-					if (row.related.empty()) row.related = "연결된 트리거 없음 (시퀀스 단독 재생)";
+					if (row.related.empty())
+						row.related = "연결된 트리거 없음 (시퀀스 단독 재생)";
 					staged.push_back(std::move(row));
 				}
 			}
-			else report += "\n시퀀스 읽기 실패: " + error;
+			else
+				report += "\n시퀀스 읽기 실패: " + error;
 		}
 		if (!sequencesLoaded)
-			for (const auto& previous : m_SequenceViewerRows[area])
-				if (previous.kind == 1) staged.push_back(previous);
+			for (const auto &previous : m_SequenceViewerRows[area])
+				if (previous.kind == 1)
+					staged.push_back(previous);
 		if (area == 1)
 		{
 			RefreshCompletePlayPatternOptions();
 			for (size_t i = 0; i < m_CompletePlayPatternIds.size(); ++i)
 			{
-				SEQUENCE_VIEWER_ROW row; row.kind = 2; row.id = m_CompletePlayPatternIds[i];
-				row.name = m_CompletePlayPatternLabels[i]; row.location = "발탄 보스 아레나";
-				row.action = "서버 보스 패턴 / 연출"; staged.push_back(std::move(row));
+				SEQUENCE_VIEWER_ROW row;
+				row.kind = 2;
+				row.id = m_CompletePlayPatternIds[i];
+				row.name = m_CompletePlayPatternLabels[i];
+				row.location = "발탄 보스 아레나";
+				row.action = "서버 보스 패턴 / 연출";
+				staged.push_back(std::move(row));
 			}
 		}
 		else
 		{
-			if (!m_pKoukuSaydonBossTool) m_pKoukuSaydonBossTool = std::make_unique<CKoukuSaydonBossTool>();
-			if (!m_pKoukuSaydonBossTool->Reload(error)) report += "\n쿠크 보스 목록: " + error;
-			for (const auto& pattern : m_pKoukuSaydonBossTool->Get_ProductPatterns())
+			if (!m_pKoukuSaydonBossTool)
+				m_pKoukuSaydonBossTool = std::make_unique<CKoukuSaydonBossTool>();
+			if (!m_pKoukuSaydonBossTool->Reload(error))
+				report += "\n쿠크 보스 목록: " + error;
+			for (const auto &pattern : m_pKoukuSaydonBossTool->Get_ProductPatterns())
 			{
-				SEQUENCE_VIEWER_ROW row; row.kind = 2; row.id = pattern.strPatternId;
-				row.name = pattern.strDisplayName; row.location = pattern.strCategory;
-				row.action = "서버 보스 패턴 / 연출"; row.error = pattern.strLoadError;
-				row.enabled = row.error.empty(); staged.push_back(std::move(row));
+				SEQUENCE_VIEWER_ROW row;
+				row.kind = 2;
+				row.id = pattern.strPatternId;
+				row.name = pattern.strDisplayName;
+				row.location = pattern.strCategory;
+				row.action = "서버 보스 패턴 / 연출";
+				row.error = pattern.strLoadError;
+				row.enabled = row.error.empty();
+				staged.push_back(std::move(row));
 			}
 		}
-		if (const auto* entries = labels.Find("entries"))
-			for (const auto& label : entries->Get_Array())
+		// 선택적 표시 이름은 kind와 stable targetId가 함께 맞는 행만 바꾼다. 실행 identity는 유지한다.
+		if (const auto *entries = labels.Find("entries"))
+			for (const auto &label : entries->Get_Array())
 			{
-				if (JsonText(label, "areaId") != AREAS[area]) continue;
+				if (JsonText(label, "areaId") != AREAS[area])
+					continue;
 				const auto kind = JsonText(label, "kind");
 				const int kindIndex = kind == "trigger" ? 0 : kind == "sequence" ? 1 : kind == "pattern" ? 2 : -1;
-				for (auto& row : staged)
+				for (auto &row : staged)
 					if (row.kind == kindIndex && row.id == JsonText(label, "targetId"))
 					{
 						const auto name = JsonText(label, "displayName"), location = JsonText(label, "location");
-						if (!name.empty()) row.name = name;
-						if (!location.empty()) row.location = location;
+						if (!name.empty())
+							row.name = name;
+						if (!location.empty())
+							row.location = location;
 					}
 			}
-		if (!labelsError.empty()) report += "\n" + labelsError;
-		if (report.empty() || !staged.empty()) m_SequenceViewerRows[area] = std::move(staged);
+		if (!labelsError.empty())
+			report += "\n" + labelsError;
+		if (report.empty() || !staged.empty())
+			m_SequenceViewerRows[area] = std::move(staged);
 		m_SequenceViewerLoadStatus[area] = report;
 	}
 }
 
+// 선택한 stable 행에서 버튼 의미를 해석한다. Test 편집기는 MapTool 미리보기, 아레나는 기존 typed Server 명령을 사용한다.
+// 전송 성공은 실제 실행 성공이 아니므로 sequence와 응답 제한 시간을 별도로 보관한다.
 void CMainApp::ExecuteSequenceViewerAction(const int action)
 {
 	const int area = m_iSequenceViewerArea;
-	const auto& rows = m_SequenceViewerRows[area];
-	const auto found = std::find_if(rows.begin(), rows.end(), [&](const auto& row)
-		{ return std::to_string(row.kind) + ":" + row.id == m_SequenceViewerSelection; });
-	if (found == rows.end()) return;
-	const auto& row = *found;
-	auto* kouku = CLevel_KakulSaydonArena::Get_Active();
-	auto* valtan = CLevel_ValtanArena::Get_Active();
-	const auto sink = area == 0 ? (kouku ? kouku->Get_PlayerCommandSink() : nullptr) :
-		(valtan ? valtan->Get_PlayerCommandSink() : nullptr);
+	const auto &rows = m_SequenceViewerRows[area];
+	const auto found = std::find_if(rows.begin(), rows.end(), [&](const auto &row)
+									{ return std::to_string(row.kind) + ":" + row.id == m_SequenceViewerSelection; });
+	if (found == rows.end())
+		return;
+	const auto &row = *found;
+	auto *kouku = CLevel_KoukuSaydonArena::Get_Active();
+	auto *valtan = CLevel_ValtanArena::Get_Active();
+	const auto sink = area == 0 ? (kouku ? kouku->Get_PlayerCommandSink() : nullptr)
+								: (valtan ? valtan->Get_PlayerCommandSink() : nullptr);
 	const bool editor = CMapEditorWorkspaceService::Is_Active() &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::DEVELOPMENT);
-	// 0 play, 1 replay, 2 stop, 3 editor, 4 go to trigger.
+						CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::DEVELOPMENT);
+	// 버튼 값은 0 재생, 1 재시작, 2 연출 정지, 3 편집기, 4 trigger 위치 이동이다.
 	if (action == 3 && row.kind == 2)
 	{
 		const auto tool = area ? DEBUG_TOOL::VALTAN_BOSS : DEBUG_TOOL::KOUKU_SAYDON_BOSS;
-		if (SUCCEEDED(EnsureDebugTool(tool))) SetDebugToolVisible(tool, true);
+		if (SUCCEEDED(EnsureDebugTool(tool)))
+			SetDebugToolVisible(tool, true);
 		return;
 	}
 	if (editor && row.kind != 2)
 	{
 		if (FAILED(EnsureDebugTool(DEBUG_TOOL::MAP)) || !m_pMapTool)
-		{ m_SequenceViewerStatus = "Map Tool을 준비하지 못했습니다."; return; }
+		{
+			m_SequenceViewerStatus = "Map Tool을 준비하지 못했습니다.";
+			return;
+		}
 		SetDebugToolVisible(DEBUG_TOOL::MAP, true);
-		const auto result = m_pMapTool->Debug_SequenceViewer(AREAS[area], row.sequenceId,
-			row.kind == 0 ? row.id : "", action <= 1, action == 2,
+		const auto result = m_pMapTool->Debug_SequenceViewer(
+			AREAS[area], row.sequenceId, row.kind == 0 ? row.id : "", action <= 1, action == 2,
 			action == 4 && row.hasPosition ? &row.position : nullptr, m_SequenceViewerStatus);
 		if (!result)
 		{
@@ -278,160 +381,211 @@ void CMainApp::ExecuteSequenceViewerAction(const int action)
 				m_SequenceViewerPendingDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
 			m_iSequenceViewerPendingEditorAction = action;
 		}
-		else m_iSequenceViewerPendingEditorAction = -1;
+		else
+			m_iSequenceViewerPendingEditorAction = -1;
 		return;
 	}
 	if (action == 3)
-	{ m_SequenceViewerStatus = "맵 세부 편집은 Lobby > Test에서 이 항목의 Open Editor를 눌러 주세요."; return; }
+	{
+		m_SequenceViewerStatus = "맵 세부 편집은 Lobby > Test에서 이 항목의 Open Editor를 눌러 주세요.";
+		return;
+	}
 	if (!sink)
-	{ m_SequenceViewerStatus = "해당 아레나 입장이 필요합니다. Enter Arena를 눌러 주세요."; return; }
+	{
+		m_SequenceViewerStatus = "해당 아레나 입장이 필요합니다. Enter Arena를 눌러 주세요.";
+		return;
+	}
 	if (action == 4 && row.hasPosition)
 	{
-		const bool ok = area == 0 ? kouku->Get_DebugPlayerController().Request_DebugTeleportToPosition(
-			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, row.position.x, row.position.y, row.position.z) :
-			valtan->Get_DebugPlayerController().Request_DebugTeleportToPosition(
-			LostArk::Shared::WORLD_ID::VALTAN_ARENA, row.position.x, row.position.y, row.position.z);
-		m_SequenceViewerStatus = ok ? "트리거 위치로 이동을 요청했습니다. 도착하면 트리거가 발동할 수 있습니다." : "서버 이동 요청을 보내지 못했습니다.";
+		const bool ok =
+			area == 0
+				? kouku->Get_DebugPlayerController().Request_DebugTeleportToPosition(
+					  LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA, row.position.x, row.position.y, row.position.z)
+				: valtan->Get_DebugPlayerController().Request_DebugTeleportToPosition(
+					  LostArk::Shared::WORLD_ID::VALTAN_ARENA, row.position.x, row.position.y, row.position.z);
+		m_SequenceViewerStatus = ok ? "트리거 위치로 이동을 요청했습니다. 도착하면 트리거가 발동할 수 있습니다."
+									: "서버 이동 요청을 보내지 못했습니다.";
 		return;
 	}
 	if (row.kind == 2)
 	{
-		if (area == 0) m_pKoukuSaydonBossTool->Play_PatternById(row.id,
-			m_pKoukuSaydonBossTool->Get_SourceRevision(), m_SequenceViewerStatus);
-		else if (action == 1) m_pValtanBossTool->Restart_ServerPattern(row.id, m_SequenceViewerStatus);
-		else m_pValtanBossTool->Play_ServerPattern(row.id, m_SequenceViewerStatus);
+		if (area == 0)
+			m_pKoukuSaydonBossTool->Play_PatternById(row.id, m_pKoukuSaydonBossTool->Get_SourceRevision(),
+													 m_SequenceViewerStatus);
+		else if (action == 1)
+			m_pValtanBossTool->Restart_ServerPattern(row.id, m_SequenceViewerStatus);
+		else
+			m_pValtanBossTool->Play_ServerPattern(row.id, m_SequenceViewerStatus);
 		return;
 	}
+	// Server가 재검증할 world·stable target·연산·요청 순번을 채운다. 로컬에서 trigger 동작을 흉내 내지 않는다.
 	LostArk::Shared::C2S_DEBUG_WORLD_PLAYBACK request{};
 	request.iRequestSequence = ++m_iSequenceViewerRequest;
-	request.eWorldId = area == 0 ? LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA : LostArk::Shared::WORLD_ID::VALTAN_ARENA;
+	request.eWorldId =
+		area == 0 ? LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA : LostArk::Shared::WORLD_ID::VALTAN_ARENA;
 	request.strTargetId = action == 2 ? row.sequenceId : row.id;
-	request.eOperation = action == 2 ? PlaybackOp::STOP_SEQUENCE : row.kind == 0 ?
-		(action == 1 ? PlaybackOp::REPLAY_TRIGGER : PlaybackOp::PLAY_TRIGGER) :
-		(action == 1 ? PlaybackOp::REPLAY_SEQUENCE : PlaybackOp::PLAY_SEQUENCE);
+	request.eOperation = action == 2	 ? PlaybackOp::STOP_SEQUENCE
+						 : row.kind == 0 ? (action == 1 ? PlaybackOp::REPLAY_TRIGGER : PlaybackOp::PLAY_TRIGGER)
+										 : (action == 1 ? PlaybackOp::REPLAY_SEQUENCE : PlaybackOp::PLAY_SEQUENCE);
 	const bool sent = sink->Request_DebugWorldPlayback(request);
 	m_iSequenceViewerAwaitingRequest = sent ? request.iRequestSequence : 0u;
 	m_SequenceViewerReplyDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-	m_SequenceViewerStatus = sent ?
-		"서버 응답 대기 중: " + row.id : "요청 전송 실패: 서버 접속과 아레나 상태를 확인해 주세요.";
+	m_SequenceViewerStatus =
+		sent ? "서버 응답 대기 중: " + row.id : "요청 전송 실패: 서버 접속과 아레나 상태를 확인해 주세요.";
 }
 
-
+// 미리보기 종료·새 시작이 cue·패턴·실패·월드 세대를 비운다. 재사용 방지를 위한 실행 epoch는 여기서 초기화하지 않는다.
 void CMainApp::ClearKoukuSequenceArrivals()
 {
-    m_KoukuSequenceArrivalCues.clear();
-    m_strKoukuSequenceArrivalPatternId.clear();
-    m_strKoukuSequenceArrivalFailure.clear();
-    m_strKoukuSequenceArrivalCompletedPreview.clear();
-    m_iKoukuSequenceArrivalWorldGeneration = 0u;
+	m_KoukuSequenceArrivalCues.clear();
+	m_strKoukuSequenceArrivalPatternId.clear();
+	m_strKoukuSequenceArrivalFailure.clear();
+	m_strKoukuSequenceArrivalCompletedPreview.clear();
+	m_iKoukuSequenceArrivalWorldGeneration = 0u;
 }
 
-bool CMainApp::BeginKoukuSequenceArrivals(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
-    const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const uint32_t startClockMs, std::string& status)
+// 저작 preview 시작이 ROOM_PLAYER_ARRIVAL 박스의 slot 중복·목적지를 검사해 시각순 cue를 만든다.
+// 이전 cue는 시작 시 먼저 비우며 실패하면 그 상태를 복원하지 않는다. 검증 성공 후에만 새 실행 epoch와 월드 세대를 고정한다.
+bool CMainApp::BeginKoukuSequenceArrivals(const KOUKU_SAYDON_COMPOSITION_DOCUMENT &document,
+										  const KOUKU_SAYDON_COMPOSITION_PATTERN &pattern, const uint32_t startClockMs,
+										  std::string &status)
 {
-    ClearKoukuSequenceArrivals();
-    std::vector<KOUKU_SEQUENCE_ARRIVAL_CUE> cues;
-    std::array<bool, 4> usedSlots{};
-    for (const auto& box : pattern.LogicOccurrences)
-    {
-        if (!box.bEnabled) continue;
-        const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
-            [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
-        if (definition == document.Logics.end() || definition->strLogicType != "TRIGGER" ||
-            definition->strTriggerKind != "ROOM_PLAYER_ARRIVAL") continue;
-        if (!box.RoomPlayerArrival || box.RoomPlayerArrival->iPlayerSlot >= usedSlots.size() ||
-            usedSlots[box.RoomPlayerArrival->iPlayerSlot])
-        { status = "Sequence player arrival requires distinct slots 1..4 and a destination per box."; return false; }
-        const auto& arrival = *box.RoomPlayerArrival;
-        usedSlots[arrival.iPlayerSlot] = true;
-        KOUKU_SEQUENCE_ARRIVAL_CUE cue;
-        cue.occurrenceId = box.strOccurrenceId;
-        cue.startMs = box.iStartMs;
-        cue.playerSlot = arrival.iPlayerSlot;
-        cue.position = {float(arrival.Position[0]), float(arrival.Position[1]), float(arrival.Position[2])};
-        // Starting halfway through an authoring preview does not replay earlier gameplay.
-        cue.submitted = cue.completed = cue.startMs < startClockMs;
-        cues.push_back(std::move(cue));
-    }
-    if (cues.empty()) return true;
-    if (!CLevel_KakulSaydonArena::Get_Active() || m_iKoukuSequenceArrivalRunEpoch == UINT32_MAX)
-    { status = "Sequence player arrival requires the Kouku arena and an available run epoch."; return false; }
-    std::stable_sort(cues.begin(), cues.end(), [](const auto& a, const auto& b) {
-        return a.startMs != b.startMs ? a.startMs < b.startMs : a.playerSlot < b.playerSlot;
-    });
-    ++m_iKoukuSequenceArrivalRunEpoch;
-    m_KoukuSequenceArrivalCues = std::move(cues);
-    m_strKoukuSequenceArrivalPatternId = pattern.strPatternId;
-    m_iKoukuSequenceArrivalWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
-    return true;
+	ClearKoukuSequenceArrivals();
+	std::vector<KOUKU_SEQUENCE_ARRIVAL_CUE> cues;
+	std::array<bool, 4> usedSlots{};
+	for (const auto &box : pattern.LogicOccurrences)
+	{
+		if (!box.bEnabled)
+			continue;
+		const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
+											 [&](const auto &logic) { return logic.strLogicId == box.strLogicId; });
+		if (definition == document.Logics.end() || definition->strLogicType != "TRIGGER" ||
+			definition->strTriggerKind != "ROOM_PLAYER_ARRIVAL")
+			continue;
+		if (!box.RoomPlayerArrival || box.RoomPlayerArrival->iPlayerSlot >= usedSlots.size() ||
+			usedSlots[box.RoomPlayerArrival->iPlayerSlot])
+		{
+			status = "Sequence player arrival requires distinct slots 1..4 and a destination per box.";
+			return false;
+		}
+		const auto &arrival = *box.RoomPlayerArrival;
+		usedSlots[arrival.iPlayerSlot] = true;
+		KOUKU_SEQUENCE_ARRIVAL_CUE cue;
+		cue.occurrenceId = box.strOccurrenceId;
+		cue.startMs = box.iStartMs;
+		cue.playerSlot = arrival.iPlayerSlot;
+		cue.position = {float(arrival.Position[0]), float(arrival.Position[1]), float(arrival.Position[2])};
+		// 저작 preview를 중간 시각에서 시작하면 앞선 gameplay 이동을 다시 실행하지 않는다.
+		cue.submitted = cue.completed = cue.startMs < startClockMs;
+		cues.push_back(std::move(cue));
+	}
+	if (cues.empty())
+		return true;
+	if (!CLevel_KoukuSaydonArena::Get_Active() || m_iKoukuSequenceArrivalRunEpoch == UINT32_MAX)
+	{
+		status = "Sequence player arrival requires the Kouku arena and an available run epoch.";
+		return false;
+	}
+	// 같은 저작 시각은 player slot 순으로 고정해 한 preview 실행의 제출 순서를 일정하게 유지한다.
+	std::stable_sort(cues.begin(), cues.end(), [](const auto &a, const auto &b)
+					 { return a.startMs != b.startMs ? a.startMs < b.startMs : a.playerSlot < b.playerSlot; });
+	++m_iKoukuSequenceArrivalRunEpoch;
+	m_KoukuSequenceArrivalCues = std::move(cues);
+	m_strKoukuSequenceArrivalPatternId = pattern.strPatternId;
+	m_iKoukuSequenceArrivalWorldGeneration = CNetworkManager::Get().Get_WorldInboundGeneration();
+	return true;
 }
 
-bool CMainApp::SampleKoukuSequenceArrivals(const uint32_t clockMs, const bool advance, std::string& status)
+// preview 시계(ms)가 도달한 cue를 Server 플레이어 이동 명령으로 한 번 제출한다.
+// advance가 false여도 응답 timeout은 확인한다. 실패는 상태에 고정하며 Client Transform을 직접 이동하지 않는다.
+bool CMainApp::SampleKoukuSequenceArrivals(const uint32_t clockMs, const bool advance, std::string &status)
 {
-    if (m_KoukuSequenceArrivalCues.empty()) return true;
-    const auto fail = [&](std::string reason) {
-        status = m_strKoukuSequenceArrivalFailure = std::move(reason);
-        return false;
-    };
-    if (!m_strKoukuSequenceArrivalFailure.empty())
-    { status = m_strKoukuSequenceArrivalFailure; return false; }
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
-    if (!arena || m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
-        return fail("Sequence player arrival cancelled because the Server room changed.");
-    const auto now = std::chrono::steady_clock::now();
-    for (auto& cue : m_KoukuSequenceArrivalCues)
-    {
-        if (cue.submitted && !cue.completed && now >= cue.deadline)
-            return fail("Server player arrival timed out: " + cue.occurrenceId);
-        if (!advance || cue.submitted || clockMs < cue.startMs) continue;
-        if (m_iSequenceViewerRequest == UINT32_MAX)
-            return fail("Sequence request IDs are exhausted; restart the Client.");
-        cue.requestSequence = ++m_iSequenceViewerRequest;
-        if (!arena->Get_DebugPlayerController().Request_KoukuRoomPlayerArrival(cue.requestSequence,
-            m_iKoukuSequenceArrivalRunEpoch, m_strKoukuSequenceArrivalPatternId, cue.occurrenceId,
-            static_cast<uint8_t>(cue.playerSlot), cue.position.x, cue.position.y, cue.position.z, status))
-            return fail("Sequence player arrival could not be submitted: " + cue.occurrenceId + ": " + status);
-        cue.submitted = true;
-        cue.deadline = now + std::chrono::seconds(5);
-    }
-    return true;
+	if (m_KoukuSequenceArrivalCues.empty())
+		return true;
+	const auto fail = [&](std::string reason)
+	{
+		status = m_strKoukuSequenceArrivalFailure = std::move(reason);
+		return false;
+	};
+	if (!m_strKoukuSequenceArrivalFailure.empty())
+	{
+		status = m_strKoukuSequenceArrivalFailure;
+		return false;
+	}
+	auto *arena = CLevel_KoukuSaydonArena::Get_Active();
+	if (!arena || m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
+		return fail("Sequence player arrival cancelled because the Server room changed.");
+	const auto now = std::chrono::steady_clock::now();
+	for (auto &cue : m_KoukuSequenceArrivalCues)
+	{
+		if (cue.submitted && !cue.completed && now >= cue.deadline)
+			return fail("Server player arrival timed out: " + cue.occurrenceId);
+		if (!advance || cue.submitted || clockMs < cue.startMs)
+			continue;
+		if (m_iSequenceViewerRequest == UINT32_MAX)
+			return fail("Sequence request IDs are exhausted; restart the Client.");
+		cue.requestSequence = ++m_iSequenceViewerRequest;
+		if (!arena->Get_DebugPlayerController().Request_KoukuRoomPlayerArrival(
+				cue.requestSequence, m_iKoukuSequenceArrivalRunEpoch, m_strKoukuSequenceArrivalPatternId,
+				cue.occurrenceId, static_cast<uint8_t>(cue.playerSlot), cue.position.x, cue.position.y, cue.position.z,
+				status))
+			return fail("Sequence player arrival could not be submitted: " + cue.occurrenceId + ": " + status);
+		cue.submitted = true;
+		cue.deadline = now + std::chrono::seconds(5);
+	}
+	return true;
 }
 
+// 이미 제출했지만 Server 결과가 없는 cue가 있는지 조회한다. 아직 시작 시각 전인 cue는 대기로 세지 않는다.
 bool CMainApp::KoukuSequenceArrivalsPending() const
 {
-    return std::any_of(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
-        [](const auto& cue) { return cue.submitted && !cue.completed; });
+	return std::any_of(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
+					   [](const auto &cue) { return cue.submitted && !cue.completed; });
 }
 
-bool CMainApp::ConsumeKoukuSequenceArrivalResult(const LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT& result)
+// 월드 playback 응답 중 PLACE_ROOM_PLAYER를 분리해 처리한다.
+// 대응 요청의 world·pattern·연결 세대를 확인한 뒤 완료를 기록하며 거절은 다음 sample이 읽을 실패로 남긴다.
+bool CMainApp::ConsumeKoukuSequenceArrivalResult(const LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT &result)
 {
-    if (result.eOperation != PlaybackOp::PLACE_ROOM_PLAYER) return false;
-    const auto found = std::find_if(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(),
-        [&](const auto& cue) { return cue.submitted && !cue.completed && cue.requestSequence == result.iRequestSequence; });
-    if (found == m_KoukuSequenceArrivalCues.end()) return true;
-    if (result.eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA ||
-        result.strTargetId != m_strKoukuSequenceArrivalPatternId ||
-        m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
-    { m_strKoukuSequenceArrivalFailure = "Player arrival reply belongs to another Sequence or room."; return true; }
-    found->completed = true;
-    found->moved = result.eResult == PlaybackResult::ACCEPTED;
-    if (result.eResult != PlaybackResult::ACCEPTED && result.eResult != PlaybackResult::SKIPPED_PLAYER)
-        m_strKoukuSequenceArrivalFailure = "Server rejected player arrival " + found->occurrenceId + ": " + ResultText(result.eResult);
-    return true;
+	if (result.eOperation != PlaybackOp::PLACE_ROOM_PLAYER)
+		return false;
+	const auto found =
+		std::find_if(m_KoukuSequenceArrivalCues.begin(), m_KoukuSequenceArrivalCues.end(), [&](const auto &cue)
+					 { return cue.submitted && !cue.completed && cue.requestSequence == result.iRequestSequence; });
+	if (found == m_KoukuSequenceArrivalCues.end())
+		return true;
+	if (result.eWorldId != LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA ||
+		result.strTargetId != m_strKoukuSequenceArrivalPatternId ||
+		m_iKoukuSequenceArrivalWorldGeneration != CNetworkManager::Get().Get_WorldInboundGeneration())
+	{
+		m_strKoukuSequenceArrivalFailure = "Player arrival reply belongs to another Sequence or room.";
+		return true;
+	}
+	found->completed = true;
+	found->moved = result.eResult == PlaybackResult::ACCEPTED;
+	if (result.eResult != PlaybackResult::ACCEPTED && result.eResult != PlaybackResult::SKIPPED_PLAYER)
+		m_strKoukuSequenceArrivalFailure =
+			"Server rejected player arrival " + found->occurrenceId + ": " + ResultText(result.eResult);
+	return true;
 }
 
+// Debug 갱신이 두 아레나의 playback 응답과 편집기 준비 대기를 처리한다.
+// Server 응답은 5초, 편집기 준비는 60초 제한이며 timeout 뒤 자동 Server 재전송은 하지 않는다.
 void CMainApp::UpdateSequenceViewer()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Update");
-	for (const auto& sink : {
-		CLevel_KakulSaydonArena::Get_Active() ? CLevel_KakulSaydonArena::Get_Active()->Get_PlayerCommandSink() : nullptr,
-		CLevel_ValtanArena::Get_Active() ? CLevel_ValtanArena::Get_Active()->Get_PlayerCommandSink() : nullptr })
+	for (const auto &sink :
+		 {CLevel_KoukuSaydonArena::Get_Active() ? CLevel_KoukuSaydonArena::Get_Active()->Get_PlayerCommandSink()
+												: nullptr,
+		  CLevel_ValtanArena::Get_Active() ? CLevel_ValtanArena::Get_Active()->Get_PlayerCommandSink() : nullptr})
 	{
 		LostArk::Shared::S2C_DEBUG_WORLD_PLAYBACK_RESULT result{};
 		while (sink && sink->Consume_DebugWorldPlaybackResult(result))
 		{
-			if (ConsumeKoukuSequenceArrivalResult(result)) continue;
-			if (result.iRequestSequence != m_iSequenceViewerAwaitingRequest) continue;
+			if (ConsumeKoukuSequenceArrivalResult(result))
+				continue;
+			if (result.iRequestSequence != m_iSequenceViewerAwaitingRequest)
+				continue;
 			m_iSequenceViewerAwaitingRequest = 0u;
 			m_SequenceViewerStatus = std::string(ResultText(result.eResult)) + "\n" + result.strTargetId;
 		}
@@ -439,86 +593,136 @@ void CMainApp::UpdateSequenceViewer()
 	if (m_iSequenceViewerAwaitingRequest && std::chrono::steady_clock::now() > m_SequenceViewerReplyDeadline)
 	{
 		m_iSequenceViewerAwaitingRequest = 0u;
-		m_SequenceViewerStatus = "서버 응답이 5초 안에 도착하지 않았습니다. 실행 여부는 미확인이며 자동 재시도하지 않습니다.";
+		m_SequenceViewerStatus =
+			"서버 응답이 5초 안에 도착하지 않았습니다. 실행 여부는 미확인이며 자동 재시도하지 않습니다.";
 	}
 	if (m_iSequenceViewerPendingEditorAction >= 0)
 	{
 		if (std::chrono::steady_clock::now() > m_SequenceViewerPendingDeadline)
-		{ m_iSequenceViewerPendingEditorAction = -1; m_SequenceViewerStatus = "Area 준비 시간이 초과됐습니다. Map Tool 상태를 확인해 주세요."; }
-		else ExecuteSequenceViewerAction(m_iSequenceViewerPendingEditorAction);
+		{
+			m_iSequenceViewerPendingEditorAction = -1;
+			m_SequenceViewerStatus = "Area 준비 시간이 초과됐습니다. Map Tool 상태를 확인해 주세요.";
+		}
+		else
+			ExecuteSequenceViewerAction(m_iSequenceViewerPendingEditorAction);
 	}
 }
 
+// Developer Tools가 목록·필터·stable 선택·실행 버튼을 그린다.
+// 목록 조회 자체는 게임 상태를 바꾸지 않으며 명시 버튼만 ExecuteSequenceViewerAction이나 입장 요청으로 전달한다.
 void CMainApp::RenderSequenceViewer()
 {
 	Engine::CProfilerScope panelScope(CGameInstance::Get().Get_Profiler(), "ImGui.Hub.SequenceViewer.Build");
-	if (!ImGui::CollapsingHeader("Sequence Viewer / 시퀀스 뷰어")) return;
-	if (!m_bSequenceViewerLoaded) RefreshSequenceViewer();
+	if (!ImGui::CollapsingHeader("Sequence Viewer / 시퀀스 뷰어"))
+		return;
+	if (!m_bSequenceViewerLoaded)
+		RefreshSequenceViewer();
 	ImGui::TextWrapped("현재 맵과 관계없이 목록을 볼 수 있습니다. Test = 내 화면 미리보기 / Arena = 서버 공동 실행");
-	if (ImGui::Button("Refresh / 목록 새로고침")) RefreshSequenceViewer();
+	if (ImGui::Button("Refresh / 목록 새로고침"))
+		RefreshSequenceViewer();
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(300.f);
-	ImGui::InputTextWithHint("##SequenceSearch", "한글 이름 / 구역 / 트리거·시퀀스 ID 검색", m_SequenceViewerSearch.data(), m_SequenceViewerSearch.size());
-	ImGui::SameLine(); ImGui::SetNextItemWidth(155.f);
+	ImGui::InputTextWithHint("##SequenceSearch", "한글 이름 / 구역 / 트리거·시퀀스 ID 검색",
+							 m_SequenceViewerSearch.data(), m_SequenceViewerSearch.size());
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(155.f);
 	ImGui::Combo("##SequenceKind", &m_iSequenceViewerKind, "전체\0트리거\0맵 시퀀스\0보스 패턴\0");
 	if (ImGui::BeginTabBar("SequenceViewerAreas"))
 	{
 		for (int area = 0; area < 2; ++area)
 		{
-			if (!ImGui::BeginTabItem(area == 0 ? "KoukuSaydon / 쿠크세이튼" : "Valtan / 발탄")) continue;
+			if (!ImGui::BeginTabItem(area == 0 ? "KoukuSaydon / 쿠크세이튼" : "Valtan / 발탄"))
+				continue;
 			if (m_iSequenceViewerArea != area)
-			{ m_iSequenceViewerArea = area; m_SequenceViewerSelection.clear(); m_iSequenceViewerPendingEditorAction = -1; }
+			{
+				m_iSequenceViewerArea = area;
+				m_SequenceViewerSelection.clear();
+				m_iSequenceViewerPendingEditorAction = -1;
+			}
 			ImGui::TextDisabled("Area: %s | %zu items", AREAS[area], m_SequenceViewerRows[area].size());
-			if (!m_SequenceViewerLoadStatus[area].empty()) ImGui::TextWrapped("%s", m_SequenceViewerLoadStatus[area].c_str());
+			if (!m_SequenceViewerLoadStatus[area].empty())
+				ImGui::TextWrapped("%s", m_SequenceViewerLoadStatus[area].c_str());
 			const auto query = SearchText(m_SequenceViewerSearch.data());
-			if (ImGui::BeginTable("SequenceRows", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-				ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY, ImVec2(0.f, 270.f)))
+			if (ImGui::BeginTable("SequenceRows", 4,
+								  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
+									  ImGuiTableFlags_ScrollY,
+								  ImVec2(0.f, 270.f)))
 			{
 				ImGui::TableSetupColumn("구분", ImGuiTableColumnFlags_WidthFixed, 90.f);
 				ImGui::TableSetupColumn("이름 / 원본 ID", ImGuiTableColumnFlags_WidthStretch, 3.f);
 				ImGui::TableSetupColumn("위치 / 구역", ImGuiTableColumnFlags_WidthStretch, 1.f);
 				ImGui::TableSetupColumn("동작 / 상태", ImGuiTableColumnFlags_WidthStretch, 2.f);
-				ImGui::TableSetupScrollFreeze(0, 1); ImGui::TableHeadersRow();
-				for (const auto& row : m_SequenceViewerRows[area])
+				ImGui::TableSetupScrollFreeze(0, 1);
+				ImGui::TableHeadersRow();
+				for (const auto &row : m_SequenceViewerRows[area])
 				{
-					if (m_iSequenceViewerKind && row.kind != m_iSequenceViewerKind - 1) continue;
-					if (!query.empty() && SearchText(row.name + row.id + row.location + row.action + row.related).find(query) == std::string::npos) continue;
+					if (m_iSequenceViewerKind && row.kind != m_iSequenceViewerKind - 1)
+						continue;
+					if (!query.empty() &&
+						SearchText(row.name + row.id + row.location + row.action + row.related).find(query) ==
+							std::string::npos)
+						continue;
 					const auto key = std::to_string(row.kind) + ":" + row.id;
-					ImGui::PushID(key.c_str()); ImGui::TableNextRow(); ImGui::TableNextColumn();
-					ImGui::TextUnformatted(KINDS[row.kind]); ImGui::TableNextColumn();
-					if (ImGui::Selectable((row.name + "##select").c_str(), m_SequenceViewerSelection == key, ImGuiSelectableFlags_SpanAllColumns))
-					{ m_SequenceViewerSelection = key; m_iSequenceViewerPendingEditorAction = -1; }
-					ImGui::TextDisabled("%s", row.id.c_str()); ImGui::TableNextColumn();
-					ImGui::TextUnformatted(row.location.c_str()); ImGui::TableNextColumn();
-					ImGui::TextWrapped("%s", (row.enabled ? row.action : "비활성: " + row.error).c_str()); ImGui::PopID();
+					ImGui::PushID(key.c_str());
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(KINDS[row.kind]);
+					ImGui::TableNextColumn();
+					if (ImGui::Selectable((row.name + "##select").c_str(), m_SequenceViewerSelection == key,
+										  ImGuiSelectableFlags_SpanAllColumns))
+					{
+						m_SequenceViewerSelection = key;
+						m_iSequenceViewerPendingEditorAction = -1;
+					}
+					ImGui::TextDisabled("%s", row.id.c_str());
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(row.location.c_str());
+					ImGui::TableNextColumn();
+					ImGui::TextWrapped("%s", (row.enabled ? row.action : "비활성: " + row.error).c_str());
+					ImGui::PopID();
 				}
 				ImGui::EndTable();
 			}
-			const auto& rows = m_SequenceViewerRows[area];
-			const auto row = std::find_if(rows.begin(), rows.end(), [&](const auto& r)
-				{ return std::to_string(r.kind) + ":" + r.id == m_SequenceViewerSelection; });
+			const auto &rows = m_SequenceViewerRows[area];
+			const auto row = std::find_if(rows.begin(), rows.end(), [&](const auto &r)
+										  { return std::to_string(r.kind) + ":" + r.id == m_SequenceViewerSelection; });
 			if (row != rows.end())
 			{
-				ImGui::TextWrapped("선택: %s\nID: %s\n연결: %s", row->name.c_str(), row->id.c_str(), row->related.c_str());
-				if (row->hasPosition) ImGui::Text("위치 (m): %.2f, %.2f, %.2f", row->position.x, row->position.y, row->position.z);
-				ImGui::BeginDisabled(!row->enabled || m_iSequenceViewerPendingEditorAction >= 0 || m_iSequenceViewerAwaitingRequest != 0u);
-				if (ImGui::Button("Play / 재생")) ExecuteSequenceViewerAction(0);
-				ImGui::SameLine(); if (ImGui::Button("Replay / 다시 재생")) ExecuteSequenceViewerAction(1);
+				ImGui::TextWrapped("선택: %s\nID: %s\n연결: %s", row->name.c_str(), row->id.c_str(),
+								   row->related.c_str());
+				if (row->hasPosition)
+					ImGui::Text("위치 (m): %.2f, %.2f, %.2f", row->position.x, row->position.y, row->position.z);
+				ImGui::BeginDisabled(!row->enabled || m_iSequenceViewerPendingEditorAction >= 0 ||
+									 m_iSequenceViewerAwaitingRequest != 0u);
+				if (ImGui::Button("Play / 재생"))
+					ExecuteSequenceViewerAction(0);
+				ImGui::SameLine();
+				if (ImGui::Button("Replay / 다시 재생"))
+					ExecuteSequenceViewerAction(1);
 				ImGui::BeginDisabled(row->sequenceId.empty());
-				ImGui::SameLine(); if (ImGui::Button("Stop / 연출 정지")) ExecuteSequenceViewerAction(2);
-				ImGui::EndDisabled(); ImGui::EndDisabled();
-				ImGui::SameLine(); if (ImGui::Button("Open Editor / 세부 조정")) ExecuteSequenceViewerAction(3);
+				ImGui::SameLine();
+				if (ImGui::Button("Stop / 연출 정지"))
+					ExecuteSequenceViewerAction(2);
+				ImGui::EndDisabled();
+				ImGui::EndDisabled();
+				ImGui::SameLine();
+				if (ImGui::Button("Open Editor / 세부 조정"))
+					ExecuteSequenceViewerAction(3);
 				ImGui::BeginDisabled(!row->hasPosition);
-				ImGui::SameLine(); if (ImGui::Button("Go To / 트리거 위치")) ExecuteSequenceViewerAction(4);
+				ImGui::SameLine();
+				if (ImGui::Button("Go To / 트리거 위치"))
+					ExecuteSequenceViewerAction(4);
 				ImGui::EndDisabled();
 			}
 			if (ImGui::Button("Enter Arena / 해당 아레나 입장"))
-				RequestDebugLevelNavigation(area == 0 ? LEVEL::KAKULSAYDON_ARENA : LEVEL::VALTAN_ARENA);
-			ImGui::TextWrapped("이동·소환·보스 패턴은 서버 아레나에서 실행합니다. Go To는 내 캐릭터만 이동하며 트리거가 발동할 수 있습니다. Stop은 연출만 정지하며 전투·소환·피해를 되돌리지 않습니다.");
+				RequestDebugLevelNavigation(area == 0 ? LEVEL::KOUKUSAYDON_ARENA : LEVEL::VALTAN_ARENA);
+			ImGui::TextWrapped(
+				"이동·소환·보스 패턴은 서버 아레나에서 실행합니다. Go To는 내 캐릭터만 이동하며 트리거가 발동할 수 있습니다. Stop은 연출만 정지하며 전투·소환·피해를 되돌리지 않습니다.");
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();
 	}
-	if (!m_SequenceViewerStatus.empty()) ImGui::TextWrapped("%s", m_SequenceViewerStatus.c_str());
+	if (!m_SequenceViewerStatus.empty())
+		ImGui::TextWrapped("%s", m_SequenceViewerStatus.c_str());
 }
 #endif

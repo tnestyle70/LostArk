@@ -4,9 +4,10 @@
 #include "MapAssetRenderUtils.h"
 #include "GameInstance.h"
 #include "Model.h"
+#include "MeshLod.h"
+#include "Engine_RenderTypes.h"
 #include "Shader.h"
 #include "Profiler.h"
-#include "Engine_RenderTypes.h"
 
 #include <algorithm>
 #include <cfloat>
@@ -533,11 +534,18 @@ bool_t CDeployPropObject::Should_CullStaticIntact(const bool_t shadowPass) const
 	MAP_FRUSTUM_CULL_DECISION decision{};
 	MAP_FRUSTUM_CULLING_POLICY policy{};
 	policy.baseMargin = .05f;
-	return CMapAssetRenderUtils::Capture_CameraCullSnapshot(snapshot) &&
-		CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, snapshot,
-			m_Placement.assetId, {}, m_Placement.runtimePlacementId,
-			m_vStaticCullCenter, m_fStaticCullRadius, state, decision) &&
-		!decision.shouldRender;
+    if (!CMapAssetRenderUtils::Capture_CameraCullSnapshot(snapshot) ||
+        !CMapAssetRenderUtils::Evaluate_FrustumVisibility(policy, snapshot, m_Placement.assetId, {},
+            m_Placement.runtimePlacementId, m_vStaticCullCenter, m_fStaticCullRadius, state, decision)) return false;
+    if (!decision.shouldRender) return true;
+    auto& game = CGameInstance::Get();
+    if (m_iPrototypeLevelIndex != ETOUI(LEVEL::BERN) || !game.Get_CamPosition() ||
+        CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive()) return false;
+    const auto kind = CMapAssetRenderUtils::Classify_SceneVisibility(*m_pIntactModelCom, MAP_ASSET_RENDER_PROFILE{});
+    float limit = 0.f, pixels = 0.f;
+    return CMapAssetRenderUtils::Get_SceneDistancePolicy(kind, m_fStaticCullRadius, game.Get_MapVisibilitySettings(), limit, pixels) &&
+        CMapAssetRenderUtils::Is_SceneDistanceHidden(m_vStaticCullCenter, m_fStaticCullRadius, *game.Get_CamPosition(),
+            snapshot, game.Get_ViewportSize(), limit, pixels, .05f, false);
 }
 
 bool_t CDeployPropObject::Set_State(DEPLOY_PROP_STATE state)
@@ -1522,6 +1530,14 @@ HRESULT CDeployPropObject::Render_Static(
 {
 	if (nullptr == model || nullptr == shader)
 		return E_FAIL;
+    Engine::MESH_SCREEN_LOD_DESC screenLod{};
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    // Shadow/debris/animated 상태는 기존 경로를 유지한다. 살아 있는 정적 Bern 본체만 화면 LOD를 소비한다.
+    const bool useScreenLod = m_iPrototypeLevelIndex == ETOUI(LEVEL::BERN) && passIndex == 0u &&
+        m_State == DEPLOY_PROP_STATE::INTACT && Get_SourcePresentationOpacity() == 1.f &&
+        m_bStaticCullBoundsValid && camera &&
+        CMapAssetRenderUtils::Build_ObjectScreenLod(*camera, m_vStaticCullCenter, m_fStaticCullRadius,
+            *m_pTransformCom->Get_WorldMatrixPtr(), CGameInstance::Get().Get_ViewportSize(), 1.f, screenLod);
 	const float2_t uvScale = float2_t(1.f, 1.f);
 	const float2_t uvOffset = float2_t(0.f, 0.f);
 	const float opacity = Get_SourcePresentationOpacity();
@@ -1547,7 +1563,7 @@ HRESULT CDeployPropObject::Render_Static(
 			profile.opacity = opacity;
 			profile.emissiveIntensity = emissiveIntensity;
 			if (FAILED(CMapAssetRenderUtils::Bind_Material(model, shader, index, profile, 0.f)) ||
-				FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index)))
+				FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index, useScreenLod ? &screenLod : nullptr)))
 				return E_FAIL;
 			continue;
 		}
@@ -1591,7 +1607,7 @@ HRESULT CDeployPropObject::Render_Static(
 			(0 != hasSpecular && FAILED(model->Bind_Material(
 				shader, "g_SpecularTexture", index, aiTextureType_SPECULAR))) ||
 			FAILED(shader->Bind_RawValue("g_HasOpacityTexture", &hasOpacity, sizeof(hasOpacity))) ||
-			FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index)))
+			FAILED(shader->Begin(passIndex)) || FAILED(model->Render(index, useScreenLod ? &screenLod : nullptr)))
 			return E_FAIL;
 	}
 	return S_OK;

@@ -887,7 +887,7 @@ function Assert-NavigationPlacements {
             $BaseGrid.AreaId -ceq 'LV_LUT_MIDNIGHTC_ED' -and
             $world.areaId -ceq 'LV_LUT_MIDNIGHTC_ED' -and
             $placement.kind -ceq 'boss' -and
-            $placement.archetypeId -ceq 'BOSS_KAKULSAYDON_G2_BIG_SAYDON'
+            $placement.archetypeId -ceq 'BOSS_KOUKUSAYDON_G2_BIG_SAYDON'
         if (-not $preserveAuthoredHeight -and
             [Math]::Abs($y - $cellHeight) -gt 0.25) {
             throw "Gameplay placement height differs from server navigation: $($placement.placementId) grid=$($owner.AreaId)"
@@ -951,7 +951,7 @@ function Invoke-NavigationPaintContractTest {
         $placementPath = Join-Path $fixtureRoot 'placement.world.json'
         $placementCases = @(
             @{ Name='authored boss height'; Error=$null },
-            @{ Name='other boss'; Archetype='BOSS_KAKULSAYDON_G2_KOUKU'; Error='height differs' },
+            @{ Name='other boss'; Archetype='BOSS_KOUKUSAYDON_G2_KOUKU'; Error='height differs' },
             @{ Name='other area'; Area='OTHER_AREA'; Error='height differs' },
             @{ Name='other kind'; Kind='playerSpawn'; Error='height differs' },
             @{ Name='blocked footprint'; Blocked=$true; X=0.5; Error='not on a walkable' },
@@ -962,7 +962,7 @@ function Invoke-NavigationPaintContractTest {
             $area = if ($case.ContainsKey('Area')) { $case.Area } else { 'LV_LUT_MIDNIGHTC_ED' }
             $kind = if ($case.ContainsKey('Kind')) { $case.Kind } else { 'boss' }
             $archetype = if ($case.ContainsKey('Archetype')) { $case.Archetype } else {
-                'BOSS_KAKULSAYDON_G2_BIG_SAYDON'
+                'BOSS_KOUKUSAYDON_G2_BIG_SAYDON'
             }
             $x = if ($case.ContainsKey('X')) { $case.X } else { 1.5 }
             $y = if ($case.ContainsKey('Y')) { $case.Y } else { 8.63 }
@@ -1326,7 +1326,7 @@ $gridFactories = [ordered]@{
         -RelativeSourcePath 'Data/Navigation/LV_LUT_HEARTRB_ED.navsource' `
         -RelativePaintPath 'Data/Navigation/LV_LUT_HEARTRB_ED.navpaint' `
         -RuntimeMaximumStepHeight 1.0 }
-    # The recovered Kakul geometry contains five intentionally disconnected
+    # The recovered Kouku geometry contains five intentionally disconnected
     # source-level islands.  Do not require a single component or infer Mario
     # semantics; StageMarkers names the exact source-level identities instead.
     'LV_LUT_MIDNIGHTC_ED' = { Convert-NavigationAuthoringGrid `

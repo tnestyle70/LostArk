@@ -1,0 +1,77 @@
+{
+  "입력 검사": {
+    "scope": "cpp",
+    "prefix": "la_guard",
+    "body": [
+      "//${1:입력이 유효하지 않으면 반환한다.}",
+      "if (${2:invalidInput})",
+      "{",
+      "    return ${3:false};",
+      "}",
+      "",
+      "$0"
+    ],
+    "description": "입력 검사와 명시적인 실패 반환 — LostArk 작성 규칙"
+  },
+  "작업 블록": {
+    "scope": "cpp",
+    "prefix": "la_step",
+    "body": [
+      "//${1:준비할 직업 목록에 중복 없이 추가}",
+      "$0"
+    ],
+    "description": "짧은 한국어 주석과 직접 작성할 처리 블록 — LostArk 작성 규칙"
+  },
+  "함수": {
+    "scope": "cpp",
+    "prefix": "la_function",
+    "body": [
+      "//${1:호출자가 이 함수를 사용하는 목적}",
+      "${2:void} ${3:FunctionName}(${4:})",
+      "{",
+      "    $0",
+      "}"
+    ],
+    "description": "함수 목적과 다음 줄 중괄호 — LostArk 작성 규칙"
+  },
+  "CPP 전용 보조 함수": {
+    "scope": "cpp",
+    "prefix": "la_local",
+    "body": [
+      "//${1:이 CPP에서만 사용하는 보조 계산의 목적}",
+      "static ${2:void} ${3:HelperName}(${4:})",
+      "{",
+      "    $0",
+      "}"
+    ],
+    "description": "CPP 전용 static 자유 함수 — LostArk 작성 규칙"
+  },
+  "네임스페이스": {
+    "scope": "cpp",
+    "prefix": "la_namespace",
+    "body": [
+      "NS_BEGIN(${1|Client,Engine|})",
+      "",
+      "$0",
+      "",
+      "NS_END"
+    ],
+    "description": "Engine 또는 Client namespace 범위. 매크로 제공 헤더는 대상 파일이 직접 포함한다."
+  },
+  "원소형을 명시한 vector": {
+    "scope": "cpp",
+    "prefix": "la_vector",
+    "body": [
+      "std::vector<${1:std::string}> ${2:values} = {$0};"
+    ],
+    "description": "원소형을 명시한 vector. <vector>가 필요하며 기본 원소형 std::string에는 <string>도 직접 포함한다."
+  },
+  "원소형과 크기를 명시한 array": {
+    "scope": "cpp",
+    "prefix": "la_array",
+    "body": [
+      "std::array<${1:std::string}, ${2:3}> ${3:values} = {$0};"
+    ],
+    "description": "원소형과 고정 크기를 명시한 array. <array>가 필요하며 기본 원소형 std::string에는 <string>도 직접 포함한다."
+  }
+}

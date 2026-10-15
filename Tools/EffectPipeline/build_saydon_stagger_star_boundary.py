@@ -122,10 +122,10 @@ def stable(prefix, *parts):
 
 
 def preview(stage_indices):
-    """Boss preview clock: the selected KAKULSAYDON_G1_PATTERN_1 stages re-based to 0."""
+    """Boss preview clock: the selected KOUKUSAYDON_G1_PATTERN_1 stages re-based to 0."""
     source = current_preview(1)
     composition = read(ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json')
-    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_1')
+    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_1')
     offsets, offset = [], 0
     for stage in pattern['stages']:
         offsets.append(offset)
@@ -358,7 +358,7 @@ def main():
         write(path, document)
         entry = registration(document, 'effect.kouku.source.fx_mn_rpct_05_l.par_l_rpct_05_sk_12_3_loc_int')
         assert entry['treeReference']['parentId'] == STAGGER_CATEGORY
-        entry['compositionResourceProposal'] = dict(resourceId='kakulsaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20],
+        entry['compositionResourceProposal'] = dict(resourceId='koukusaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20],
                                                     displayName=document['displayName'], defaultAnchorKind='BOSS', kind='EFFECT',
                                                     assetId=asset, resourceKind='V1_EFFECT', durationMs=duration_ms(document))
         entries.append(entry)

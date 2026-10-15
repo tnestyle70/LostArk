@@ -31,10 +31,10 @@ namespace
 
 	constexpr KOUKU_GATE KOUKU_GATES[] =
 	{
-		{ { "boss.kakulsaydon.g1.saydon", nullptr }, -2.45f, 1.32f, 740.37f },
-		{ { "boss.kakulsaydon.g2.big-saydon", "boss.kakulsaydon.g2.kouku" }, 3.38f, 10.56f, 323.92f },
-		{ { "boss.kakulsaydon.g3.saydon", nullptr }, -2.45f, 1.32f, 945.17f },
-		{ { "boss.kakulsaydon.bingo.saydon", nullptr }, -3.4f, 0.f, 1147.44f },
+		{ { "boss.koukusaydon.g1.saydon", nullptr }, -2.45f, 1.32f, 740.37f },
+		{ { "boss.koukusaydon.g2.big-saydon", "boss.koukusaydon.g2.kouku" }, 3.38f, 10.56f, 323.92f },
+		{ { "boss.koukusaydon.g3.saydon", nullptr }, -2.45f, 1.32f, 945.17f },
+		{ { "boss.koukusaydon.bingo.saydon", nullptr }, -3.4f, 0.f, 1147.44f },
 	};
 	constexpr std::uint8_t KOUKU_GATE_COUNT = static_cast<std::uint8_t>(std::size(KOUKU_GATES));
 
@@ -44,7 +44,7 @@ namespace
 
 std::uint8_t LostArk::Server::CGameRoom::Gate_Count() const
 {
-	return LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId ? KOUKU_GATE_COUNT : 0u;
+	return LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId ? KOUKU_GATE_COUNT : 0u;
 }
 
 std::uint8_t LostArk::Server::CGameRoom::Resolve_CurrentKoukuGate() const
@@ -215,7 +215,7 @@ void LostArk::Server::CGameRoom::Broadcast_RaidMvpResult(const std::uint8_t iGat
 	message.iGate = iGate;
 	// A legal immediate clear may precede the first ledger tick. Keep the actual
 	// raid roster in the result with zero contribution instead of omitting MVP.
-	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId)
 	{
 		for (const auto& [playerId, player] : m_Players)
 		{
@@ -287,7 +287,7 @@ void LostArk::Server::CGameRoom::Handle_GateProgressPropose(
 	const auto playerIter = m_Players.find(proposerId);
 	if (playerIter == m_Players.end() || playerIter->second.iSessionId != sessionId)
 		return;
-	if (valtanEntry || (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA && request.eKind == GATE_PROGRESS_KIND::ENTER_GATE3))
+	if (valtanEntry || (m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA && request.eKind == GATE_PROGRESS_KIND::ENTER_GATE3))
 	{
 		if (request.eKind == (valtanEntry ? GATE_PROGRESS_KIND::ADVANCE : GATE_PROGRESS_KIND::ENTER_GATE3) &&
 			!m_ArenaAssemblyParticipants.empty() && m_ArenaAssemblyParticipants.front() == proposerId)
@@ -472,7 +472,7 @@ bool LostArk::Server::CGameRoom::Collect_KoukuEntryParticipants(
 {
 	using namespace LostArk::Shared;
 	participants.clear(); raidEpoch = 0u;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return false;
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA) return false;
 	const bool raid = Is_KoukuRaidRunning();
 	if (raid)
 	{
@@ -487,7 +487,7 @@ bool LostArk::Server::CGameRoom::Collect_KoukuEntryParticipants(
 	else
 	{
 		if (m_GateProgress.iCurrentGate > 3u || std::any_of(m_WorldEntities.begin(), m_WorldEntities.end(),
-			[](const auto& boss) { return boss.strPlacementId == "boss.kakulsaydon.g3.saydon"; })) return false;
+			[](const auto& boss) { return boss.strPlacementId == "boss.koukusaydon.g3.saydon"; })) return false;
 		// Retain the existing leader-only aura condition and that leader's party.
 		for (const auto& [id, player] : m_Players)
 		{
@@ -517,7 +517,7 @@ bool LostArk::Server::CGameRoom::Collect_KoukuEntryParticipants(
 void LostArk::Server::CGameRoom::Update_ArenaAssembly()
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return;
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA) return;
 	std::vector<PLAYER_ID> participants;
 	std::uint32_t epoch = 0u;
 	const bool occupied = m_eWorldId == WORLD_ID::VALTAN_ARENA ?
@@ -917,7 +917,7 @@ LostArk::Shared::DEBUG_KILL_GATE_BOSSES_RESULT LostArk::Server::CGameRoom::Apply
  using namespace LostArk::Shared;
  using Result = DEBUG_KILL_GATE_BOSSES_RESULT;
  killedCount = 0u;
- if (request.eWorldId != m_eWorldId || (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA))
+ if (request.eWorldId != m_eWorldId || (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA))
   return Result::WRONG_WORLD;
  const auto owner = m_PlayerIdBySessionId.find(sessionId);
  if (owner == m_PlayerIdBySessionId.end() || !m_Players.contains(owner->second)) return Result::INVALID_PLAYER;

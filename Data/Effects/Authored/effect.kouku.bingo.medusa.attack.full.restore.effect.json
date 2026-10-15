@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "sourceModelPreview": {"gateId": "BINGO", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_20_02", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 867, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_20_03", "startOffsetMs": 867, "sourceStartMs": 0, "playMs": 2000, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_20_04", "startOffsetMs": 2867, "sourceStartMs": 0, "playMs": 2167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "BINGO", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.koukusaydon.bingo.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_20_02", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 867, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_20_03", "startOffsetMs": 867, "sourceStartMs": 0, "playMs": 2000, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_20_04", "startOffsetMs": 2867, "sourceStartMs": 0, "playMs": 2167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.bingo.medusa.attack.full.restore",
   "displayName": "빙고 | 메두사 공격",
   "bloomIntensity": 1.29999995,

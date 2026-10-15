@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>LostArk 원소형을 명시한 vector</Title>
+      <Shortcut>la_vector</Shortcut>
+      <Description>원소형을 명시한 vector. &lt;vector&gt;가 필요하며 기본 원소형 std::string에는 &lt;string&gt;도 직접 포함한다.</Description>
+      <Author>LostArk</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal><ID>elementType</ID><ToolTip>원소의 실제 타입을 입력한다.</ToolTip><Default>std::string</Default></Literal>
+        <Literal><ID>name</ID><ToolTip>지역 변수 이름을 입력한다.</ToolTip><Default>values</Default></Literal>
+      </Declarations>
+      <Code Language="CPP"><![CDATA[std::vector<$elementType$> $name$ = {$end$};]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

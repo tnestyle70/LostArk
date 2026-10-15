@@ -36,7 +36,7 @@ RESOURCES = ROOT / "Client/Bin/Resources"
 EVIDENCE = ROOT / "out/KoukuGate2Restore20260911"
 PACKAGES = Path("C:/ProgramData/Smilegate/Games/LOSTARK/EFGame/ReleasePC/Packages")
 DURATION = 27000
-PATTERN_ID = "KAKULSAYDON_G1_PATTERN_3"
+PATTERN_ID = "KOUKUSAYDON_G1_PATTERN_3"
 PREFIX = "kouku.gate2.intro"
 BASIS = np.array([[1., 0., 0.], [0., 0., 1.], [0., -1., 0.]])
 BONE_MODELS = {}
@@ -420,7 +420,7 @@ def bake_actor(rows, group, source, label):
     # The shared WModel writer imports this module for pose sampling.
     from bake_character_cinematic_clips import DONOR_TO_BODY, install_baked_clip
     model = read_bake_model(source, rows, group, 'gate2_intro_27s')
-    donor_asset = f"Map/KakulSaydon/Gate2Intro/{label}/{label}.wmodel"
+    donor_asset = f"Map/KoukuSaydon/Gate2Intro/{label}/{label}.wmodel"
     canonical = DONOR_TO_BODY.get(donor_asset)
     if canonical and any(a.name == 'gate2_intro_27s' for a in model.animations):
         if source.resolve() != (RESOURCES / canonical).resolve():
@@ -646,7 +646,7 @@ def install_sequence_pattern(path, pattern, worlds, presentations):
     """Keep the independent Sequence and every referenced definition in one save."""
     baseline = path.read_bytes()
     document = json.loads(baseline.decode("utf-8-sig"))
-    if document.get("compositionId") != "boss.composition.kakulsaydon.sequencer":
+    if document.get("compositionId") != "boss.composition.koukusaydon.sequencer":
         raise ValueError("Gate intro must target the independent Sequence composition")
     for key, id_key, rows in (("worlds", "worldId", worlds),
                               ("presentationResources", "resourceId", presentations)):

@@ -1,30 +1,39 @@
 #include "CombatAnalysisFrameView.h"
 
+// 통계 제목·값의 White 색상 상수를 사용한다.
 #include <DirectXColors.h>
 
+// Server 이벤트에서 집계된 전투 통계와 Player tick을 읽는다.
 #include "CombatHUDViewModel.h"
+// 통계 문구 JSON의 object·array·string 값을 읽는다.
 #include "DataJson.h"
+// viewport와 글자 측정·그리기 서비스를 사용한다.
 #include "GameInstance.h"
-#include "MainApp.h"
+// 닫기 버튼 클릭 효과음을 재생한다.
+#include "UISoundPlayer.h"
+// 통계 문구가 저장된 저작 Data 경로를 해석한다.
 #include "ProjectDataRoot.h"
+// 닫기 hit test·포인터 소비와 상위 창의 텍스트 가림을 검사한다.
 #include "UIInputRouter.h"
+// 표시 크기에 맞는 글꼴과 잔여 배율을 구한다.
 #include "UILabelFont.h"
+// 창 슬롯의 rect·texture·visible을 읽고 바꾼다.
 #include "UILayoutRuntime.h"
 
+// 글자 시작 위치를 화면 픽셀로 반올림한다.
 #include <cmath>
+// 시간·숫자 문자열을 제한된 wide 버퍼에 만든다.
 #include <cstdio>
+// CombatAnalysisUi.json을 파일에서 읽는다.
 #include <fstream>
 
 namespace
 {
-	/* combatanalysisframe.gfx is authored at 1920x1080; the layout document scales the frame
-	onto the 1280x720 reference, so every retail px offset below goes through m_fRetailScale
-	(CA_Bg slot width / FRAME_WIDTH). */
+	// 1920×1080 원본 치수는 CA_Bg 폭/470 배율로 1280×720 레이아웃 기준 좌표에 맞춘다.
 	constexpr f32_t FRAME_WIDTH = 470.f;
 	constexpr f32_t TITLE_BAR_HEIGHT = 32.f;
 	constexpr f32_t TEXT_BOOST = 1.15f;
-	/* timeTick _defaultTF: YG760 14 px at (243+2, 5+2). Tiles: YG760 14 px centred in the
-	116x26 tile (statTitleList y 33, userStatList y 60, RollingTileList pitch 470/4). */
+	// 시간과 네 통계 타일의 원본 픽셀 위치·크기다.
 	constexpr f32_t TIME_X = 247.f;
 	constexpr f32_t TIME_Y = 8.f;
 	constexpr f32_t TILE_PITCH = FRAME_WIDTH / 4.f;
@@ -37,7 +46,7 @@ namespace
 	constexpr size_t STAT_COUNT = 4;
 
 	const wstring_t FONT_YG760 = TEXT("Font_YG760");
-	const fvector_t COLOR_TIME = XMVectorSet(1.f, 210.f / 255.f, 0.f, 1.f);   // #FFD200
+	const fvector_t COLOR_TIME = XMVectorSet(1.f, 210.f / 255.f, 0.f, 1.f);   // #FFD200 시간 표시 색이다.
 	const char* ART_CLOSE_NORMAL = "UI/CombatAnalysis/CA_Close_Normal.png";
 	const char* ART_CLOSE_OVER = "UI/CombatAnalysis/CA_Close_Over.png";
 
@@ -69,12 +78,13 @@ Client::CCombatAnalysisFrameView::CCombatAnalysisFrameView(
 	if (m_pView->Get_SlotRect("CA_Bg", fX, fY, fWidth, fHeight) && fWidth > 0.f)
 		m_fRetailScale = fWidth / FRAME_WIDTH;
 	Load_Data();
-	/* LEVEL::STATIC sprites are visible from construction; the HUD gate shows them. */
+	// STATIC sprite가 생성 직후 보이지 않도록 숨기고 이후 HUD 조건에서 표시한다.
 	Hide();
 }
 
 Client::CCombatAnalysisFrameView::~CCombatAnalysisFrameView() = default;
 
+// 기존 통계 항목을 비운 뒤 JSON을 읽는다. 전체 설정을 임시로 준비해 교체하는 방식은 아니다.
 void Client::CCombatAnalysisFrameView::Load_Data()
 {
 	m_Stats.clear();
@@ -136,8 +146,7 @@ void Client::CCombatAnalysisFrameView::Update(const f32_t fTimeDelta, const HUD_
 	(void)fTimeDelta;
 	const HUD_COMBAT_ANALYSIS& Analysis = CCombatHUDViewModel::Get().Get_CombatAnalysis();
 	m_iServerTick = Player.iServerTick;
-	/* X hides the frame for the raid it was closed in; the next raid's first hit (a new
-	start tick after Reset_RuntimeState) brings it back. */
+	// 이전과 다른 활성 전투의 시작 tick을 받으면 닫기 버튼의 숨김을 해제한다.
 	if (m_bHidden && Analysis.isActive && Analysis.iStartTick != m_iHiddenFightStartTick)
 		m_bHidden = false;
 	if (m_bHidden)
@@ -154,7 +163,7 @@ void Client::CCombatAnalysisFrameView::Update(const f32_t fTimeDelta, const HUD_
 		FRAME_WIDTH * m_fRetailScale, TITLE_BAR_HEIGHT * m_fRetailScale, "CA_Close");
 	Update_Chrome();
 
-	/* Anything over the frame belongs to the frame -- no move command underneath. */
+	// 창 위 포인터를 해당 프레임에서 소비해 배경 이동 명령을 막는다.
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	f32_t fX = 0.f, fY = 0.f, fWidth = 0.f, fHeight = 0.f;
 	if (m_pView->Get_SlotRect("CA_Bg", fX, fY, fWidth, fHeight) &&
@@ -177,7 +186,7 @@ void Client::CCombatAnalysisFrameView::Update_Chrome()
 	m_pView->Set_SlotTexture("CA_Close", bHovered ? ART_CLOSE_OVER : ART_CLOSE_NORMAL);
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		m_bHidden = true;
 		m_iHiddenFightStartTick = CCombatHUDViewModel::Get().Get_CombatAnalysis().iStartTick;
 	}
@@ -191,8 +200,7 @@ wstring Client::CCombatAnalysisFrameView::Format_Amount(const uint64_t iValue) c
 		(void)swprintf_s(szBuffer, L"%llu", static_cast<unsigned long long>(iValue));
 		return szBuffer;
 	}
-	/* 만 / 억 / 조 / 경: each unit is 10^4 of the previous; two decimals like the retail
-	MoneyLabel ("11.48억", "249.08만"). */
+	// 만 / 억 / 조 / 경은 10^4 단위이며 소수 둘째 자리까지 표시한다. 예: 11.48억, 249.08만.
 	uint64_t iDivisor = 10000ull;
 	size_t iUnit = 0;
 	while (iUnit + 1 < m_Units.size() && iValue >= iDivisor * 10000ull)
@@ -205,6 +213,7 @@ wstring Client::CCombatAnalysisFrameView::Format_Amount(const uint64_t iValue) c
 	return wstring(szBuffer) + m_Units[iUnit];
 }
 
+// 마지막 Update의 tick으로 경과 시간을 계산하고 최신 ViewModel 집계를 표시한다.
 void Client::CCombatAnalysisFrameView::Render_Text()
 {
 	if (m_bHidden || !m_bShown || nullptr == m_pView)
@@ -234,6 +243,7 @@ void Client::CCombatAnalysisFrameView::Render_Text()
 		{
 			if (Tile.strId == "damage")
 				strValue = Format_Amount(Analysis.iTotalDamage);
+			// DPS는 누적 피해×30Hz/경과 tick이며 0으로 나누지 않도록 최소 한 tick을 사용한다.
 			else if (Tile.strId == "dps")
 				strValue = Format_Amount(static_cast<uint64_t>(
 					static_cast<f64_t>(Analysis.iTotalDamage) * SERVER_TICK_HZ /
@@ -287,8 +297,7 @@ void Client::CCombatAnalysisFrameView::Draw_Label(const wstring_t& strFont, cons
 	const f32_t fScaleX = vViewport.x / m_pView->Get_ResolutionWidth();
 	const f32_t fScaleY = vViewport.y / m_pView->Get_ResolutionHeight();
 	const f32_t fUiScale = (std::min)(fScaleX, fScaleY);
-	/* Same rule as the other runtime windows' Draw_Label: nearest baked size, whole-pixel
-	top-left anchoring, drop shadow. */
+	// 가까운 크기의 글꼴을 골라 픽셀에 맞추고 그림자를 함께 그린다.
 	f32_t fScale = 1.f;
 	const wstring_t strUseFont = UILabelFont::Resolve(strFont,
 		fRetailPx * m_fRetailScale * fUiScale * TEXT_BOOST, fScale);

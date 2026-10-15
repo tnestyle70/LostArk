@@ -492,8 +492,8 @@ void CNpc::Arm_HitReactionSound(const char_t* pClipName)
 		return m_strModelTag == CMonsterPresentationAssetService::Get_ModelPrototypeTag(archetype);
 	};
 	if ((clip == "rpcz00_dmg_idle_1" || clip == "rpcz00_dmg_idle_2") &&
-		(m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KAKULSAYDON_G1_KOUKU") ||
-		 m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KAKULSAYDON_G2_KOUKU")))
+		(m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KOUKUSAYDON_G1_KOUKU") ||
+		 m_strModelTag == CKoukuSaydonPresentationAssetService::Get_ModelPrototypeTag("BOSS_KOUKUSAYDON_G2_KOUKU")))
 		m_iPendingHitReactionSoundEvent = 0u;
 	else if (clip == "mn_padd_01_sk.ao_dmg_idle_1" && monster("MONSTER_VALTAN_PADD_01"))
 		m_iPendingHitReactionSoundEvent = 1u;

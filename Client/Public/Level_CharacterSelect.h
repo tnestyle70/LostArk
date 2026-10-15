@@ -356,7 +356,7 @@ public:
 	const std::string& Debug_GetFloorSwapStatus() const { return m_FloorSwapStatus; }
 	const CHARACTER_SELECT_FLOOR_SWAP_SETTINGS& Debug_GetFloorSwapSettings() const
 	{ return m_FloorSwapAppliedSettings; }
-	bool_t Debug_Request_KakulSaydonArena();
+	bool_t Debug_Request_KoukuSaydonArena();
 
 	/* IMapAuthoringHost borrows the live map. Character Select owns no
 	   Deploy props. Active authoring pauses the main and movie background
@@ -498,7 +498,7 @@ private:
 	std::vector<std::string> m_RequestedClassEffectTargets;
 	std::uint32_t m_iNextClassChangeSequence = 1u;
 	std::uint32_t m_iNextDespawnRequestSequence = 1u;
-	std::uint32_t m_iNextKakulArenaRequestSequence = 1u;
+	std::uint32_t m_iNextKoukuArenaRequestSequence = 1u;
 	std::uint32_t m_iPendingClassChangeSequence = 0u;
 	CLASS_PRESENTATION_PREPARATION_STATE
 		m_eClassPresentationPreparationState =

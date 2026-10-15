@@ -18,6 +18,7 @@ SOURCE = ROOT / "Client" / "Private" / "KoukuSaydonAnimationPatternDocument.cpp"
 ANIMATION_TOOL_SOURCE = ROOT / "Client" / "Private" / "Animation_Tool.cpp"
 PROJECT = ROOT / "Client" / "Default" / "Client.vcxproj"
 FILTERS = ROOT / "Client" / "Default" / "Client.vcxproj.filters"
+SOLUTION = ROOT / "Framework.sln"
 
 PROFILES = ("MN_RPCT_05", "MN_RPCT_06", "MN_RPCT_07", "MN_RPCZ_00")
 ROOT_FIELDS = {
@@ -117,7 +118,7 @@ def _validate_contract(document, reference, available_clips, expected_profile, f
     occurrence_ids = set()
     total_clips = 0
     pattern_shape = re.compile(
-        rf"kakulsaydon\.{re.escape(expected_profile)}\.pattern\.([1-9][0-9]*)"
+        rf"koukusaydon\.{re.escape(expected_profile)}\.pattern\.([1-9][0-9]*)"
     )
     for pattern in document["patterns"]:
         if set(pattern) != PATTERN_FIELDS:
@@ -183,7 +184,7 @@ class KoukuSaydonAnimationPatternDocumentContractTests(unittest.TestCase):
             )
         )
         action, stage, slot = _first_reference_slot(reference)
-        pattern_id = f"kakulsaydon.{profile}.pattern.1"
+        pattern_id = f"koukusaydon.{profile}.pattern.1"
         document = {
             "schema": "lostark.kouku-saydon-animation-pattern-bindings",
             "formatVersion": 1,
@@ -382,7 +383,7 @@ class KoukuSaydonAnimationPatternDocumentContractTests(unittest.TestCase):
             '"LOOP_TO_WINDOW"',
             "Has_ExactProperties",
             "Build_SourceKey",
-            'return "kakulsaydon." +',
+            'return "koukusaydon." +',
             '".pattern."',
             '".clip."',
             "patternOrdinal >= document.iNextPatternOrdinal",
@@ -426,21 +427,19 @@ class KoukuSaydonAnimationPatternDocumentContractTests(unittest.TestCase):
             source.rindex("MoveFileExW"),
         )
 
-    def test_project_and_data_filters_register_the_new_contract(self):
-        project = PROJECT.read_text(encoding="utf-8")
-        filters = FILTERS.read_text(encoding="utf-8")
-        entries = (
-            "KoukuSaydonAnimationPatternDocument.h",
-            "KoukuSaydonAnimationPatternDocument.cpp",
-            "MN_RPCT_05.patternbindings.json",
-            "MN_RPCT_06.patternbindings.json",
-            "MN_RPCT_07.patternbindings.json",
-            "MN_RPCZ_00.patternbindings.json",
-        )
-        for entry in entries:
+    def test_project_and_solution_register_the_new_contract(self):
+        project = PROJECT.read_text(encoding="utf-8-sig")
+        filters = FILTERS.read_text(encoding="utf-8-sig")
+        solution_lines = [line.strip() for line in SOLUTION.read_text(encoding="utf-8-sig").splitlines()]
+        for entry in ("KoukuSaydonAnimationPatternDocument.h", "KoukuSaydonAnimationPatternDocument.cpp"):
             self.assertEqual(project.count(entry), 1, entry)
             self.assertEqual(filters.count(entry), 1, entry)
-        self.assertIn("96.DataFiles\\Animation\\Authored\\KoukuSaydon", filters)
+        for profile in PROFILES:
+            entry = "Data\\Animation\\Authored\\KoukuSaydon\\" + profile + ".patternbindings.json"
+            self.assertEqual(solution_lines.count(entry + " = " + entry), 1, entry)
+            self.assertTrue((ROOT / entry.replace("\\", "/")).is_file(), entry)
+            self.assertNotIn(profile + ".patternbindings.json", project)
+            self.assertNotIn(profile + ".patternbindings.json", filters)
 
     def test_animation_tool_exposes_all_profiles_and_pattern_workflow(self):
         source = read_source_text(ANIMATION_TOOL_SOURCE, encoding="utf-8")

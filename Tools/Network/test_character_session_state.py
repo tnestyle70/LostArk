@@ -27,7 +27,7 @@ using bool_t = bool;
     "Client_Defines.h": r'''#pragma once
 #include "Engine_Defines.h"
 namespace Client { enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT,
-    BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA, COLOSSEUM }; }
+    BERN, VALTAN_ARENA, KOUKUSAYDON_ARENA, DEVELOPMENT, MAHARAKA, COLOSSEUM }; }
 ''',
     "GameInstance.h": r'''#pragma once
 #include "Client_Defines.h"

@@ -271,7 +271,7 @@ def project(evidence, material_patch, install):
                 element['actionCueAttachment'].pop('snapshotRootSourceBasisYawDegrees', None)
         if key == 4219951:
             document['sourceModelPreview'] = dict(gateId='GATE3', actorProfileId='MN_RPCT_05',
-                targetBossPlacementId='boss.kakulsaydon.g3.saydon', animations=[
+                targetBossPlacementId='boss.koukusaydon.g3.saydon', animations=[
                     dict(runtimeClip='rpct00_att_battle_9_01', startOffsetMs=0, sourceStartMs=0,
                          playMs=1560, playRate=1, endPolicy='HOLD_LAST_POSE'),
                     dict(runtimeClip='rpct00_att_battle_9_02', startOffsetMs=1560, sourceStartMs=0,

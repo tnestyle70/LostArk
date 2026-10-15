@@ -155,4 +155,61 @@ Tools/EffectPipeline/build_warlord_altv_debris_candidate.py는 원본 package와
 
 사용자가 요청한 머리 위 원점을 현재 본 공간에서 [0,0,-1.55]m로 재표현하는 후보를 만든다. exact notify·ParticleSystem·18개 emitter/program을 확인한 뒤 공통 detail.transform.position만 바꾼다. 전체 socket 회전은 sprite14개와 mesh4개의 분포·속도·축잠금까지 바꾸므로 이번 위치 수정에 사용하지 않는다. SourceRecipe·material·resources·시각·크기·seed·socket·FOLLOW·world-space 출생과 나머지213개 요소는 보존한다. V·방패1166·추가446·clip2·카메라·렌더링 옵션도 변경하지 않는다. 원본 payload의155cm와 named bone은 확인했지만 원작 실행의 offset 공간까지 인증한 것은 아니므로, 범용 원본 decoder 수정이나 원작 위치 완전 복원으로 기록하지 않는다.
 
+## G24. 10-10 Alt V 마지막 clip의 누락 Resource 복구
+
+현재 Release PID31304의 `Client/Default/EffectFailure.user.log`는 clip2 준비 시
+`Effect resource slot, path, file, or duplicate is invalid.`를 기록하고 실제 시전은
+`Product target is not prepared`로 거부한다. 192개 요소의 206개 고유 resource 중
+`Effect/Warlord/FullRestore/Meshes/fm_a_stone_001.wmodel` 하나만 없으며, G22의 작은 돌
+6개가 이 파일을 참조한다. Codec의 파일 존재 검사가 전체 문서 Stage를 막으므로
+현재 실패는 본·socket 합성과 셰이더 실행보다 앞선다.
+
+### 대상 파일과 보존 범위
+
+기존 정본 JSON과 66개 방사형 occurrence의 원본 yaw, 전용 guardian-ground slot,
+socket `[90,180,0]`, native1140~1146/5111을 유지한다. 누락 Resource 한 파일만 복구한다.
+10-04 파생본이 없는 현재 PC에서는 동일 source mesh의 설치된
+`Effect/ClassSelect/Warlord/Meshes/fm_a_stone_001.wmodel`을 사용한다. 이 donor의
+position/normal/tangentXYZ/UV/index/bounds/material은 G22 파생본의 기반이며,
+G22에서 추가 교정한 19개 tangent.w는 별도다. 이전 원본 부호 복원까지 재현했다고
+기록하지 않는다. 기존 donor와 다른 클래스 자산은 덮어쓰지 않는다.
+
+### 누락 파일의 설치 코드
+
+후보의 공식 WModel geometry parse와 donor SHA 검사를 끝낸 뒤 아래 코드로 추가한다.
+목적지가 이미 생겼으면 새 파일을 덮지 않고 중단한다. 저작 JSON이나 실행 중 draft를
+교체하지 않으며, 새 C++ 파일·project/filter 등록과 셰이더 수정은 없다.
+
+```powershell
+$resourceRoot = 'C:\Users\tnest\Desktop\LostArk\Client\Bin\Resources'
+$source = Join-Path $resourceRoot 'Effect\ClassSelect\Warlord\Meshes\fm_a_stone_001.wmodel'
+$target = Join-Path $resourceRoot 'Effect\Warlord\FullRestore\Meshes\fm_a_stone_001.wmodel'
+$expected = '6309cf5019b7023195d763f9fd3acd537b476d2b7987475f3de5f16b42a7a6ad'
+if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+    throw 'Reviewed source mesh changed.'
+}
+if (Test-Path -LiteralPath $target) { throw 'Destination appeared; preserve it and recheck.' }
+$staged = $target + '.restore-' + [Guid]::NewGuid().ToString('N')
+try {
+    [IO.File]::WriteAllBytes($staged, [IO.File]::ReadAllBytes($source))
+    if ((Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+        throw 'Staged resource bytes differ.'
+    }
+    [IO.File]::Move($staged, $target)
+}
+finally {
+    if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged }
+}
+```
+
+### 검증과 전달
+
+현재 Debug/Release Product OBJ로 out 전용 console을 링크하여 실제
+`CEffectDocumentCodec::Load`와 `CEffectCatalog::Stage_ProductLoadTarget`의 실패를
+먼저 재현하고 설치 뒤 같은 진입점의 성공을 확인한다. 전체 resource 존재, JSON bytes
+보존과 `git diff --check`를 확인한다. 별도로 요청한 베른 replay CPP는 정상
+Debug/Release Product Build로 검증한다. Client/UI 실행과 최종 6방향 화면 확인은
+사용자가 수행한다. Resource는 Git 제외이며 위 상대 경로의 물리 파일을 팀장 Drive에
+추가 전달해야 다른 PC의 같은 누락을 해결할 수 있다.
+
 후보 생성기는 원본 Action과 최신 저작본의 SHA 및 stable ID별 field patch를 out/WarlordAltVHeadOrigin20261005에 남긴다. 기존 실제 CModel Alt V 본 샘플과 제품 Codec/Stage/Playback/Draw로 notify 원점의 높이, 시전 방향별 위치, 입자의 방향·크기·색·발생 보존을 검사한다. 통과 후 최신 bytes를 다시 읽어 백업·CAS·원자 교체한다. 현재 DIRECT_AUTHORED_DOCUMENT 소비자는 clip1 full restore 한 파일이며, 과거 unified 문서나 별도 게시 복사본을 바꾸지 않는다. C++·HLSL·Resource·project/filter 변경은 없고 이 데이터 수정에 제품 빌드를 반복하지 않는다. Client 화면 확인은 사용자 소유다.

@@ -1,19 +1,14 @@
+// 엔진 물리 명세/handle과 main-thread facade를 구현한다.
 #include "Physics_Manager.h"
 
-#ifdef new
-#pragma push_macro("new")
-#undef new
-#define LOSTARK_RESTORE_DEBUG_NEW
-#endif
+// PhysX 객체 생성·primitive 형상·동기 simulation을 구현 안에서만 사용한다.
 #include <PxPhysicsAPI.h>
-#ifdef LOSTARK_RESTORE_DEBUG_NEW
-#pragma pop_macro("new")
-#undef LOSTARK_RESTORE_DEBUG_NEW
-#endif
 
+// Level slot 제거와 경과 시간 측정, 유한성·고정 step 잔여 계산을 사용한다.
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+// 내부 저장소에 필요한 표준 이동/컨테이너 선언을 포함한다.
 #include <utility>
 #include <vector>
 
@@ -21,31 +16,37 @@ using namespace physx;
 
 namespace
 {
+	// foundation보다 오래 사는 allocator/error callback이다. backend가 이 전역 객체를 참조한다.
 	PxDefaultAllocator g_PhysicsAllocator;
 	PxDefaultErrorCallback g_PhysicsErrorCallback;
 
+	// 월드 위치·속도·가속도 입력의 NaN/무한대를 검사한다.
 	bool IsFinite(const float3_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z);
 	}
 
+	// quaternion 네 성분의 유한성을 검사한다. 정규화 가능 여부는 TryMakeTransform에서 추가 확인한다.
 	bool IsFinite(const float4_t& value)
 	{
 		return std::isfinite(value.x) && std::isfinite(value.y) &&
 			std::isfinite(value.z) && std::isfinite(value.w);
 	}
 
+	// 좌표축/단위를 바꾸지 않고 엔진 벡터의 XYZ를 backend로 전달한다.
 	PxVec3 ToPxVec3(const float3_t& value)
 	{
 		return PxVec3(value.x, value.y, value.z);
 	}
 
+	// backend 결과를 같은 좌표계/단위의 엔진 벡터로 복사한다.
 	float3_t ToFloat3(const PxVec3& value)
 	{
 		return float3_t(value.x, value.y, value.z);
 	}
 
+	// 위치와 quaternion을 검사하고 회전을 정규화한다. outPose에 대입한 뒤 backend 유효성 결과를 반환한다.
 	bool TryMakeTransform(const PHYSICS_POSE& Pose, PxTransform& outPose)
 	{
 		if (!IsFinite(Pose.vPosition) ||
@@ -67,6 +68,7 @@ namespace
 		return outPose.isValid();
 	}
 
+	// actor root의 backend 변환을 엔진 pose로 복사한다. shape local offset을 합치지 않는다.
 	PHYSICS_POSE ToPhysicsPose(const PxTransform& Pose)
 	{
 		PHYSICS_POSE result;
@@ -76,6 +78,7 @@ namespace
 		return result;
 	}
 
+	// simulation 접촉 쌍의 양방향 group/mask를 검사한다. 하나라도 맞지 않으면 제거하고 통과 시 기본 접촉만 요청한다.
 	PxFilterFlags PhysicsFilterShader(
 		PxFilterObjectAttributes,
 		PxFilterData filterData0,
@@ -95,6 +98,7 @@ namespace
 		return PxFilterFlag::eDEFAULT;
 	}
 
+	// 공개 force mode를 backend에 대응한다. 정의되지 않은 값은 기본 FORCE로 가므로 호출자는 이름 있는 enum 값을 사용한다.
 	PxForceMode::Enum ToPxForceMode(PHYSICS_FORCE_MODE eMode)
 	{
 		switch (eMode)
@@ -113,8 +117,10 @@ namespace
 	}
 }
 
+// backend와 Level별 actor 소유 목록, generation 저장소, 고정 step clock을 한 manager에 묶는다.
 struct CPhysics_Manager::IMPL
 {
+	// actor는 release 책임이 있는 포인터다. 삭제 후에도 slot/generation은 남고 FreeSlots를 통해 재사용한다.
 	struct ACTOR_SLOT final
 	{
 		PxRigidActor* pActor = nullptr;
@@ -126,6 +132,7 @@ struct CPhysics_Manager::IMPL
 		bool_t isActive = true;
 	};
 
+	// backend 자원은 생성 역순으로 Release에서 정리한다. PVD는 Debug에서만 연결을 시도하는 진단용이다.
 	PxFoundation* pFoundation = nullptr;
 	PxPvd* pPvd = nullptr;
 	PxPvdTransport* pPvdTransport = nullptr;
@@ -133,15 +140,18 @@ struct CPhysics_Manager::IMPL
 	PxDefaultCpuDispatcher* pDispatcher = nullptr;
 	PxScene* pScene = nullptr;
 
+	// ActorSlots는 소유 기록, FreeSlots는 빈 slot, LevelActorSlots는 일괄 해제용 비소유 index 목록이다.
 	std::vector<ACTOR_SLOT> ActorSlots;
 	std::vector<uint32_t> FreeSlots;
 	std::vector<std::vector<uint32_t>> LevelActorSlots;
 
+	// 잔여 초와 저작 clock 상태다. single-step은 횟수 큐가 아닌 한 번의 예약 flag다.
 	f32_t fAccumulator = 0.f;
 	bool_t isPaused = false;
 	bool_t isSingleStepRequested = false;
 	PHYSICS_STEP_STATS StepStats = {};
 
+	// handle slot 범위와 generation을 함께 확인한다. 오래된 handle이 재사용된 actor를 조작하지 않게 한다.
 	ACTOR_SLOT* Find(PHYSICS_ACTOR_HANDLE Handle)
 	{
 		if (!Handle.Is_Valid() || Handle.iSlot >= ActorSlots.size())
@@ -152,6 +162,7 @@ struct CPhysics_Manager::IMPL
 			Slot.iGeneration == Handle.iGeneration ? &Slot : nullptr;
 	}
 
+	// 조회 경로에서도 같은 세대 검사를 수행한다. 반환 포인터는 vector 재할당/삭제 전에만 차용한다.
 	const ACTOR_SLOT* Find(PHYSICS_ACTOR_HANDLE Handle) const
 	{
 		if (!Handle.Is_Valid() || Handle.iSlot >= ActorSlots.size())
@@ -162,6 +173,7 @@ struct CPhysics_Manager::IMPL
 			Slot.iGeneration == Handle.iGeneration ? &Slot : nullptr;
 	}
 
+	// 살아 있는 backend actor를 센다. sleep/active 여부와 무관한 scene 소유 수다.
 	void RefreshActorCount()
 	{
 		uint32_t count = 0u;
@@ -173,6 +185,8 @@ struct CPhysics_Manager::IMPL
 		StepStats.iSceneActorCount = count;
 	}
 
+	// 활성·깨어 있는 simulated dynamic만 수동 중력과 일정 가속도를 적용한다.
+	// 중력은 (0,-9.81,0)×scale이고 force mode는 ACCELERATION이므로 질량으로 나누지 않는다.
 	void ApplyAccelerations()
 	{
 		const PxVec3 GRAVITY(0.f, -9.81f, 0.f);
@@ -201,6 +215,7 @@ struct CPhysics_Manager::IMPL
 		}
 	}
 
+	// 가속도를 제출하고 1/60초 simulation의 결과 수집까지 동기적으로 마친다. 호출 반환 뒤 pose를 읽을 수 있다.
 	void Step()
 	{
 		ApplyAccelerations();
@@ -208,6 +223,7 @@ struct CPhysics_Manager::IMPL
 		pScene->fetchResults(true);
 	}
 
+	// actor를 scene에서 떼어 release한 뒤 scene→dispatcher→physics→PVD/transport→foundation 순으로 정리한다.
 	void Release()
 	{
 		for (ACTOR_SLOT& Slot : ActorSlots)
@@ -259,22 +275,27 @@ struct CPhysics_Manager::IMPL
 	}
 };
 
+// backend 객체 생성 전에 소유 구현과 빈 clock/slot 저장소를 준비한다.
 CPhysics_Manager::CPhysics_Manager()
 	: m_pImpl { make_unique<IMPL>() }
 {
 }
 
+// 초기화 중간 실패로 일부 backend만 존재해도 보유 포인터를 확인하면서 정리한다.
 CPhysics_Manager::~CPhysics_Manager()
 {
 	if (nullptr != m_pImpl)
 		m_pImpl->Release();
 }
 
+// Create가 새 객체에서 한 번 호출한다. backend 단계별 명시적 실패는 만들어진 자원을 정리한다.
+// 이미 초기화된 객체의 재호출이나 vector 할당 예외를 트랜잭션으로 처리하는 경로는 아니다.
 HRESULT CPhysics_Manager::Initialize(uint32_t iNumLevels)
 {
 	if (0u == iNumLevels || nullptr == m_pImpl)
 		return E_INVALIDARG;
 
+	// 오래 사는 callback을 foundation에 연결한다. 이 단계의 실패는 후속 객체를 만들지 않는다.
 	m_pImpl->pFoundation = PxCreateFoundation(
 		PX_PHYSICS_VERSION,
 		g_PhysicsAllocator,
@@ -283,6 +304,7 @@ HRESULT CPhysics_Manager::Initialize(uint32_t iNumLevels)
 		return E_FAIL;
 
 #ifdef _DEBUG
+	// Debug PVD는 로컬 진단 endpoint다. 연결 실패를 제품 Server 접속이나 물리 초기화 실패로 취급하지 않는다.
 	m_pImpl->pPvd = PxCreatePvd(*m_pImpl->pFoundation);
 	if (nullptr != m_pImpl->pPvd)
 	{
@@ -309,6 +331,7 @@ HRESULT CPhysics_Manager::Initialize(uint32_t iNumLevels)
 		return E_FAIL;
 	}
 
+	// backend simulation 작업을 수행할 worker 둘을 준비한다. public API를 여러 스레드에서 호출해도 된다는 뜻은 아니다.
 	m_pImpl->pDispatcher = PxDefaultCpuDispatcherCreate(2u);
 	if (nullptr == m_pImpl->pDispatcher)
 	{
@@ -316,6 +339,7 @@ HRESULT CPhysics_Manager::Initialize(uint32_t iNumLevels)
 		return E_FAIL;
 	}
 
+	// 하나의 scene에 Level별 actor를 함께 넣는다. dynamic 생성에서 native gravity를 끄고 slot별 가속도로 대체한다.
 	PxSceneDesc SceneDesc(m_pImpl->pPhysics->getTolerancesScale());
 	SceneDesc.gravity = PxVec3(0.f, -9.81f, 0.f);
 	SceneDesc.cpuDispatcher = m_pImpl->pDispatcher;
@@ -344,6 +368,7 @@ HRESULT CPhysics_Manager::Initialize(uint32_t iNumLevels)
 	return S_OK;
 }
 
+// GameInstance의 객체 Update와 Post_Physics_Update 사이에서 호출한다. 유한한 비음수 프레임 시간만 일반 clock에 더한다.
 void CPhysics_Manager::Update(f32_t fTimeDelta)
 {
 	if (nullptr == m_pImpl || nullptr == m_pImpl->pScene)
@@ -357,8 +382,7 @@ void CPhysics_Manager::Update(f32_t fTimeDelta)
 	const auto begin = std::chrono::steady_clock::now();
 	if (m_pImpl->isPaused)
 	{
-		/* A paused authoring clock does not absorb frame time. One request is
-		   exactly one fixed step and preserves the pre-pause residual. */
+		// 정지한 저작 clock은 프레임 시간을 누적하지 않는다. 예약 하나는 고정 step 한 번이며 기존 잔여 시간은 유지한다.
 		if (m_pImpl->isSingleStepRequested)
 		{
 			m_pImpl->Step();
@@ -370,6 +394,7 @@ void CPhysics_Manager::Update(f32_t fTimeDelta)
 	{
 		m_pImpl->isSingleStepRequested = false;
 		m_pImpl->fAccumulator += fTimeDelta;
+		// 한 프레임의 simulation 작업을 최대4회로 제한한다. 남은 정수 step은 아래에서 버리고 소수 잔여만 유지한다.
 		while (m_pImpl->fAccumulator >= FIXED_TIMESTEP &&
 			Stats.iStepsLastFrame < MAX_STEPS_PER_FRAME)
 		{
@@ -378,6 +403,7 @@ void CPhysics_Manager::Update(f32_t fTimeDelta)
 			++Stats.iStepsLastFrame;
 		}
 
+		// 누적 지연 전체를 다음 프레임으로 넘기지 않는다. 버린 횟수 통계를 늘리고 fmod로 한 step 미만 시간을 남긴다.
 		if (m_pImpl->fAccumulator >= FIXED_TIMESTEP)
 		{
 			Stats.iDroppedSteps += static_cast<uint32_t>(
@@ -394,6 +420,7 @@ void CPhysics_Manager::Update(f32_t fTimeDelta)
 	m_pImpl->RefreshActorCount();
 }
 
+// Level의 뒤쪽 slot부터 제거한다. 이미 수행한 삭제를 복구하는 일괄 rollback은 없다.
 HRESULT CPhysics_Manager::Clear(uint32_t iClearLevelID)
 {
 	if (nullptr == m_pImpl ||
@@ -422,6 +449,7 @@ HRESULT CPhysics_Manager::Clear(uint32_t iClearLevelID)
 	return S_OK;
 }
 
+// CRigidBody/도구가 명세를 전달한다. 출력 handle은 먼저 비우고 backend 준비·slot 등록 이후에만 채운다.
 HRESULT CPhysics_Manager::Create_Actor(
 	const PHYSICS_RIGID_BODY_DESC& Desc,
 	PHYSICS_ACTOR_HANDLE& outHandle)
@@ -458,12 +486,14 @@ HRESULT CPhysics_Manager::Create_Actor(
 		return E_INVALIDARG;
 	}
 
+	// actor root와 shape local 변환을 따로 검증한다. shape offset을 actor의 표현 pivot에 합쳐 저장하지 않는다.
 	PxTransform ActorPose(PxIdentity);
 	PxTransform ShapeLocalPose(PxIdentity);
 	if (!TryMakeTransform(Desc.Pose, ActorPose) ||
 		!TryMakeTransform(Desc.ShapeLocalPose, ShapeLocalPose))
 		return E_INVALIDARG;
 
+	// 재질과 actor를 임시 준비한다. 이후 명시적 실패 분기마다 자기 단계에서 획득한 참조를 해제한다.
 	PxMaterial* pMaterial = m_pImpl->pPhysics->createMaterial(
 		Desc.fStaticFriction,
 		Desc.fDynamicFriction,
@@ -483,6 +513,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 		return E_FAIL;
 	}
 
+	// 명세가 선택한 primitive만 생성한다. 길이는 반폭/반지름/반길이이며 유한한 양수여야 한다.
 	PxShape* pShape = nullptr;
 	switch (Desc.eShapeType)
 	{
@@ -521,6 +552,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 		break;
 	}
 
+	// shape가 재질 참조를 보유하므로 준비용 material 참조를 반환한다. shape 미생성은 actor도 해제한다.
 	pMaterial->release();
 	if (nullptr == pShape)
 	{
@@ -528,6 +560,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 		return E_INVALIDARG;
 	}
 
+	// simulation/query 필터와 actor 상대 shape pose를 설정한다. attach 뒤에는 actor가 shape 참조를 보유한다.
 	const PxFilterData FilterData(
 		Desc.iCollisionGroup,
 		Desc.iCollisionMask,
@@ -544,6 +577,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 		return E_FAIL;
 	}
 
+	// dynamic에만 damping·kinematic mode·질량/관성을 적용한다. 개별 gravity scale은 이후 고정 step에서 소비한다.
 	if (PxRigidDynamic* pDynamic = pActor->is<PxRigidDynamic>())
 	{
 		pDynamic->setLinearDamping(Desc.fLinearDamping);
@@ -564,6 +598,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 		PxActorFlag::eDISABLE_SIMULATION,
 		!Desc.isActive);
 
+	// backend 준비 뒤 빈 slot을 재사용하거나 저장소를 늘린다. 이 구간의 vector 할당 예외를 따로 rollback하지는 않는다.
 	uint32_t iSlot = 0u;
 	if (m_pImpl->FreeSlots.empty())
 	{
@@ -584,6 +619,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 	Slot.vConstantAcceleration = Desc.vConstantAcceleration;
 	Slot.isActive = Desc.isActive;
 
+	// scene와 Level 소유 목록에 등록을 마친 뒤 외부에 handle을 공개한다.
 	m_pImpl->pScene->addActor(*pActor);
 	m_pImpl->LevelActorSlots[Desc.iLevelID].push_back(iSlot);
 	outHandle = PHYSICS_ACTOR_HANDLE { iSlot, Slot.iGeneration };
@@ -591,6 +627,7 @@ HRESULT CPhysics_Manager::Create_Actor(
 	return S_OK;
 }
 
+// 현재 세대가 맞는 actor만 제거한다. 삭제 후 generation을 증가시키고0을 건너뛰어 이전 handle을 무효화한다.
 HRESULT CPhysics_Manager::Destroy_Actor(PHYSICS_ACTOR_HANDLE Handle)
 {
 	if (nullptr == m_pImpl)
@@ -626,6 +663,8 @@ HRESULT CPhysics_Manager::Destroy_Actor(PHYSICS_ACTOR_HANDLE Handle)
 	return S_OK;
 }
 
+// root pose 변경과 dynamic 속도0을 backend에 요청한다. clearForce/clearTorque는 기본 eFORCE 누적만 대상으로 한다.
+// active/kinematic 추가 검사나 backend 적용 성공 확인은 없고 impulse/velocity-change 누적을 별도로 지우지는 않는다.
 HRESULT CPhysics_Manager::Reset_Actor(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const PHYSICS_POSE& Pose)
@@ -654,11 +693,13 @@ HRESULT CPhysics_Manager::Reset_Actor(
 	return S_OK;
 }
 
+// slot 표식만 믿지 않고 현재 manager에 동일 세대의 actor가 있는지 확인한다.
 bool_t CPhysics_Manager::Is_ActorValid(PHYSICS_ACTOR_HANDLE Handle) const
 {
 	return nullptr != m_pImpl && nullptr != m_pImpl->Find(Handle);
 }
 
+// kinematic은 다음 step의 목표 pose를 지정한다. static/simulated는 global pose를 바로 설정한다.
 HRESULT CPhysics_Manager::Set_Pose(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const PHYSICS_POSE& Pose)
@@ -684,6 +725,7 @@ HRESULT CPhysics_Manager::Set_Pose(
 	return S_OK;
 }
 
+// 검증을 통과한 뒤에만 outPose를 바꾸므로 실패한 조회는 기존 출력 값을 유지한다.
 HRESULT CPhysics_Manager::Get_Pose(
 	PHYSICS_ACTOR_HANDLE Handle,
 	PHYSICS_POSE& outPose) const
@@ -699,6 +741,7 @@ HRESULT CPhysics_Manager::Get_Pose(
 	return S_OK;
 }
 
+// simulated dynamic의 월드 선속도를 설정한다. active flag는 이 wrapper에서 추가 검사하지 않는다.
 HRESULT CPhysics_Manager::Set_LinearVelocity(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const float3_t& vVelocity)
@@ -719,6 +762,7 @@ HRESULT CPhysics_Manager::Set_LinearVelocity(
 	return S_OK;
 }
 
+// dynamic의 질량 중심 선속도를 읽는다. kinematic 조회도 허용하며 실패는 출력을 보존한다.
 HRESULT CPhysics_Manager::Get_LinearVelocity(
 	PHYSICS_ACTOR_HANDLE Handle,
 	float3_t& outVelocity) const
@@ -736,6 +780,7 @@ HRESULT CPhysics_Manager::Get_LinearVelocity(
 	return S_OK;
 }
 
+// 유한한 월드 각속도(rad/s)를 simulated dynamic에 전달한다. static/kinematic에는 쓰지 않는다.
 HRESULT CPhysics_Manager::Set_AngularVelocity(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const float3_t& vVelocity)
@@ -756,6 +801,7 @@ HRESULT CPhysics_Manager::Set_AngularVelocity(
 	return S_OK;
 }
 
+// dynamic의 현재 각속도를 읽고 성공 경로에서만 outVelocity에 대입한다.
 HRESULT CPhysics_Manager::Get_AngularVelocity(
 	PHYSICS_ACTOR_HANDLE Handle,
 	float3_t& outVelocity) const
@@ -773,6 +819,7 @@ HRESULT CPhysics_Manager::Get_AngularVelocity(
 	return S_OK;
 }
 
+// 활성 simulated dynamic인지 확인하고 모드별 입력을 누적한다. 즉시 pose를 직접 이동시키는 API는 아니다.
 HRESULT CPhysics_Manager::Add_Force(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const float3_t& vForce,
@@ -797,6 +844,7 @@ HRESULT CPhysics_Manager::Add_Force(
 	return S_OK;
 }
 
+// dynamic의 kinematic flag를 변경한다. 다시 활성 simulated가 된 actor는 다음 적분을 위해 깨운다.
 HRESULT CPhysics_Manager::Set_MotionMode(
 	PHYSICS_ACTOR_HANDLE Handle,
 	PHYSICS_MOTION_MODE eMode)
@@ -817,6 +865,7 @@ HRESULT CPhysics_Manager::Set_MotionMode(
 	return S_OK;
 }
 
+// slot의 수동 중력 사용 여부를 변경한다. native gravity flag를 켜는 경로가 아니다.
 HRESULT CPhysics_Manager::Set_GravityEnabled(
 	PHYSICS_ACTOR_HANDLE Handle,
 	bool_t isEnabled)
@@ -839,6 +888,7 @@ HRESULT CPhysics_Manager::Set_GravityEnabled(
 	return S_OK;
 }
 
+// 유한한0 이상 배율을 보관하고 활성 simulated를 깨운다. 이미 저장된 일정 가속도에는 곱하지 않는다.
 HRESULT CPhysics_Manager::Set_GravityScale(
 	PHYSICS_ACTOR_HANDLE Handle,
 	f32_t fGravityScale)
@@ -864,6 +914,7 @@ HRESULT CPhysics_Manager::Set_GravityScale(
 	return S_OK;
 }
 
+// 일정 가속도를 값으로 저장한다. step의 ApplyAccelerations가 중력과 합쳐 소비한다.
 HRESULT CPhysics_Manager::Set_ConstantAcceleration(
 	PHYSICS_ACTOR_HANDLE Handle,
 	const float3_t& vAcceleration)
@@ -886,6 +937,7 @@ HRESULT CPhysics_Manager::Set_ConstantAcceleration(
 	return S_OK;
 }
 
+// simulation disable flag와 slot의 참여 상태를 맞춘다. scene 등록·Level 소속·handle은 유지한다.
 HRESULT CPhysics_Manager::Set_Active(
 	PHYSICS_ACTOR_HANDLE Handle,
 	bool_t isActive)
@@ -914,33 +966,43 @@ HRESULT CPhysics_Manager::Set_Active(
 	return S_OK;
 }
 
+// Effect_Playback의 표현 충돌이 호출한다. static actor만 대상으로 이동하는 축 정렬 box의 첫 blocking hit를 구한다.
+// 시작부터 outHit를 초기화하며 입력 오류/충돌 없음/유효하지 않은 법선 모두 false다.
 bool_t CPhysics_Manager::Sweep_StaticBox(const float3_t& vStart, const float3_t& vEnd,
-    const float3_t& vHalfExtents, PHYSICS_STATIC_SWEEP_HIT& outHit) const
+	const float3_t& vHalfExtents, PHYSICS_STATIC_SWEEP_HIT& outHit) const
 {
-    outHit = {};
-    if (!m_pImpl || !m_pImpl->pScene) return false;
-    const PxVec3 Start = ToPxVec3(vStart), End = ToPxVec3(vEnd);
-    const PxVec3 Extent = ToPxVec3(vHalfExtents);
-    if (!Start.isFinite() || !End.isFinite() || !Extent.isFinite() ||
-        Extent.x < 0.f || Extent.y < 0.f || Extent.z < 0.f) return false;
-    const PxVec3 Delta = End - Start;
-    const float Distance = Delta.magnitude();
-    if (Distance <= 1.e-6f) return false;
-    PxSweepBuffer Hit;
-    const PxBoxGeometry Box(PxMax(Extent.x, 1.e-4f),
-        PxMax(Extent.y, 1.e-4f), PxMax(Extent.z, 1.e-4f));
-    const PxQueryFilterData Filter(PxQueryFlag::eSTATIC);
-    if (!m_pImpl->pScene->sweep(Box, PxTransform(Start), Delta / Distance,
-        Distance, Hit, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, Filter) ||
-        !Hit.hasBlock) return false;
-    const auto& Block = Hit.block;
-    if (!Block.normal.isFinite() || Block.normal.magnitudeSquared() < 1.e-8f)
-        return false;
-    outHit.vNormal = float3_t(Block.normal.x, Block.normal.y, Block.normal.z);
-    outHit.fTravelFraction = PxClamp(Block.distance / Distance, 0.f, 1.f);
-    return true;
+	outHit = {};
+	if (!m_pImpl || !m_pImpl->pScene)
+		return false;
+	const PxVec3 Start = ToPxVec3(vStart), End = ToPxVec3(vEnd);
+	const PxVec3 Extent = ToPxVec3(vHalfExtents);
+	if (!Start.isFinite() || !End.isFinite() || !Extent.isFinite() ||
+		Extent.x < 0.f || Extent.y < 0.f || Extent.z < 0.f)
+			return false;
+	// 월드 거리와 단위 이동 방향을 구한다. 길이가 거의0이면 sweep하지 않는다.
+	const PxVec3 Delta = End - Start;
+	const float Distance = Delta.magnitude();
+	if (Distance <= 1.e-6f)
+		return false;
+	PxSweepBuffer Hit;
+	// 0 반폭은 backend용 최소1e-4로 보정한다. 회전은 identity이며 별도의 gameplay collision mask는 적용하지 않는다.
+	const PxBoxGeometry Box(PxMax(Extent.x, 1.e-4f),
+		PxMax(Extent.y, 1.e-4f), PxMax(Extent.z, 1.e-4f));
+	const PxQueryFilterData Filter(PxQueryFlag::eSTATIC);
+	if (!m_pImpl->pScene->sweep(Box, PxTransform(Start), Delta / Distance,
+		Distance, Hit, PxHitFlag::eNORMAL | PxHitFlag::ePOSITION, Filter) ||
+		!Hit.hasBlock)
+			return false;
+	const auto& Block = Hit.block;
+	if (!Block.normal.isFinite() || Block.normal.magnitudeSquared() < 1.e-8f)
+		return false;
+	// 접촉 법선과 충돌 이동거리/전체거리 비율을 전달한다. 소비자가 반사·남은 이동 처리를 결정한다.
+	outHit.vNormal = float3_t(Block.normal.x, Block.normal.y, Block.normal.z);
+	outHit.fTravelFraction = PxClamp(Block.distance / Distance, 0.f, 1.f);
+	return true;
 }
 
+// 프레임 clock을 멈추거나 재개한다. accumulator는 유지하고 재개할 때 single-step 예약만 지운다.
 void CPhysics_Manager::Set_DebugPaused(bool_t isPaused)
 {
 	if (nullptr == m_pImpl)
@@ -951,11 +1013,13 @@ void CPhysics_Manager::Set_DebugPaused(bool_t isPaused)
 	m_pImpl->StepStats.isPaused = isPaused;
 }
 
+// 현재 정지 상태를 값으로 반환한다.
 bool_t CPhysics_Manager::Is_DebugPaused() const
 {
 	return nullptr != m_pImpl && m_pImpl->isPaused;
 }
 
+// 정지 중 다음 Update에서 한 번 실행할 flag를 세운다. 반복 요청으로 step 수가 누적되지는 않는다.
 HRESULT CPhysics_Manager::Request_DebugSingleStep()
 {
 	if (nullptr == m_pImpl || !m_pImpl->isPaused)
@@ -964,6 +1028,7 @@ HRESULT CPhysics_Manager::Request_DebugSingleStep()
 	return S_OK;
 }
 
+// 저작 timeline 재구축이 정지 상태에서만 호출한다. 최대3600회이며 모든 결과를 동기 수집한 뒤 통계를 갱신한다.
 HRESULT CPhysics_Manager::Simulate_DebugSteps(uint32_t iStepCount)
 {
 	if (nullptr == m_pImpl || nullptr == m_pImpl->pScene ||
@@ -988,12 +1053,14 @@ HRESULT CPhysics_Manager::Simulate_DebugSteps(uint32_t iStepCount)
 	return S_OK;
 }
 
+// manager 통계를 읽기 전용으로 차용한다. 구현이 없을 때의 정적 빈 값도 수정하면 안 된다.
 const PHYSICS_STEP_STATS& CPhysics_Manager::Get_StepStats() const
 {
 	static const PHYSICS_STEP_STATS EMPTY_STATS = {};
 	return nullptr != m_pImpl ? m_pImpl->StepStats : EMPTY_STATS;
 }
 
+// Level의 등록 slot 수를 반환한다. 잘못된 ID는 빈 Level과 마찬가지로0이다.
 uint32_t CPhysics_Manager::Get_ActorCount(uint32_t iLevelID) const
 {
 	if (nullptr == m_pImpl || iLevelID >= m_pImpl->LevelActorSlots.size())
@@ -1002,6 +1069,7 @@ uint32_t CPhysics_Manager::Get_ActorCount(uint32_t iLevelID) const
 		m_pImpl->LevelActorSlots[iLevelID].size());
 }
 
+// 별도 manager로 제한된 물리 계약을 확인하는 기존 검사다. 출력은 관측한 단계까지 기록하며 임시 actor는 manager 소멸로 정리한다.
 HRESULT CPhysics_Manager::Run_ContractTest(
 	PHYSICS_CONTRACT_RESULT& outResult)
 {
@@ -1010,6 +1078,7 @@ HRESULT CPhysics_Manager::Run_ContractTest(
 	if (nullptr == pManager)
 		return E_FAIL;
 
+	// 지면 top은 Y=0, box shape의 중심은 actor root에서 Y+0.5다. 착지 시 root와 shape 높이를 구분해 확인한다.
 	PHYSICS_RIGID_BODY_DESC SupportDesc;
 	SupportDesc.iLevelID = 1u;
 	SupportDesc.eActorType = PHYSICS_ACTOR_TYPE::STATIC;
@@ -1037,8 +1106,8 @@ HRESULT CPhysics_Manager::Run_ContractTest(
 		return E_FAIL;
 	outResult.fInitialHeight = Pose.vPosition.y;
 
-	/* Leave a real sub-step residual, then prove that a synchronous authoring
-	   rebuild neither consumes it nor accepts calls from the runtime clock. */
+	// 반 step의 잔여 시간을 만든 뒤 동기 저작 재구축이 이를 소비하지 않는지 확인한다.
+	// 일반 실행 상태에서 debug 동기 step 요청을 거절하는지도 별도로 확인한다.
 	pManager->Update(FIXED_TIMESTEP * 0.5f);
 	const f32_t fAccumulatorBefore =
 		pManager->Get_StepStats().fAccumulatorSeconds;
@@ -1065,6 +1134,7 @@ HRESULT CPhysics_Manager::Run_ContractTest(
 		return E_FAIL;
 	}
 
+	// 180step 뒤 actor root 높이와 shape 중심 높이, 수직 속도를 각각 허용 범위와 대조한다.
 	outResult.fFinalHeight = Pose.vPosition.y;
 	outResult.didRespectShapeLocalPose =
 		outResult.fFinalHeight >= -0.05f &&
@@ -1075,6 +1145,7 @@ HRESULT CPhysics_Manager::Run_ContractTest(
 		fShapeCenterHeight <= 0.65f &&
 		std::fabs(vVelocity.y) <= 0.25f;
 
+	// 같은 Level을 비운 뒤 이전 두 handle이 모두 거절되는지와 남은 actor 수를 확인한다.
 	if (FAILED(pManager->Clear(1u)))
 		return E_FAIL;
 	outResult.didInvalidateOnClear =
@@ -1091,6 +1162,7 @@ HRESULT CPhysics_Manager::Run_ContractTest(
 		180u == outResult.iStepsExecuted ? S_OK : E_FAIL;
 }
 
+// 새 manager를 준비해 소유권을 넘긴다. 초기화 실패한 지역 객체는 소멸하며 보유 backend를 해제한다.
 unique_ptr<CPhysics_Manager> CPhysics_Manager::Create(uint32_t iNumLevels)
 {
 	auto pInstance = unique_ptr<CPhysics_Manager>(new CPhysics_Manager());

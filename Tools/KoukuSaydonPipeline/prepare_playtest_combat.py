@@ -17,9 +17,9 @@ except ImportError:
     from combat_hit_templates import validate_hits
 
 ROOT = Path(__file__).resolve().parents[2]
-PREFIX = "KAKULSAYDON_G1_PATTERN_"
-TRIGGER = "kakulsaydon.g1.logic.508"
-DAMAGE = "kakulsaydon.g1.logic.98"
+PREFIX = "KOUKUSAYDON_G1_PATTERN_"
+TRIGGER = "koukusaydon.g1.logic.508"
+DAMAGE = "koukusaydon.g1.logic.98"
 
 
 def prepare_zero_floor_madness(document):
@@ -43,7 +43,7 @@ def prepare_zero_floor_madness(document):
             raise ValueError("Existing floor madness override was edited")
     else:
         ordinal = out["nextLogicOrdinal"]
-        identity = f"kakulsaydon.g1.logic.{ordinal}"
+        identity = f"koukusaydon.g1.logic.{ordinal}"
         if identity in logics:
             raise ValueError("Logic ordinal does not reserve a new stable ID")
         out["nextLogicOrdinal"] += 1
@@ -60,9 +60,9 @@ def prepare_zero_floor_madness(document):
             if not occurrence.get("enabled", True):
                 raise ValueError("Lingering floor was disabled; reinspect: " + identity)
             before = occurrence["onSuccessLogicIds"]
-            if before == ["kakulsaydon.g1.logic.515", zero["logicId"]]:
+            if before == ["koukusaydon.g1.logic.515", zero["logicId"]]:
                 continue
-            if before != ["kakulsaydon.g1.logic.515"]:
+            if before != ["koukusaydon.g1.logic.515"]:
                 raise ValueError("Lingering floor outcome changed; preserve it: " + identity)
             occurrence["onSuccessLogicIds"] = before + [zero["logicId"]]
             changes.append(dict(kind="field", patternId=p["patternId"], occurrenceId=identity,
@@ -84,7 +84,7 @@ def prepare(document, root=ROOT):
     def new_logic(**values):
         ordinal = out["nextLogicOrdinal"]
         out["nextLogicOrdinal"] += 1
-        identity = f"kakulsaydon.g1.logic.{ordinal}"
+        identity = f"koukusaydon.g1.logic.{ordinal}"
         row = dict(logicId=identity, **values)
         out["logics"].append(row)
         logics[identity] = row
@@ -93,7 +93,7 @@ def prepare(document, root=ROOT):
     def resource(label, shape, **geometry):
         ordinal = out["nextPresentationResourceOrdinal"]
         out["nextPresentationResourceOrdinal"] += 1
-        identity = f"kakulsaydon.g1.presentation.{ordinal}"
+        identity = f"koukusaydon.g1.presentation.{ordinal}"
         row = dict(resourceId=identity, displayName=label, defaultAnchorKind="BOSS",
                    kind="COLLIDER", assetId="", resourceKind="GROUP", elementId="",
                    durationMs=100, colliderKind="GEOMETRY", shape=shape,
@@ -151,7 +151,7 @@ def prepare(document, root=ROOT):
     # Steering selection never restricts who can intercept the card. Runtime
     # already compares the contacted player's suit with the card's authored suit.
     for ordinal in range(125, 129):
-        row = logics[f"kakulsaydon.g1.logic.{ordinal}"]
+        row = logics[f"koukusaydon.g1.logic.{ordinal}"]
         for hit in row["projectileHits"]:
             hit["damagePercent"] = 90
         changes.append(dict(kind="dice-card-damage", logicId=row["logicId"], maxHpPercent=90))
@@ -223,7 +223,7 @@ def prepare(document, root=ROOT):
                 delay = round(element["detail"]["timing"]["startDelaySeconds"] * 1000)
                 if delay >= fx["durationMs"]:
                     continue
-                collider(p, fx, "kakulsaydon.g1.presentation.356", delay,
+                collider(p, fx, "koukusaydon.g1.presentation.356", delay,
                          min(500, fx["durationMs"] - delay), element["detail"]["transform"]["position"])
 
     # Reuse the existing authored 1.6m blue-circle attack definition for its
@@ -279,7 +279,7 @@ def prepare(document, root=ROOT):
                 intervals[interval] = new_logic(displayName="Breath: three contact ticks", logicType="DURATION",
                     judgementKind="AREA_OVERLAP", insideOutcome="SUCCESS", repeatIntervalMs=interval)
             o["logicId"] = intervals[interval]
-            o["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.515", madness]
+            o["onSuccessLogicIds"] = ["koukusaydon.g1.logic.515", madness]
             changes.append(dict(kind="breath-three-ticks", occurrenceId=o["occurrenceId"],
                                 damageAmount=100, madnessPerTickPercent=1, intervalMs=interval))
 

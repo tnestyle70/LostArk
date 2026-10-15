@@ -1,0 +1,207 @@
+00_좌표계_INDEX.md
+14.75 KB•203 lines
+•
+Formatting may be inconsistent from source
+
+# 00 · 좌표계 INDEX
+
+> **이 문서에는 답이 하나도 없다.**
+> 좌표 · 질문 · 축 · 로그 칸만 있다. 읽을 게 없으므로 재독이 불가능하다. 그게 설계다.
+> 답은 §4 정답지 링크에 있고, **채점할 때만** 연다.
+
+---
+
+## 0. 30초 사용법
+
+```
+1. §2에서 좌표 하나를 고른다 (오늘 것 + 간격 도래한 것)
+2. 이 문서만 열어둔 채로, 빈 파일에 §3 답안 포맷으로 재생성한다
+3. 소리 내서 90초. 녹음.
+4. 그다음에만 §4 링크를 연다. 읽지 말고 diff.
+5. §5 로그에 한 줄. 다음 간격 계산.
+```
+
+**금지 3개** — 하이라이팅 / 요약본 만들기(=101번째 문서) / 정답지를 처음부터 읽기
+
+---
+
+## 1. 축 (AXES) — 생성기
+
+카테고리 기준은 **주제가 아니라 역할**이다. 축은 유도 규칙이고, 좌표는 그 규칙이 코드로 굳은 지점이고, 사전은 채점표다.
+
+축은 외우는 게 아니라 **유도에 쓰는 것**. 좌표에서 막히면 "이게 어느 축이지?"를 먼저 묻는다.
+
+| # | 축 | 한 줄 | 먹는 도메인 |
+|---|---|---|---|
+| **C1** | **기준계** | 절대 좌표는 없다. 모든 표현은 어떤 기준계에 상대적이다. | 선형대수, 좌표변환, 쿼터니언, 접선공간, 직렬화/ABI/엔디안, IR/SSA, 리소스-뷰, **면접관의 base commit** |
+| **C2** | **이동 > 계산** | 데이터를 옮기는 게 계산보다 비싸다. | 캐시/메모리계층, SoA/ECS, false sharing, 대역폭, 압축, 델타, LOD, zero-copy, DB 인덱스, PCIe |
+| **C3** | **공유는 비싸다** | 동시성 비용은 공유량에 비례한다. | 메모리순서/atomic, lock-free, work-stealing, 격리 vs 공유, 단일스레드 로직, MVCC, 파티션, GMP |
+| **C4** | **수명은 선언된다** | 수명은 관찰되지 않는다. 프로그램이 선언해야 한다. | RAII, 소유권/스마트포인터, 할당자, generation/ABA, VirtualAlloc, HANDLE, Overlapped 수명, GC 대조, 트랜잭션 |
+| **C5** | **이산화와 오차** | 연속은 예산 밖이다. 근사하고 오차를 통제한다. | 고정틱, 적분기, 물리, 샘플링/앨리어싱/TAA, IEEE754, 양자화, 보간, 몬테카를로, 미적분 |
+| **C6** | **가지치기** | 탐색 공간은 항상 예산보다 크다. 안 보는 법이 실력이다. | 복잡도, 컬링(frustum/occlusion/Hi-Z), early-Z, alpha-beta, BVH, 휴리스틱, NP-hard, EXPLAIN |
+| **C7** | **권위와 정합성** | 진실은 하나여야 한다. | server authority, 결정론/replay, ACID, 멱등성, dual-write, CAP, 안티치트, reconciliation |
+
+**횡단 규칙 (축 아님, 의무)** — **모든 답변에 숫자가 들어간다.** 캐시미스 200~400cyc / 시스템콜 / 16.6ms / 30Hz=33.3ms / p99. 숫자 없는 답변은 미완성.
+
+### 유도 예시 (이게 축을 쓴다는 뜻)
+> C3에서 Chase-Lev 전체 유도: 공유가 비용 → 워커마다 자기 덱(공유 0) → 부하 불균형 발생 → 남는 놈이 훔치게 → 훔치기는 드물다 → **비대칭 설계**: 주인은 한쪽 끝 싸게, 도둑은 반대 끝 CAS → 마지막 1개에서만 만남 → **거기만 fence**.
+>
+> 이걸 외운 게 아니라 축에서 뽑아냈으면 통과. 못 뽑으면 그 좌표는 암기로 들어온 것 → 축에 재연결.
+
+---
+
+## 2. 좌표 (COORDINATES) — 문제지
+
+**챕터 = 좌표.** 주제가 아니다. 좌표는 네 코드의 한 지점이고, 거기서 축을 유도하고 사전으로 채점한다.
+
+`대조` 칸: **수렴** = 독립적으로 같은 답 → 설계 정당성의 외부 증거. **발산** = 제약이 다름 → 그 차이를 설명하면 진짜 이해. **경계 필수**: 아날로지가 깨지는 지점을 반드시 같이 적는다.
+
+### A1 · Winters Engine (12)
+
+| ID | 좌표 | 층 | 축 | UE 대조 | ▢ |
+|---|---|---|---|---|---|
+| W01 | EntityHandle (index + generation) | ECS | C4 | weak ptr + serial number → **수렴** | ▢ |
+| W02 | Sparse Set ComponentStore (dense/sparse, swap-and-pop) | ECS | C2·C6 | UObject 상속+GC / Mass archetype → **발산** | ▢ |
+| W03 | Chase-Lev work-stealing deque | Core | C3 | TaskGraph / Go GMP → 부분 | ▢ |
+| W04 | Fiber 컨텍스트 스위치 (`mov rsp`) | Core | C3·C4 | **UE는 fiber를 안 쓴다 → 왜?** | ▢ |
+| W05 | Frame / Pool / Linear 할당자 + placement new | Core | C4·C2 | FMallocBinned / FMemStack → **수렴** | ▢ |
+| W06 | RHI 리소스–뷰 분리 (Texture2D vs RTV/SRV/DSV) | RHI | C1·C4 | FDynamicRHI → **수렴** | ▢ |
+| W07 | Clustered 라이트 할당 (16×16×슬라이스) | Renderer | C6·C3 | Lumen → **발산** | ▢ |
+| W08 | G-buffer 레이아웃 + early-Z / Hi-Z | Renderer | C2·C6 | Nanite visibility buffer → **발산** | ▢ |
+| W09 | 좌표 변환 체인 + 투영 (w, 원근보정보간) | Renderer | C1·C5 | 동일 → **수렴** | ▢ |
+| W10 | CSM 캐스케이드 분할 | Renderer | C6·C5 | Virtual Shadow Map → **발산** | ▢ |
+| W11 | TAA 지터 + 히스토리 | Renderer | C5 | TSR → 부분 | ▢ |
+| W12 | 데이터 주도 컴포넌트 + ImGui 인스펙터 + 핫리로드 | Gameplay | C1·C4 | UPROPERTY/UHT/Blueprint → **발산** ★협업 | ▢ |
+
+### A2 · Class & Servant (8)
+
+| ID | 좌표 | 축 | UE 대조 | ▢ |
+|---|---|---|---|---|
+| S01 | 30Hz 고정 결정론 틱 (xorshift64, float 결정론) | C5·C7 | Property Replication → **발산** | ▢ |
+| S02 | IOCP 세션 / 링버퍼 / Overlapped 수명 | C3·C4 | epoll / netpoller → 부분 | ▢ |
+| S03 | FlatBuffers 스냅샷 + 델타 + 양자화 | C1·C2 | Net serialization → 부분 | ▢ |
+| S04 | client prediction + server reconciliation (ring buffer) | C5·C7 | 동일 개념 → **수렴** | ▢ |
+| S05 | per-player AOI 컬링 (맵핵 구조적 차단) | C6·C7 | Relevancy / Priority / Dormancy → **수렴** | ▢ |
+| S06 | Go 4서비스 (argon2id auth / shop / leaderboard / matchmaking) | C7·C3 | — (아웃게임) | ▢ |
+| S07 | 멱등성 키 + 조건부 UPDATE + outbox / PG MVCC | C7·C4 | — | ▢ |
+| S08 | Redis 싱글스레드 + ZSET / dual-write 정합성 | C3·C7 | — | ▢ |
+
+### A3 · Bot & AI (5)
+
+| ID | 좌표 | 축 | 대조 | ▢ |
+|---|---|---|---|---|
+| N01 | alpha-beta + TT bound flag (`alphaOrig` 패턴) | C6 | **Stockfish** → 수렴 | ▢ |
+| N02 | 평가함수 설계 (모든 항이 같은 단위) | C1·C6 | Stockfish eval → 수렴 | ▢ |
+| N03 | self-play PPO + opponent pool | C5 | **OpenAI Five** → 부분 | ▢ |
+| N04 | pybind11 브릿지 + Gymnasium wrapper | C1·C3 | — | ▢ |
+| N05 | 결정론 sim = 재현 가능 rollout (= replay = 안티치트) | C7·C5 | — ★1좌표 3용도 | ▢ |
+
+### A4 · Liberation (UE5 / Steam)
+
+좌표가 아니라 **대조 좌표계 그 자체.** 위 25개 좌표의 `UE 대조` 칸이 전부 여기서 나온다.
+동시에 유일한 **라이브 서비스 증거** — 솔로 프로젝트가 구조적으로 못 만드는 크레덴셜.
+
+---
+
+### 왜 25개인가 (경계 규칙)
+
+네 원래 리스트가 혼란스러웠던 이유: **세 종류가 한 줄에 섞여 있었다.**
+
+| 종류 | 예 | 어디로 |
+|---|---|---|
+| 학문 분류 | C++, OS, 네트워크, 수학, 알고리즘 | → **§4 사전** (정답지) |
+| 산출물 | Winters Engine, NYPC 봇, C&S | → **§2 좌표** (문제지) |
+| 도구 이름 | Kafka, Redis, AWS, Go | → 사전의 잎. 좌표 아님 |
+
+산출물은 지식과 **나란한 항목이 아니라 교집합**이다. Winters Engine은 C++의 형제가 아니라 C++ ∩ OS ∩ 그래픽스 ∩ 네트워크 ∩ 수학이다. 그래서 하나의 리스트로는 절대 정합하게 안 나뉜다. **네 머리가 아니라 리스트가 범주 오류였다.**
+
+- "IOCP는 OS야 네트워크야 서버야 윈도우 프로그래밍이야?" → 전부. 학문 분류로는 결정 불가. **좌표(S02)로는 하나.**
+- "NYPC 봇을 어디에?" → 산출물이니 A3. 네 직관이 맞았고, 이유는 그게 지식이 아니라 **Stockfish/OpenAI Five처럼 지식의 결정체**라서다.
+- "AWS는?" → 도구. 좌표가 아니라 S06/S07의 배포 형태. 별도 챕터 금지.
+
+---
+
+## 3. 답안 포맷
+
+### 3-A. 좌표 답안 = 인과 5칸 / 90초  ← **주력**
+질문 형태: *"이거 왜 이렇게 했어요?"* (= 3번 턴의 빈칸추론. 지문은 네 코드)
+
+| 칸 | 초 | 내용 | 실패 신호 |
+|---|---|---|---|
+| ① 문제 | 15 | **하드웨어/요구사항 사실로 시작.** "16.6ms 안에 X를 해야 하는데" | 기능 설명으로 시작하면 실패 |
+| ② 순진한 해법과 실패 | 20 | "그냥 하면 Y ms" — **숫자 필수** | 대안을 모르면 = 그때 근거 없이 결정한 것 |
+| ③ 메커니즘 | 25 | 뭘 했고 어떻게 되나 — **숫자 필수** | 코드 낭독이면 실패 |
+| ④ 대조 | 15 | "언리얼은 A로 푸는데 제약이 달라서(범용 vs 전용) 우리는 B" | **base commit 접속점. 빼면 전송 안 됨** |
+| ⑤ 대가 | 15 | "대신 C를 잃었고, D 상황이면 이 선택이 틀립니다" | **없으면 세일즈맨. 있으면 엔지니어** |
+
+> ⑤가 제일 중요하다. 트레이드오프를 말할 수 있다는 게 그 결정을 실제로 내렸다는 유일한 증거다.
+
+### 3-B. 지식 답안 = 기존 5단계 / 90초  ← 보조
+정의 10s → 원리 30s → 숫자 20s → 프로젝트 연결 15s → 트레이드오프 15s
+
+**차이가 핵심**: 3-B는 지식에서 출발해 프로젝트로 **착지**한다. 3-A는 코드에서 출발해 원리로 **이륙**한다. 방향이 반대고, 3-A가 주력이다. 착지는 우연처럼 보이고, 이륙은 필연처럼 보인다.
+
+---
+
+## 4. 사전 (DICTIONARY) — 정답지 · 채점할 때만 연다
+
+| B | 영역 | 정답지 |
+|---|---|---|
+| **B0** | **대조 축 ★최우선** | [Winters vs UE5 완전비교분석서 16 Part](https://claude.ai/chat/67cb03a9-63e9-46ab-992d-49884e7c478a) · [UE 분석 워크플로 + EULA 경계](https://claude.ai/chat/220b4bd8-ff46-4b92-9cde-6e471f22a51d) |
+| **B1** | 기반 — 컴퓨터구조 · OS · 시스템프로그래밍 · 윈도우 | [CS 코어 9문서 (00 INDEX·01·02·03·04)](https://claude.ai/chat/1f06067d-4bf3-4944-b771-2df4ceef5f83) · [OS + 컴파일러](https://claude.ai/chat/61239c4e-edab-446a-8983-bd11d36cff1b) |
+| **B2** | 언어 — C++ | [67챕터 답안집](https://claude.ai/chat/d8011e08-bb3e-486f-aff2-576d7630d286) · [C++ 본질 7층탑](https://claude.ai/chat/9adaa1f6-a7cb-459d-8b6d-f7accc4ac491) · [Effective C++ 4+1 영역론](https://claude.ai/chat/7d1e6347-505b-48fc-81c9-d1704a95d891) · [vtable/OOP 오버헤드](https://claude.ai/chat/dc589229-35fb-4820-91c8-64314667f99b) |
+| **B3** | 구조 — 자료구조 · 알고리즘 | [40세션 로드맵](https://claude.ai/chat/438b744a-d0bf-4b2d-beee-f76fe6522952) · [CS 코어 08](https://claude.ai/chat/1f06067d-4bf3-4944-b771-2df4ceef5f83) |
+| **B4** | 수학 · 물리 | [미적분 × Winters Engine](https://claude.ai/chat/07af4346-ffa9-41fb-b0f9-32281865278d) · [수학 로드맵 + 이산수학 + 컴퓨팅 계보](https://claude.ai/chat/d1173ff9-c47f-424e-aafe-b686d4a3ac44) |
+| **B5** | 그래픽스 | [CS 코어 06](https://claude.ai/chat/1f06067d-4bf3-4944-b771-2df4ceef5f83) · [depth-stencil 심화 + AWS](https://claude.ai/chat/7f4a803f-cf18-4bfb-b105-1a1ba2515270) · [DX11 초기화/파이프라인](https://claude.ai/chat/d38a9dda-b29c-4d1c-a79d-364fcbb7bdfc) · [DX11 책 읽는 법](https://claude.ai/chat/6f8b3507-ca52-46d2-91e9-1b88044c0828) |
+| **B6** | 분산 — 네트워크 · 서버 · DB · 클라우드 · Go | [CS 코어 05](https://claude.ai/chat/1f06067d-4bf3-4944-b771-2df4ceef5f83) · [IOCP 완전정복](https://claude.ai/chat/4c835a75-2e08-45dd-b033-2d2247da7640) · [백엔드 인프라 7문서](https://claude.ai/chat/7c2e0d35-545c-4ec4-b51a-17a6efdb3fa0) · [C&S 라이브서비스 4부작](https://claude.ai/chat/a852f8b7-7860-4d39-93ad-9b4b83e7dd02) · [서버 15태스크 wave](https://claude.ai/chat/d71315d6-41a6-4806-bba3-2dfbb2dc7ec6) |
+| **B7** | 결정 — 게임이론 · 탐색 · RL | [고전 게임 AI 7세션](https://claude.ai/chat/bb503155-ff88-4c0e-bd77-a97d3040853e) · [alpha-beta 심화](https://claude.ai/chat/1e5c29d2-7b9a-4ee9-ac2b-ac2ebd4da8be) · [PyTorch/RL 파이프라인](https://claude.ai/chat/bfd1bae0-85ec-4ff8-a143-106ec5a71278) |
+| **B8** | 엔진 코어 (좌표 W01~W05 정답지) | [Fiber/ECS/JobSystem 7세션](https://claude.ai/chat/895a0a20-b0f3-4e95-8fa6-2a6a75d6318d) · [JobSystem·Fiber·atomic 원리](https://claude.ai/chat/8dbff903-abfb-415d-a34b-ed8692dcc6f0) · [컴포넌트 스토어 타입소거](https://claude.ai/chat/ad8aca2b-a69b-4b66-842b-0c012e8ce00a) · [ECS/Chase-Lev 기원](https://claude.ai/chat/193cce9f-799b-4c4b-896c-5e8b5593814c) · [현대 엔진 스택 11세션](https://claude.ai/chat/2c0feea0-b224-4ea4-9a91-1c873a171dd5) |
+| **B9** | 메타 — 전략 | [이력서 전략 + 7층 도메인 맵](https://claude.ai/chat/996918c4-f8e1-475f-8b5b-ad10aa4eafce) · [Notion 포트폴리오 + GitHub 감사](https://claude.ai/chat/0de202b4-3a7a-4478-8229-2e5b1f2e1883) · [신입의 경력 공고 전략](https://claude.ai/chat/93c7175e-9597-4295-b58a-9bb8a165a945) |
+
+---
+
+## 5. 로그 · 간격
+
+**간격이 곧 중량이다.** 성공률 ~80%에서 부하가 최대다. 무한 반복은 성공률을 100%로 수렴시키고 그때부터 0kg이다.
+
+```
+성공 → 간격 ×2.5   (1 → 3 → 7 → 18 → 45 → 90일)
+부분 → 간격 유지
+실패 → 1일로 리셋 + 막힌 축 기록
+```
+
+`log.csv` — **문서에 쓰지 마라. 그것도 생성이다.**
+```csv
+날짜,좌표ID,판정,다음간격,막힌축,비고
+2026-07-16,W03,부분,1,C3,fence 위치는 나왔는데 마지막 1개 경합을 유도 못함
+```
+
+`막힌축` 칸이 전부다. 실패를 **축으로 분류**한다. 특정 축에 몰리면 진짜 구멍(→ 그 축의 유도 훈련), 흩어져 있으면 그냥 간격 문제(→ 간격만 조정).
+
+### 판정 기준
+
+| 판정 | 조건 |
+|---|---|
+| **성공** | 5칸 전부 + 숫자 있음 + 90초 안 + **정답지 안 봄** |
+| **부분** | 유도는 됐는데 숫자/대조/대가 중 하나 누락 |
+| **실패** | 유도 자체가 안 됨 → **이 노드는 암기로 들어왔다. 축에 재연결이 필요하다** |
+
+**최종 판정 (도메인 밖 전이 테스트)**: 준비 안 한 좌표를 물었을 때 답이 나오는가.
+나오면 생성기가 있는 것. 준비한 것만 나오면 그림을 외운 것.
+
+---
+
+## 6. 진행
+
+```
+W1-2  W01 W02 W03 W04 W05        Core/ECS — 네 시그니처
+W3-4  W06 W07 W08 W09 W10 W11    RHI/Renderer — 그래픽스 해동분
+W5    S01 S02 S03 S04 S05        C&S 실시간
+W6    S06 S07 S08 W12            아웃게임 + 협업 좌표
+W7    N01~N05                    Bot/AI
+상시  신규 1 : 재인출 1 비율 유지
+주1회 축 통합 — C1~C7 중 하나로 여러 좌표를 한 서사로 재생성
+```
+
+**종료 조건**: "다 봤다"가 아니라 **"다음 좌표를 예측할 수 있다"**.
+25/25 성공 + 전이 테스트 통과 = 끝. 무한 반복 금지 — 그건 perfectionism의 서식지다.

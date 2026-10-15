@@ -751,9 +751,9 @@ Assert-JsonInteger $koukuEncounterDocument.sourceRevision `
 	'KoukuSaydon encounter sourceRevision' 1 ([uint32]::MaxValue)
 if ([string]$koukuEncounterDocument.schema -cne 'lostark.encounter-profile' -or
 	[string]$koukuEncounterDocument.encounterId -cne
-		'ENCOUNTER_KAKULSAYDON_G1' -or
+		'ENCOUNTER_KOUKUSAYDON_G1' -or
 	[string]$koukuEncounterDocument.bossArchetypeId -cne
-		'BOSS_KAKULSAYDON_G1_KOUKU' -or
+		'BOSS_KOUKUSAYDON_G1_KOUKU' -or
 	[string]$koukuEncounterDocument.authority -cne 'server' -or
 	[uint32]$koukuEncounterDocument.fixedTickHz -ne 30 -or
 	-not $bossIds.Contains([string]$koukuEncounterDocument.bossArchetypeId) -or
@@ -801,12 +801,12 @@ if ($null -ne $MadnessTuning) {
 $patternRows.Add(($madnessFields -join "`t"))
 $koukuPatternById = @{}
 $koukuGateTargets = @{
-    'GATE1|MN_RPCZ_00' = 'boss.kakulsaydon.g1.kouku'
-    'GATE1|MN_RPCT_05' = 'boss.kakulsaydon.g1.saydon'
-    'GATE2|MN_RPCZ_00' = 'boss.kakulsaydon.g2.kouku'
-    'GATE2|MN_RPCT_06' = 'boss.kakulsaydon.g2.big-saydon'
-    'GATE3|MN_RPCT_05' = 'boss.kakulsaydon.g3.saydon'
-    'BINGO|MN_RPCT_05' = 'boss.kakulsaydon.bingo.saydon'
+    'GATE1|MN_RPCZ_00' = 'boss.koukusaydon.g1.kouku'
+    'GATE1|MN_RPCT_05' = 'boss.koukusaydon.g1.saydon'
+    'GATE2|MN_RPCZ_00' = 'boss.koukusaydon.g2.kouku'
+    'GATE2|MN_RPCT_06' = 'boss.koukusaydon.g2.big-saydon'
+    'GATE3|MN_RPCT_05' = 'boss.koukusaydon.g3.saydon'
+    'BINGO|MN_RPCT_05' = 'boss.koukusaydon.bingo.saydon'
 }
 $koukuFollowupTargets = [Collections.Generic.List[string]]::new()
 $koukuTargetedVisuals = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
@@ -945,7 +945,7 @@ foreach ($koukuPattern in @($koukuEncounterDocument.patterns)) {
 		if ($patternBoss.Count -ne 1 -or
 			[string]$patternBoss[0].encounterId -cne
 				[string]$koukuEncounterDocument.encounterId -or
-			[string]$patternBossId -cnotlike 'BOSS_KAKULSAYDON_*' -or
+			[string]$patternBossId -cnotlike 'BOSS_KOUKUSAYDON_*' -or
 			-not $koukuPatternBossIds.Add([string]$patternBossId)) {
 			throw "KoukuSaydon pattern bossArchetypeId is not an arena boss of its encounter: $($koukuPattern.patternId)/$patternBossId"
 		}
@@ -2398,12 +2398,12 @@ for ($playAllIndex = 0; $playAllIndex -lt $koukuProductOrder.Count;
 	else { 0 }
 	$patternRows.Add((@(
 		'PATTERNSEQUENCESTEP', $koukuEncounterDocument.encounterId,
-		'KAKULSAYDON_G1_PLAY_ALL', $playAllIndex,
+		'KOUKUSAYDON_G1_PLAY_ALL', $playAllIndex,
 		$koukuProductOrder[$playAllIndex], $pursuitAfterMs) -join "`t"))
 }
 $patternRows.Add((@(
 	'PATTERNSEQUENCE', $koukuEncounterDocument.encounterId,
-	'KAKULSAYDON_G1_PLAY_ALL', 'ORDERED_ONCE_THEN_IDLE', 100,
+	'KOUKUSAYDON_G1_PLAY_ALL', 'ORDERED_ONCE_THEN_IDLE', 100,
 	$koukuProductOrder.Count) -join "`t"))
 
 }

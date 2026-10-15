@@ -702,7 +702,7 @@ void LostArk::Server::CGameRoom::Handle_DespawnAllWorldEntities(
 	// sense for the Character Select Arena's own spawn buttons and the
 	// KoukuSaydon arena's Debug gate buttons.
 	if (Is_KoukuRaidRunning()) return;
-	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+	const bool koukuGateWorld = WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId;
     const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId && !koukuGateWorld && !valtanWorld) ||
 		!m_PlayerIdBySessionId.contains(sessionId))

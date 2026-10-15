@@ -9,7 +9,7 @@
 #include "Level_Bern.h"
 #include "Level_CharacterSelect.h"
 #include "Level_Development.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "Level_ValtanArena.h"
 #include "MapAssetPreview.h"
 #include "DestructionSimulationController.h"
@@ -563,8 +563,8 @@ CWorldSequencePlayer::TARGET_SET Client::CMapTool::Runtime_AuthoringTargets(
 			return targets;
 		}
 	}
-	if (levelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
-		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	if (levelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
+		if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 			return arena->Get_CompositionWorldTargets();
 	/* Valtan lends the same map runtime. It has no World Sequence owner, so the
 	   Object preparation and anchor hooks stay empty here. */
@@ -646,8 +646,8 @@ vector<Client::CMapTool::STATIC_BATCH_ENTRY>& Client::CMapTool::Authoring_Batche
 		if (auto* maharaka = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
 			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::MAHARAKA))
 				return maharaka->Get_MapAuthoringRuntime().Get_AuthoringBatches();
-		if (auto* kouku = CLevel_KakulSaydonArena::Get_Active())
-			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		if (auto* kouku = CLevel_KoukuSaydonArena::Get_Active())
+			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 				return kouku->Get_MapAuthoringBatches();
 		if (auto* valtan = CLevel_ValtanArena::Get_Active())
 			if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::VALTAN_ARENA))
@@ -715,9 +715,9 @@ bool_t Client::CMapTool::Can_ReplaceRuntimeAuthoringTargets() const
 #ifdef _DEBUG
 	if (!Runtime_AuthoringTargets().pPlacements)
 		return false;
-	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
-		auto* arena = CLevel_KakulSaydonArena::Get_Active();
+		auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 		return nullptr != arena && arena->Can_ReplaceMapAuthoringTargets();
 	}
 	/* Valtan, Bern, Character Select and Maharaka have no level-owned World Sequence or
@@ -742,9 +742,9 @@ void Client::CMapTool::Apply_RuntimeAuthoringActive(const bool_t active)
 		return;
 	}
 	/* Both Maharaka and Kouku stop self motions while the tool owns poses. */
-	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 		return;
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 		arena->Set_MapAuthoringActive(active);
 #else
 	(void)active;
@@ -789,8 +789,8 @@ void Client::CMapTool::Rebase_RuntimeMotions()
 		if (auto* level = CLevel_Development::Get_Active(LEVEL::MAHARAKA))
 			level->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
 	if (m_bRuntimeAuthoring && Runtime_AuthoringTargets().pPlacements &&
-		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
-		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+		CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
+		if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 			arena->Rebase_MapAuthoringSelfMotions(m_RuntimePlacementDraft);
 #endif
 }

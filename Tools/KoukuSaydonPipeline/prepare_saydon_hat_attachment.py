@@ -14,9 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSITION = Path('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json')
 WORLD = Path('Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json')
-PATTERN_ID = 'KAKULSAYDON_G1_PATTERN_83'
+PATTERN_ID = 'KOUKUSAYDON_G1_PATTERN_83'
 LOGIC_ID = PATTERN_ID + '.logic.1'
-LOGIC_DEFINITION_ID = 'kakulsaydon.g1.logic.81'
+LOGIC_DEFINITION_ID = 'koukusaydon.g1.logic.81'
 OBJECT_ID = 'world.object.kouku.saydon_hat_right'
 TEMPLATE_ID = 'sequence.LV_LUT_MIDNIGHTC_ED.world_object.saydon_hat_right'
 INSTANCE_ID = 'world.object.instance.kouku.saydon_hat_right'
@@ -62,7 +62,7 @@ def prepare(output: Path):
     resource = dict(objectId=OBJECT_ID, displayName=title, modelAssetId=HAND_MODEL,
         anchorKind='BOSS', diffuseTextureAssetId='', modelPreScale=0.01, animated=True,
         scale=[1.7, 1.7, 1.7], sequenceInstanceId='',
-        anchorBossArchetypeId='BOSS_KAKULSAYDON_G1_SAYDON', anchorBone='b_wp_1',
+        anchorBossArchetypeId='BOSS_KOUKUSAYDON_G1_SAYDON', anchorBone='b_wp_1',
         defaultMotionInstanceId=INSTANCE_ID, materialSourceModelAssetId=HAND_MODEL)
     key = dict(timeMs=0, positionOffset=[0, 0, 0], rotationQuaternion=[0, 0, 0, 1],
         scaleMultiplier=[1, 1, 1], visible=True)
@@ -75,7 +75,7 @@ def prepare(output: Path):
     instance = dict(instanceId=INSTANCE_ID, templateId=TEMPLATE_ID, enabled=True,
         startDelayMs=0, playbackSpeed=1, anchorKind='BOSS', position=[0, 0, 0], motionEnd='HOLD',
         nextMotionId='', bindings=[dict(slotId='object', targetKind='OBJECT_RESOURCE', targetId=OBJECT_ID)])
-    world_id = 'kakulsaydon.g1.world.' + str(composition['nextWorldOrdinal'])
+    world_id = 'koukusaydon.g1.world.' + str(composition['nextWorldOrdinal'])
     world_definition = dict(worldId=world_id, displayName=title, sequenceInstanceId=INSTANCE_ID,
         positionOffset=[0, 0, 0], anchorKind='NONE', anchorPosition=[0, 0, 0], companionEffectResourceId='',
         objectResourceId=OBJECT_ID)

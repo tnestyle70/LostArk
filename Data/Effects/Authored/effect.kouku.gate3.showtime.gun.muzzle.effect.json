@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.kakulsaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_28_05_loop_a", "startOffsetMs": 0, "sourceStartMs": 1097, "playMs": 2070, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.koukusaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_28_05_loop_a", "startOffsetMs": 0, "sourceStartMs": 1097, "playMs": 2070, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.gate3.showtime.gun.muzzle",
   "displayName": "3관문_세이튼_쇼타임_총구 발사",
   "bloomIntensity": 1.29999995,

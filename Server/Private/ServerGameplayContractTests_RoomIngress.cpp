@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
 #include "Gameplay/CombatCollisionContract.h"
@@ -39,7 +39,7 @@ using namespace LostArk::Shared;
 int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 {
 	TESTS tests;
-	for (const auto world : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA })
+	for (const auto world : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KOUKUSAYDON_ARENA })
 	{
 		auto raid = std::make_unique<CGameRoom>(world);
 		auto bern = std::make_unique<CGameRoom>(WORLD_ID::BERN);
@@ -129,7 +129,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				"Return resolves navigable ground near the correct NPC and clears raid visit state");
 			if (landed) std::cout << guideId << " landing " << landing.Player.fPositionX << ','
 				<< landing.Player.fPositionY << ',' << landing.Player.fPositionZ << '\n';
-			raid->m_GateProgress.iCurrentGate = world == WORLD_ID::KAKULSAYDON_ARENA ? 4u : 2u;
+			raid->m_GateProgress.iCurrentGate = world == WORLD_ID::KOUKUSAYDON_ARENA ? 4u : 2u;
 			raid->m_GateProgress.iProposalId = 41u;
 			raid->m_GateProgress.Voters = {entry.Player.iPlayerId};
 			raid->m_KoukuRaid.State.iRunEpoch = 51u;
@@ -145,7 +145,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				!raid->m_GateProgress.iCurrentGate && !raid->m_GateProgress.iClearedMask &&
 				!raid->m_GateProgress.iProposalId && raid->m_GateProgress.Voters.empty() &&
 				(world != WORLD_ID::VALTAN_ARENA || !raid->m_bValtanRaidCleared) &&
-				(world != WORLD_ID::KAKULSAYDON_ARENA || (!raid->m_KoukuRaid.State.iRunEpoch && !raid->m_MarioPoppedBalls[1])),
+				(world != WORLD_ID::KOUKUSAYDON_ARENA || (!raid->m_KoukuRaid.State.iRunEpoch && !raid->m_MarioPoppedBalls[1])),
 				"Last departure resets raid gates, votes, completion and Mario state before re-entry");
 			enter.eWorldId = world;
 			tests.Require(!raid->Stage_PlayerEntry(session, enter, {}, entry, reason, status,
@@ -153,7 +153,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 		}
 	}
 	{
-		auto raid = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto raid = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		std::vector<std::shared_ptr<CClientSession>> peers;
 		bool ready = raid->Is_Ready();
 		for (unsigned index = 0; index < 4u && ready; ++index)
@@ -161,7 +161,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 			auto peer = std::make_shared<CClientSession>(95000u + index, INVALID_SOCKET,
 				CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
 			peer->m_isSendRunning.store(true); raid->Handle_Register(peer);
-			C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			C2S_ENTER_WORLD enter; enter.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			enter.eCharacterClass = CHARACTER_CLASS_ID::WARLORD; enter.strNickName = "ExitVote" + std::to_string(index);
 			ready = raid->Join(peer->Get_SessionId(), enter); peers.push_back(peer);
 		}
@@ -207,7 +207,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_NpcRaidReturn()
 				});
 			};
 			C2S_GATE_PROGRESS_PROPOSE proposal;
-			proposal.iRequestSequence = 10u; proposal.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			proposal.iRequestSequence = 10u; proposal.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			proposal.eKind = GATE_PROGRESS_KIND::EXIT;
 			raid->Handle_GateProgressPropose(peers[1]->Get_SessionId(), proposal);
 			tests.Require(!raid->m_GateProgress.iProposalId && raid->m_PendingWorldTransfers.empty(),
@@ -262,7 +262,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RoomIngress(TESTS& test
 {
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
 		CGameRoom& room = *roomStorage;
 		bool admittedBestEffort = room.Is_Ready();
@@ -487,7 +487,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RoomIngress(TESTS& test
 			room.m_PlayerIdByEntityId.emplace(entityId, playerId);
 		};
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID RETURN_SESSION = 42000u;
@@ -525,7 +525,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RoomIngress(TESTS& test
 			"npc.bern.beda.guide" ==
 				room.m_PendingWorldTransfers.front().strSpawnPlacementOverrideId;
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto previewRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& previewRoom = *previewRoomStorage;
 		constexpr SESSION_ID PREVIEW_SESSION = 42100u;
@@ -548,7 +548,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RoomIngress(TESTS& test
 			"Allow an explicit Release Raid Clear test mode to exercise the Return button");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
 		CGameRoom& room = *roomStorage;
 		const std::size_t commandCount =

@@ -1,14 +1,18 @@
 #pragma once
 
+// 설명 표·검색·선택 버튼을 매 프레임 그리는 ImGui API다.
 #include "imgui.h"
+// 정적 기법 표의 원소 수를 std::size로 구한다.
 #include <array>
 #include <string_view>
 
-// Availability describes this renderer, never the selected GPU's marketing name.
-// Explicit experiment requests return stable recipe IDs; Benchmark owns settings.
+// RenderingBenchmark가 호출하는 기법 사전이다. GameObject나 GPU 자원을 생성·소유하지 않는다.
+// 실제 설정 적용은 호출자가 맡고 이 헤더는 설명과 선택한 recipe ID만 제공한다.
 namespace Client::RenderingTechniqueGuide
 {
+    // 현재 구현 범위를 표시하는 분류다. GPU 제품명만으로 지원 여부를 정하지 않는다.
     enum class Availability { Current, MaterialFamily, Foundation, Backend, Reference };
+    // 한 행의 설명·비교 변수·근거와 선택적 실험 ID다. 문자열은 정적 수명이며 해제하지 않는다.
     struct Technique final
     {
         const char* Name;
@@ -23,6 +27,7 @@ namespace Client::RenderingTechniqueGuide
         const char* RecipeId = nullptr;
     };
 
+    // 선언된 정적 표를 Render가 읽는다. 이 표 자체가 재질이나 렌더 패스를 실행하지 않는다.
     inline constexpr Technique Techniques[] = {
         {"GPU Gems", "학습·측정", Availability::Reference,
          "GPU Gems는 NVIDIA가 공개한 그래픽 알고리즘 자료 모음입니다. GI나 프레임 생성처럼 켜는 단일 기능이 아닙니다. 각 장의 가정·입력·오차를 현재 renderer에 맞춰 검증합니다.",
@@ -31,6 +36,8 @@ namespace Client::RenderingTechniqueGuide
          "draw/정점 처리, texture sampling, 메모리 대역폭, pass 수 중 어디에 비용이 생기는지 먼저 구분합니다.",
          "같은 카메라·장면·노출에서 baseline과 한 기법을 비교합니다. 화질, GPU ms, CPU 제출 ms를 함께 봅니다.",
          "https://developer.nvidia.com/gpugems", "ssao.samples"},
+        // MapPBR 직접광은 Deferred의 Evaluate_MapSourcePBRDirect가 계산한다.
+        // source BG의 RNM/Blinn과 source character의 native program은 각각 다른 소비 경로다.
         {"PBR / BRDF", "재질·빛", Availability::MaterialFamily,
          "표면의 base color·roughness·metallic·normal로 빛의 확산과 반사를 계산합니다. 재질 모델이며 GI 자체는 아닙니다.",
          "Map source PBR family와 source character 경로가 있습니다. legacy·forward 재질까지 같은 BRDF로 통일된 것은 아닙니다.",
@@ -38,6 +45,8 @@ namespace Client::RenderingTechniqueGuide
          "G-buffer 대역폭, 직접광 PS 호출과 BRDF texture/ALU, 투명 재질 overdraw.",
          "roughness만 바꾸고 직접광·환경광·노출을 고정합니다. 0 기여가 shader 계산 생략을 의미하지는 않습니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/physically-based-materials-in-unreal-engine", "pbr.normal"},
+        // mapmaterials의 배치별 lightmap UV·scale과 평균/방향 DDS를 CMaterial·MapAssetRenderUtils가 연결한다.
+        // MapMaterialSurface는 tangent normal로 세 RNM 기저를 평가하며, SH 계수나 새 실시간 GI 계산과 구분한다.
         {"GI / Baked RNM", "간접광·반사", Availability::MaterialFamily,
          "GI는 표면 사이에서 반사된 빛까지 고려하는 문제 영역입니다. baked 조명은 미리 계산해 저장하며 RNM은 방향 정보를 가진 lightmap 표현입니다.",
          "기존 map RNM baked diffuse 소비가 있습니다. 동적 오브젝트·광원 변화 전체를 재계산하는 동적 GI는 아닙니다.",
@@ -45,8 +54,12 @@ namespace Client::RenderingTechniqueGuide
          "lightmap texture sampling·대역폭과 간접 합성. 오프라인 bake 시간은 프레임 비용과 별개입니다.",
          "RNM contribution 0/1로 화면 기여를 확인합니다. 직접광만 보기와 본질 preset은 서로 다른 실험입니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/global-illumination-in-unreal-engine", "pbr.baked"},
+        // 선택된 MapPBR은 반사 방향·roughness로 cube mip과 BRDF 표를 조회한다. RGBM6의 A는 광량 배율이다.
+        // 설치된 native 표는 128×32 RG16_UNORM의 R=Fresnel/G=base이며 기존 128×128 RGBA16_FLOAT와 별도 자원이다.
         {"IBL / 환경 반사", "간접광·반사", Availability::MaterialFamily,
          "주변 환경에서 오는 빛을 cubemap·probe로 근사합니다. roughness에 따라 반사의 퍼짐을 달리합니다. 환경 반사는 화면 공간 반사와 다릅니다.",
+         // native SH와 project cubeDiffuse는 모두 float4 7개지만 배율 계약이 다르다.
+         // native는 SH9 포장값에 환경색·π를 적용하고, project는 E/π가 포함된 계수와 별도 intensity를 사용한다.
          "source PBR 환경 specular와 cube diffuse 입력이 있습니다. 실시간 모든 geometry 반사는 아닙니다.",
          "environment specular/cube diffuse contribution와 roughness. source 환경 입력과 exposure를 고정합니다.",
          "cubemap sampling, mip 접근, 간접광 합성 PS 비용.",
@@ -103,9 +116,9 @@ namespace Client::RenderingTechniqueGuide
          "https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-39-volume-rendering-techniques", "fog.pass"},
         {"Instancing / LOD / GPU Driven", "geometry·제출", Availability::MaterialFamily,
          "instancing은 같은 geometry 제출을 묶고 LOD는 필요 정밀도를 낮춥니다. GPU driven은 가시성·제출 인자 일부를 GPU에서 생성합니다.",
-         "맵 batch/instance·CPU screen LOD 경로가 있습니다. indirect counter 선언만으로 실행 경로가 있다고 볼 수 없으며 현재 GPU driven culling/indirect 제출은 미구현입니다.",
-         "기존 scene의 batch/LOD/컬링 조건. 이번 실험에서 지원하지 않는 설정은 자동 변경하지 않습니다.",
-         "CPU CullAndPack/BindAndDraw·instance upload와 GPU IA/VS를 확인합니다. 향후 indirect 실행량에는 별도 GPU 계측이 필요합니다.",
+         "호환 맵 batch는 compute 컬링·LOD 선택 후 indirect draw로 제출합니다. 옵션·준비 조건이 맞지 않는 batch는 CPU 경로를 사용합니다.",
+         "GPU visibility·instancing·동일 batch·lighting bank·source material 조건을 확인합니다. HiZ는 정적 가림 허용·가림 옵션·최소 규모와 depth 준비가 필요합니다.",
+         "CPU 준비·업로드와 Render.GpuScene.Dispatch/StaticDepthHiZ GPU 시간을 봅니다. indirect draw 호출 수와 GPU가 기록한 instance 수를 구분합니다.",
          "같은 카메라에서 index 감소와 draw 감소를 따로 봅니다. index가 줄어도 pixel 병목이면 FPS 이득이 작을 수 있습니다.",
          "https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-3-inside-geometry-instancing"},
         {"실험 SSGI", "간접광·반사", Availability::MaterialFamily,
@@ -341,6 +354,7 @@ namespace Client::RenderingTechniqueGuide
          "https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-2-terrain-rendering-using-gpu-based-geometry"}
     };
 
+    // 표시할 정적 문자열만 반환하며 Availability나 렌더 상태를 바꾸지 않는다.
     inline const char* StatusLabel(Availability status)
     {
         switch (status)
@@ -353,6 +367,8 @@ namespace Client::RenderingTechniqueGuide
         }
     }
 
+    // Benchmark가 매 프레임 호출한다. 버튼을 누른 프레임만 정적 recipe ID를 반환하고 그 외에는 nullptr다.
+    // capturing 중에는 요청 버튼을 막고, 검색·선택 상태는 함수의 static 변수로 유지한다.
     inline const char* Render(bool experimentActive = false, bool capturing = false)
     {
         if (!ImGui::CollapsingHeader("기법 사전 · GPU Gems / GI / RTX")) return nullptr;

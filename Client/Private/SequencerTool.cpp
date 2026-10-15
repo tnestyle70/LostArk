@@ -1,5 +1,7 @@
 #include "imgui.h"
+// 창 shell과 세션 차용 상태의 선언이다. 실제 보스 문서의 헤더를 직접 포함하지 않고 공용 계약으로 호출한다.
 #include "SequencerTool.h"
+// 공통 화면 좌표·눈금·행 배치 helper를 사용한다. Stage/Logic의 저장 정책은 각 세션에 남는다.
 #include "CompositionTimeline.h"
 #include "SequenceCameraEditor.h"
 #include "ClassMovieInspector.h"
@@ -13,6 +15,7 @@
 #include <string_view>
 #include <utility>
 
+// 이 CPP 안에서만 쓸 표시·입력 helper다. anonymous namespace는 다른 구현 파일의 같은 이름과 충돌하지 않게 한다.
 namespace
 {
     using BOSS = Client::COMPOSITION_WORKBENCH_BOSS;
@@ -40,6 +43,8 @@ namespace
         BOSS::VALTAN, BOSS::KOUKU_SAYDON, BOSS::KOUKU_SAYDON_GATE2,
         BOSS::KOUKU_SAYDON_GATE3, BOSS::KOUKU_SAYDON_ENCORE };
 
+    // Inspector가 임시 DATA_JSON_VALUE를 재귀 편집한다. 필드/배열 값을 복사해 바꾼 뒤 교체하며 identity 필드는 읽기 전용으로 전달한다.
+    // selections는 JSON 경로별 선택 index의 UI 상태다. 원본 ID·문서 저장을 소유하지 않는다.
     bool EditMovieValue(const char* label, Client::DATA_JSON_VALUE& value,
         std::map<std::string, int>& selections, const std::string& path, const bool readOnly = false)
     {
@@ -144,6 +149,7 @@ namespace
         ImGui::EndDisabled(); ImGui::PopID(); return changed;
     }
 
+    // 원본 행은 const 참조로 읽고 수정 대상 key를 모두 검증한 뒤 out에 후보를 쓴다. 대상 key가 잘못되면 out과 원본을 바꾸지 않는다.
     bool EditMovieModelPosition(const Client::DATA_JSON_VALUE& row, const std::size_t keyIndex,
         const std::array<double, 3>& position, const bool translatePhase,
         Client::DATA_JSON_VALUE& out, std::string& status)
@@ -182,6 +188,7 @@ namespace
         return true;
     }
 
+    // movie callback을 공용 세션 interface에 맞추는 구현이다. movie clock을 별도로 돌리지 않고 Level이 준 state와 명령을 연결한다.
     class CClassSelectionWorkbenchSession final : public Client::ICompositionWorkbenchSession
     {
     public:
@@ -272,8 +279,8 @@ namespace
 
         void End_WorkbenchFrame() override
         {
-            // Inspector source commands run after the row panes. Refresh clean
-            // cached rows before the camera window can edit one this frame.
+            // Inspector의 원본 변경 명령은 행 pane 렌더가 끝난 뒤 처리한다.
+            // 이번 프레임의 카메라 창이 행을 편집하기 전에, 수정 중이 아닌 캐시 행만 새 원본으로 맞춘다.
             m_State = Read_State();
             Refresh_RowSource();
             Render_CameraWindow();
@@ -289,8 +296,8 @@ namespace
             }
             if (m_RequestedRepeatMovie)
             {
-                // Submit before Save; a camera edit opened later this frame still
-                // owns its pending row and must not be invalidated by this change.
+                // Save 전에 대기 중인 변경을 제출한다. 이후 같은 프레임에 열린 카메라 편집이
+                // 소유하는 미적용 행까지 무효화하지 않도록 적용 순서를 유지한다.
                 if (!m_RowDirty && m_OpenedAuthoring && !m_State.authoringPublishPending && m_Callbacks.setRepeatMovie)
                 {
                     (void)m_Callbacks.setRepeatMovie(m_RequestedRepeatMovie->classId,
@@ -307,8 +314,8 @@ namespace
             m_RequestedRate.reset();
             if (m_ApplyRequested && m_EditBox && m_Callbacks.applyBox)
             {
-                // Camera key creation/deletion changes selection before applying
-                // the row. Keep the pre-edit key for Undo and the new key for Redo.
+                // 카메라 key 추가·삭제는 행 적용보다 먼저 선택을 바꾼다.
+                // Undo에는 편집 전 key를, Redo에는 편집 후 key를 남긴다.
                 if (m_CameraHistorySelection && m_Callbacks.setHistorySelection)
                     m_Callbacks.setHistorySelection(*m_CameraHistorySelection);
                 if (!Row_SourceChanged() && m_Callbacks.applyBox(*m_EditBox, m_EditValue, m_EditStatus))
@@ -326,8 +333,8 @@ namespace
             m_ReloadRequested = false;
             if (!m_OpenEffect.empty() && m_Callbacks.openEffectEditor)
             {
-                // Opening V1 can deactivate this pane synchronously. Transfer
-                // the movie first, and restore our claim if admission fails.
+                // V1 편집기를 여는 callback이 이 pane를 즉시 비활성화할 수 있다.
+                // 먼저 movie를 넘기고, 수락에 실패하면 이쪽의 재생 소유 표시를 복구한다.
                 const bool owned = std::exchange(m_OwnsPlayback, false);
                 if (!m_Callbacks.openEffectEditor(m_State.selectedClassId, m_ViewLoop, m_OpenEffect, m_EditStatus))
                     m_OwnsPlayback = owned;
@@ -462,8 +469,8 @@ namespace
         void Queue_Seek(const bool loop, const double timeMs)
         {
             m_SeekLoop = loop;
-            // The slider uses floats while the source slomo duration is double.
-            // Its rounded-up final tick must still request the valid phase end.
+            // 슬라이더 입력은 float이고 원본 slomo 길이는 double이다.
+            // 반올림으로 마지막 tick이 끝을 넘어도 유효한 phase 끝을 seek하도록 제한한다.
             const double durationMs = loop ? m_State.loopDurationMs : m_State.introDurationMs;
             m_SeekMs = std::clamp(timeMs, 0., (std::max)(0., durationMs));
             m_Pending = COMMAND::SEEK;
@@ -609,8 +616,8 @@ namespace
             const char* label;
             ImU32 labelColor, boxColor;
         };
-        // Display categories share the Boss/Sequence order. Source kinds and
-        // actor/slot rows remain the identities used by movie edit callbacks.
+        // 표시 category는 Boss/Sequence와 같은 순서를 사용한다.
+        // 실제 movie 편집 callback의 식별은 원본 종류와 actor/slot 행이 담당한다.
         inline static constexpr std::array<MOVIE_LANE, 8> MOVIE_LANES = {{
             {"Animation", "Animation", Client::CompositionTimeline::AnimationLabelColor, Client::CompositionTimeline::AnimationColor},
             {"World Model", "World", Client::CompositionTimeline::WorldLabelColor, Client::CompositionTimeline::WorldColor},
@@ -811,7 +818,7 @@ namespace
                     ImGui::SetScrollX((std::max)(0.f, ImGui::GetScrollX() +
                         (io.MousePos.x - origin.x - labelWidth) * (m_PixelsPerSecond / oldScale - 1.f)));
                 }
-                // The canvas can fill the window without changing the authored time scale.
+                // 저작된 시간 배율을 바꾸지 않고도 canvas가 창 너비를 채우도록 표시 폭을 계산한다.
                 const float width = (std::max)(availableWidth, duration * .001f * m_PixelsPerSecond);
                 const float timeX = origin.x + labelWidth;
                 DrawRuler(draw, {timeX, origin.y}, {timeX + width, origin.y + rowMetrics.rulerHeight},
@@ -854,8 +861,8 @@ namespace
                             intervals.push_back({box.id, box.movieStartMs, box.movieEndMs - box.movieStartMs,
                                 (std::max)(0., box.movieHoldEndMs - box.movieEndMs), {}});
                         }
-                    // Display rows share a category; source actor/slot rows still
-                    // own selection, overlap validation and all edit commands.
+                    // 같은 category 안에서 표시 행을 나누더라도 선택·겹침 검증·편집 명령은
+                    // 원본 actor/slot 행을 대상으로 유지한다.
                     const auto layout = AllocateDisplayRows(std::move(intervals), MinimumBoxWidth * 1000. / m_PixelsPerSecond);
                     const auto geometry = DrawCategoryLane(draw, {origin.x, y}, labelWidth + width,
                         labelWidth, layout.rowCount, rowMetrics.laneHeight, lane.label, lane.labelColor,
@@ -990,8 +997,8 @@ namespace
             const double minimumSpan = (std::min)(.1, drag.originalEnd - drag.originalStart);
             if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE)
             {
-                // Camera body motion chooses an insertion point, independent of
-                // the moved cut's length. A long first cut can reach the last cut.
+                // 카메라 body 이동은 이동하는 cut의 길이와 독립적으로 삽입 지점을 고른다.
+                // 그래야 긴 첫 cut도 마지막 cut 위치까지 옮길 수 있다.
                 const bool reorder = drag.before.kind == "Camera";
                 const double limit = reorder ? m_Timeline->movieDurationMs - .1 : m_Timeline->movieDurationMs - (drag.originalEnd - drag.originalStart);
                 drag.startMovie = std::clamp(drag.originalStart + delta, 0., (std::max)(0., limit));
@@ -1006,7 +1013,7 @@ namespace
                 {
                     const double start = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.startMovie, true);
                     double end = m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.endMovie, true);
-                    // Visual tracks preserve source duration; Sound preserves its WAV duration.
+                    // 시각 track은 원본 길이를, Sound track은 WAV 길이를 유지한다.
                     if (drag.gesture == Client::CLASS_MOVIE_TIMING_EDIT::MOVE &&
                         drag.before.kind != "Camera" && drag.before.kind != "Sound")
                         end = start + m_Callbacks.mapTime(drag.before.classId, drag.before.loop, drag.originalEnd, true)
@@ -1514,8 +1521,8 @@ void Client::CSequencerTool::Open(const TARGET target, const BOSS boss)
     m_bTargetChangePending = m_bBossChangePending = false;
     if (target != m_eSelectedTarget)
     {
-        // Stage the requested gate before entering the session. Never briefly
-        // select the previous gate and discard an exact typed deep-link selection.
+        // 세션 진입 전에 요청한 관문을 먼저 준비한다.
+        // 이전 관문을 잠시 선택했다가 typed deep link가 지정한 정확한 선택을 잃지 않게 한다.
         if (target == TARGET::SEQUENCE) m_eSequenceBoss = boss;
         if (target == TARGET::BOSS || target == TARGET::OBJECT) m_eSelectedBoss = boss;
         Select_Target(target);
@@ -1585,8 +1592,8 @@ Client::ICompositionWorkbenchSession* Client::CSequencerTool::Selected_Session()
 void Client::CSequencerTool::Set_AnimationResources(
     std::vector<COMPOSITION_ANIMATION_RESOURCE> resources, std::string status)
 {
-    // The reader isolates missing packages and retains their last rows. Accept
-    // that partial snapshot so healthy models remain available after a failure.
+    // reader는 누락된 패키지를 격리하고 해당 패키지의 마지막 행을 유지한다.
+    // 이 부분 snapshot을 받아 정상 모델의 목록은 계속 사용할 수 있게 한다.
     if (!resources.empty())
         m_AnimationResources = std::move(resources);
     m_strAnimationResourceStatus = std::move(status);
@@ -1935,6 +1942,8 @@ void Client::CSequencerTool::Render_Pane(
     Apply_ViewRequest(session);
 }
 
+// MainApp이 호출하는 한 프레임의 창 조율이다. 선택한 세션 하나에서 Begin → pane별 Render → End를 마친다.
+// 행을 빌려 읽는 모든 pane가 끝난 다음 clipboard 명령을 전달하므로 편집 commit이 앞선 pane의 포인터를 무효화하지 않는다.
 void Client::CSequencerTool::Render()
 {
     if (!m_bOpen)
@@ -1973,8 +1982,7 @@ void Client::CSequencerTool::Render()
         ImGui::End();
         return;
     }
-    /* The Map Tool may already own this session frame. Draw nothing that
-       would open a second Begin/End pair for the same owner. */
+    // Map Tool이 이미 같은 세션의 프레임을 소유할 수 있다. 이 경우 같은 소유자에 두 번째 Begin/End를 여는 렌더는 수행하지 않는다.
     if (m_pExternallyHostedSession == session ||
         m_pExternallyHostedSessionAlt == session)
     {
@@ -2020,7 +2028,7 @@ void Client::CSequencerTool::Render()
             Render_Pane(*session, pane);
     }
     session->End_WorkbenchFrame();
-    // Defer all authoring changes until every pane has released its row views.
+    // 모든 pane가 행을 참조하는 렌더를 마친 뒤 저작 변경 명령을 전달한다.
     const auto& io = ImGui::GetIO();
     const COMPOSITION_EDIT_INPUT editInput{m_bCompositionEditFocused, io.KeyCtrl, io.WantTextInput,
         ImGui::IsAnyItemActive(), ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId),

@@ -167,7 +167,7 @@ def prepare(output):
         else: before = None
         write(output / 'candidate' / relative, doc)
         duration = duration_ms(doc) if doc['elements'] else 550
-        resource = dict(resourceId='kakulsaydon.effect.' + sha(asset.encode())[:20],
+        resource = dict(resourceId='koukusaydon.effect.' + sha(asset.encode())[:20],
             displayName=doc['displayName'], kind='EFFECT', assetId=asset,
             defaultAnchorKind='BOSS', soundEvent='', resourceKind='V1_EFFECT', elementId='', durationMs=duration,
             shape='BOX', colliderKind='GEOMETRY', halfExtents=[1, 1, 1], radiusM=3, halfAngleDegrees=45)
@@ -189,15 +189,15 @@ def prepare(output):
             childCollection='presentationOccurrences', childStableKey='occurrenceId', childStableId=occurrence,
             changes=changes))
     def replace_resource(n, occurrence, suffix, **values):
-        pattern = 'KAKULSAYDON_G1_PATTERN_' + str(n)
+        pattern = 'KOUKUSAYDON_G1_PATTERN_' + str(n)
         patch(pattern, pattern + '.presentation.' + str(occurrence),
             dict(resourceId=by_asset[prefix + suffix]['resourceId'], **values))
     replace_resource(78, 1, 'card.match.dice.full.restore')
     for n in (13, 30, 31, 32): replace_resource(78, n, 'card.match.emit.full.restore')
-    p78 = patterns['KAKULSAYDON_G1_PATTERN_78']
+    p78 = patterns['KOUKUSAYDON_G1_PATTERN_78']
     prep = copy.deepcopy(p78['presentationOccurrences'][0])
     prep_ordinal = p78['nextPresentationOccurrenceOrdinal']
-    prep.update(occurrenceId=f'KAKULSAYDON_G1_PATTERN_78.presentation.{prep_ordinal}',
+    prep.update(occurrenceId=f'KOUKUSAYDON_G1_PATTERN_78.presentation.{prep_ordinal}',
         resourceId=by_asset[prefix + 'card.match.prepare.full.restore']['resourceId'],
         startMs=5167, durationMs=by_asset[prefix + 'card.match.prepare.full.restore']['durationMs'],
         positionOffset=[0, 0, 0], rotationDegrees=[0, 0, 0], scale=[1, 1, 1])
@@ -211,7 +211,7 @@ def prepare(output):
         positionOffset=[0, 0, 0], rotationDegrees=[0, 0, 0], scale=[1, 1, 1])
     replace_resource(1, 27, 'gate1.stagger.explosion.full.restore',
         durationMs=by_asset[prefix + 'gate1.stagger.explosion.full.restore']['durationMs'])
-    p1 = patterns['KAKULSAYDON_G1_PATTERN_1']
+    p1 = patterns['KOUKUSAYDON_G1_PATTERN_1']
     for n in (*range(3, 16), *range(17, 22)):
         identity = p1['patternId'] + '.presentation.' + str(n)
         before, = [b for b in p1['presentationOccurrences'] if b['occurrenceId'] == identity]
@@ -226,10 +226,10 @@ def prepare(output):
         actors = placements['bosses']
     centers = []
     for gate in (1, 3):
-        actor, = [a for a in actors if a.get('placementId') == f'boss.kakulsaydon.g{gate}.saydon']
+        actor, = [a for a in actors if a.get('placementId') == f'boss.koukusaydon.g{gate}.saydon']
         centers.append(actor['position'])
     delta = [centers[0][i] - centers[1][i] for i in range(3)]
-    p102 = patterns['KAKULSAYDON_G1_PATTERN_102']
+    p102 = patterns['KOUKUSAYDON_G1_PATTERN_102']
     rings = [b for b in p102['presentationOccurrences'] if
         resources[b['resourceId']]['assetId'] == prefix + 'gate3.backstep.ring.flame']
     assert len(rings) == 7

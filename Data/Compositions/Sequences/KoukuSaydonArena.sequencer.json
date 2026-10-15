@@ -1,12 +1,12 @@
 {
   "schema": "lostark.arena-sequencer",
   "formatVersion": 1,
-  "sequencerId": "arena.sequencer.kakulsaydon",
+  "sequencerId": "arena.sequencer.koukusaydon",
   "status": "SHADOW",
   "revision": 2,
   "displayName": "KoukuSaydon Arena Sequencer",
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "bossCompositionId": "boss.composition.kakulsaydon",
+  "bossCompositionId": "boss.composition.koukusaydon",
   "durationMs": 21010,
   "sourceDocuments": [
     {
@@ -28,7 +28,7 @@
   ],
   "tracks": [
     {
-      "trackId": "track.kakulsaydon.circus-finale.world",
+      "trackId": "track.koukusaydon.circus-finale.world",
       "kind": "WORLD_SEQUENCE",
       "startMs": 0,
       "payload": {
@@ -36,7 +36,7 @@
       }
     },
     {
-      "trackId": "track.kakulsaydon.circus-finale.camera",
+      "trackId": "track.koukusaydon.circus-finale.camera",
       "kind": "CAMERA_SHOT",
       "startMs": 0,
       "endMs": 21010,

@@ -490,7 +490,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	using namespace LostArk::Shared;
 	const auto sessionIter = m_PlayerIdBySessionId.find(sessionId);
 	if ((WORLD_ID::VALTAN_ARENA != m_eWorldId &&
-		 WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) ||
+		 WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId) ||
 		sessionIter == m_PlayerIdBySessionId.end())
 	{
 		return;
@@ -522,7 +522,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	float reviveY = player.fPositionY;
 	float reviveZ = player.fPositionZ;
 	float reviveYaw = player.fYawDegrees;
-	const bool unadmittedCasinoFall = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+	const bool unadmittedCasinoFall = WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId &&
 		!Resolve_CurrentKoukuGate() && player.bKoukuFallDeath && player.KoukuFallRevivePosition;
 	if (unadmittedCasinoFall)
 	{
@@ -559,7 +559,7 @@ void LostArk::Server::CGameRoom::Handle_RevivePlayer(
 	}
 	// A revive command is drained before Prepare_KoukuAuditionTick. Complete
 	// the failed solo mechanic while the admitted corpse is still observable.
-	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+	if (WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId &&
 		m_KoukuSaydonPatternAudition.ePhase != KOUKUSAYDON_PATTERN_AUDITION_PHASE::INACTIVE)
 	{
 		for (auto& member : m_KoukuSaydonPatternAudition.Members)
@@ -676,9 +676,9 @@ void LostArk::Server::CGameRoom::Handle_DebugKillSelf(
 #endif
 }
 
-void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
+void LostArk::Server::CGameRoom::Handle_DebugEnterKoukuSaydonArena(
 	const SESSION_ID sessionId,
-	const LostArk::Shared::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& request)
+	const LostArk::Shared::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA& request)
 {
 #ifndef _DEBUG
 	(void)sessionId;
@@ -720,7 +720,7 @@ void LostArk::Server::CGameRoom::Handle_DebugEnterKakulSaydonArena(
 
 	SERVER_WORLD_TRANSFER_REQUEST transfer{};
 	transfer.iSessionId = player.iSessionId;
-	transfer.eTargetWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	transfer.eTargetWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 	transfer.eCharacterClass = player.eCharacterClass;
 	transfer.strNickName = player.strNickName;
 	transfer.iVoiceType = player.iVoiceType;

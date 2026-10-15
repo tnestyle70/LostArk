@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Locks the P0-2 authored-tool spelling and protected runtime identities."""
+"""Checks canonical KoukuSaydon runtime identities and rejects retired names."""
 
 from __future__ import annotations
 
@@ -84,8 +84,8 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
             "Tools/KoukuSaydonPipeline/project_kouku_saydon_composition.py",
             build_domains,
         )
-        self.assertIn('"id": "map.kakulsaydon"', build_domains)
-        self.assertIn("'map.kakulsaydon'", domain_owner)
+        self.assertIn('"id": "map.koukusaydon"', build_domains)
+        self.assertIn("'map.koukusaydon'", domain_owner)
         build_surface = build_domains + runner + domain_owner
         self.assertNotIn("Tools/KakulSaydonPipeline", build_surface)
         self.assertNotIn("'map.kakul'", build_surface)
@@ -101,7 +101,7 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
             "lostark.kouku-saydon-animation-pattern-bindings",
             '"Reference/KoukuSaydon"',
             '"Authored/KoukuSaydon"',
-            r"kakulsaydon\.",
+            r"koukusaydon\.",
         ):
             self.assertIn(token, animation_builder)
         for legacy in (
@@ -148,8 +148,6 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
                                 f"{path.relative_to(ROOT)}:{line_number}:{token}"
                             )
                     for match in re.finditer("KakulSaydon", line):
-                        if line[match.end() :].startswith("Arena"):
-                            continue
                         client_violations.append(
                             f"{path.relative_to(ROOT)}:{line_number}:KakulSaydon"
                         )
@@ -275,7 +273,7 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
             re.compile(r"valtan|kouku|kakul|saydon", re.IGNORECASE),
         )
 
-    def test_world_and_network_stable_identifiers_remain_protected(self) -> None:
+    def test_world_and_network_identifiers_use_canonical_spelling(self) -> None:
         admission = read(
             "Tools/KoukuSaydonPipeline/validate_kouku_saydon_world_admission.py"
         )
@@ -298,22 +296,22 @@ class KoukuSaydonNamingBoundaryTests(unittest.TestCase):
 
         for token in (
             'COLLECTION_NAME = "KoukuSaton"',
-            'WORLD_ID = "KAKULSAYDON_ARENA"',
-            'CLIENT_LEVEL = "KAKULSAYDON_ARENA"',
-            '"raid.kakul-saydon.arena"',
-            'Path("Client/Public/Level_KakulSaydonArena.h")',
+            'WORLD_ID = "KOUKUSAYDON_ARENA"',
+            'CLIENT_LEVEL = "KOUKUSAYDON_ARENA"',
+            '"raid.kouku-saydon.arena"',
+            'Path("Client/Public/Level_KoukuSaydonArena.h")',
         ):
             self.assertIn(token, admission)
         for token in (
-            'placement_id="stage.kakul."',
-            'f"player.spawn.kakul.party{index:02d}"',
-            '"schema": "lostark.kakul-stage-markers"',
+            'placement_id="stage.kouku."',
+            'f"player.spawn.kouku.party{index:02d}"',
+            '"schema": "lostark.kouku-stage-markers"',
         ):
             self.assertIn(token, world_builder)
         for token in (
-            'LEVEL = "KAKULSAYDON_ARENA"',
-            'read("Client/Public/Level_KakulSaydonArena.h")',
-            '"stage.kakul.sl01"',
+            'LEVEL = "KOUKUSAYDON_ARENA"',
+            'read("Client/Public/Level_KoukuSaydonArena.h")',
+            '"stage.kouku.sl01"',
         ):
             self.assertIn(token, client_contract)
 

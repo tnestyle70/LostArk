@@ -1,14 +1,11 @@
 #include <WinSock2.h>
 #include "imgui.h"
-#pragma push_macro("new")
-#undef new
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
 
 #include "RenderingBenchmark.h"
 #include "RenderingProfileService.h"
 #include "GameInstance.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "Presentation_Manager.h"
 #include "MapAssetRenderUtils.h"
 #include "RenderingTechniqueGuide.h"
@@ -330,7 +327,7 @@ namespace
         scalar(foregroundProcess==GetCurrentProcessId(),"window.processForeground");
         scalar(Client::CUserSettings::Get().Get_FrameLimit(foregroundProcess==GetCurrentProcessId()),"video.activeFpsCap");
         scalar(Client::CMapLightPresentationRuntime::Get_SceneIntensityMultiplier(),"scene.mapLightIntensity");
-        if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+        if (const auto* arena = Client::CLevel_KoukuSaydonArena::Get_Active())
             scalar(arena->Get_MapLightComparisonFingerprint(),"scene.mapLightComparison");
         const auto viewport = mutableGame.Get_ViewportSize(); scalar(viewport.x,"viewport.width"); scalar(viewport.y,"viewport.height");
         for (const auto type : {Engine::D3DTS::VIEW, Engine::D3DTS::PROJ})
@@ -1428,7 +1425,7 @@ void Client::CRenderingBenchmark::Update_RestorationPreview(
 	if (!bToolVisible)
     {
         Profiles.Clear_ComparisonOptions();
-		if (auto* arena = CLevel_KakulSaydonArena::Get_Active())
+		if (auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 			arena->Reset_MapLightComparison();
     }
 	if (m_strRestorationLastProfileId.empty())
@@ -1476,9 +1473,9 @@ bool_t Client::CRenderingBenchmark::Activate_RestorationProfile(
 
 bool_t Client::CRenderingBenchmark::Return_ToEntryProfile(CRenderingProfileService& Profiles)
 {
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 	const bool_t lightsChanged = arena &&
-		arena->Get_MapLightComparison() != CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
+		arena->Get_MapLightComparison() != CLevel_KoukuSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
 	if (m_strRestorationLastProfileId.empty())
 	{
 		if (arena) arena->Reset_MapLightComparison();
@@ -1524,24 +1521,24 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 		beforeId = "scene.valtan.before-restoration.v1";
 		restoredId = "scene.valtan.source-rendering.v1";
 		break;
-	case LEVEL::KAKULSAYDON_ARENA:
-		beforeId = "scene.kakulsaydon.before-restoration.v1";
-		restoredId = "scene.kakulsaydon.source-rendering.v1";
+	case LEVEL::KOUKUSAYDON_ARENA:
+		beforeId = "scene.koukusaydon.before-restoration.v1";
+		restoredId = "scene.koukusaydon.source-rendering.v1";
 		break;
 	default:
 		break;
 	}
 	bool_t changed = false;
-	if (auto* arena = CLevel_KakulSaydonArena::Get_Active();
-		arena && game.Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (auto* arena = CLevel_KoukuSaydonArena::Get_Active();
+		arena && game.Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 	{
 		struct AREA_PROFILE final { const char* label; const char* id; };
 		static constexpr AREA_PROFILE areaProfiles[] = {
-			{ "Start area - source", "scene.kakulsaydon.compare.start.v1" },
-			{ "Gate 1 - source LUT02", "scene.kakulsaydon.compare.gate1.v1" },
-			{ "Gate 2 - source", "scene.kakulsaydon.compare.gate2.v1" },
-			{ "Gate 3 - source LUT01", "scene.kakulsaydon.compare.gate3.v1" },
-			{ "Card maze - current baseline", "scene.kakulsaydon.compare.card-maze.v1" }
+			{ "Start area - source", "scene.koukusaydon.compare.start.v1" },
+			{ "Gate 1 - source LUT02", "scene.koukusaydon.compare.gate1.v1" },
+			{ "Gate 2 - source", "scene.koukusaydon.compare.gate2.v1" },
+			{ "Gate 3 - source LUT01", "scene.koukusaydon.compare.gate3.v1" },
+			{ "Card maze - current baseline", "scene.koukusaydon.compare.card-maze.v1" }
 		};
 		const char* areaLabel = "Current scene";
 		for (const auto& item : areaProfiles)
@@ -1568,7 +1565,7 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 		if (ImGui::Combo("Map light comparison", &selection,
 			"Current authored lights\0Imported source lights (2026-09-11)\0Map lights off\0"))
 			changed = arena->Set_MapLightComparison(
-				static_cast<CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON>(selection), m_strRestorationStatus);
+				static_cast<CLevel_KoukuSaydonArena::MAP_LIGHT_COMPARISON>(selection), m_strRestorationStatus);
 		ImGui::EndDisabled();
 		ImGui::TextWrapped("Source comparison uses 115 imported local lights with current receiver routing and gate placement. Scene and Effect lights remain active.");
 		ImGui::TextWrapped("This session choice preserves authored lights. Closing this workbench restores them. Compare tone and grading with the profiles below.");
@@ -1604,9 +1601,9 @@ bool_t Client::CRenderingBenchmark::Render_RestorationSection(CRenderingProfileS
 	}
 	else
 		ImGui::TextWrapped("Source rendering applicability for this map is not confirmed. Comparison profiles are unavailable.");
-	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 	const bool lightsCompared = arena &&
-		arena->Get_MapLightComparison() != CLevel_KakulSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
+		arena->Get_MapLightComparison() != CLevel_KoukuSaydonArena::MAP_LIGHT_COMPARISON::CURRENT;
 	ImGui::BeginDisabled(m_bCapturing || (m_strRestorationLastProfileId.empty() && !lightsCompared));
 	if (ImGui::Button("Return to entry"))
 		changed = Return_ToEntryProfile(Profiles) || changed;
@@ -2210,7 +2207,7 @@ void Client::CRenderingBenchmark::Render_SessionBar(CRenderingProfileService& pr
                 if(!m_strRestorationLastProfileId.empty()) Return_ToEntryProfile(profiles);
                 if(m_bPixelDiagnosticsActive && SUCCEEDED(Engine::CGameInstance::Get().Apply_MaterialRenderSettings(m_PixelEntrySettings)))
                 { m_bPixelDiagnosticsActive=false; m_strPixelMaterialKey.clear(); }
-                if(auto* arena=CLevel_KakulSaydonArena::Get_Active()) arena->Reset_MapLightComparison();
+                if(auto* arena=CLevel_KoukuSaydonArena::Get_Active()) arena->Reset_MapLightComparison();
             }
         }
     }

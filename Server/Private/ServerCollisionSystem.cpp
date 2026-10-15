@@ -17,6 +17,7 @@ namespace
 	constexpr float DEGREES_TO_RADIANS = 0.0174532925f;
 	constexpr float SWEEP_EPSILON = 0.000001f;
 
+	// box 중심과 yaw를 제거한 XZ 좌표다. 아래 WORLD_POINT는 월드 XZ 좌표를 표현한다.
 	struct LOCAL_POINT final
 	{
 		float x = 0.f;
@@ -29,6 +30,7 @@ namespace
 		float z = 0.f;
 	};
 
+	// 월드 XZ의 중심, 단위 오른쪽/전방 축, 각 축의 반길이로 회전 사각형을 표현한다.
 	struct OBB_2D final
 	{
 		WORLD_POINT center{};
@@ -38,6 +40,7 @@ namespace
 		float halfForward = 0.f;
 	};
 
+	// placement의 yaw를 역적용해 월드 XZ를 box 로컬로 바꾼다. Y는 별도의 높이 검사에서 처리한다.
 	LOCAL_POINT To_BoxLocal(
 		const float worldX,
 		const float worldZ,
@@ -55,6 +58,8 @@ namespace
 		};
 	}
 
+	// start + t*delta가 [-extent, extent] 안에 있는 t 구간을 기존 enter/exit와 교차한다.
+	// 거의 정지한 축은 시작점의 포함 여부만 검사한다. false여도 누적 구간 출력은 이미 좁혀졌을 수 있다.
 	bool Update_Slab(
 		const float start,
 		const float delta,
@@ -73,16 +78,19 @@ namespace
 		return inOutEnter <= inOutExit;
 	}
 
+	// XZ 벡터의 내적이다. 투영 거리와 축 방향 비교에 사용한다.
 	float Dot(const WORLD_POINT& left, const WORLD_POINT& right)
 	{
 		return left.x * right.x + left.z * right.z;
 	}
 
+	// 두 월드 XZ 위치의 차이를 만들어 투영/다각형 변 계산에 전달한다.
 	WORLD_POINT Subtract(const WORLD_POINT& left, const WORLD_POINT& right)
 	{
 		return { left.x - right.x, left.z - right.z };
 	}
 
+	// 벽 placement의 중심, yaw degree, 반길이를 XZ OBB 값으로 변환한다.
 	OBB_2D To_Obb(const WORLD_BOOTSTRAP_PLACEMENT& box)
 	{
 		const float yaw = box.fYawDegrees * DEGREES_TO_RADIANS;
@@ -98,6 +106,7 @@ namespace
 		};
 	}
 
+	// 공격 도형이 계산한 중심과 반길이로 OBB를 만든다. 도형별 원점→중심 이동은 호출 측에서 한다.
 	OBB_2D Make_AttackObb(
 		const float centerX,
 		const float centerZ,
@@ -118,6 +127,7 @@ namespace
 		};
 	}
 
+	// OBB의 오른쪽/전방 반길이를 더하고 빼서 경계 순서의 네 꼭짓점을 만든다.
 	std::array<WORLD_POINT, 4u> Get_Corners(const OBB_2D& box)
 	{
 		const auto corner = [&box](
@@ -140,6 +150,7 @@ namespace
 		};
 	}
 
+	// 두 OBB를 하나의 축에 투영한다. 중심 거리와 두 투영 반지름 합으로 겹침 여부를 비교한다.
 	bool Overlaps_OnAxis(
 		const OBB_2D& left,
 		const OBB_2D& right,
@@ -156,6 +167,7 @@ namespace
 		return centerDistance <= leftRadius + rightRadius + CONTACT_MARGIN;
 	}
 
+	// 각 OBB의 두 축, 총 네 분리축을 검사한다. 어느 한 축에서 떨어지면 XZ 충돌이 없다.
 	bool Obbs_Intersect(const OBB_2D& left, const OBB_2D& right)
 	{
 		return Overlaps_OnAxis(left, right, left.right) &&
@@ -164,6 +176,7 @@ namespace
 			Overlaps_OnAxis(left, right, right.forward);
 	}
 
+	// box 로컬의 가장 가까운 점과 원 중심의 거리 제곱을 반지름으로 비교한다.
 	bool Circle_IntersectsObb(
 		const float centerX,
 		const float centerZ,
@@ -181,6 +194,8 @@ namespace
 			(radius + CONTACT_MARGIN) * (radius + CONTACT_MARGIN);
 	}
 
+	// 외원과 만나는지 먼저 검사하고 가장 먼 꼭짓점이 내원 경계에 닿는지 확인한다.
+	// 가운데 빈 영역에만 들어간 box를 제외하기 위한 추가 조건이다.
 	bool Ring_IntersectsObb(
 		const float centerX,
 		const float centerZ,
@@ -202,6 +217,7 @@ namespace
 		return farthestSquared + CONTACT_MARGIN >= innerRadius * innerRadius;
 	}
 
+	// 비어 있지 않은 다각형의 축 투영 최소/최대를 계산한다. 호출자는 원뿔 근사와 box의 꼭짓점을 넘긴다.
 	void Project_Polygon(
 		const std::vector<WORLD_POINT>& polygon,
 		const WORLD_POINT& axis,
@@ -218,6 +234,7 @@ namespace
 		}
 	}
 
+	// 양쪽 볼록 다각형의 변 법선에서 분리축을 찾는다. 퇴화한 짧은 변은 건너뛴다.
 	bool Convex_PolygonsIntersect(
 		const std::vector<WORLD_POINT>& left,
 		const std::vector<WORLD_POINT>& right)
@@ -250,6 +267,8 @@ namespace
 		return !separatedOnAnyEdge(left) && !separatedOnAnyEdge(right);
 	}
 
+	// 원뿔의 XZ 부채꼴 호를 24개 선분으로 근사한 뒤 box와 볼록 다각형 교차를 검사한다.
+	// 이는 연속 곡선의 정확한 교차 계산이 아니라 고정 분할 근사다.
 	bool Cone_IntersectsObb(
 		const float originX,
 		const float originZ,
@@ -282,6 +301,8 @@ namespace
 	}
 }
 
+// GameRoom 초기화가 활성 충돌 상자를 검증한다. 검증 실패는 실제 멤버 교체 전에 반환한다.
+// 이후 flag 준비의 할당 예외까지 rollback하는 transaction은 이 함수에 없다.
 bool LostArk::Server::CServerCollisionSystem::Initialize(
 	const std::vector<WORLD_BOOTSTRAP_PLACEMENT>& placements,
 	std::string& outStatus)
@@ -335,6 +356,7 @@ bool LostArk::Server::CServerCollisionSystem::Initialize(
 	return true;
 }
 
+// GameRoom의 spawn 초기 검사다. 정적 box만 읽으며 동적 몸체 및 navigation 승인과는 별도다.
 bool LostArk::Server::CServerCollisionSystem::Is_PlayerSpawnClear(
 	const WORLD_BOOTSTRAP_PLACEMENT& spawn) const
 {
@@ -360,6 +382,7 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerSpawnClear(
 		});
 }
 
+// 순간이동/착지 경로가 고정 플레이어 크기로 도착 위치 검사를 요청한다.
 bool LostArk::Server::CServerCollisionSystem::Is_PlayerPositionClear(
 	const float x, const float y, const float z,
 	const LostArk::Shared::NET_ENTITY_ID ignoredBodyId) const
@@ -368,6 +391,8 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerPositionClear(
 		PLAYER_HALF_EXTENT_Y, PLAYER_CENTER_OFFSET_Y, ignoredBodyId);
 }
 
+// 도착 좌표와 크기를 검증하고 활성 box 및 자신을 제외한 몸체 겹침을 검사한다.
+// box는 XZ 확장 사각형 판정이므로 원과 box 모서리의 정확한 거리 검사보다 보수적이다.
 bool LostArk::Server::CServerCollisionSystem::Is_CirclePositionClear(
 	const float x, const float y, const float z, const float radius,
 	const float halfHeight, const float centerOffsetY,
@@ -378,10 +403,12 @@ bool LostArk::Server::CServerCollisionSystem::Is_CirclePositionClear(
 		halfHeight <= 0.f || !std::isfinite(centerOffsetY))
 		return false;
 	const float centerY = y + centerOffsetY;
-	if (!std::isfinite(centerY)) return false;
+	if (!std::isfinite(centerY))
+		return false;
 	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
 	{
-		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index]) continue;
+		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
+			continue;
 		const auto& box = m_CollisionBoxes[index];
 		const auto local = To_BoxLocal(x, z, box);
 		if (std::abs(local.x) <= box.fHalfExtentX + radius &&
@@ -404,6 +431,8 @@ bool LostArk::Server::CServerCollisionSystem::Is_CirclePositionClear(
 	return true;
 }
 
+// GameRoom의 Refresh_PlayerBlockingBodies가 만든 값 목록으로 갱신한다. 유효하지 않은 행은 건너뛴다.
+// 기존 목록을 먼저 비우므로 원자적인 후보 교체나 실패 rollback으로 사용하지 않는다.
 void LostArk::Server::CServerCollisionSystem::Set_BlockingBodies(
 	std::vector<SERVER_BLOCKING_BODY> bodies)
 {
@@ -421,6 +450,7 @@ void LostArk::Server::CServerCollisionSystem::Set_BlockingBodies(
 	}
 }
 
+// GameRoom이 entity 이동을 확정한 직후 그 ID의 몸체 좌표를 맞춘다. false이면 기존 값을 바꾸지 않는다.
 bool LostArk::Server::CServerCollisionSystem::Update_BlockingBody(
 	const LostArk::Shared::NET_ENTITY_ID netEntityId,
 	const float x,
@@ -446,6 +476,8 @@ bool LostArk::Server::CServerCollisionSystem::Update_BlockingBody(
 	return true;
 }
 
+// 상대 몸체를 고정하고 한 이동 구간 t(0~1)에서 처음 겹치는 지점을 계산한다.
+// 수직 이동은 Y slab와 XZ 이차식의 시간 구간을 교차하며 초기 겹침 탈출은 허용한다.
 bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	const float startX,
 	const float startY,
@@ -478,14 +510,15 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	const float startDistanceSquared = toBodyX * toBodyX + toBodyZ * toBodyZ;
 	if (std::abs(endCenterY - startCenterY) > SWEEP_EPSILON)
 	{
-		// A flying body can enter from above/below with no XZ displacement.
-		// Intersect both time intervals instead of treating XZ overlap as an
-		// existing 3D overlap. Keep the legacy flat-ground path unchanged.
+		// 비행 중에는 XZ 이동이 없어도 위/아래에서 몸체 높이 범위에 들어올 수 있다.
+		// 높이와 XZ의 겹침 시간 구간을 교차해 처음 닿는 비율을 구한다.
+		// Y 변화가 없는 기존 지상 경로는 아래 분기에 남긴다.
 		const float expandedY = body.fHalfHeight + halfHeight;
 		const float closingXZ = deltaX * toBodyX + deltaZ * toBodyZ;
 		if (startDistanceSquared < combinedRadius * combinedRadius &&
 			std::abs(startCenterY - body.fCenterY) < expandedY && closingXZ <= 0.f)
-			return false; // Preserve escape from an existing overlap.
+			return false;
+			// 이미 겹쳤지만 중심에서 멀어지는 이동은 허용한다.
 		float enter = 0.f, exit = 1.f;
 		if (!Update_Slab(startCenterY - body.fCenterY, endCenterY - startCenterY,
 			expandedY, enter, exit)) return false;
@@ -493,23 +526,26 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 		const float c = startDistanceSquared - combinedRadius * combinedRadius;
 		if (lengthSquared <= SWEEP_EPSILON * SWEEP_EPSILON)
 		{
-			if (c > 0.f) return false;
+			if (c > 0.f)
+				return false;
 		}
 		else
 		{
 			const float discriminant = closingXZ * closingXZ - lengthSquared * c;
-			if (discriminant < 0.f) return false;
+			if (discriminant < 0.f)
+				return false;
 			const float root = std::sqrt(discriminant);
 			enter = (std::max)(enter, (closingXZ - root) / lengthSquared);
 			exit = (std::min)(exit, (closingXZ + root) / lengthSquared);
 		}
-		if (enter > exit || exit < 0.f || enter > 1.f) return false;
+		if (enter > exit || exit < 0.f || enter > 1.f)
+			return false;
 		outHitRatio = std::clamp(enter, 0.f, 1.f);
 		return true;
 	}
 	if (startDistanceSquared < combinedRadius * combinedRadius)
 	{
-		/* Already inside: block only the part of the step that closes in. */
+		// 시작부터 원이 겹쳐 있으면 중심 쪽으로 더 접근하는 이동만 막는다.
 		if (deltaX * toBodyX + deltaZ * toBodyZ <= 0.f)
 			return false;
 		outHitRatio = 0.f;
@@ -518,7 +554,7 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	const float lengthSquared = deltaX * deltaX + deltaZ * deltaZ;
 	if (lengthSquared <= SWEEP_EPSILON * SWEEP_EPSILON)
 		return false;
-	/* |S + tD - C|^2 = R^2, smallest t in [0, 1]. */
+	// 시작 S, 이동 D, 상대 중심 C, 합산 반지름 R에 대해 |S + tD - C|² = R²의 가장 이른 t를 구한다.
 	const float b = deltaX * toBodyX + deltaZ * toBodyZ;
 	if (b <= 0.f)
 		return false;
@@ -533,6 +569,7 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBody(
 	return true;
 }
 
+// GameRoom이 이동 뒤 목표를 끝낼지 결정할 때 사용한다. 목표가 몸체 안이고 이번 경로가 그 몸체에 닿아야 true다.
 bool LostArk::Server::CServerCollisionSystem::Is_PlayerMoveBlockedAtGoalBody(
 	const SERVER_PLAYER& player, const float proposedX, const float proposedY,
 	const float proposedZ, const float goalY) const
@@ -564,6 +601,7 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerMoveBlockedAtGoalBody(
 	return false;
 }
 
+// 플레이어 위치/공통 크기를 일반 원형 몸체 solver에 전달한다. Mario에서는 접선 우회를 허용하지 않는다.
 bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 	const SERVER_PLAYER& player,
 	const float proposedX,
@@ -593,6 +631,8 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_PlayerMove(
 		0u == player.iMarioStage);
 }
 
+// 플레이어/몬스터/보스 이동 경로가 제안한 위치를 제한한다. 이 함수 자체는 entity 위치를 쓰지 않는다.
+// 잘못된 입력은 출력 변경 없이 false다. 성공은 무충돌 통과, 접촉 전 정지, 몸체 접선 우회 중 하나다.
 bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 	const float startX,
 	const float startY,
@@ -686,10 +726,8 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 	outZ = startZ + deltaZ * safeRatio;
 	outWasBlocked = true;
 
-	/* A wall stops the step outright (its own contract and tests). A body
-	lets the rest of the step slide along its tangent: drop the part of the
-	remaining displacement that points into the body and sweep once more, so
-	a walk past a monster wraps around it instead of parking against it. */
+	// 벽이 먼저 닿으면 그 지점에서 멈춘다. 몸체가 먼저 닿고 우회가 허용되면 접선 방향의 추가 후보를 검사한다.
+	// 아래 우회는 반복 solver가 아니라 한 번의 접선 이동이며 원래 이동 방향과 달라질 수 있다.
 	if (!allowBodySlide || nullptr == hitBody || earliestBoxHit <= earliestBodyHit)
 		return true;
 	const float remainingRatio = 1.f - safeRatio;
@@ -706,9 +744,8 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 		return true;
 	normalX /= normalLength;
 	normalZ /= normalLength;
-	/* Keep the step's full length along the tangent so a walk circles the
-	body at speed instead of crawling near its front; a dead-on step deflects
-	to a fixed side so it still gets around. */
+	// 남은 XZ 이동 길이를 접선 방향에 유지한다. 정면 접근으로 좌우 성분이 없으면 고정된 한쪽을 고른다.
+	// 최종 허용 거리는 다시 벽/다른 몸체 sweep으로 제한한다.
 	const float tangentX = -normalZ;
 	const float tangentZ = normalX;
 	float along = remainingX * tangentX + remainingZ * tangentZ;
@@ -743,8 +780,7 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 		{
 			continue;
 		}
-		/* Tangent motion never re-enters the circle it slides on; testing it
-		again would only trip on rounding at the contact point. */
+		// 접선으로 벗어나는 기준 몸체는 재검사하지 않아 접촉점 반올림이 우회를 막지 않게 한다.
 		if (&body == hitBody)
 			continue;
 		float hitRatio = 0.f;
@@ -762,12 +798,13 @@ bool LostArk::Server::CServerCollisionSystem::Resolve_CircleMove(
 		return true;
 	outX += slideX * slideRatio;
 	outZ += slideZ * slideRatio;
-	/* The player kept moving, so the walk goal stays alive; only a step
-	that could not slide at all reports as blocked. */
+	// 접선으로 조금이라도 이동하면 blocked를 지운다. GameRoom은 별도로 목표 몸체에 도달했는지 검사한다.
 	outWasBlocked = false;
 	return true;
 }
 
+// 보스 돌진의 receiver 접촉을 조회한다. 출력 초기화 후 가장 이른 t, 거의 같으면 stable ID 순서로 선택한다.
+// receiver flag를 읽으며 player blocking flag는 이 조회의 조건이 아니다.
 bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstReceivers(
 	const float startX,
 	const float startY,
@@ -817,6 +854,8 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstReceivers(
 	return found;
 }
 
+// GameRoom 보스 이동이 처음 막히는 벽과 선택적인 receiver를 찾는다. 거의 같은 t는 같은 표면 후보로 취급한다.
+// 기존 outHit은 실패 여부와 무관하게 비우며 실제 벽 파괴는 호출자가 처리한다.
 bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstWalls(
 	const float startX,
 	const float startY,
@@ -850,9 +889,8 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstWalls(
 		{
 			continue;
 		}
-		/* The authored boss radius can begin a tick overlapping a wall behind or
-		beside it. A front-contact sweep must let that existing overlap move out
-		or tangentially past the wall instead of reporting ratio zero forever. */
+		// 시작부터 벽과 겹친 경우 가장 가까운 표면의 법선으로 탈출/접선 이동인지 확인한다.
+		// 유효한 법선이 있고 더 파고들지 않으면 이 벽은 이번 돌진의 정지 표면에서 제외한다.
 		if (hitRatio <= SWEEP_EPSILON)
 		{
 			const LOCAL_POINT start = To_BoxLocal(startX, startZ, box);
@@ -905,6 +943,7 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_BossCircleAgainstWalls(
 	return found;
 }
 
+// GameRoom의 보스 몸체 접촉 파괴가 읽을 모든 blocking 벽 ID를 출력한다. 출력 목록은 매 호출 새로 만든다.
 void LostArk::Server::CServerCollisionSystem::Collect_BossCircleContacts(
 	const float startX,
 	const float startY,
@@ -926,8 +965,7 @@ void LostArk::Server::CServerCollisionSystem::Collect_BossCircleContacts(
 
 	for (std::size_t index = 0u; index < m_CollisionBoxes.size(); ++index)
 	{
-		/* A box that no longer blocks is a wall that already fell, so it is not
-		   a surface anything can hit again. */
+		// blocking이 해제된 벽은 이 접촉 목록에서 제외한다. receiver flag만으로 다시 포함하지 않는다.
 		if (index >= m_PlayerBlocking.size() || !m_PlayerBlocking[index])
 			continue;
 		float hitRatio = 0.f;
@@ -942,6 +980,8 @@ void LostArk::Server::CServerCollisionSystem::Collect_BossCircleContacts(
 	}
 }
 
+// 파괴 transaction이 collision과 navigation을 함께 준비할 때 호출한다. 실제 flag를 복사해 출력 후보만 변경한다.
+// 중복 ID, 겹치는 부모/자식 대상, 없는 대상은 false다. 실제 변경이 있고 revision이 소진되어도 false이며 부분 후보는 폐기한다.
 bool LostArk::Server::CServerCollisionSystem::Prepare_StateChanges(
 	const std::vector<SERVER_COLLISION_STATE_CHANGE>& changes,
 	SERVER_COLLISION_STATE_STAGE& outStage,
@@ -1014,6 +1054,7 @@ bool LostArk::Server::CServerCollisionSystem::Prepare_StateChanges(
 	return true;
 }
 
+// GameRoom이 WorldDestructionRuntime::Commit 성공 뒤 준비한 flag를 이동한다. 기준 revision과 vector 크기는 여기서 다시 검사하지 않는다.
 void LostArk::Server::CServerCollisionSystem::Commit_StateChanges(
 	SERVER_COLLISION_STATE_STAGE&& stage) noexcept
 {
@@ -1024,6 +1065,7 @@ void LostArk::Server::CServerCollisionSystem::Commit_StateChanges(
 	m_iRevision = stage.iNextRevision;
 }
 
+// 방/발탄 audition 초기화가 벽 flag를 되돌린다. 동적 몸체나 placement 소유 목록을 정리하는 함수는 아니다.
 void LostArk::Server::CServerCollisionSystem::Reset_RuntimeStates() noexcept
 {
 	m_PlayerBlocking.assign(m_CollisionBoxes.size(), true);
@@ -1037,6 +1079,7 @@ void LostArk::Server::CServerCollisionSystem::Reset_RuntimeStates() noexcept
 	m_iRevision = 1u;
 }
 
+// receiver 역할은 .receiver 접미사 계약으로 정한다. 해당 접미사만 있는 문자열은 허용하지 않는다.
 bool LostArk::Server::CServerCollisionSystem::Is_ImpactReceiverPlacementId(
 	const std::string_view placementId) noexcept
 {
@@ -1045,15 +1088,20 @@ bool LostArk::Server::CServerCollisionSystem::Is_ImpactReceiverPlacementId(
 		placementId.substr(placementId.size() - suffix.size()) == suffix;
 }
 
+// 정확한 stable ID가 충돌 placement 목록에 있는지 찾는다. 현재 blocking 여부는 따로 조회한다.
 bool LostArk::Server::CServerCollisionSystem::Has_CollisionBox(
 	const std::string& placementId) const
 {
 	return std::any_of(
 		m_CollisionBoxes.begin(), m_CollisionBoxes.end(),
 		[&placementId](const WORLD_BOOTSTRAP_PLACEMENT& box)
-		{ return box.strPlacementId == placementId; });
+		{
+			return box.strPlacementId == placementId;
+		});
 }
 
+// GameRoom의 공격 접촉 파괴 경로가 사용하는 월드 도형 검사다. 결과 ID만 모으며 벽 상태나 HP는 변경하지 않는다.
+// originY에서 2*verticalReach 높이까지 검사하고 XZ에서는 도형별 원/링/부채꼴 근사/OBB를 사용한다.
 void LostArk::Server::CServerCollisionSystem::Collect_BossPatternHitContacts(
 	const BOSS_PATTERN_HIT_SHAPE hitShape,
 	const float originX,
@@ -1154,7 +1202,9 @@ void LostArk::Server::CServerCollisionSystem::Collect_BossPatternHitContacts(
 				intersects = std::any_of(
 					attacks.begin(), attacks.end(),
 					[&wall](const OBB_2D& attack)
-					{ return Obbs_Intersect(attack, wall); });
+					{
+						return Obbs_Intersect(attack, wall);
+					});
 			}
 			break;
 		case BOSS_PATTERN_HIT_SHAPE::NONE:
@@ -1166,6 +1216,7 @@ void LostArk::Server::CServerCollisionSystem::Collect_BossPatternHitContacts(
 	}
 }
 
+// 정확한 ID의 현재 blocking flag를 읽는다. 없는 ID 또는 없는 flag는 false다.
 bool LostArk::Server::CServerCollisionSystem::Is_PlayerBlocking(
 	const std::string& placementId) const
 {
@@ -1179,6 +1230,7 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerBlocking(
 	return false;
 }
 
+// 정확한 ID의 receiver flag를 읽는다. blocking flag와 독립된 채널이다.
 bool LostArk::Server::CServerCollisionSystem::Is_ImpactReceiverEnabled(
 	const std::string& placementId) const
 {
@@ -1193,6 +1245,7 @@ bool LostArk::Server::CServerCollisionSystem::Is_ImpactReceiverEnabled(
 	return false;
 }
 
+// GameRoom의 파괴 연결 검증에 사용할 ID 범위를 확인한다. 정확한 ID 또는 점으로 구분한 하위 ID를 허용한다.
 bool LostArk::Server::CServerCollisionSystem::Has_CollisionStateTarget(
 	const std::string& stateId) const
 {
@@ -1210,6 +1263,7 @@ bool LostArk::Server::CServerCollisionSystem::Has_CollisionStateTarget(
 		});
 }
 
+// spawn의 발 위치에 공통 중심 오프셋을 더한 뒤 확장 box 안에 있는지 검사한다. 여기서는 추가 입력 검증을 하지 않는다.
 bool LostArk::Server::CServerCollisionSystem::Is_PlayerCenterInsideExpandedBox(
 	const float playerX,
 	const float playerY,
@@ -1225,6 +1279,8 @@ bool LostArk::Server::CServerCollisionSystem::Is_PlayerCenterInsideExpandedBox(
 		std::abs(local.z) <= box.fHalfExtentZ + PLAYER_HALF_EXTENT_Z;
 }
 
+// 이동 높이 전체와 box의 수직 범위를 먼저 비교하고, 로컬 XZ 확장 box에 선분 slab 검사를 한다.
+// Y의 접촉 시각까지 교차하는 완전한 3차원 연속 판정은 아니다. Y 필터 통과 후 XZ가 margin 안쪽에서 시작하면 t=0이다.
 bool LostArk::Server::CServerCollisionSystem::Sweep_MovingBodyAgainstBox(
 	const float startX,
 	const float startY,
@@ -1270,6 +1326,8 @@ bool LostArk::Server::CServerCollisionSystem::Sweep_MovingBodyAgainstBox(
 	return true;
 }
 
+// 보스 반지름을 XZ 확장과 Y 반높이/중심 오프셋에 공통 적용한다.
+// Y는 구간 높이 범위, XZ는 slab 교차 비율이며 false일 때 outHitRatio를 보존한다.
 bool LostArk::Server::CServerCollisionSystem::Sweep_CircleAgainstBox(
 	const float startX,
 	const float startY,

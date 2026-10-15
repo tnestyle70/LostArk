@@ -1,8 +1,10 @@
 #include "EffectResourceCatalog.h"
 
+// typed snapshot과 직접 저작 catalog에서 이미 승인된 Valtan ID·종류·revision을 읽는다.
 #include "EffectV2_Catalog.h"
 #include "Effect_Catalog.h"
 
+// 목록 정렬/검색, 예외 보고, revision 상한 검사와 후보 데이터 이동에 필요한 표준 API다.
 #include <algorithm>
 #include <exception>
 #include <limits>
@@ -12,10 +14,12 @@ namespace
 {
 	using namespace Client;
 
+	// 이 통합 목록은 Valtan 저작 화면의 범위다. 다른 보스 ID를 임의로 같은 목록에 섞지 않는다.
 	constexpr std::string_view DIRECT_AUTHORED_VALTAN_PREFIX =
 		"effect.valtan.";
 	constexpr std::string_view TYPED_VALTAN_PREFIX = "boss.valtan.";
 
+	// 원본 catalog를 읽은 임시 값이다. 아직 ID 충돌 검사나 facade 게시를 통과하지 않았다.
 	struct PARSED_VALTAN_EFFECT_RESOURCES final
 	{
 		uint64_t iDirectAuthoredSourceRevision = 0u;
@@ -23,6 +27,7 @@ namespace
 		std::vector<EFFECT_RESOURCE_DESCRIPTOR> Resources;
 	};
 
+	// 소유자·분류·명령 계약과 ID 유일성을 확인한 뒤 snapshot으로 옮길 값이다.
 	struct VALIDATED_VALTAN_EFFECT_RESOURCES final
 	{
 		uint64_t iDirectAuthoredSourceRevision = 0u;
@@ -44,6 +49,7 @@ namespace
 		return 0u == strValue.rfind(strPrefix, 0u);
 	}
 
+	// 원본 문서 소유자가 처리할 수 있는 저작 명령을 고정한다. 실행 자원 상태는 여기서 검사하지 않는다.
 	EFFECT_RESOURCE_CAPABILITIES Capabilities_For(
 		const EFFECT_RESOURCE_OWNER_KIND eOwnerKind)
 	{
@@ -57,9 +63,8 @@ namespace
 		{
 		case EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT:
 			Capabilities.bCanAppendToClip = true;
-			// A direct-authored document owns its complete element composition.
-			// Consumers may therefore treat it as one atomic group resource
-			// without pretending that its elements are typed V2 leaves.
+			// V1 문서는 요소 조합 전체를 소유하므로 하나의 composite 자원으로 다룬다.
+			// 내부 요소를 typed V2 leaf로 바꾸는 뜻은 아니다.
 			Capabilities.bComposite = true;
 			break;
 		case EFFECT_RESOURCE_OWNER_KIND::V2_LEAF:
@@ -86,6 +91,7 @@ namespace
 			Left.bComposite == Right.bComposite;
 	}
 
+	// typed Effect 종류를 브라우저 분류로 바꾼다. 지원하지 않는 종류는 null로 돌려 전체 후보 검증을 실패시킨다.
 	const char* Category_For(const EFFECT_V2_TYPE eType) noexcept
 	{
 		switch (eType)
@@ -107,6 +113,7 @@ namespace
 		}
 	}
 
+	// 표시 이름도 stable ID로 맞춰 동일한 자원을 화면마다 다른 이름으로 연결하지 않게 한다.
 	EFFECT_RESOURCE_DESCRIPTOR Make_Descriptor(
 		const EFFECT_RESOURCE_OWNER_KIND eOwnerKind,
 		std::string strStableId,
@@ -121,6 +128,7 @@ namespace
 		return Descriptor;
 	}
 
+	// 파일 재파싱 없이 준비된 두 catalog의 Valtan 행을 복사한다. 실패하면 OutParsed를 갱신하지 않는다.
 	bool_t Parse_ValtanOwnerSnapshots(
 		PARSED_VALTAN_EFFECT_RESOURCES& OutParsed,
 		std::string& strOutError)
@@ -134,6 +142,7 @@ namespace
 				"Unified Effect Resource reload requires a ready direct-authored catalog.");
 		}
 
+		// V1 목록 중 직접 저작 문서만 받는다. 원본 recipe나 다른 보스의 ID는 이 facade 대상이 아니다.
 		const std::vector<std::string> DirectAuthoredIds =
 			CEffectCatalog::Get_EffectAssetIds();
 		for (const std::string& strEffectId : DirectAuthoredIds)
@@ -164,6 +173,7 @@ namespace
 				"Direct-authored Effect catalog changed while its snapshot was parsed.");
 		}
 
+		// typed snapshot의 공유 소유권을 유지한 채 leaf와 group을 같은 revision에서 읽는다.
 		const std::shared_ptr<const EFFECT_V2_CATALOG_SNAPSHOT> pTypedSnapshot =
 			CEffectV2Catalog::Get().Get_Snapshot();
 		if (nullptr == pTypedSnapshot || !pTypedSnapshot->Is_Ready())
@@ -178,7 +188,9 @@ namespace
 			pTypedSnapshot->Get_Documents())
 		{
 			if (!Starts_With(Document.strEffectId, TYPED_VALTAN_PREFIX))
+			{
 				continue;
+			}
 			const char* pCategory = Category_For(Document.eType);
 			if (nullptr == pCategory)
 			{
@@ -209,6 +221,7 @@ namespace
 		return true;
 	}
 
+	// stable ID 순으로 정렬하고 소유자별 계약을 검증한다. 소유자가 달라도 ID 충돌은 허용하지 않는다.
 	bool_t Validate_ValtanResources(
 		PARSED_VALTAN_EFFECT_RESOURCES Parsed,
 		VALIDATED_VALTAN_EFFECT_RESOURCES& OutValidated,
@@ -220,7 +233,9 @@ namespace
 				const EFFECT_RESOURCE_DESCRIPTOR& Right)
 			{
 				if (Left.Key.strStableId != Right.Key.strStableId)
+				{
 					return Left.Key.strStableId < Right.Key.strStableId;
+				}
 				return static_cast<uint8_t>(Left.Key.eOwnerKind) <
 					static_cast<uint8_t>(Right.Key.eOwnerKind);
 			});
@@ -269,6 +284,7 @@ namespace
 					"Unified Effect Resource capability contract is invalid: " +
 					Descriptor.Key.strStableId);
 			}
+			// 검증된 배열 위치를 인덱스에 넣는다. 중복 ID는 어느 소유자를 고를지 추측하지 않고 후보 전체를 거부한다.
 			const auto [Iterator, bInserted] =
 				Validated.StableIdIndex.emplace(
 					Descriptor.Key.strStableId, iResource);
@@ -286,50 +302,54 @@ namespace
 
 }
 
-bool_t Client::EFFECT_RESOURCE_KEY::Is_Valid() const noexcept
+NS_BEGIN(Client)
+
+// 미선택 key를 거르는 최소 검사다. 실제 목록 포함 여부는 Find와 소유자 비교가 맡는다.
+bool_t EFFECT_RESOURCE_KEY::Is_Valid() const noexcept
 {
 	return EFFECT_RESOURCE_OWNER_KIND::END != eOwnerKind &&
 		!strStableId.empty();
 }
 
-bool_t Client::EFFECT_RESOURCE_KEY::operator==(
+bool_t EFFECT_RESOURCE_KEY::operator==(
 	const EFFECT_RESOURCE_KEY& Other) const noexcept
 {
 	return eOwnerKind == Other.eOwnerKind &&
 		strStableId == Other.strStableId;
 }
 
-uint64_t Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Get_Revision() const
+uint64_t EFFECT_RESOURCE_CATALOG_SNAPSHOT::Get_Revision() const
 	noexcept
 {
 	return m_iRevision;
 }
 
-uint64_t Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::
+uint64_t EFFECT_RESOURCE_CATALOG_SNAPSHOT::
 Get_DirectAuthoredSourceRevision() const noexcept
 {
 	return m_iDirectAuthoredSourceRevision;
 }
 
-uint64_t Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::
+uint64_t EFFECT_RESOURCE_CATALOG_SNAPSHOT::
 Get_TypedSourceRevision() const noexcept
 {
 	return m_iTypedSourceRevision;
 }
 
-bool_t Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Is_Ready() const noexcept
+bool_t EFFECT_RESOURCE_CATALOG_SNAPSHOT::Is_Ready() const noexcept
 {
 	return 0u != m_iRevision;
 }
 
-const std::vector<Client::EFFECT_RESOURCE_DESCRIPTOR>&
-Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Get_Resources() const noexcept
+const std::vector<EFFECT_RESOURCE_DESCRIPTOR>&
+EFFECT_RESOURCE_CATALOG_SNAPSHOT::Get_Resources() const noexcept
 {
 	return m_Resources;
 }
 
-const Client::EFFECT_RESOURCE_DESCRIPTOR*
-Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
+// ID를 찾은 뒤 소유자까지 확인해 오래된 UI 명령이 다른 종류의 문서로 전달되지 않게 한다.
+const EFFECT_RESOURCE_DESCRIPTOR*
+EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
 	const EFFECT_RESOURCE_KEY& Key) const noexcept
 {
 	const EFFECT_RESOURCE_DESCRIPTOR* pDescriptor = Find(Key.strStableId);
@@ -337,8 +357,9 @@ Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
 		pDescriptor : nullptr;
 }
 
-const Client::EFFECT_RESOURCE_DESCRIPTOR*
-Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
+// 불변 배열 내부의 descriptor를 차용해 반환한다. 이 포인터를 쓰는 동안 snapshot을 보유해야 한다.
+const EFFECT_RESOURCE_DESCRIPTOR*
+EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
 	const std::string_view strStableId) const noexcept
 {
 	const auto Found = m_StableIdIndex.find(strStableId);
@@ -350,26 +371,30 @@ Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT::Find(
 	return &m_Resources[Found->second];
 }
 
-Client::CEffectResourceCatalog& Client::CEffectResourceCatalog::Get()
+CEffectResourceCatalog& CEffectResourceCatalog::Get()
 {
 	static CEffectResourceCatalog Instance;
 	return Instance;
 }
 
-Client::CEffectResourceCatalog::CEffectResourceCatalog()
+// 최초에는 revision 0의 빈 snapshot을 제공한다. 첫 reload 실패를 준비 완료로 해석하지 않는다.
+CEffectResourceCatalog::CEffectResourceCatalog()
 	: m_pSnapshot(std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT>(
 		new EFFECT_RESOURCE_CATALOG_SNAPSHOT()))
 {
 }
 
-bool_t Client::CEffectResourceCatalog::Reload_Valtan(
+// Effect Tool의 명시적 새로고침 경로다. parse→validate→stage가 모두 끝난 뒤 목록 포인터만 commit한다.
+bool_t CEffectResourceCatalog::Reload_Valtan(
 	std::string& strOutError)
 {
 	try
 	{
 		PARSED_VALTAN_EFFECT_RESOURCES Parsed;
 		if (!Parse_ValtanOwnerSnapshots(Parsed, strOutError))
+		{
 			return false;
+		}
 
 		VALIDATED_VALTAN_EFFECT_RESOURCES Validated;
 		if (!Validate_ValtanResources(
@@ -382,6 +407,7 @@ bool_t Client::CEffectResourceCatalog::Reload_Valtan(
 			Validated.iDirectAuthoredSourceRevision;
 		const uint64_t iTypedSourceRevision =
 			Validated.iTypedSourceRevision;
+		// 검증한 값과 인덱스를 새 snapshot에 옮긴다. 이때 기존 공개 view는 그대로 유지한다.
 		const auto Stage_ValtanSnapshot =
 			[&strOutError](
 				VALIDATED_VALTAN_EFFECT_RESOURCES StagedResources,
@@ -415,9 +441,8 @@ bool_t Client::CEffectResourceCatalog::Reload_Valtan(
 			return false;
 		}
 
-		/* Owner catalogs are main-thread authoring services.  Reject a stale
-		   read-set before the one facade commit instead of publishing a mixed
-		   generation. */
+		// 메인 스레드 저작 흐름에서 읽은 두 원본 revision을 게시 직전에 다시 확인한다.
+		// 후보를 만드는 동안 원본이 바뀌었으면 서로 다른 세대를 합친 목록을 게시하지 않는다.
 		if (iDirectAuthoredSourceRevision !=
 				CEffectCatalog::Get_RuntimeRevision() ||
 			iTypedSourceRevision != CEffectV2Catalog::Get().Get_Revision())
@@ -427,7 +452,8 @@ bool_t Client::CEffectResourceCatalog::Reload_Valtan(
 		}
 
 		{
-			const std::lock_guard Lock(m_SnapshotMutex);
+			// 현재 공유 포인터를 잠시 잠그고 facade revision을 올린다. 기존 독자는 자기 snapshot을 계속 보유한다.
+			const std::lock_guard<std::mutex> Lock(m_SnapshotMutex);
 			const uint64_t iPreviousRevision = nullptr != m_pSnapshot ?
 				m_pSnapshot->Get_Revision() : 0u;
 			if ((std::numeric_limits<uint64_t>::max)() == iPreviousRevision)
@@ -454,16 +480,19 @@ bool_t Client::CEffectResourceCatalog::Reload_Valtan(
 	}
 }
 
-std::shared_ptr<const Client::EFFECT_RESOURCE_CATALOG_SNAPSHOT>
-Client::CEffectResourceCatalog::Get_Snapshot() const
+// 포인터 복사만 잠금 안에서 끝낸다. 반환한 불변 snapshot의 조회에는 이 mutex가 필요하지 않다.
+std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT>
+CEffectResourceCatalog::Get_Snapshot() const
 {
-	const std::lock_guard Lock(m_SnapshotMutex);
+	const std::lock_guard<std::mutex> Lock(m_SnapshotMutex);
 	return m_pSnapshot;
 }
 
-uint64_t Client::CEffectResourceCatalog::Get_Revision() const
+uint64_t CEffectResourceCatalog::Get_Revision() const
 {
 	const std::shared_ptr<const EFFECT_RESOURCE_CATALOG_SNAPSHOT> pSnapshot =
 		Get_Snapshot();
 	return nullptr != pSnapshot ? pSnapshot->Get_Revision() : 0u;
 }
+
+NS_END

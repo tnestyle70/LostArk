@@ -1,12 +1,19 @@
-#include "StatusEffectTextView.h"
+﻿#include "StatusEffectTextView.h"
 
+// 살아 있는 캐릭터 anchor에서 Transform을 얻는다.
 #include "Character.h"
+// 상태 메시지 표시 옵션을 등록 시 확인한다.
 #include "UserSettingsDocument.h"
+// 카메라·viewport와 폰트 측정·글자 출력을 사용한다.
 #include "GameInstance.h"
+// 캐릭터의 월드 바닥 위치를 읽는다.
 #include "Transform.h"
+// 월드 anchor를 화면에 투영하는 helper를 재사용한다.
 #include "WorldPlayerNameplateView.h"
 
+// 보간 비율 제한과 만료 항목 삭제를 처리한다.
 #include <algorithm>
+// delta의 유한성 검사와 Sine 보간에 사용한다.
 #include <cmath>
 
 namespace
@@ -22,28 +29,9 @@ namespace
 	     Tween(effectTime * 0.45, textGroup,
 	           {x: originX + xTo, y: originY + yTo},
 	           {delay: effectTime * 0.05, ease: Sine.easeIn});
-
-	   The word starts at initScale (initTextPositionAndScale sets it before the
-	   motion runs) and eases down to endScale. Nothing bounces and nothing moves
-	   unless the host passes a non-zero xTo/yTo.
-
-	   Which ani a status word uses is NOT settled by shipped data. EFTable_SkillBuff
-	   carries a per-buff FontShow of 0..5 that lines up with ani0..ani5, but whether
-	   it is the type itself or the type plus one cannot be told from the table: the
-	   0-based reading explains ani5 being reachable, the 1-based reading explains
-	   FontShow 0 meaning "no word". The mainstream status words (burn, bleed, stun,
-	   fear) are FontShow 1, and watching the real client settles it -- they neither
-	   bounce (ani1) nor grow from nothing (ani2/ani3), so ani0 is what they use.
-
-	   effectTime, alphaTime, initTextSize, endTextSize, xTo and yTo are host
-	   parameters of DamageTextFactory.make() and no shipped table carries them. The
-	   only per-buff size data is EFTable_SkillBuff.BuffFontScale, a percentage that
-	   is 0 ("host default") on 33523 of its 33527 rows, so the size it calls 100% is
-	   the authored 32 pt -- that is what the word ends at here. The rest below is
-	   this project's, matched against the real client:
-	     * effectTime and alphaTime keep make()'s own 1000 ms defaults.
-	     * the word enters 1.6x oversized and eases down to the authored size.
-	     * xTo/yTo are 0: retail does not drift the word away at the end. */
+	*/
+	// AdvancedDamageText.ani0 방식으로 크기를 줄이고 지연 후 투명하게 만든다.
+	// 현재 값은 1.6→1배, 이동 0, alpha 지연 0.4초+소거 1초로 총 표시 수명 1.4초다.
 	constexpr f32_t EFFECT_TIME_SECONDS = 1.f;
 	constexpr f32_t ALPHA_TIME_SECONDS = 1.f;
 	constexpr f32_t ALPHA_DELAY_SECONDS = EFFECT_TIME_SECONDS * 0.4f;
@@ -52,9 +40,9 @@ namespace
 	constexpr f32_t DRIFT_TIME_SECONDS = EFFECT_TIME_SECONDS * 0.45f;
 	constexpr f32_t INIT_ALPHA = 1.f;
 	constexpr f32_t END_ALPHA = 0.f;
-	/* ORIGINAL_TEXT_SIZE in the movie, and the size BuffFontScale calls 100%. */
+	// 원본 문구의 100% 크기는 32픽셀이다.
 	constexpr f32_t ORIGINAL_TEXT_SIZE_PX = 32.f;
-	/* initTextSize / ORIGINAL_TEXT_SIZE and endTextSize / ORIGINAL_TEXT_SIZE. */
+	// 원본 크기에 대한 시작·종료 배율이다.
 	constexpr f32_t INIT_SCALE = 1.6f;
 	constexpr f32_t END_SCALE = 1.f;
 	constexpr f32_t DRIFT_X_PX = 0.f;
@@ -62,27 +50,17 @@ namespace
 	constexpr f32_t LIFETIME_SECONDS =
 		(EFFECT_TIME_SECONDS > ALPHA_DELAY_SECONDS + ALPHA_TIME_SECONDS) ?
 		EFFECT_TIME_SECONDS : ALPHA_DELAY_SECONDS + ALPHA_TIME_SECONDS;
-	/* Stage height these tweens are authored against; the same 1080 reference the
-	damage numbers already scale with. */
+	// viewport 높이에 따라 확대할 기준 화면 높이다.
 	constexpr f32_t STAGE_HEIGHT_PX = 1080.f;
-	/* Head-to-neck height, not the nameplate point: CWorldPlayerNameplateView
-	anchors at 2.2 m, which sits clear above the head, and the word belongs lower
-	than that. Retail's own anchor is a native value like the drift, so this is the
-	project's, picked from watching the real client. */
+	// 캐릭터 바닥 위치에서 문구 anchor까지의 프로젝트 월드 높이다.
 	constexpr f32_t HEAD_OFFSET_METERS = 1.6f;
-	/* Two words landing together must not sit on top of each other, and the same
-	word twice must not land in the same place. Drawn once per occurrence. Nothing
-	in the movie randomises this -- the AS3 has no Math.random and make() takes an
-	absolute stage position -- so the range is the project's. */
+	// 발생마다 한 번 적용하는 프로젝트의 무작위 화면 오프셋 범위다.
 	constexpr f32_t SCATTER_X_PX = 26.f;
 	constexpr f32_t SCATTER_Y_PX = 18.f;
-	/* DropShadow angle 45 deg, distance 0, blur 6.0, strength 1.5, opaque black.
-	A zero-distance blurred black shadow reads as a soft outline, approximated with
-	four offset black passes because SpriteFont cannot blur. */
+	// SpriteFont의 검은색 네 방향 재출력으로 흐린 외곽선을 근사한다.
 	constexpr f32_t SHADOW_OFFSET_PX = 1.5f;
 	constexpr f32_t SHADOW_ALPHA = 0.75f;
-	/* Words stack, so this is the whole arena's cap. The movie's own canvas cap is
-	DamageTextTween.DAMAGE_ANI_LIMIT = 20, shared with the damage numbers. */
+	// 이 view가 동시에 보관할 최대 문구 수다. 초과하면 가장 먼저 등록한 항목을 지운다.
 	constexpr size_t MAX_OCCURRENCES = 12u;
 
 	struct EASE_SEGMENT
@@ -92,7 +70,7 @@ namespace
 		f32_t e;
 	};
 
-	/* CustomEase.create("customDamageTextEase1", ...) in AdvancedDamageText. */
+	// AdvancedDamageText의 customDamageTextEase1 구간 제어값이다.
 	constexpr EASE_SEGMENT CUSTOM_DAMAGE_TEXT_EASE_1[] =
 	{
 		{ 0.f,		0.608f,		0.686f },
@@ -101,8 +79,7 @@ namespace
 	constexpr int32_t EASE_SEGMENT_COUNT = static_cast<int32_t>(
 		sizeof(CUSTOM_DAMAGE_TEXT_EASE_1) / sizeof(CUSTOM_DAMAGE_TEXT_EASE_1[0]));
 
-	/* CustomEase.ease(t, b, c, d) with b = 0, c = 1, d = 1: pick the segment the
-	ratio falls in, then evaluate that segment's quadratic. */
+	// 0..1 시간 비율을 구간으로 나누고 각 구간의 2차 곡선값을 구한다.
 	f32_t Ease_CustomDamageText1(const f32_t fRatio)
 	{
 		const f32_t fClamped = (std::clamp)(fRatio, 0.f, 1.f);
@@ -115,14 +92,14 @@ namespace
 			(2.f * (1.f - fLocal) * (Segment.cp - Segment.s) + fLocal * (Segment.e - Segment.s));
 	}
 
-	/* fl.motion.easing.Sine.easeIn with b = 0, c = 1, d = 1. */
+	// 시간 비율을 제한한 뒤 Sine ease-in 값을 구한다.
 	f32_t Ease_SineIn(const f32_t fRatio)
 	{
 		const f32_t fClamped = (std::clamp)(fRatio, 0.f, 1.f);
 		return 1.f - std::cos(fClamped * 3.14159265f * 0.5f);
 	}
 
-	/* fl.motion.easing.Cubic.easeIn with b = 0, c = 1, d = 1. */
+	// 시간 비율을 제한한 뒤 Cubic ease-in 값을 구한다.
 	f32_t Ease_CubicIn(const f32_t fRatio)
 	{
 		const f32_t fClamped = (std::clamp)(fRatio, 0.f, 1.f);
@@ -130,12 +107,13 @@ namespace
 	}
 }
 
+// Level의 표시 요청을 검사해 중복 key를 기록하고 발생 항목을 추가한다. 캐릭터는 계속 weak 참조로 둔다.
 void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 {
 	const shared_ptr<CCharacter> pAnchor = Request.pAnchor.lock();
 	if (Request.strWord.empty() || nullptr == pAnchor)
 		return;
-	/* System option "condition message" row: the status word is the one text it governs. */
+	// 환경설정의 상태 메시지 표시가 꺼져 있으면 새 발생을 등록하지 않는다.
 	if (!CUserSettings::Get().Is_ConditionMessageShown())
 		return;
 
@@ -145,7 +123,7 @@ void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 		return;
 	m_SpawnedKeyByOwner[ownerWord] = Request.iOccurrenceKey;
 
-	/* Words stack on one head, so only anchors that are already gone leave here. */
+	// 같은 머리에 여러 문구를 허용한다. 여기서는 anchor가 사라진 기존 항목만 제거한다.
 	m_Occurrences.erase(
 		std::remove_if(m_Occurrences.begin(), m_Occurrences.end(),
 			[](const OCCURRENCE& Occurrence) { return Occurrence.pAnchor.expired(); }),
@@ -164,6 +142,7 @@ void Client::CStatusEffectTextView::Submit(const REQUEST& Request)
 		m_Occurrences.erase(m_Occurrences.begin());
 }
 
+// 표시 시간과 anchor 수명만 검사한다. Server의 상태 해제를 직접 검사하지 않는다.
 void Client::CStatusEffectTextView::Update(const f32_t fTimeDelta)
 {
 	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
@@ -179,6 +158,7 @@ void Client::CStatusEffectTextView::Update(const f32_t fTimeDelta)
 		m_Occurrences.end());
 }
 
+// 각 anchor를 잠시 lock하고 머리 높이를 화면에 투영해 크기·alpha·색을 적용한다.
 void Client::CStatusEffectTextView::Render(const std::uint32_t onlyOwnerEntityId) const
 {
 	if (m_Occurrences.empty())
@@ -212,8 +192,7 @@ void Client::CStatusEffectTextView::Render(const std::uint32_t onlyOwnerEntityId
 			continue;
 		}
 
-		/* Scale and position are two independent tweens with their own lengths and
-		their own delays, so neither waits on the other. */
+		// 크기와 위치는 별도의 기간·지연으로 보간한다. 현재 이동량 상수는 0이다.
 		const f32_t fScaleFactor = INIT_SCALE + (END_SCALE - INIT_SCALE) *
 			Ease_CustomDamageText1(Occurrence.fAgeSeconds / SCALE_TIME_SECONDS);
 		const f32_t fDrift = Occurrence.fAgeSeconds <= DRIFT_DELAY_SECONDS ? 0.f :
@@ -235,12 +214,10 @@ void Client::CStatusEffectTextView::Render(const std::uint32_t onlyOwnerEntityId
 			GameInstance.Measure_Text(TEXT("Font_YG760"), Occurrence.strWord.c_str());
 		if (vMeasured.y <= 0.f)
 			continue;
-		/* The sprite font is baked at its own pixel height, so scale it until one
-		line is ORIGINAL_TEXT_SIZE stage px at the current motion scale. */
+		// 측정한 글꼴 높이를 현재 동작 배율의 32픽셀 기준 높이에 맞춘다.
 		const f32_t fDrawScale =
 			(ORIGINAL_TEXT_SIZE_PX * fScaleFactor * fStageScale) / vMeasured.y;
-		/* CCustomFont::Draw takes the origin as a 0..1 anchor fraction and multiplies
-		it by the string's own measured extent, so this is "centered", not pixels. */
+		// Draw_Text의 origin은 픽셀이 아닌 글자 크기에 대한 0..1 비율이다. 중앙 정렬에 0.5를 쓴다.
 		constexpr float2_t CENTER_ORIGIN(0.5f, 0.5f);
 		const float2_t vPosition(
 			vScreen.x + (Occurrence.vScatterPx.x + DRIFT_X_PX * fDrift) * fStageScale,

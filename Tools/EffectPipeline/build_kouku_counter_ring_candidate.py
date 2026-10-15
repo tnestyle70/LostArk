@@ -5,7 +5,7 @@ from build_saydon_card_pattern_groups import AUTHORED, ROOT, read, renamed, writ
 from build_kouku_dove_pizza_candidates import native_references, sha
 
 ASSET = 'effect.kouku.common.counter.ring'
-RESOURCE = 'kakulsaydon.effect.counter.ring'
+RESOURCE = 'koukusaydon.effect.counter.ring'
 SOURCE = AUTHORED / 'effect.valtan.project-tuned.sequence.trash.effect.json'
 OUTPUT = ROOT / 'out/EffectV1ChargeCounter20260917/candidate'
 COMPOSITION = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
@@ -27,7 +27,7 @@ def build():
         shape='BOX', colliderKind='GEOMETRY', halfExtents=[1, 1, 1], radiusM=3, halfAngleDegrees=45)
     occurrences = []
     for ordinal, start, end in [(80, 0, 950), (81, 300, 2200)]:
-        pattern = next(p for p in composition['patterns'] if p['patternId'] == f'KAKULSAYDON_G1_PATTERN_{ordinal}')
+        pattern = next(p for p in composition['patterns'] if p['patternId'] == f'KOUKUSAYDON_G1_PATTERN_{ordinal}')
         occurrences.append(dict(patternId=pattern['patternId'], operation='ADD_IF_ABSENT_ASSET',
             sourceCounterWindowMs=[start, end],
             visualTimingPolicy='Play the unchanged 600ms user ring once at the CounterAttack window start. The 617ms occurrence includes the measured 1/60s birth delay; no loop or time stretch.',

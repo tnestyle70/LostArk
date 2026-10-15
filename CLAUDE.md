@@ -2,6 +2,7 @@
 
 이 파일은 Claude Code(claude.ai/code)가 이 저장소에서 작업할 때 참고하는 LostArk 코드베이스 설명이다.
 공통 에이전트 행동 규칙의 정본은 `AGENTS.md`이며, 작업 시작 시 먼저 읽는다.
+Engine/Client의 코드 작성·소유권·DLL 경계는 [LostArk Engine 컨벤션](.md/TEAM/LOSTARK_ENGINE_CONVENTIONS.md)을 따른다. 편집용 스니펫은 [CodeStudy/Snippets](CodeStudy/Snippets/README.md)에 있다.
 계획서·설계서 요청은 `AGENTS.md`의 규칙 파일 탐색 순서를 따르고 `.md/GB/<MM-DD>/`에 PLAN/RESULT 문서를 작성한다.
 LostArk 맵 에셋 검색·추출·`.wmodel` 변환·MapTool 적용 작업은 `.md/GB/07-29/2026-07-29_LOSTARK_MAP_ASSET_EXTRACTION_RUNTIME_RESULT.md`를 먼저 읽는다.
 모든 오브젝트의 추출·변환·파생 모델 적용은 `.md/GB/렌더링이펙트복원V2.md`의 재질·환경 입력 공통 절차와 `Tools/ModelAssetConverter/README.md`를 함께 따른다. geometry/D/N/S 변환과 native 재질·IBL/BRDF·장면 조명 연결을 구분하며, 데이터 계약은 `.md/TEAM/AREA_DATA_LAYER_GUIDE.md`를 사용한다.
@@ -162,7 +163,7 @@ UseMultiToolTask를 일괄 변경하지 않는다. 변경 없는 일반 Build는
 ### C++ 수정·병합 빌드 범위
 
 제품 네 프로젝트의 x64 Debug/Release는 `Tools/Build/CppCompilation.props`를 공유하고,
-각 IntDir에 별도 PCH를 생성한다. PCH는 표준 라이브러리만 포함하며 게임·저작·렌더 설정
+`Tools/Build/PCH.h`로 각 IntDir에 별도 PCH를 생성한다. 표준 라이브러리만 포함하며 게임·저작·렌더 설정
 헤더를 넣지 않는다. 컴파일 옵션이 다른 최적화 CPP와 외부 구현은 PCH를 사용하지 않는다.
 반복 사용되는 `<filesystem>`, `<set>`, `<sstream>`도 공용 표준 PCH에 포함한다.
 PCH 내용이 바뀐 commit을 처음 빌드할 때는 관련 OBJ가 한 번 다시 컴파일되는 것이 정상이며,
@@ -264,7 +265,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 중복 가산을 막는다. 조명·LUT의 물리 경로는 `Resources/Map/Lighting/Maharaka`이며
 다른 맵의 quality override와 전역 렌더링 튜닝은 독립적으로 유지한다.
 
-품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 베른의 기본 진입 프로필 `scene.bern.neutral-day.v1`은 `fog.enabled=false`가 정본이며 지역 안개도 이 scene gate를 따른다. 날짜 기준 복원이나 병합 후에도 OFF를 유지한다. 쿠크의 실제 base는 `scene.kakulsaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
+품질·scene/region 정본은 `Data/Rendering/Authored/RenderingProfiles.json`이다. 베른의 기본 진입 프로필 `scene.bern.neutral-day.v1`은 `fog.enabled=false`가 정본이며 지역 안개도 이 scene gate를 따른다. 날짜 기준 복원이나 병합 후에도 OFF를 유지한다. 쿠크의 실제 base는 `scene.koukusaydon.g1.base.v1`이며 그 `qualityOverride`는 패턴 scene 전환에도 유지된다. source 비교 profile이나 region override를 수정할 때도 같은 팀장 저장값을 보존한다. `Tools/RenderingPipeline/Publish-RenderingProfiles.ps1 -Mode Publish`만 `Client/Bin/DataFiles/Rendering/RenderingProfiles.runtime.json`을 생성한다. 생성물을 수동 편집하거나 효과 수정에 무관한 렌더링 재설정을 끼워 넣지 않는다. 실행 중 draft·사용자 video 설정과 게시 파일은 서로 다른 수명이며 게시를 자동 Reload로 설명하지 않는다.
 
 ## 팀 협업 규칙
 
@@ -311,7 +312,7 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 
 ### 서브시스템 소유권
 
-`CGameInstance`는 `DECLARE_SINGLETON` 기반의 **싱글턴 파사드**로, 모든 엔진 서브시스템을 `unique_ptr` 멤버로 소유하고 외부 호출을 각 서브시스템으로 중계한다.
+`CGameInstance`는 `DECLARE_SINGLETON` 기반의 **싱글턴 파사드**로, 아래 엔진 서브시스템을 `unique_ptr` 멤버로 소유하고 외부 호출을 각 서브시스템으로 중계한다.
 
 | 영역 | 클래스 | 역할 |
 |---|---|---|
@@ -331,6 +332,19 @@ Loader worker에서 호출되는 shader/model/navigation/camera/character/part/V
 | 그림자 | `CShadow` | 그림자 광원 행렬 바인딩 |
 | 절두체 | `CFrustum` | 월드/로컬 공간 컬링 판정 |
 | 물리 | `CPhysics_Manager` | PhysX scene, generation actor handle, fixed-step과 post-physics pose 동기화 |
+
+`CCrashReport_Manager`는 `CGameInstance`의 생성·해제에 묶지 않는 정적 치명적 종료 기록기다.
+`wWinMain`의 `Client::PrepareCrashReport`가 EXE 배치에서 `Client/Default/ClientCrash.user.log`
+경로를 만들고 `Install`에 전달한다. 경로 문자열은 설치 중만 읽고 파일 handle과 종료 콜백은
+Engine DLL 수명 동안 유지한다. 설치 실패는 게임 시작을 막지 않으며 terminate·SIGABRT에서만
+기록한다. 일반 시작·정상 종료 로그나 모든 OS 예외를 포착하는 계약은 아니다.
+
+`CWireBoxRenderer`도 `CGameInstance` 서브시스템이 아니다. `CTrigger_Box` 원형이 `Create`로
+만든 렌더러를 복제본들과 `shared_ptr`로 공유하고 마지막 참조가 사라질 때 자원을 정리한다.
+Client는 표시 여부·선택 색과 월드 OBB를 정하며 `Render(bounds, color, view, projection)`에
+넘긴다. Engine은 DirectXTK의 Batch·Effect·입력 레이아웃을 내부에 보유하고 기존 `DX::Draw`로
+제출한다. DirectXTK의 구현 헤더는 Engine CPP에서 포함하며 Client에는 Engine 타입만 노출한다.
+공유 렌더러는 한 렌더 스레드에서 순차 호출하고 각 호출 안에서 Batch를 열고 닫는다.
 
 렌더 그룹 순서(`RENDERGROUP`): `PRIORITY → SHADOW → NONBLEND → NONLIGHT → BLEND → UI`
 
@@ -368,7 +382,7 @@ CPrototype (추상, enable_shared_from_this)
 레벨은 `Client_Defines.h`의 enum이다.
 
 ```cpp
-enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KAKULSAYDON_ARENA, DEVELOPMENT, MAHARAKA, END };
+enum class LEVEL { STATIC, LOADING, LOBBY, CHARACTER_SELECT, BERN, VALTAN_ARENA, KOUKUSAYDON_ARENA, DEVELOPMENT, MAHARAKA, END };
 ```
 
 시작 Level은 항상 `LOBBY`다. Lobby는 `Test`, `Character Select`, `Valtan`, `KoukuSaydon`, `Bern`, `Maharaka` 여섯 명령을 제공하고 `CLevelRegistry`가 각 `LEVEL`의 생성 함수, Loader 함수, map area와 load scope를 연결한다. 별도 실행 시나리오 catalog, 문자열 기반 Level 분기, direct `Change_Level` 호출을 추가하지 않는다. `Maharaka`는 Debug Lobby에서 `WORLD_ID::MAHARAKA` Server 승인을 받은 뒤 `LEVEL::MAHARAKA`로 들어가며, 2021 마하라카 파라다이스 섬 Area `LV_OCN_EVENTIS_MHP`를 `CLevel_Development` 셸(맵·follow camera·replication·controller)로 띄운다. 이 월드는 protocol 94부터 있다. 워터팡 경기 중 물총 무장은 Server가 계산해 protocol 118 `PLAYER_SNAPSHOT.isWaterpangArmed`로 복제하며, Client는 `bip001-prop3`에 물총을 달고 직업 무기를 숨긴다. 무장 중 Q/W/E/R은 직업 스킬 대신 `MaharakaWaterpangContract.h`의 물총 스킬표(Q 연발 샷 56900·W 물 폭탄 56910·E 이동속도 증가 56920·R 기본 사격 56930)를 쓰며, 같은 `C2S_USE_SKILL` 경로로 Server가 쿨타임·행동 길이·발사를 판정하고 이동은 잠그지 않는다. 각 플레이어의 마지막 발사(skill id와 시작 tick)는 protocol 122 `PLAYER_SNAPSHOT.iWaterGunSkillId/iWaterGunCastTick`로 복제된다. 피격은 HP 피해·냉기 중첩 없이 밀림을 적용하며, 워터팡의 사용자 지정 기본 넉백은 쿠크 레이저 기준 6m/242ms다. 원본 행의 밀림값과 구분하고 `Data/AI/MaharakaWaterpangAI.json` 및 AI Tool로 조절한다.
@@ -378,7 +392,7 @@ Shared NPC roster8종과 물총 모델·재질을 전투 전 준비한다. NPC �
 경우 로딩 단계에서 실패를 확인하며 경기 중 최초 model decode로 미루지 않는다.
 
 
-`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KAKULSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
+`LEVEL::STATIC`은 전환 시에도 살아남는 영구 레벨이고, 나머지는 `Change_Level`에서 정리된다. `LEVEL::KOUKUSAYDON_ARENA`는 Lobby 버튼을 늘리지 않고 Debug Character Select의 typed Server transfer로 진입한다. 각 레벨 인덱스는 `map<wstring_t, shared_ptr<CLayer>>`를 가지며, `CLayer`는 `list<shared_ptr<CGameObject>>`를 들고 매 프레임 `Priority_Update → Update → Late_Update`를 구동한다.
 
 ### 레벨 전환 흐름
 
@@ -513,7 +527,7 @@ Client/Server `Bin/DataFiles/Guide/Guide.runtime.json`만 교체한다. `-Mode V
 베른·발탄·쿠크 자유 카메라의 기본 속도는 20m/s다. Debug F1 `Camera`에서
 0.1~400m/s로 조절한다. Debug 발탄·쿠크는 같은 아레나의 process-session 값을 유지하고,
 베른과 Release 조절값은 현재 맵 방문 동안 적용한다. Shift는 현재 속도의 30배다.
-Debug Bern의 같은 `Camera` 패널에서 속도 조절 아래 `Start Bern Cutscene`으로 입장 컷신을
+Debug/Release Bern의 F1 → `Bern Entrance Camera`에서 `Start Bern Cutscene`으로 입장 컷신을
 반복 재생한다. 기존 경로·FOV·시간을 사용하며 종료 또는 ESC 뒤 시작 전 follow/free 상태로
 돌아간다. 컷신 재생 속도는 자유 이동 속도와 별개다. 재생·편집·전환 충돌이나 준비 실패는
 기존 상태를 유지하고 버튼 아래에 이유를 표시한다. F7 Capture를 먼저 켜고 재생하면 같은
@@ -546,6 +560,11 @@ Profiler 체크박스는 별도의 CPU/GPU 상세 overlay와 capture를 활성�
 Debug의 F1 → `Open Composition Profiler`와 Debug/Release의 F7은 같은 Engine profiler의 CPU 구간, GPU pass, 작업량과 긴 작업을
 보여준다. 한국어 `프레임 Profiler`에서 `수집 (Capture)`으로 계측하고 `JSON 저장`으로 `Client/Bin/ProfilerCaptures`에 v3 캡처를 비동기
 저장한다. `저장 이름`은 한글을 포함한 선택 이름이며 같은 이름으로 다시 저장해도 timestamp/frame/process/sequence가 다른 새 파일을 만든다.
+베른 저폴리 대체는 프레임별 `mapLowGeometry*` 카운터로 컷신 활성 상태, 준비 보유량,
+정책·거리·화면 크기 탈락, 최종 선택, 실제 draw/index와 원본 fallback을 구분한다.
+반복 조회되는 선택 카운터는 같은 batch의 마지막 판정으로 치환하며 draw 카운터만 실제 제출마다 더한다.
+JSON의 `lowGeometryPreparation`은 저장 당시 현재 Level의 준비 결과와 제한된 오류 목록이다.
+이 메타데이터를 과거 모든 프레임의 성공으로 해석하지 않으며, 누락된 이전 캡처는 미계측으로 취급한다.
 `한 프레임 해석`은 CPU 계측 합집합과 구간 밖 비용, 이전 CPU 처리와 프레임 사이 대기를 구분한다.
 `CPU 병목`은 메인 스레드 자체 비용 내림차순이 기본이고, `GPU 패스·draw`는 자체/전체 시간·P95와
 같은 유효 GPU 프레임의 draw·메시·인덱스·IA/VS/PS 작업량을 표시한다. 패스 draw는 하위 구간을 포함하며
@@ -567,12 +586,42 @@ process lifetime 값이며 현재 캡처 peak가 아니다. allocation stack·�
 `상용 엔진과 비교`에서 Unreal의 시간축·task/RHI·RDG·메모리·셰이더·GI 등 개념과 현재 빠진 기반,
 관측 수치의 한계 및 다음 실험을 확인한다. 병목 후보는 원인 확정이 아니라 확인할 실험을 제안한다.
 F7의 `Bern parallel visibility preparation`은 정적 맵의 CPU 가시성·payload 준비를 큰 작업 묶음으로 분산하는 세션 제어다. Debug/Release 기본은 OFF이며 OFF에서는 Layer의 job 수집도 생략한다. 실제 Bern CPU fixture에서 worker의 안정적인 순이득이 입증되지 않아 명시적인 비교용으로 제공한다. 같은 카메라 cachehit는 준비 작업을 만들지 않고, 작은 작업은 caller에서 처리한다. worker의 CPU 결과를 join한 뒤 기존 소유 스레드가 GPU 업로드·제출한다. CPU 작업 풀은 기존 파티클 경로와 공유하며 파티클은 기존 최대1helper 조건을 유지한다. GPU command list와 fiber scheduler는 이 기능에 포함되지 않는다.
-F7의 `컬링 비용·제외량` 탭에는 Bern의 `Bern occlusion culling`, `Bern distance + screen-size culling`, 거리 scale과 최대 투영 지름 제어가 있다. 기본은 둘 다 ON·거리 scale1·지름24pixel이며 실행 세션에만 적용하고 팀장 rendering options JSON에는 저장하지 않는다. 가림 판정은 현재 카메라의 검증된 불투명 삼각형을 사용하며 캐시 재사용·제외 배치·인덱스와 `Render.MapOcclusion` 비용을 함께 확인한다. 거리 제외는 작은 정적 소품에 거리와 화면 크기 조건을 함께 요구한다. 각 SourceDraws는 후속 인스턴싱 전 입력이며 실제 GPU draw 절감량과 구분한다. 캡처 metadata는 저장 시점의 두 설정·거리 scale·pixel 상한을 기록한다.
+F7의 `컬링 비용·제외량` 탭은 Bern CPU occlusion·거리 정책과 `Bern GPU visibility / indirect`, `Bern GPU HiZ (현재 프레임)`을 세션에서 비교한다. 네 기능은 기본 ON이며 rendering options JSON에 저장하지 않는다. 작은 소품의 거리35/45/60m와 실효 지름 clamp(기준48px/거리 배율,4,128)를 함께 검사한다. 반경3m 초과 정적 구조물은 거리120m×배율 및 고정2px 조건을 함께 만족해야 숨긴다. 초기 숨김은 거리1.1배/지름0.9배 여유를 둔다. 지형·물·반투명·검증되지 않은 wind 변형은 새 거리 제거에서 보존한다. 호환 GPU cohort는 상주 instance를 compute에서 판정·압축해 indirect로 제출하고 현재 프레임의 신뢰 가능한 불투명 원본 depth로만 HiZ를 만든다. GPU 색상 제출은 화면 밖 그림자 전용 후보를 제외한다. 현재 제출 cell의 개별 원본 draw보다 GPU bin 명령이 줄지 않으면 같은 프레임에 CPU 가시성을 준비해 기존 인접 병합으로 복귀한다. HiZ의 source 기준은 현재 active 수이며 GPU-ready callback은 CPU 가림에서 제외한다. GPU 밖 CPU 배치의 기존 가림은 유지하므로 서로 다른 대상의 HiZ와 CPU MOC 비용이 함께 발생할 수 있다. GPU 준비 실패는 CPU 경로로 복귀한다. GPU survivor 수는 CPU 카운터에 추정하지 않는다. Capture에는 설정을, CPU/GPU scope에는 실제 준비·제출 시간을 남기며 최종 FPS는 같은 컷신에서 비교한다.
 정적 가림 패스의 실행 정책은 Client가 현재 Level을 기준으로 매 프레임 전달한다. Bern에서만 후보 순회·래스터·검사를 허용하고 Character Select·직업 무비 등 다른 Level은 패스 호출부터 건너뛴다. Engine에는 Client Level enum을 넣지 않으며 세션 OcclusionEnabled 선택과 A/B 원복 값은 바꾸지 않는다.
 F7의 `컬링 비용·제외량`은 분석 범위의 CPU 전체/자체 ms·호출 평균과 최근 CPU 완료 프레임의 후보·제외·캐시·draw/index 수를 분리해 표시한다. 부모/자식과 worker 시간을 더하지 않으며 미관측은0ms 측정으로 표시하지 않는다. 같은 창의 프레임 변화·기준 A/B로 비교하고, 전원·장면·카메라·해상도·상세 모드를 맞춘다.
-Debug/Release의 F1 → `Bern Entrance Camera`에서 베른 입장 컷신 FOV를20~60°로 조절하거나30/35/40/45°를 선택한다. `Use authored FOV`는 세션 override를 지운다. 조절은 다음 카메라 sample부터 적용되며 EXE 실행 동안 유지되고 JSON에는 저장하지 않는다. 일반 이동·선박·다른 컷신 카메라는 변경하지 않는다. 정본 `Data/Encounters/Bern/BernEntranceCamera.json`의16키 기본 FOV는45°이며 직접 로드한다. 이미 메모리에 들어온 cue는 자동 재로드하지 않는다.
+Debug/Release의 F1 → `Bern Entrance Camera`에서 `Start Bern Cutscene`으로 현재 베른의 입장 컷신을 다시 재생한다. 같은 패널에서 베른 입장 컷신 FOV를20~60°로 조절하거나30/35/40/45°를 선택한다. `Use authored FOV`는 세션 override를 지운다. 조절은 다음 카메라 sample부터 적용되며 EXE 실행 동안 유지되고 JSON에는 저장하지 않는다. 일반 이동·선박·다른 컷신 카메라는 변경하지 않는다. 정본 `Data/Encounters/Bern/BernEntranceCamera.json`의16키 기본 FOV는45°이며 직접 로드한다. 이미 메모리에 들어온 cue는 자동 재로드하지 않는다.
+
+F7의 `컷신 재생 + 거리 기록`은 Debug/Release에서 같은 베른 입장 컷신을 요청한다.
+이미 진행 중이면 `진행 중 컷신 거리 기록`으로 현재 위치부터 시작하며 그 사실을 저장한다.
+기본 100ms와 중심 거리0~250m를 UI에서 조절한다. 고정 예약 tick마다 실제 render 프레임을
+하나만 관측하고 지연된 tick 수를 남긴다. cue 시간은 실제 Level clock에서 읽으며 보간하지 않는다.
+창을 닫아도 기록하고 컷신 종료·사용자 중단·Level 변경·상한 도달 뒤 기존 exporter로
+`Client/Bin/ProfilerCaptures/*bern-distance*.json`에 자동 저장한다. 이름이 없으면 bern-distance를 쓴다.
+일반 `JSON 저장`도 보관된 거리 표본이 있으면 같은 파일에 포함한다. 기록 중 누르면 기록을
+종료하고 GPU 결과 회수 뒤 일반 raw history와 함께 저장한다. 기록이 없으면 일반 저장을
+유지하며 `거리 기록 없음`을 표시한다. 보관 거리 표본과 현재 raw history·저장 시점 metadata는
+서로 다른 시간 범위일 수 있으므로 geometry frame과 cue를 기준으로 분석한다.
+저장 시작과 실제 디스크 저장 완료를 구분해서 표시한다. 준비·쓰기 실패 때 표본은 현재
+실행 중에 유지되며 `JSON 저장`/`컷신 JSON 다시 저장`으로 재시도한다. 앱 종료 시 진행 중인
+writer는 기존 취소 정책을 따르므로 완료 경로가 표시된 파일을 확인한다.
+일반 raw history1200개와 독립된 `bernCutsceneGeometry` 표본은 최대120초/1200개/200만 source행이며,
+표본당 source/draw각2만개 손실, 건너뛴 tick, GPU pending과 종료 사유를 명시한다.
+거리는 submesh 표면 최단거리가 아닌 placement/model bounding sphere 중심 거리와 sphere 근접 거리(m)다.
+stable placementId+assetId+meshIndex의 이전 실제 표본과 거리 차이·m/s를 기록한다.
+거리 범위는 source 목록만 제한하고 mapDraws는 전체 정적 맵 색상 draw다. fallback 개수는 별도다.
+CPU 병합/native HLOD/간접 draw를 성공한 제출 경계에서 수집하며 GPU args는
+geometry frame+buffer ordinal+offset이 같은 비동기 결과만 결합한다. GPU source의 개별 생존/LOD는
+이 readback으로 알 수 없으므로 후보 거리와 cohort/bin 실제 합계를 구분한다.
+카메라·가시성·LOD·HLOD 선택과 렌더링 옵션은 계측을 위해 바꾸지 않는다.
+
+노란 FPS 오른쪽의 `Vtx(VS)`는 완료된 전체 GPU 프레임의 vertex shader 실행 수(TK/UI 포함),
+`Idx`는 계측된 Engine indexed draw의 인스턴스 포함 참조 수(TK/ImGui 내부 draw 제외)다.
+버퍼 정점 용량·고유 정점 수·최종 보이는 픽셀 수가 아니며 `GPU -NF`로 완료 지연을 표시한다.
+F7 Capture OFF에도 갱신하고 query/readback 미완료·실패는 `--`로 표시한다. GPU flush/동기 대기는 없다.
+기존 cinematic HUD 숨김을 유지하되 사용자가 시작한 컷신 거리 기록 동안만 이 진단 줄을 표시한다.
+
 F7은 창만 열고 닫으며 수집은 창의 Capture에서 명시적으로 시작한다. 창을 닫아도 이미 시작한 수집은 계속된다. Capture/Reset과 상세 CPU 모드는 다음 프레임 경계에서 반영한다.
-Release는 좌측 상단에 기존 노란 `FPS N`을 항상 표시하며 저장된 표시 모드를 변경하거나 요구하지 않는다. Debug는 기존 표시 모드를 유지하고 두 구성 모두 cinematic HUD 숨김을 따른다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
+Release는 좌측 상단에 기존 노란 `FPS N`을 항상 표시하며 저장된 표시 모드를 변경하거나 요구하지 않는다. Debug는 기존 표시 모드를 유지하고 두 구성 모두 cinematic HUD 숨김을 따른다. 명시적인 컷신 거리 기록 동안은 FPS/geometry 진단 줄만 예외로 표시한다. Map/Animation/Effect/Sequence 저작 창은 Debug 전용이고 Release의 docking/외부 viewport는 비활성이다. F1 테스트 허브는 Debug/Release에서 명시적으로 열 때만 표시한다. Release에는 기존 Level Navigation·Balance·Boss 등 공통 도구만 노출하고 Profiler 버튼은 표시하지 않는다.
 기본은 pass 시간과 작업량을 수집하고 `draw별 상세 CPU 계측 (추가 비용 발생)`를 켜면 map draw별 상세 scope도 기록한다.
 각 JSON은 기본으로 현재 보관 중인 전체 프레임(최대 1200개)을 저장하며 `분석·표시 프레임 범위`와 독립이다.
 `JSON 저장 범위 제한`을 명시적으로 켠 경우에만 `최근 프레임만 저장`의 개수로 저장 범위를 줄인다.
@@ -689,8 +738,8 @@ KoukuSaydon Arena는 Release에서 게시된 Pattern/Sequence의 V1/V2 Effect와
 `Kouku.Arena.Ready`를 구분해 확인한다.
 
 KoukuSaydon Arena의 관문 보스는 `Data/Worlds/LV_LUT_MIDNIGHTC_ED/Gameplay.world.json`의 disabled boss
-placement(`boss.kakulsaydon.g1.saydon`, `g2.big-saydon`, `g2.kouku`, `g3.saydon`, `bingo.saydon`)이며
-`BOSS_KAKULSAYDON_*` archetype이 `ENCOUNTER_KAKULSAYDON_G1`을 공유한다. Debug F1 `KoukuSaydon Arena`의 관문
+placement(`boss.koukusaydon.g1.saydon`, `g2.big-saydon`, `g2.kouku`, `g3.saydon`, `bingo.saydon`)이며
+`BOSS_KOUKUSAYDON_*` archetype이 `ENCOUNTER_KOUKUSAYDON_G1`을 공유한다. Debug F1 `KoukuSaydon Arena`의 관문
 버튼이 typed Server 명령으로 이전 관문 보스 despawn → placement spawn → 플레이어 teleport를 보낸다.
 spawn·teleport 성공 응답 후 HUD focus와 audition target을 확정하며 대기 중 새 관문·재생 요청을 막는다. 관문 보스는 brain 없이 IDLE로 대기하며 Boss Tool `Play Isolated`/`Start Full
 Pattern`과 F1 Complete Play가 audition target 보스에서만 재생한다. Kouku Product pattern은 projector가
@@ -893,7 +942,7 @@ placement/level, asset/WModel, mesh/material/hit XYZ 및 `Copy source selection`
 Esc/우클릭/F1 닫기/입력 소유권·Level 변경은 피킹을 취소하며 miss는 기존 선택을 보존한다.
 World Level Tool의 `Pick in scene`도 현재 Area를 확인한 뒤 같은 World Scene Tool을 열어 다음 클릭을 전달한다.
 
-현재 Bern 제품 로드는 작은 파생 청크를 생성하지 않고 원본 공간 batch와 확장된 인스턴싱을 사용한다. 큰 atlas proxy는 품질 조건의 유효 coverage가 확인될 때까지 `atlasEnabled=false`이며 준비·메모리 할당도 건너뛴다. 따라서 아래 청크 도구는 생성된 청크가 없는 기본 실행에서는 빈 목록이다. 새 가림·거리 컬링은 원본 batch에 연결된다.
+현재 Bern 제품 로드는 원거리 geometry HLOD를 source별 오차·현재 mesh LOD 대비 strict index 감소·최소3개 보수적 draw 이득 조건으로 준비한다. 큰 atlas proxy는 `atlasEnabled=false`를 유지한다. 동일 geometry·재질/RNM의 전역 GPU cohort는 원본32m culling cell을 유지하며 제출을 모은다. GPU 적격 source도 native HLOD 후보로 검사하되, source별 1px와 상주 GPU LOD의 최소 index보다 strict한 감소를 요구한다. 후보 밖 잠재 가시 cohort member가 남는 mesh는 draw 절약으로 세지 않으며, 최소3개 원본 draw를 대체할 때만 claim한다. claim된 mesh만 GPU mask에서 제외하고 원본이 전부 대체된 mesh는 indirect 명령도 생략한다. CPU fallback mask는 정리하고 다른 cohort의 GPU 제출은 유지한다. HiZ admission은 mesh lane 수가 아닌 고유 active instance 수를 쓴다. 생성된 chunk 목록·실제 선택·실제 제출·게임 FPS는 별도로 확인한다. 구현·검증 범위는 `.md/GB/10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md`의 G34를 따른다.
 
 Debug Bern의 World Level Tool → `Runtime chunks / HLOD`는 현재 생성된 정적 청크의 경계,
 동일한 활성 재질 입력으로 묶인 원본 placement/asset, 근거리·원거리 index와 상태를 보여 준다.
@@ -987,7 +1036,7 @@ Release는 게시된 입장 collider의 Sequence ID를 같은 준비 경로로 �
 Server는 저장 Action·Sequence revision, 관문 Flow, 시작 1~4인 roster를 고정하고 PREPARING을 전송한다.
 각 참가자는 정확한 revision의 문서를 검증·미리 읽어 READY/FAILED를 회신한다. 전원 READY 이후에만
 공통 30Hz 시작 tick을 확정하고 입장 Sequence·슬롯 도착·기존 audition Flow를 실행한다.
-준비 중에는 위치·보스 상태를 변경하지 않으며, FAILED·10초 timeout·owner STOP은 기존 상태를 보존한다. 입장 종료 전에는 전투 배우를 생성하지 않는다.
+준비 중에는 위치·보스 상태를 변경하지 않으며, FAILED·20분 timeout·owner STOP은 기존 상태를 보존한다. 입장 종료 전에는 전투 배우를 생성하지 않는다.
 카드미로 완료를 기다려 다음 Flow 항목을 시작한다. 주 보스가 실제 사망하면 기존 클리어·MVP·던전입장
 UI에 결과를 표시하고 `WAIT_GATE`에서 기다린다. 시간 경과로 관문을 전환하지 않는다. 시작 roster 전원의
 관문 입장 승인을 받아야 다음 Sequence를 재생하며, 거절·투표 timeout은 현재 관문을 유지한다.
@@ -1283,7 +1332,7 @@ streaming 기능은 아니다. mip 체인이 있는 재질로 최상/하를 비�
 - 프로젝트 데이터: `CProjectDataRoot::Resolve()`로 `Data/` 정본을 해석한다.
 - 전투 수치: `Data/Balance/PlayerProfiles.json`, `PlayerSkills.json`, `DamageProfiles.json`, `BossProfiles.json`이 정본이다. two-step ground target의 optional 입력·preview 계약은 `PlayerSkillTargeting.json`이며 기존 skillId/maximumRange와 exact join한다. 명시 실행하는 `Publish-GameplayBalance.ps1`이 수치와 `SKILLTARGET` admission runtime bootstrap을 생성한다. texture ID와 tint는 Client-only이며 Server bootstrap에 넣지 않는다. 가디언나이트의 엠버레스 오브 게이지(identity 100, 적중 시 충전, 만충 시 Z 화신화, 화신 15초 고정 소진)·기운 구슬·소켓 잠금은 `Data/Balance/GuardianKnightEmber.json`이 skillId exact join으로 소유하며 같은 publisher가 `PLAYEREMBER`/`SKILLEMBER` 행으로 싣고 protocol 102 snapshot이 기운·잠금·상한을 복제한다. receipt 대상이 아니다.
 - 아이템: `Data/Items/ItemCatalog.json`이 정본이다. 명시 실행하는 `Publish-ItemCatalog.ps1`이 `Server/Bin/DataFiles/Items/Items.bootstrap`을 생성하고 `CItemCatalog`이 이를 필수 로드한다. 아이템 정본·publisher·reader schema가 바뀌면 갱신한 bootstrap도 같은 PR에 포함한다. 현재 header version은7이며 ITEM은7열, 배틀 아이템 수치는 별도 BATTLEITEM 15열이다. ITEMVARIANT 4열은 template item ID·class·variant item ID를 연결하며 Server가 구매자 클래스에 맞는 아이템을 지급한다. BATTLEITEM 행은 효과 kind·skill ID·피해율·부위파괴·무력화·범위·지속/재사용 시간과 투사체 속도·곡선 높이·발사 높이·최대 무력화 분모를 소유한다. 회오리 수류탄은 HP 피해0과 최대 무력화의 ceil(max/3)을 적용한다. `Item bootstrap header is invalid`는 받은 bootstrap header와 실행한 Server reader의 version을 먼저 대조하고 해당 publisher로 복구한다. 생성물을 손으로 고치거나 Server가 authoring JSON을 직접 읽게 하지 않는다.
-- Git 관리 대상 `Data` 원본은 `Client.vcxproj`에서 `96.DataFiles`의 `None` 항목으로 보인다. 이는 탐색용 링크이며 runtime 복사나 두 번째 정본이 아니다.
+- Git 관리 대상 `Data` 파일은 `Framework.sln` 직속 `Data` 솔루션 폴더에서 물리 하위 폴더와 같은 트리로 보인다. `SolutionItems`는 저장소 루트의 실제 파일을 여는 상대 링크이며 runtime 복사나 두 번째 정본이 아니다. 이전 Client `96.DataFiles`/`None` 등록은 이 위치로 통합했다. 파일 추가·삭제 후 `python Tools/Build/data_solution.py`로 목록을 갱신하고 `--check`로 확인한다. 이 명령은 데이터 내용과 Client/Server `Bin/DataFiles` 게시본을 변경하지 않는다.
 - 현재 밸런스 검증은 JSON publish 후 Server 재기동과 `dev.training.ground` smoke로 수행한다. 무중단 Hot Reload는 아직 활성화하지 않으며 revision과 Server tick-boundary commit 없이 Client만 재읽지 않는다. 상세 계약은 `.md/TEAM/BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 - 서버 길찾기: `Data/Navigation`이 정본이다. MapTool bake Area는 `<AreaId>.navsource/.navpaint/.navblockers`, 단순 uniform Area는 `<AreaId>.navgrid.json`을 사용하며 `Publish-ServerNavigation.ps1`이 Client/Server runtime `.navgrid`와 Area별 최대 인접 높이차를 가진 `.navpolicy`를 결정적으로 생성한다. gameplay spawn/boss의 walkable cell·높이 정합성도 같은 publish에서 검사한다. `.navpaint` version 3의 optional height override는 resolved surface의 다층 bake 오선택을 교정하며 Server A*와 이동 적용 직전 guard가 `.navpolicy`를 소비한다. Client 제품 Loader도 같은 정책 값을 `CNavigation::Create_NavGrid`의 네 번째 인자로 전달하며 prototype/Clone과 Character 클릭 이동 예측의 `Get_MaxStepHeight()` 경로 요청이 이를 보존한다. 기존 명시적 raw/editor factory 호출의 기본값은 0.6이다. Area는 선택적으로 `Data/Navigation/<AreaId>.navregions`에 세부 영역 격자를 선언한다. 각 영역은 `<AreaId>.<regionId>` grid ID로 자기 `.navsource/.navpaint`와 런타임 `.navgrid/.navpolicy`를 갖고, Server는 질의의 첫 점을 담는 영역이 있으면 그 격자에서만 판정한다. 영역은 XZ 범위가 겹칠 수 있고, 겹치면 서로 다른 높이 층으로 본다. 겹친 XZ에서 양쪽 모두 걸을 수 있는 셀의 지면이 max(2m, 두 영역 step 정책 중 큰 값의 2배)보다 가까우면 publisher와 Server가 모두 거부한다. 통과한 층은 질의가 넘긴 높이 힌트(`startY`/`hintY`/`fromY`)에 가장 가까운 지면을 가진 영역이 답하고, 힌트가 없으면 매니페스트 순서로 첫 번째 걸을 수 있는 영역이 답하며, 층 사이는 걸어서 이어지지 않는다. 영역은 runtime blocker를 갖지 않으며, 매니페스트가 없으면 Area는 기본 격자 하나로 종전과 동일하게 동작한다.
 - 런타임 리소스: `CRuntimeAssetRoot::Resolve("Character/..."|"Map/..."|...)`를 사용한다.

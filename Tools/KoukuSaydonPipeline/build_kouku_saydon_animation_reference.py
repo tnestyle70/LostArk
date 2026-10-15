@@ -855,7 +855,7 @@ def validate_pattern_document(document: Any, reference: dict[str, Any]) -> None:
     occurrence_ids: set[str] = set()
     total_clips = 0
     pattern_shape = re.compile(
-        rf"kakulsaydon\.{re.escape(profile_id)}\.pattern\.([1-9][0-9]*)"
+        rf"koukusaydon\.{re.escape(profile_id)}\.pattern\.([1-9][0-9]*)"
     )
     for pattern_ordinal, raw_pattern in enumerate(patterns):
         pattern = _strict_object(

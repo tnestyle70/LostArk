@@ -1,9 +1,14 @@
+﻿// 보스 패턴의 남은 목표량과 월드 위치를 UI 슬롯에 반영한다.
 #include "BossImmuneGaugeView.h"
 
+// 현재 카메라 행렬과 viewport를 조회한다.
 #include "GameInstance.h"
+// JSON 슬롯을 만들고 위치·표시·잔량 비율을 바꾼다.
 #include "UILayoutRuntime.h"
+// Try_ProjectWorldPosition으로 보스의 월드 위치를 화면에 투영한다.
 #include "WorldPlayerNameplateView.h"
 
+// 서버 진행도를 목표량 이하로 제한하는 min을 사용한다.
 #include <algorithm>
 
 namespace
@@ -15,6 +20,7 @@ namespace
 	const char* const MOVING_SLOTS[] = { "Immune_Frame", TRACK_SLOT };
 }
 
+// 지정 Level의 Layer_UI에 레이아웃 sprite를 준비하고 첫 Update 전에는 숨긴다.
 Client::CBossImmuneGaugeView::CBossImmuneGaugeView(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
@@ -30,6 +36,7 @@ Client::CBossImmuneGaugeView::~CBossImmuneGaugeView()
 {
 }
 
+// 기준 슬롯이 없으면 목록을 채우지 않아 Update에서 표시하지 않게 한다.
 void Client::CBossImmuneGaugeView::Capture_SlotOffsets()
 {
 	f32_t fW = 0.f, fH = 0.f;
@@ -56,6 +63,7 @@ void Client::CBossImmuneGaugeView::Hide()
 	m_bVisible = false;
 }
 
+// 표시 조건·보스 상태·투영이 유효할 때만 슬롯을 갱신한다. 실패하면 이전 게이지를 숨긴다.
 void Client::CBossImmuneGaugeView::Update(
 	const f32_t fTimeDelta,
 	const HUD_BOSS_STATE& Boss,
@@ -67,9 +75,8 @@ void Client::CBossImmuneGaugeView::Update(
 		return;
 	}
 
-	/* Anchor: the boss's replicated ground position projected to the screen; the Debug
-	boss preview carries no position and keeps the authored anchor so the HUD Layout Tool
-	can still place the slots. */
+	// 보스 월드 위치를 Client 픽셀로 투영한 뒤 1280×720 기준 좌표로 바꾼다.
+	// 위치가 없는 미리보기는 저작 기준점을 그대로 쓴다.
 	f32_t fAnchorX = m_fAnchorX;
 	f32_t fAnchorY = m_fAnchorY;
 	if (Boss.hasPosition)
@@ -94,8 +101,7 @@ void Client::CBossImmuneGaugeView::Update(
 	for (const SLOT_OFFSET& Offset : m_SlotOffsets)
 		m_pView->Set_SlotPosition(Offset.strId, fAnchorX + Offset.fDx, fAnchorY + Offset.fDy);
 
-	/* The bar shows what is still left to deal: full at pattern start, empty when the
-	threshold is met. */
+	// 진행도를 목표량까지 제한하고 남은 비율을 표시한다. 목표에 도달하면 잔량 이미지를 숨긴다.
 	const uint32_t iProgress = (std::min)(Boss.iResponseProgress, Boss.iResponseThreshold);
 	const f32_t fRemaining = 1.f -
 		static_cast<f32_t>(iProgress) / static_cast<f32_t>(Boss.iResponseThreshold);

@@ -1,17 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include "Component.h"
 #include "Engine_VertexTypes.h"
-#pragma push_macro("new")
-#undef new
 #include "Assimp/material.h"
-#pragma pop_macro("new")
 
 #include <array>
 #include <filesystem>
 #include <span>
 #include <set>
 
+//assimp
 struct aiScene;
 struct aiNode;
 namespace Assimp { class Importer; }
@@ -28,11 +26,16 @@ struct MODEL_SURFACE_PARAMETERS;
 struct MESH_SCREEN_LOD_DESC;
 struct MODEL_SOURCE_CHARACTER_PARAMETERS;
 
+// GameObject가 Component로 보유하는 모델이며 메시·재질·골격·애니메이션을 한 렌더 경로로 연결한다.
+// Clone은 메시·재질의 참조를 공유하고 본·애니메이션 상태를 복제해 각 객체의 재생 상태를 분리한다.
 class ENGINE_DLL CModel final : public CComponent
 {
 private:
+	//device, context를 받는 create할 때 호출되는 생성자
 	CModel(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
+	//prototype이 생성될 때 받는 생성자
 	CModel(const CModel& Prototype);
+
 public:
 	virtual ~CModel();
 
@@ -70,29 +73,20 @@ public:
 	bool_t Has_LocalBounds() const { return m_bHasLocalBounds; }
 	const float3_t& Get_LocalBoundsMin() const { return m_vLocalBoundsMin; }
 	const float3_t& Get_LocalBoundsMax() const { return m_vLocalBoundsMax; }
-    // Reference vertex bounds after asset pretransform; independent of animated culling.
+    // asset pretransform을 적용한 기준 정점 경계이며 애니메이션 culling 경계와 별개다.
     bool_t Try_GetBindGeometryBounds(float3_t& minimum, float3_t& maximum) const;
-    // Conservative current WModel skin bounds in model-root space. The bone
-    // palette already includes pretransform; callers apply only the actor root.
-    // Unsupported/morphed geometry leaves both outputs unchanged.
+    // 현재 WModel skin의 model-root 공간 보수 경계다. palette에 pretransform이 포함되어 호출자는 actor root만 적용한다. 미지원·morph이면 두 출력을 보존한다.
     bool_t Try_GetCurrentPoseBounds(float3_t& minimum, float3_t& maximum) const;
-    // Conservative root-origin sphere covering rest and every admitted WModel clip.
-    // Includes the asset pretransform once; unsupported/morphed/external poses fail open.
+    // rest와 허용된 모든 WModel clip을 덮는 root 원점 구다. pretransform은 한 번 포함하며 미지원·morph·외부 pose는 culling을 확정하지 않는다.
     bool_t Try_GetAnimationEnvelopeRadius(f32_t& radius) const;
-    // WModel triangle query at the current rendered pose. Bounds are broad phase
-    // only; distance is in world units. Unsupported/morphed geometry is not picked.
+    // 현재 렌더 pose의 WModel 삼각형을 world 거리로 조회한다. 경계는 후보 선별용이며 미지원·morph geometry는 피킹하지 않는다.
     bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
         const float3_t& rayDirection, f32_t& distance) const;
-    // Also identify the nearest rendered submesh; both outputs are unchanged on failure.
+    // 가장 가까운 렌더 submesh도 반환한다. 실패하면 두 출력은 그대로다.
     bool_t Try_PickCurrentPose(const float4x4_t& world, const float3_t& rayOrigin,
         const float3_t& rayDirection, f32_t& distance, uint32_t& meshIndex) const;
     enum class PICK_CULL_MODE { NONE, BACK, FRONT };
-    // Movement surface query over immutable static WModel LOD0 triangles. The
-    // caller selects eligible materials and the final rasterizer's CW-front cull
-    // mode; world reflection is included when testing triangle winding. No GPU
-    // readback, query allocation, alpha test, shader displacement or animation.
-    // Direction is normalized internally; distance/maxDistance are world units.
-    // Unsupported geometry and misses leave distance unchanged.
+    // 불변 WModel LOD0의 이동 표면을 조회한다. 방향은 내부 정규화하며 호출자가 재질·CW cull mode를 고르고 world 반사를 반영한다. 거리는 world 단위이고 miss·미지원 시 보존한다. alpha·shader 변위·애니메이션은 판정하지 않는다.
     bool_t Try_PickStaticSurface(uint32_t meshIndex, const float4x4_t& world,
         const float3_t& rayOrigin, const float3_t& rayDirection, f32_t maxDistance,
         PICK_CULL_MODE cullMode, f32_t& distance) const;
@@ -125,44 +119,32 @@ public:
 	bool_t Has_Bone(const char_t* pBoneName);
 	vector<string> Get_BoneNames() const;
 
-	/* Secondary-motion seam. A caller that drives bones itself resolves indices
-	once, reads what the animation produced this frame, writes its own local
-	matrices back, and refreshes the combined matrices before skinning reads
-	them. Indices are stable for the model's lifetime and every bone's parent
-	comes before it, so one forward pass rebuilds the whole hierarchy. */
+	/* 외부 본 구동자는 animation local을 읽고 수정한 뒤 combined를 갱신한다. 본 index는 모델 수명 동안 고정되며 부모가 먼저 있어 순방향으로 재계산한다. */
 	int32_t Find_BoneIndex(const char_t* pBoneName) const;
 	int32_t Get_BoneParentIndex(uint32_t iBoneIndex) const;
 	bool_t Get_BoneLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
 	bool_t Get_BoneRestLocalMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
 	bool_t Get_BoneCombinedMatrix(uint32_t iBoneIndex, matrix_t& outMatrix) const;
-	/* Samples the currently bound animation without moving its cursor or the
-	   live bone palette.  expectedAnimationIndex closes the race where a tool
-	   prepared one clip and another owner changed it before the sample. */
+	/* cursor·현재 palette를 바꾸지 않고 현재 clip을 sample한다. expectedAnimationIndex로 준비 이후 clip 교체 여부를 확인한다. */
 	bool_t Sample_CurrentAnimationBoneCombinedMatrices(
 		uint32_t iExpectedAnimationIndex,
 		f32_t fTrackPositionTicks,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
-	/* Historical action playback can prepare future clip poses while the live
-	   model is still at the start of its transition.  This variant evaluates the
-	   saved blend-from pose at an explicit elapsed time without advancing either
-	   the animation cursor, blend clock, or live bone palette. */
+	/* 과거 action 재생용으로 명시한 경과 시간의 blend pose를 계산한다. cursor·blend 시계·현재 palette는 진행시키지 않는다. */
 	bool_t Sample_CurrentAnimationBoneCombinedMatricesAtBlendElapsed(
 		uint32_t iExpectedAnimationIndex,
 		f32_t fTrackPositionTicks,
 		f32_t fBlendElapsedSeconds,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
-	/* Samples one explicitly named clip without binding it to the live model.
-	   Unkeyed bones use the immutable skeleton rest pose and the unrelated live
-	   transition is not applied. Missing/ambiguous names leave output unchanged. */
+	/* 이름으로 지정한 clip을 live 모델에 바인딩하지 않고 sample한다. key 없는 본은 rest를 쓰며 이름 누락·중복이면 출력을 보존한다. */
 	bool_t Sample_AnimationBoneCombinedMatrices(
 		const char_t* pAnimationName,
 		f32_t fTrackPositionTicks,
 		std::span<const uint32_t> BoneIndices,
 		std::span<float4x4_t> OutCombinedMatrices) const;
-	// Raw root translation relative to immutable rest, before suppression. The
-	// returned model-space vector already includes ancestor basis and model pre-transform.
+	// root 억제 전 rest 대비 이동량이다. 반환하는 model 공간 벡터에는 조상 basis·model pretransform이 포함된다.
 	bool_t Sample_AnimationRootTranslation(const char_t* pAnimationName,
 		f32_t fTrackPositionTicks, uint32_t iRootBoneIndex, int32_t iVerticalAxis,
 		f32_t fVerticalScale, float3_t& OutModelTranslation) const;
@@ -177,8 +159,7 @@ public:
 	bool_t Configure_RootMotionSuppressionFromRest(uint32_t iRootBoneIndex,
 		int32_t iVerticalAxis, f32_t fVerticalScale);
 	bool_t Restore_RootMotionSuppression(const ROOT_MOTION_SUPPRESSION_STATE& state);
-	// Explicit clip samples define a transition independently of render history.
-	// UINT32_MAX selects the immutable rest pose (for an unmapped weapon clip).
+	// 명시한 clip sample로 렌더 이력과 독립적인 전환을 정의한다. UINT32_MAX는 연결된 weapon clip이 없을 때 불변 rest를 선택한다.
 	struct ANIMATION_TRANSITION_POSE final
 	{
 		uint32_t sourceIndex = UINT32_MAX, targetIndex = UINT32_MAX;
@@ -186,7 +167,7 @@ public:
 		f32_t durationSeconds = 0.f, elapsedSeconds = 0.f, playRate = 1.f;
 	};
 	bool_t Set_AnimationTransitionPose(const ANIMATION_TRANSITION_POSE& pose);
-	// The same explicit transition, sampled without changing the live actor pose.
+	// 같은 명시적 전환을 현재 actor pose를 바꾸지 않고 sample한다.
 	bool_t Sample_AnimationTransitionBoneCombinedMatrices(
 		const ANIMATION_TRANSITION_POSE& pose,
 		std::span<const uint32_t> BoneIndices,
@@ -196,21 +177,12 @@ public:
 	void Clear_AnimationTransitionPose() { m_bExplicitAnimationPose = false; }
 	bool_t Set_BoneLocalMatrix(uint32_t iBoneIndex, fmatrix_t Matrix);
 	void Refresh_BoneCombinedMatrices();
-	/* Poses this model's skeleton from another one, matched by bone name, for a worn part that
-	rides a body's animation. A bone the source also has takes the source's combined matrix; a
-	bone only this model has -- the costume-only chains a hairstyle or a dress adds -- is
-	rebuilt from its own rest local onto whichever parent was just posed, so it hangs off the
-	animated body instead of collapsing.
-
-	Without this a part with extra bones cannot be drawn from its own palette at all: the body's
-	palette is shorter, and every vertex weighted past its end reads a zero matrix. Returns how
-	many bones the source supplied, so a caller can tell a matched skeleton from an unrelated
-	one. Bones are stored parent-before-child, so one forward pass is enough. */
+	/* 이름이 같은 본은 원본 combined를 받고 장비 전용 본은 자신의 rest local을 부모에 연결한다. 부모부터 계산하며 원본에서 공급한 본 개수를 반환한다. */
 	uint32_t Pose_BonesFrom(const CModel& source);
 	bool_t Enable_RootMotionSuppression(
 		const char_t* pBoneName, int32_t iVerticalAxis);
 
-	// Scales only the preserved root translation axis; geometry and clip time stay unchanged.
+	// 보존된 root 이동 축만 확대하며 geometry·clip 시간은 바꾸지 않는다.
 	bool_t Set_RootMotionVerticalScale(f32_t fScale);
 	f32_t Get_RootMotionVerticalScale() const { return m_fRootMotionVerticalScale; }
 
@@ -239,17 +211,15 @@ public:
 	void Stop_Animation();
 	void Set_AnimationSpeed(f32_t speed);
 	bool_t Update_Animation(f32_t fTimeDelta);
-    // Advances the existing clip/loop/blend clocks, leaving the palette untouched.
-    // The caller evaluates Play_Animation(0) before rendering or changing an action.
-    // Return value is the same finished flag as Play_Animation/Update_Animation.
+    // clip·loop·blend 시계만 진행한다. 호출자는 렌더·action 변경 전에 Play_Animation(0)으로 palette를 계산하며 반환값은 기존 종료 flag와 같다.
     bool_t Advance_AnimationClock(f32_t fTimeDelta, bool_t applyAnimationSpeed = true);
 	uint64_t Get_SkeletonHash() const {
 		return m_iSkeletonHash;
 	}
 	HRESULT Attach_AnimationSet(const CModel& animationSet);
-	// Source sampling never changes the model cursor or live pose. Time is seconds.
+	// 초 단위 source sample은 모델 cursor·현재 pose를 바꾸지 않는다.
 	bool_t Sample_AnimationLocalTransforms(const char_t* name, f32_t seconds, vector<float4x4_t>& output) const;
-	// Stages every channel before one commit; native names are immutable.
+	// 전체 channel을 준비한 뒤 한 번 commit한다. native 이름은 바꾸지 않는다.
 	bool_t Install_AuthoredAnimations(const vector<MODEL_ANIMATION_DATA>& animations, string& status);
 
 public:
@@ -261,17 +231,21 @@ public:
 
 public:
 	HRESULT Render(uint32_t iMeshIndex);
+    // 일반 MapAssetObject/Deploy도 기존 CModel -> CMesh 경로에서 화면 오차 LOD를 소비한다.
+    // nullptr, 지원하지 않는 재질/변형, 잘못된 view는 기존 원본 draw로 돌아간다.
+    HRESULT Render(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* screenLod);
+    HRESULT Render_InstancedIndirect(uint32_t meshIndex, ID3D11Buffer* instanceBuffer,
+        uint32_t stride, uint32_t byteOffset, ID3D11Buffer* args, uint32_t argsByteOffset,
+        const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
+    HRESULT Render_InstancedIndirect(uint32_t meshIndex, ID3D11Buffer* instanceBuffer,
+        uint32_t stride, uint32_t byteOffset, ID3D11Buffer* args, uint32_t argsByteOffset,
+        uint32_t lodLevel);
 	HRESULT Render_Instanced(
 		uint32_t iMeshIndex, ID3D11Buffer* pInstanceBuffer,
 		uint32_t iInstanceStride, uint32_t iNumInstances,
 		uint32_t iInstanceByteOffset = 0u,
         const MESH_SCREEN_LOD_DESC* screenLod = nullptr);
-    // A cluster is derived presentation geometry inside this CModel/CMaterial
-    // path. Original placement identities, model assets and materials stay owned
-    // by the caller. Cluster picking is disabled; pick the original placements.
-    // Preparation never changes any source model or output on failure.
-    // Caller invalidates/rebuilds derived clusters before changing source material
-    // identities, geometry, per-placement transforms or baked-lighting inputs.
+    // 기존 CModel·CMaterial 안의 파생 표시 geometry다. 원본 소유권·피킹은 호출자에게 남기며 실패 시 출력은 보존한다. 원본 재질·geometry·배치·조명 변경 전에는 cluster를 무효화·재생성해야 한다.
     struct STATIC_CLUSTER_SOURCE final
     {
         const CModel* model = nullptr;
@@ -295,6 +269,9 @@ public:
         f32_t maximumWorldError = 0.f;
         float3_t boundsMin{}, boundsMax{};
         bool_t hasFarGeometry = false;
+        bool_t geometryCacheHit = false;
+        uint64_t retainedCpuBytes = 0u;
+        uint64_t decodedCacheBytes = 0u;
     };
     // Build-stage lifetime only. Reuses decoded WModel inputs across clusters;
     // release the cache after scene preparation to release all retained CPU data.
@@ -305,28 +282,36 @@ public:
         shared_ptr<CModel>& output, STATIC_CLUSTER_STATS& stats);
     bool_t Can_ShareStaticClusterMaterialWith(uint32_t meshIndex,
         const CModel& other, uint32_t otherMeshIndex) const;
-    // Sets g_MapClusterSources and the existing zero/small/eight lighting bank.
-    // Call after ordinary material binding, before the matching cluster VS pass.
+    // 일반 재질 바인딩 뒤, 해당 cluster VS pass 전에 source record와 기존 0·소수·8개 조명 bank를 설정한다.
     HRESULT Bind_StaticClusterSources(const shared_ptr<class CShader>& shader) const;
     HRESULT Render_StaticCluster(bool_t farGeometry);
     const STATIC_CLUSTER_STATS* Get_StaticClusterStats() const;
     std::span<const uint64_t> Get_StaticClusterSourceIds() const;
+    struct STATIC_CLUSTER_SOURCE_RANGE final
+    {
+        uint64_t sourceId = 0u;
+        uint32_t firstIndex = 0u, indexCount = 0u;
+        float3_t boundsMin{}, boundsMax{};
+        float maximumWorldError = 0.f;
+    };
+    std::span<const STATIC_CLUSTER_SOURCE_RANGE> Get_StaticClusterSourceRanges() const;
+    // 현재 카메라가 승인한 source만 far index에 패킹하며 실패 시 이전 준비 상태를 유지한다.
+    // sourceSlots는 오름차순이고 중복이 없어야 한다. 선택 IB는 clone마다 독립 소유한다.
+    HRESULT Prepare_StaticClusterVisibleSources(std::span<const uint32_t> sourceSlots);
+    HRESULT Render_StaticClusterVisible();
     uint32_t Get_MeshIndexCount(uint32_t meshIndex) const;
 
-    // Borrowed LOD0 positions already include the model pre-transform. This is
-    // immutable original geometry; it remains valid for this model's lifetime.
-    // Material opacity/deformation admission belongs to the scene caller.
+    // pretransform이 적용된 불변 LOD0 위치를 모델 수명 동안 차용한다. 재질 불투명·변형 허용 여부는 scene 호출자가 판정한다.
     struct STATIC_OCCLUSION_MESH final
     {
         const float* positions = nullptr;
         uint32_t vertexCount = 0u, strideBytes = 0u;
         std::span<const uint32_t> indices;
     };
-    // Failed lookup leaves output untouched and never reads GPU resources.
+    // 조회 실패는 출력을 보존하며 GPU 자원을 읽지 않는다.
     bool_t Try_GetStaticOcclusionMesh(uint32_t meshIndex, STATIC_OCCLUSION_MESH& output) const;
 
-    // Static atlas proxy: original source attributes remain intact until baking.
-    // Slot 1 is STATIC_PROXY_VERTEX (ATLASUV0 float2, SOURCEINDEX0 uint).
+    // atlas proxy는 bake 전까지 원본 속성을 유지한다. slot 1에는 ATLASUV0 float2·SOURCEINDEX0 uint를 담는다.
     struct STATIC_PROXY_VERTEX final { float2_t atlasUV{}; uint32_t sourceIndex = 0u; };
     static_assert(sizeof(STATIC_PROXY_VERTEX) == 12u);
     struct STATIC_PROXY_METADATA final { uint32_t sourceFlags = 0u, stateFlags = 0u; };
@@ -354,6 +339,33 @@ public:
     static HRESULT Create_StaticProxy(std::span<const STATIC_CLUSTER_SOURCE> sources,
         const STATIC_PROXY_OPTIONS& options, STATIC_CLUSTER_BUILD_CACHE& cache,
         shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats);
+    // 외부에서 검증한 축소 geometry다. 위치와 TBN에는 원본 model pretransform이 이미
+    // 적용되어 있으며 단위는 모델 로컬 m다. atlasUV와 cache 순서 IB를 재생성하지 않는다.
+    // span은 생성 호출 동안만 차용하고 성공한 proxy의 GPU/CPU 버퍼가 별도 복사본을 소유한다.
+    struct STATIC_PROXY_GEOMETRY final
+    {
+        std::span<const VTXMESH> vertices;
+        std::span<const float2_t> atlasUV;
+        std::span<const uint32_t> indices;
+    };
+    // Client는 하나의 physical model 전체 mesh가 같은 패키지/재질 계약에 대응하는지
+    // 먼저 검증한다. Engine은 아래 모델과 span을 저장하지 않고 instance 레코드만 복사한다.
+    struct STATIC_PROXY_PLACEMENT_SOURCE final
+    {
+        const CModel* model = nullptr;
+        uint64_t sourceId = 0u;
+        VTXMESHINSTANCE instance{};
+        std::span<const uint32_t> sourceMeshIndices;
+    };
+    // 이 range는 원본 mesh 하나가 아니라 placement의 모든 mesh를 원자적으로 대체한다.
+    static constexpr uint32_t STATIC_PROXY_WHOLE_MODEL_MESH_INDEX = UINT32_MAX;
+    // 한 placement도 허용한다. source별 low geometry를 그대로 복사하므로 선택/가림은
+    // 기존 source range 경로를 따른다. xatlas·원본 재질 bake·파일 cache는 호출하지 않는다.
+    // S_FALSE는 지원 범위/예산 제외, 실패 HRESULT는 잘못된 입력/자원 생성 실패이며
+    // 어느 경우든 output과 stats는 성공 전까지 보존한다. chartCount=0은 외부 UV임을 뜻한다.
+    static HRESULT Create_StaticProxy(const STATIC_PROXY_GEOMETRY& geometry,
+        std::span<const STATIC_PROXY_PLACEMENT_SOURCE> sources,
+        const STATIC_PROXY_OPTIONS& options, shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats);
     const STATIC_PROXY_STATS* Get_StaticProxyStats() const;
     array<uint8_t, 32> Get_StaticProxyGeometryIdentity() const;
     bool_t Can_BakeStaticProxy(uint32_t meshIndex) const;
@@ -365,16 +377,15 @@ public:
     HRESULT Bind_StaticProxySources(const shared_ptr<class CShader>& shader) const;
     HRESULT Bind_StaticProxyAtlases(const shared_ptr<class CShader>& shader,
         std::span<const char* const> shaderNames) const;
-    // sourceSlots must be strictly increasing. Empty means no runtime draw.
-    // Failed preparation leaves the last complete selection and GPU buffer intact.
+    // sourceSlots는 엄격한 오름차순이며 비어 있으면 runtime draw가 없다. 준비 실패 시 이전 선택·GPU buffer를 보존한다.
     HRESULT Prepare_StaticProxyVisibleSources(std::span<const uint32_t> sourceSlots);
     HRESULT Render_StaticProxySource(uint32_t sourceIndex);
     HRESULT Render_StaticProxy();
 
-	// Exact shared geometry/material state, including multi-mesh and wind instances.
+	// 다중 mesh·wind instance까지 포함한 공유 geometry·재질 상태를 비교한다.
 	bool_t Can_ShareStaticInstanceStateWith(const CModel& other) const;
 
-	// Corresponding immutable BG meshes share a separate lighting bank per mesh.
+	// 대응하는 불변 BG mesh마다 별도 조명 bank를 공유한다.
 	bool_t Can_BatchStaticLightingWith(const CModel& other) const;
 	// Lighting identity only; callers retain material/geometry compatibility checks.
 	bool_t Has_SameStaticLightingTextures(const CModel& other) const;
@@ -386,11 +397,7 @@ public:
     // no prepared pointers or compatibility result survive this call.
     HRESULT Bind_StaticLightingBankMesh(const shared_ptr<class CShader>& shader,
         std::span<const CModel* const> models, uint32_t meshIndex) const;
-	/* Preparation is explicit: the caller owns the proof that every source
-	   submesh in this contiguous range uses the same effective draw state.
-	   Original meshes/material slots remain intact. S_FALSE means this model
-	   cannot batch (not retained, skinned, or made mutable for morphing).
-	   Failure leaves the output handle and every existing cache entry intact. */
+	/* 호출자가 연속 범위의 동일 draw 상태를 보장한다. 원본 slot은 유지하며 S_FALSE는 batch 미지원, 실패는 출력 handle·기존 cache 보존을 뜻한다. */
 	struct ORDERED_STATIC_GEOMETRY_RANGE final
 	{
 		uint32_t iSourceMesh = 0u, iSourceMaterial = 0u;
@@ -405,27 +412,20 @@ public:
 		ID3D11Buffer* pInstanceBuffer, uint32_t iInstanceStride,
 		uint32_t iNumInstances, uint32_t iInstanceByteOffset = 0u);
 	bool_t Play_Animation(f32_t fTimeDelta);
-    // World Sequence preparation opts in once; local/combined bones and all
-    // model state remain independent. Applies in both Debug and Release.
+    // World Sequence 준비가 명시적으로 선택한다. local·combined 본과 모델 상태는 독립이며 Debug·Release에 모두 적용된다.
     void Enable_AnimationSampleReuse();
 	HRESULT Bind_BoneMatrices(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex);
-	// Copy the actual mesh skin palette without changing this clone's pose or clock.
+	// 복제본 pose·시계를 변경하지 않고 실제 mesh skin palette를 복사한다.
 	bool_t Capture_BoneMatrices(uint32_t iMeshIndex, vector<float4x4_t>& outMatrices) const;
 	HRESULT Bind_Material(shared_ptr<class CShader> pShader, const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0);
-	/* Repaints one texture slot of every material whose name contains pMaterialNameFragment,
-	for the character-creation choices that change a face's look without changing its mesh.
-	Matching by name fragment rather than by index keeps the caller out of the material order,
-	which differs per class rig. Returns how many materials took it, so a caller can tell an
-	empty match from a successful one. A null view restores the authored texture. */
+	/* 이름 부분이 일치하는 재질의 texture slot을 override하고 적용 개수를 반환한다. null이면 원본 texture로 복원한다. */
 	uint32_t Override_MaterialTexture(
 		const char_t* pMaterialNameFragment,
 		aiTextureType eType,
 		uint32_t iTextureIndex,
 		ComPtr<ID3D11ShaderResourceView> pTexture);
 	void Clear_MaterialTextureOverrides();
-	/* The same match by name fragment, for the dyed colour rather than the texture. Only
-	materials that actually dye take it, so the count says whether the choice landed on
-	anything. Clear restores what the asset shipped. */
+	/* 같은 이름 부분 일치로 염색 가능 재질에만 색을 적용하고 개수를 반환한다. Clear는 원본 색을 복원한다. */
 	uint32_t Override_MaterialDyeColor(
 		const char_t* pMaterialNameFragment,
 		const float4_t& vDiffuse,
@@ -434,14 +434,10 @@ public:
 	/* Hair only; see CMaterial::Set_DyeTwoTone. */
 	uint32_t Override_MaterialDyeTwoTone(
 		const char_t* pMaterialNameFragment, f32_t fStrength, f32_t fRange);
-	/* See CMaterial::Set_DiffuseTint. Unlike the dye overrides this takes on any material,
-	because a plain multiply needs no mask to ride on. */
+	/* CMaterial::Set_DiffuseTint의 단순 곱셈 tint다. mask가 필요 없어 모든 재질에 적용할 수 있다. */
 	uint32_t Override_MaterialDiffuseTint(
 		const char_t* pMaterialNameFragment, const float4_t& vTint);
-	/* The same match by name fragment, for a material drawn by a native source-character
-	program: the creation screen's skin and make-up choices are that program's own constants
-	and texture registers. See CMaterial::Set_SourceCharacterConstants. Only materials on such
-	a program take these, so the count says whether the choice landed on anything at all. */
+	/* 이름 부분이 일치하는 native source-character 재질의 상수·texture register를 override하고 적용 개수를 반환한다. */
 	uint32_t Override_SourceCharacterConstants(
 		const char_t* pMaterialNameFragment,
 		const MODEL_SOURCE_CHARACTER_PARAMETERS& parameters);
@@ -452,8 +448,7 @@ public:
 	/* Null when the mesh or its material is out of range. */
 	const float4_t* Get_MaterialDiffuseTint(uint32_t iMeshIndex) const;
 	bool_t Has_MaterialTexture(uint32_t iMeshIndex, aiTextureType eType, uint32_t iTextureIndex = 0) const;
-	/* Null when the mesh or its material is out of range; identity tint (its
-	isEnabled false) when the material simply has no colour mask. */
+	/* mesh·재질 범위가 잘못되면 null이다. color mask만 없으면 isEnabled=false인 identity tint를 반환한다. */
 	const MODEL_COLOR_TINT* Get_MaterialColorTint(uint32_t iMeshIndex) const;
 	HRESULT Bind_SourceSpecialSurface(shared_ptr<class CShader> shader, uint32_t meshIndex);
     HRESULT Bind_SourceLandscapeSurface(shared_ptr<class CShader> shader, uint32_t meshIndex);
@@ -461,53 +456,52 @@ public:
 	HRESULT Bind_SourceCharacter(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	HRESULT Bind_SourceCharacterForwardLight(shared_ptr<class CShader> shader, uint32_t meshIndex);
 	const MODEL_SURFACE_PARAMETERS* Get_MaterialSurface(uint32_t iMeshIndex) const;
-	// Invalid material references also opt out of callers' static texture assumptions.
+	// 잘못된 재질 참조도 정적 texture 가정을 사용할 수 없는 경우로 처리한다.
 	bool_t Has_MaterialTextureOverrides(uint32_t iMeshIndex) const;
 	HRESULT Bind_SurfaceTexture(shared_ptr<class CShader> pShader,
 		const char_t* pConstantName, uint32_t iMeshIndex, aiTextureType eType);
-	// Returns the preserved source material slot, independently of mesh order.
+	// mesh 순서와 독립적으로 보존된 원본 재질 slot을 반환한다.
 	bool_t Try_GetSourceMaterialIndex(uint32_t iMeshIndex, uint32_t& iOutMaterialIndex) const;
 	const string& Get_MaterialName(uint32_t iMeshIndex) const;
 	uint64_t Get_MaterialNameHash(uint32_t iMeshIndex) const;
 
 public:
-	/* Face MorphTarget application (character-creation base tab). A vertex is addressed as
-	(iMeshIndex, iVertexIndex): iMeshIndex indexes this CModel's own m_Meshes -- one CMesh per
-	submesh, in the exact order CModel::Ready_Meshes built them in, which is the same order
-	the .wmodel's own SUBMESH_DESC table lists them (see
-	Tools/CharacterCustomizing/build_face_morph_vertex_map.py's global_to_local(), which
-	produces the (meshIndex, localIndex) pairs a .facemorphmap on disk stores). iVertexIndex
-	is local to that one CMesh's own vertex buffer, 0..Get_MeshVertexCount(iMeshIndex)-1.
-	Nothing here is opt-in at load time and no model pays for it until
-	Make_MeshVertexBuffer_Unique() is actually called on it. */
+	/* morph 정점은 WModel SUBMESH_DESC 순서의 mesh index와 그 mesh 내부 vertex index로 지정한다. 독립 buffer 준비를 호출한 모델에서만 기준 정점 비용이 발생한다. */
 	uint32_t Get_MeshCount() const {
 		return m_iNumMeshes;
 	}
 	uint32_t Get_MeshVertexCount(uint32_t iMeshIndex) const;
 	bool_t Has_MorphBaseVertices(uint32_t iMeshIndex) const;
-	// True only when the existing immutable mesh can consume screen-space LOD.
+	// 기존 불변 mesh가 screen-space LOD를 사용할 수 있을 때만 true다.
 	bool_t Has_StaticMeshLod(uint32_t iMeshIndex) const;
-	// Read-only CPU selection shared with the actual instanced draw. Invalid views keep LOD 0.
+    enum class STATIC_MESH_LOD_SUPPORT : uint32_t
+    {
+        AVAILABLE, INVALID_MESH, SKINNED, MORPHED, WIND_DEFORMATION,
+        SOURCE_PROGRAM, RENDER_MODE, UNSUPPORTED_FAMILY, NO_DERIVED_RANGE
+    };
+    STATIC_MESH_LOD_SUPPORT Get_StaticMeshLodSupport(uint32_t meshIndex) const;
+    bool_t Can_UseStaticMeshLod(uint32_t meshIndex) const;
+    // 현재 재질에 맞는 불변 IB 범위다. 실패하면 출력은 변경하지 않는다.
+    bool_t Get_StaticMeshDrawRange(uint32_t meshIndex, const MESH_SCREEN_LOD_DESC* view,
+        uint32_t& count, uint32_t& firstIndex) const;
+    bool_t Get_StaticMeshLodRange(uint32_t meshIndex, uint32_t level,
+        uint32_t& count, uint32_t& firstIndex, f32_t& localError) const;
+	// 실제 instance draw와 같은 CPU LOD 선택이다. 잘못된 view는 LOD 0을 유지한다.
 	uint32_t Get_StaticMeshLodLevel(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view) const;
-	// Same selected range as Render_Instanced; missing/invalid views keep the original index count.
+	// Render_Instanced와 같은 범위를 고르며 view 누락·오류 시 원래 index 수를 유지한다.
 	uint32_t Get_StaticMeshSelectedIndexCount(uint32_t iMeshIndex, const MESH_SCREEN_LOD_DESC* view = nullptr) const;
 	bool_t Get_MorphBaseVertex(uint32_t iMeshIndex, uint32_t iVertexIndex,
 		float3_t& OutPosition, float3_t& OutNormal) const;
-	/* Must be called once (per CModel instance, i.e. per clone) before Update_Mesh_Vertices()
-	targets that mesh; a no-op if already unique. */
+	/* 해당 복제본의 mesh를 갱신하기 전에 한 번 호출한다. 이미 독립 buffer면 처리하지 않는다. */
 	HRESULT Make_MeshVertexBuffer_Unique(uint32_t iMeshIndex);
 	HRESULT Update_Mesh_Vertices(uint32_t iMeshIndex, const vector<uint32_t>& iVertexIndices,
 		const vector<float3_t>& Positions, const vector<float3_t>& Normals);
-	/* Restores every vertex Update_Mesh_Vertices() has touched on this mesh back to its
-	unmorphed rest state (weight-0). */
+	/* 이 mesh에서 수정한 정점을 morph 가중치 0의 기준 상태로 복원한다. */
 	HRESULT Reset_Mesh_Vertices(uint32_t iMeshIndex);
 
 private:
 	const aiScene*						m_pAIScene = { nullptr };
-	/* Built only for a model that actually goes through Assimp. Its constructor registers
-	every importer Assimp ships, and the runtime loads .wmodel exclusively, so as a plain
-	member it built that whole registry for every model in the game and never read a file
-	with it -- which is also what the CRT leak dump was full of. */
+	/* Assimp 경로를 실제 사용하는 모델에만 importer를 만든다. WModel 전용 runtime 모델마다 불필요한 importer registry를 만들지 않는다. */
 	unique_ptr<Assimp::Importer>		m_pImporter;
 
 private:
@@ -520,6 +514,8 @@ private:
 	shared_ptr<const vector<MODEL_MESH_DATA>> m_pOrderedStaticGeometrySource;
     struct STATIC_CLUSTER_STORAGE;
     shared_ptr<const STATIC_CLUSTER_STORAGE> m_StaticCluster;
+    struct STATIC_CLUSTER_SELECTION;
+    std::shared_ptr<STATIC_CLUSTER_SELECTION> m_StaticClusterSelection;
     struct STATIC_PROXY_STORAGE;
     shared_ptr<const STATIC_PROXY_STORAGE> m_StaticProxy;
     vector<ComPtr<ID3D11ShaderResourceView>> m_StaticProxyAtlases;
@@ -543,7 +539,7 @@ private:
 	vector<shared_ptr<class CMaterial>>	m_Materials;
 
 	vector<shared_ptr<class CBone>>		m_Bones;
-	// Pose data belongs to the model clone, while mesh geometry remains shared.
+	// pose는 모델 복제본이 소유하고 mesh geometry는 공유한다.
 	struct SKIN_PALETTE final
 	{
 		vector<float4x4_t> Matrices;
@@ -552,12 +548,11 @@ private:
 	vector<SKIN_PALETTE> m_SkinPalettes;
 	uint64_t m_iBonePoseRevision = 1u;
 	void Invalidate_SkinPalettes();
-	/* Pose_BonesFrom's name join, kept because it is the same two skeletons every frame.
-	-1 marks a bone the source does not have. */
+	/* 매 프레임 같은 골격 쌍을 연결하는 이름 대응 cache다. -1은 원본에 없는 본이다. */
 	vector<int32_t>						m_SourcePoseBoneIndices;
 	const CModel*						m_pSourcePoseModel = { nullptr };
 	weak_ptr<const CPrototype> m_SourcePoseOwner;
-	// Both poses must still match the copy, including same-frame local edits.
+	// 같은 프레임의 local 편집까지 포함해 양쪽 pose가 복사 당시와 같은지 확인한다.
 	uint64_t m_iSourcePoseRevision = 0u;
 	uint64_t m_iCopiedPoseRevision = 0u;
 	uint32_t m_iSourcePoseSuppliedBones = 0u;
@@ -618,6 +613,9 @@ private:
 	HRESULT Ready_Bones(const aiNode* pAINode, int32_t iParentBoneIndex = -1);
 	HRESULT Ready_Animations();
 	HRESULT Ready_BinaryModel(const char_t* pModelFilePath);
+    const MESH_SCREEN_LOD_DESC* Resolve_StaticMeshLodView(uint32_t meshIndex,
+        const MESH_SCREEN_LOD_DESC* input, MESH_SCREEN_LOD_DESC& resolved) const;
+    bool_t Uses_AttributeSensitiveLod(uint32_t meshIndex) const;
 	HRESULT Ready_BinaryModel(const MODEL_ASSET_LOAD_DESC& loadDesc);
 	HRESULT Apply_MaterialOverrides(MODEL_MATERIAL_SOURCE& source, const MODEL_ASSET_LOAD_DESC& loadDesc);
 	HRESULT Ready_Meshes(const MODEL_ASSET_DATA& asset);
@@ -638,8 +636,7 @@ public:
 		const MODEL_ASSET_LOAD_DESC& loadDesc,
 		fmatrix_t PreTransformMatrix,
 		bool_t bRetainOrderedStaticGeometry = false);
-    // Reuses immutable GPU geometry and clones the pose with independent materials.
-    // Load identity must match the prototype; this cannot retarget geometry.
+    // 불변 GPU geometry를 재사용하고 pose·재질은 독립적으로 복제한다. load identity는 prototype과 같아야 하며 geometry를 재지정하지 않는다.
     static unique_ptr<CModel> Create_MaterialVariant(const CModel& prototype,
         const MODEL_ASSET_LOAD_DESC& loadDesc);
 	virtual shared_ptr<CPrototype> Clone(void* pArg) override;

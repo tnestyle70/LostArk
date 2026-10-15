@@ -469,7 +469,7 @@ def project(evidence, material_patch, install):
                     document['elements'].append(element)
             clip = model['clip']
             document['sourceModelPreview'] = dict(gateId='GATE3', actorProfileId='MN_RPCT_05',
-                targetBossPlacementId='boss.kakulsaydon.g3.saydon', animations=[dict(
+                targetBossPlacementId='boss.koukusaydon.g3.saydon', animations=[dict(
                     runtimeClip='rpct00_' + clip['clipName'].lower(), startOffsetMs=0,
                     sourceStartMs=round(first_time * 1000), playMs=max(1, round((clip['lengthSeconds'] - first_time) * 1000)),
                     playRate=1, endPolicy='HOLD_LAST_POSE')])

@@ -1,28 +1,24 @@
-#pragma once
+﻿#pragma once
 
+// Client 이름 공간과 공통 수치 타입을 사용한다.
 #include "Client_Defines.h"
+// ICharacterLogic 표시 갱신 인터페이스를 상속하고 CHARACTER_SPEC을 외부에 선언한다.
 #include "CharacterSpec.h"
 
 NS_BEGIN(Client)
 
-/* Artist (sdm). Owned by JS.
-
-The game calls this class YinYangShi internally -- EFTable_PC row 602, base
-class 601 Specialist -- so the class assets sit under the sdm prefix while the
-body comes from sp. Its Action file is XmlData/Action/YINYANGSHI.loa and its
-skills are the 31xxx block (Skill.LearnClass = 602).
-
-Same file-pair shape as CLogic_LanceMaster and CLogic_GunSlinger: the logic plus
-the spec constant CCharacter assembles from. */
+// Artist의 로컬 표현 갱신 경계와 직업 조립 설정이다. 담당 JS.
+// 현재 logic 본문은 비어 있으며 Part·clip·stance 설정은 CCharacter 공통 경로가 소비한다.
 class CLogic_Artist final : public ICharacterLogic
 {
 public:
+	// CCharacter가 로컬 제어 객체에서 호출한다. 별도 멤버 상태·렌더 자원을 소유하지 않는다.
 	virtual void Update_Presentation(
 		CCharacter& Character,
 		f32_t fTimeDelta) override;
 };
 
-/* Defined in the .cpp so the tags and clip names stay out of the header. */
+// 모델 tag·clip·Part 배열은 CPP의 상수 정의에 두고 catalog에는 extern으로 제공한다.
 extern const CHARACTER_SPEC Spec_Artist;
 
 NS_END

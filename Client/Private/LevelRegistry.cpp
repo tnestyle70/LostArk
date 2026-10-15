@@ -1,15 +1,26 @@
+// 공개 descriptor와 레벨 생성·준비 조회 계약을 구현한다.
 #include "LevelRegistry.h"
 
+// 베른 Level의 실제 생성 함수를 등록한다.
 #include "Level_Bern.h"
+// 캐릭터 생성 Level의 실제 생성 함수를 등록한다.
 #include "Level_CharacterSelect.h"
+// 수련장·마하라카·콜로세움 공용 Level의 실제 생성 함수를 등록한다.
 #include "Level_Development.h"
-#include "Level_KakulSaydonArena.h"
+// 쿠크 아레나 Level의 실제 생성 함수를 등록한다.
+#include "Level_KoukuSaydonArena.h"
+// 로비 Level의 실제 생성 함수를 등록한다.
 #include "Level_Lobby.h"
+// 발탄 아레나 Level의 실제 생성 함수를 등록한다.
 #include "Level_ValtanArena.h"
+// 정적 준비 adapter가 CLevelRegistry의 friend 권한으로 Ready_For 함수를 호출한다.
 #include "Loader.h"
 
+// Level enum과 일치하는 정적 등록 항목을 찾는다.
 #include <algorithm>
+// 등록 목록을 크기가 고정된 정적 배열로 보관한다.
 #include <array>
+// 전체 맵 범위를 표현하는 부동소수점 최솟값·최댓값을 사용한다.
 #include <limits>
 
 namespace
@@ -17,6 +28,7 @@ namespace
 	using namespace Client;
 	using namespace Engine;
 
+	// 제품 Level의 전체 맵 범위를 만든다. 선택적인 제외 그룹만 덧붙이며 저작 원본을 변경하지 않는다.
 	MAP_LOAD_SCOPE MakeFullMapScope(
 		const char_t* excludedAssetGroupId = nullptr)
 	{
@@ -34,20 +46,15 @@ namespace
 		return scope;
 	}
 
+	// 베른의 큰 지도 범위에 사용할 frustum 여유와 거부 지연을 정적 descriptor에 담는다.
 	MAP_LOAD_SCOPE MakeBernMapScope()
 	{
 		MAP_LOAD_SCOPE scope = MakeFullMapScope();
-		/* Bern is the only level whose far plane is data driven, max(2000,
-		   span * 8), which reaches roughly 18837 here. That is what exposed the
-		   float32 cancellation in the old corner-built frustum planes, so the
-		   left plane sat tens of world units inside the real one and cut
-		   geometry the camera was looking straight at. The planes now come from
-		   the view-projection matrix and the margins below are back to being an
-		   ordinary conservative allowance rather than a mitigation. Diagnostics
-		   can be enabled here alone to log every dropped placement with its
-		   plane distances and on-screen NDC to
-		   Diagnostics/BernFrustumCulling.log; leave it off in normal builds
-		   because it writes and flushes one line per rejected placement. */
+		// 베른의 원거리 평면은 max(2000, span * 8)로 정해져 이 맵에서는 약 18837까지 닿는다.
+		// 과거 모서리 기반 frustum 평면은 float32 상쇄 오차로 실제 가시 지형을 잘랐으나,
+		// 현재는 view-projection 행렬에서 평면을 구하므로 아래 값은 일반적인 보수 여유다.
+		// diagnostics를 켜면 거부 배치마다 평면 거리와 화면 NDC를
+		// Diagnostics/BernFrustumCulling.log에 기록하고 flush하므로 평상시에는 끈다.
 		scope.frustumCulling.bypass = false;
 		scope.frustumCulling.diagnostics = false;
 		scope.frustumCulling.baseMargin = 0.25f;
@@ -58,6 +65,7 @@ namespace
 		return scope;
 	}
 
+	// descriptor의 동일한 생성 시그니처를 로비 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateLobby(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -65,6 +73,7 @@ namespace
 		return CLevel_Lobby::Create(pDevice, pContext);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 베른 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateBern(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -72,6 +81,7 @@ namespace
 		return CLevel_Bern::Create(pDevice, pContext);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 캐릭터 생성 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateCharacterSelect(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -79,6 +89,7 @@ namespace
 		return CLevel_CharacterSelect::Create(pDevice, pContext);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 발탄 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateValtanArena(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -86,13 +97,15 @@ namespace
 		return CLevel_ValtanArena::Create(pDevice, pContext);
 	}
 
-	unique_ptr<CLevel> CreateKakulSaydonArena(
+	// descriptor의 동일한 생성 시그니처를 쿠크 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
+	unique_ptr<CLevel> CreateKoukuSaydonArena(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
 	{
-		return CLevel_KakulSaydonArena::Create(pDevice, pContext);
+		return CLevel_KoukuSaydonArena::Create(pDevice, pContext);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 수련장 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateDevelopment(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
@@ -100,25 +113,28 @@ namespace
 		return CLevel_Development::Create(pDevice, pContext);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 마하라카 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateMaharaka(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
 	{
-		// The island reuses the Development shell: map, follow camera, Server
-		// replication and the player controller, without the Map Editor branch.
+		// 섬은 Development의 맵·추적 카메라·Server 복제·플레이어 제어를 재사용한다.
+		// LEVEL::MAHARAKA를 넘겨 Map Editor 분기와 구분한다.
 		return CLevel_Development::Create(pDevice, pContext, LEVEL::MAHARAKA);
 	}
 
+	// descriptor의 동일한 생성 시그니처를 콜로세움 Level의 Create에 연결하고 생성 결과 소유권을 반환한다.
 	unique_ptr<CLevel> CreateColosseum(
 		ComPtr<ID3D11Device> pDevice,
 		ComPtr<ID3D11DeviceContext> pContext)
 	{
-		// Proving Grounds arena: same Development shell, walk-around only.
+		// 같은 Development 구현에 콜로세움 Level을 전달한다. 경기·복제의 실제 동작은 해당 Level 구현이 담당한다.
 		return CLevel_Development::Create(pDevice, pContext, LEVEL::COLOSSEUM);
 	}
 
 }
 
+// Loader와 MainApp이 공유하는 등록 정본이다. static 배열 수명은 프로세스 전체이며 반환 포인터는 읽기 전용이다.
 const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	const LEVEL eLevel)
 {
@@ -152,11 +168,8 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			"world.bern",
 			"LV_BER_BERNCASTLE",
 			"scene.bern.neutral-day.v1",
-			// The 42 landscape components are the ground under the whole walkable
-			// approach, so excluding them left the player on static-mesh paving with
-			// void everywhere else. The Map Editor keeps its own reversible
-			// "Show Bern Landscape" toggle for authoring; the product level loads
-			// the full area.
+			// 42개 landscape component가 접근로 전체의 지면을 구성하므로 제품 맵은 모두 로드한다.
+			// Map Editor의 "Show Bern Landscape"는 별도의 가역 저작 표시 옵션이다.
 			MakeBernMapScope(),
 			CreateBern,
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_Bern(); }
@@ -172,14 +185,14 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			[](CLoader& loader) -> HRESULT { return loader.Ready_For_ValtanArena(); }
 		},
 		{
-			LEVEL::KAKULSAYDON_ARENA,
+			LEVEL::KOUKUSAYDON_ARENA,
 			CLIENT_LEVEL_KIND::PRODUCT,
-			"raid.kakul-saydon.arena",
+			"raid.kouku-saydon.arena",
 			"LV_LUT_MIDNIGHTC_ED",
-			"scene.kakulsaydon.g1.base.v1",
+			"scene.koukusaydon.g1.base.v1",
 			MakeFullMapScope(),
-			CreateKakulSaydonArena,
-			[](CLoader& loader) -> HRESULT { return loader.Ready_For_KakulSaydonArena(); }
+			CreateKoukuSaydonArena,
+			[](CLoader& loader) -> HRESULT { return loader.Ready_For_KoukuSaydonArena(); }
 		},
 		{
 			LEVEL::DEVELOPMENT,
@@ -196,7 +209,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 			CLIENT_LEVEL_KIND::PRODUCT,
 			"world.maharaka",
 			"LV_OCN_EVENTIS_MHP",
-			// Maharaka owns the source island environment; other Area profiles remain independent.
+			// 마하라카는 섬 원본 환경 프로필을 사용하며 다른 Area 프로필과 독립이다.
 			"scene.maharaka.source-day.v1",
 			MakeFullMapScope(),
 			CreateMaharaka,
@@ -224,6 +237,7 @@ const CLIENT_LEVEL_DESCRIPTOR* CLevelRegistry::Find(
 	return levels.end() == iter ? nullptr : &(*iter);
 }
 
+// 활성화할 Level 객체만 생성한다. 실제 현재 Level 교체와 실패 복구는 MainApp이 소유한다.
 unique_ptr<CLevel> CLevelRegistry::Create_Level(
 	const LEVEL eLevel,
 	ComPtr<ID3D11Device> pDevice,
@@ -238,11 +252,13 @@ unique_ptr<CLevel> CLevelRegistry::Create_Level(
 		std::move(pContext));
 }
 
+// Loader의 worker가 등록된 준비 경로를 호출한다. 로드 작업과 rollback의 수명은 전달된 Loader가 관리한다.
 HRESULT CLevelRegistry::Execute_Load(
 	const LEVEL eLevel,
 	CLoader& loader)
 {
 	const CLIENT_LEVEL_DESCRIPTOR* pDescriptor = Find(eLevel);
+
 	if (nullptr == pDescriptor || nullptr == pDescriptor->pLoad)
 		return E_INVALIDARG;
 

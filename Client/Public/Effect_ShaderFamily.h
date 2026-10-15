@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -6,27 +6,39 @@
 
 namespace Client
 {
-    enum class EFFECT_SHADER_CARRIER : uint8_t { MESH, PARTICLE };
+    // 이 표가 고르는 mesh/particle shader 입력 경로다. Effect 전체의 decal/trail/light 같은 모든 carrier 종류를 열거하는 enum은 아니다.
+    enum class EFFECT_SHADER_CARRIER : uint8_t
+    {
+        MESH,
+        PARTICLE
+    };
+    // ResourceStaging이 원본 profile registry 조회 결과를 이 실행 분류로 바꾼다.
+    // 이름이 class별로 남아 있어도 class 한정 소유권은 아니다. 예를 들어 ARTIST 행에는 Kouku shader 구간도 들어 있다.
     enum class EFFECT_SHADER_FAMILY : uint8_t
     {
         GENERIC, DIMENSIONMASTER_Q, DIMENSIONMASTER_V, DIMENSIONMASTER_ALTV,
         DIMENSIONMASTER_WR, DIMENSIONMASTER_SD, WARLORD, ARTIST, LANCE_MASTER
     };
+    // carrier, family, 승인된 숫자 profile의 닫힌 구간으로 실제 shader 파일을 선택한다.
+    // 원본 material의 texture/CB 값이나 개별 opcode 실행 packet은 다른 descriptor가 소유한다.
     struct EFFECT_SHADER_PROGRAM_DESC final
     {
         EFFECT_SHADER_CARRIER eCarrier;
         EFFECT_SHADER_FAMILY eFamily;
         uint32_t iFirstProfile;
         uint32_t iLastProfile;
+        // 두 이름은 같은 문자열 literal을 좁은/넓은 문자열로 보관한다. 테이블의 정적 수명 동안 유효하다.
         std::string_view strShaderAssetId;
         const wchar_t* pLogicalShaderPath;
     };
-    // Runtime and compiled-shader closure validation consume these exact rows.
-    // This is an executable selection table; no authored IDs use array indices.
+    // runtime 선택과 컴파일된 shader 연결 검사가 아래의 같은 행을 소비한다.
+    // 실행 shader 선택 표이며 배열 index를 저작 stable ID로 저장하지 않는다.
 #define EFFECT_SHADER_WIDEN_INNER(Value) L##Value
 #define EFFECT_SHADER_WIDEN(Value) EFFECT_SHADER_WIDEN_INNER(Value)
 #define EFFECT_SHADER_PROGRAM_ROW(Carrier, Family, First, Last, File) \
     { EFFECT_SHADER_CARRIER::Carrier, EFFECT_SHADER_FAMILY::Family, First, Last, File, EFFECT_SHADER_WIDEN(File) }
+    // 아래 행의 순서와 범위는 실행/검증 계약이다. installer는 일부 Kouku 행을 이 표에 추가하므로 행 형식도 유지한다.
+    // 기본 GENERIC은 해당 family의 모든 uint32 profile을 받지만, 다른 family의 누락을 자동으로 이 행에 fallback하지 않는다.
     inline constexpr std::array<EFFECT_SHADER_PROGRAM_DESC, 148u> EFFECT_SHADER_PROGRAMS = {{
         EFFECT_SHADER_PROGRAM_ROW(MESH, GENERIC, 0u, 4294967295u, "Shader_VtxEffectMeshPreview.hlsl"),
         EFFECT_SHADER_PROGRAM_ROW(MESH, DIMENSIONMASTER_Q, 0u, 4294967295u, "Shader_VtxEffectMeshDimensionMasterQ.hlsl"),
@@ -181,6 +193,8 @@ namespace Client
 #undef EFFECT_SHADER_WIDEN
 #undef EFFECT_SHADER_WIDEN_INNER
 
+    // ResourceStaging이 사용하는 선형 검색이다. 양 끝을 포함한 구간과 carrier/family가 모두 맞는 첫 행의 index를 반환한다.
+    // 실패는 UINT32_MAX이며 호출자가 준비를 거절한다. 반환 index는 이 실행 테이블 내부용이다.
     constexpr uint32_t Find_EffectShaderProgramIndex(const EFFECT_SHADER_CARRIER eCarrier,
         const EFFECT_SHADER_FAMILY eFamily, const uint32_t iAdmittedProfile)
     {
@@ -194,21 +208,27 @@ namespace Client
         return UINT32_MAX;
     }
 
+    // Renderer가 index를 정적 descriptor 포인터로 바꾼다. 범위 밖이면 nullptr이고 별도의 GPU 자원을 생성하지 않는다.
     constexpr const EFFECT_SHADER_PROGRAM_DESC* Get_EffectShaderProgram(const uint32_t iIndex)
     {
         return iIndex < EFFECT_SHADER_PROGRAMS.size() ? &EFFECT_SHADER_PROGRAMS[iIndex] : nullptr;
     }
+    // 빌드 시 빈 파일명/역전 구간/파일명 중복과 같은 carrier-family의 구간 겹침을 거부한다.
+    // 파일 존재, 실제 shader 컴파일, texture 바인딩과 최종 화면은 이 static_assert의 검증 범위가 아니다.
     static_assert([] {
         for (size_t i = 0u; i < EFFECT_SHADER_PROGRAMS.size(); ++i)
         {
             const auto& A = EFFECT_SHADER_PROGRAMS[i];
-            if (A.strShaderAssetId.empty() || A.iFirstProfile > A.iLastProfile) return false;
+            if (A.strShaderAssetId.empty() || A.iFirstProfile > A.iLastProfile)
+                return false;
             for (size_t j = i + 1u; j < EFFECT_SHADER_PROGRAMS.size(); ++j)
             {
                 const auto& B = EFFECT_SHADER_PROGRAMS[j];
-                if (A.strShaderAssetId == B.strShaderAssetId) return false;
+                if (A.strShaderAssetId == B.strShaderAssetId)
+                    return false;
                 if (A.eCarrier == B.eCarrier && A.eFamily == B.eFamily &&
-                    A.iFirstProfile <= B.iLastProfile && B.iFirstProfile <= A.iLastProfile) return false;
+                    A.iFirstProfile <= B.iLastProfile && B.iFirstProfile <= A.iLastProfile)
+                    return false;
             }
         }
         return true;

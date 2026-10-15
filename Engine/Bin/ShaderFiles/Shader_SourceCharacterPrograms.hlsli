@@ -1,5 +1,5 @@
-// Selected native material calculations. Generated from exact shader-map joins.
-// Programs are shared by materials; no class name participates in evaluation.
+// CMaterial이 바인딩한 program·register 상수·texture를 native base/light 코드와 연결한다.
+// program은 재질이 공유하는 번호이며 캐릭터 class 이름으로 계산을 분기하지 않는다.
 #ifndef SOURCE_CHARACTER_PROGRAMS_INCLUDED
 #define SOURCE_CHARACTER_PROGRAMS_INCLUDED
 
@@ -12,8 +12,7 @@ float4 g_SourceCharacterLightConstants[64];
 float4 g_SourceCharacterBaseConstants[64];
 #endif
 #ifndef SOURCE_CHARACTER_LIGHT_PASS
-// Source hair base pass: the masked constant row is raised by the caller, so
-// coverage is the program's own threshold discard instead of the ordered dither.
+// hair base pass의 coverage 선택이다. caller가 native masked 상수를 준비하며 지원하지 않는 program의 보조 cutoff는 geometry adapter가 처리한다.
 uint g_SourceCharacterHairMaskedPass = 0u;
 uint g_SourceCharacterEnvironmentEnabled = 0u;
 TextureCube g_SourceCharacterEnvironmentCube;
@@ -81,17 +80,15 @@ struct SOURCE_CHARACTER_NATIVE_OUTPUT
 };
 float4 SourceCharacterAppend(float4 a,float4 b,uint count)
 {
-    // Generation validates count in [1,4]. Explicit constructors avoid FXC
-    // evaluating the unselected b[i-count] lane with unsigned underflow.
+    // 생성 입력의 count는 1..4다. 명시적 vector 생성으로 선택되지 않은 b[i-count]의 unsigned underflow 평가를 피한다.
     if (count == 1u) return float4(a.x, b.xyz);
     if (count == 2u) return float4(a.xy, b.xy);
     if (count == 3u) return float4(a.xyz, b.x);
-    return a; // count == 4: all four lanes come from a.
+    return a; // count4는 a의 네 성분을 그대로 쓴다.
 }
 float4 SourceCharacterBitInsert(uint4 width,uint4 offset,uint4 insert,uint4 base)
 {
-    // DXBC BFI uses the low five bits of both width and offset. In particular
-    // width 32 becomes zero: never evaluate the undefined C/HLSL 1u << 32.
+    // DXBC BFI처럼 width·offset의 하위 5bit만 쓴다. width32는 0이 되어 1u<<32를 평가하지 않는다.
     width &= 31u;
     offset &= 31u;
     uint4 mask = ((1u << width) - 1u) << offset;

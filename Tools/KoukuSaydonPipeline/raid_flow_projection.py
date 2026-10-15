@@ -12,7 +12,7 @@ def validate_bingo_special(action: dict[str, Any], flow: dict[str, Any]) -> str:
     patterns = {row["patternId"]: row for row in action["patterns"]}
     parent = patterns.get(identity) if isinstance(identity, str) else None
     if flow.get("gateId") != "BINGO" or not parent or parent.get("authoringStatus") != "PRODUCT" or \
-            parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.kakulsaydon.bingo.saydon" or \
+            parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.koukusaydon.bingo.saydon" or \
             not parent.get("patternOccurrences") or parent.get("loopStartPatternOccurrenceId"):
         raise ValueError("BINGO publication requires bingoSpecialPatternId naming an admitted finite Parent on the Bingo boss")
     bundle_map = {row["bundleId"]: row for row in action.get("bundles", [])}
@@ -46,16 +46,16 @@ def project_raid_gates(action: dict[str, Any], sequence: dict[str, Any]) -> list
     bundles = {row["bundleId"] for row in action.get("bundles", [])}
     result = []
     for gate, intro_number, clear_number, primary in (
-        ("GATE1", 4, None, "boss.kakulsaydon.g1.saydon"),
-        ("GATE2", 3, None, "boss.kakulsaydon.g2.kouku"),
-        ("GATE3", 5, None, "boss.kakulsaydon.g3.saydon"),
-        ("BINGO", 10, 9, "boss.kakulsaydon.bingo.saydon"),
+        ("GATE1", 4, None, "boss.koukusaydon.g1.saydon"),
+        ("GATE2", 3, None, "boss.koukusaydon.g2.kouku"),
+        ("GATE3", 5, None, "boss.koukusaydon.g3.saydon"),
+        ("BINGO", 10, 9, "boss.koukusaydon.bingo.saydon"),
     ):
         flow = flows.get(gate)
         if not flow or not flow["entries"]:
             continue
-        intro = sequences[f"KAKULSAYDON_G1_PATTERN_{intro_number}"] if intro_number else None
-        clear = sequences[f"KAKULSAYDON_G1_PATTERN_{clear_number}"] if clear_number else None
+        intro = sequences[f"KOUKUSAYDON_G1_PATTERN_{intro_number}"] if intro_number else None
+        clear = sequences[f"KOUKUSAYDON_G1_PATTERN_{clear_number}"] if clear_number else None
         # Gate 2's complete exit movie includes the Gate 3 arrival; keep its
         # source actor/gate identity while assigning the combat handoff to Gate 3.
         intro_gate = "GATE2" if gate == "GATE3" else gate

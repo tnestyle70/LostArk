@@ -1,8 +1,5 @@
 #include "CharacterInfoWindowView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "Character.h"
 #include "CharacterPortraitRenderer.h"
@@ -11,7 +8,7 @@
 #include "GameInstance.h"
 #include "HonorTitleCatalog.h"
 #include "ItemCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -478,7 +475,7 @@ void Client::CCharacterInfoWindowView::Update_Chrome()
 		"UI/CharacterInfo/win_close_normal.png", "UI/CharacterInfo/win_close_over.png");
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -498,7 +495,7 @@ void Client::CCharacterInfoWindowView::Update_Tabs()
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			i != m_iSelectedTab)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedTab = i;
 		}
 		const char* pPath = (i == m_iSelectedTab) ? "UI/CharacterInfo/tab_selected.png" :
@@ -529,7 +526,7 @@ void Client::CCharacterInfoWindowView::Update_EquipToggle()
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			m_bAvatarMode != Toggle.bAvatar)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_bAvatarMode = Toggle.bAvatar;
 			Update_Visibility();
 		}
@@ -587,7 +584,7 @@ void Client::CCharacterInfoWindowView::Update_Buttons()
 		everything else is press feedback only until it has Server data behind it. */
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (m_bAvatarMode && 0 == strcmp(Button.pSlotId, "CI_BottomLeftBtn"))
 				m_bAvatarBookRequested = true;
 			if (0 == strcmp(Button.pSlotId, "CI_HonorTitleBtn"))
@@ -711,7 +708,7 @@ void Client::CCharacterInfoWindowView::Update_AvatarSlots(
 		bool_t bVisible = 0u == (m_iPreviewHiddenAvatarKinds & iKindBit);
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			bVisible = !bVisible;
 			m_iPreviewHiddenAvatarKinds ^= iKindBit;
 		}

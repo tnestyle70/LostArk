@@ -23,6 +23,12 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
             path = self.root / ('Client/Default/Client.vcxproj' + suffix)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b'<Project>\r\n  <ItemGroup><None Include="preserve.json" /></ItemGroup>\r\n</Project>\r\n')
+        (self.root / 'Framework.sln').write_bytes(
+            b'Microsoft Visual Studio Solution File, Format Version 12.00\r\n'
+            b'Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notes", "Notes", "{00000000-0000-0000-0000-000000000001}"\r\n'
+            b'\tProjectSection(SolutionItems) = preProject\r\n'
+            b'\t\tpreserve.txt = preserve.txt\r\n'
+            b'\tEndProjectSection\r\nEndProject\r\nGlobal\r\nEndGlobal\r\n')
 
     def install_fixture(self, action=420624, stage=7, clip='Att_Battle_19_01', seconds=5):
         asset = f'effect.valtan.action.{action}.stage{stage:03d}.full.restore'
@@ -46,8 +52,13 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
         for suffix in ('', '.filters'):
             xml = (self.root / ('Client/Default/Client.vcxproj' + suffix)).read_bytes()
             self.assertIn(b'Include="preserve.json"', xml)
-            self.assertEqual(xml.count(b'Include="..\\..\\Data\\Effects\\ValtanFullRestoreAnimations.json"'), 1)
+            self.assertNotIn(b'ValtanFullRestoreAnimations.json', xml)
             ET.fromstring(xml)
+        solution = (self.root / 'Framework.sln').read_text(encoding='utf-8-sig')
+        self.assertIn('preserve.txt = preserve.txt', solution)
+        entry = r'Data\Effects\ValtanFullRestoreAnimations.json'
+        self.assertEqual([line.strip() for line in solution.splitlines()].count(entry + ' = ' + entry), 1)
+        self.assertTrue((self.root / entry.replace('\\', '/')).is_file())
         builder.install_animation_metadata([row], self.root / 'evidence')
         self.assertEqual(path.read_bytes(), before)
 
@@ -115,17 +126,16 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
     def test_replace_failure_restores_prior_files_and_removes_new_mapping(self):
         _, row = self.install_fixture()
         projects = {path: path.read_bytes() for path in (self.root / 'Client/Default').iterdir()}
+        solution = self.root / 'Framework.sln'
+        projects[solution] = solution.read_bytes()
         actual_replace = builder.os.replace
-        calls = 0
 
-        def fail_third_replace(source, target):
-            nonlocal calls
-            calls += 1
-            if calls == 3:
-                raise OSError('injected project install failure')
+        def fail_solution_replace(source, target):
+            if target == solution:
+                raise OSError('injected solution install failure')
             return actual_replace(source, target)
 
-        with mock.patch.object(builder.os, 'replace', side_effect=fail_third_replace):
+        with mock.patch.object(builder.os, 'replace', side_effect=fail_solution_replace):
             with self.assertRaisesRegex(OSError, 'injected'):
                 builder.install_animation_metadata([row], self.root / 'evidence')
         self.assertFalse((self.root / builder.ANIMATIONS).exists())
@@ -188,11 +198,11 @@ class ValtanFullRestoreAnimationMetadataTests(unittest.TestCase):
         self.assertEqual(failed.read_bytes(), b'before')
         self.assertFalse(list(self.root.rglob('*.staged')))
 
-    def test_concurrent_project_edit_rejects_before_metadata_replacement(self):
+    def test_concurrent_solution_edit_rejects_before_metadata_replacement(self):
         _, row = self.install_fixture()
         writes = [builder.animation_metadata_write([row], [row['effectAssetId']])] + builder.project_writes([], True)
-        changed = self.root / 'Client/Default/Client.vcxproj'
-        changed.write_bytes(b'<Project><!--another editor--></Project>')
+        changed = self.root / 'Framework.sln'
+        changed.write_bytes(changed.read_bytes() + b'# another editor\r\n')
         with self.assertRaisesRegex(AssertionError, 'Concurrent edit'):
             builder.commit_writes(writes)
         self.assertFalse((self.root / builder.ANIMATIONS).exists())

@@ -178,7 +178,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
 	{
 		S2C_WORLD_SNAPSHOT snapshot{};
 		snapshot.iServerTick = 7u;
-		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		GameplayDataRevision revision{};
 		revision.Bytes.front() = 1u;
 		snapshot.ActiveGameplayRevision = revision;
@@ -208,7 +208,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
 	{
 		C2S_DEBUG_BINGO_FILL fill{};
 		fill.iRequestSequence = 3u;
-		fill.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		fill.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		fill.iCellMask = 0x18u;
 		fill.bReset = true;
 		CPacketWriter writer;
@@ -316,7 +316,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
 		carrier must be refused rather than drawn on nobody. */
 		S2C_WORLD_SNAPSHOT snapshot{};
 		snapshot.iServerTick = 7u;
-		snapshot.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		snapshot.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		GameplayDataRevision revision{};
 		revision.Bytes.front() = 1u;
 		snapshot.ActiveGameplayRevision = revision;
@@ -350,7 +350,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
 
 #ifdef _DEBUG
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         if (room->Is_Ready()) CServerGameplayContractRunner::Run_InannaProtection(tests, room->m_GameplayCatalog.Active());
         auto& audition = room->m_KoukuSaydonPatternAudition;
         audition.ePhase = CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE;
@@ -359,7 +359,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
         audition.pProductGeneration = std::make_shared<CGameplayCatalog>(room->m_GameplayCatalog.Active());
         audition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*audition.pProductGeneration);
         tests.Require(room->Resolve_KoukuProductCatalog() != nullptr, "Bingo hit results use the exact admitted Product source revision");
-        const auto* placement = room->Find_Placement("boss.kakulsaydon.bingo.saydon");
+        const auto* placement = room->Find_Placement("boss.koukusaydon.bingo.saydon");
         SERVER_WORLD_ENTITY boss;
         const bool ready = placement && room->Build_WorldEntity(*placement, 900u, boss);
         tests.Require(ready, "Bingo duration uses an admitted real Server boss and navigation catalog");
@@ -374,7 +374,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
             player.fPositionX = Kouku_BingoCellCenterX(12) + .4f;
             player.fPositionZ = Kouku_BingoCellCenterZ(12) - .4f;
             BOSS_PATTERN_MECHANIC_TRIGGER trigger; trigger.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD;
-            const auto* bingoPatterns = audition.pProductGeneration->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+            const auto* bingoPatterns = audition.pProductGeneration->Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
             const BOSS_PATTERN_MECHANIC_TRIGGER* publishedBoard = nullptr;
             if (bingoPatterns) for (const auto& pattern : *bingoPatterns)
                 for (const auto& candidate : pattern.MechanicTriggers)
@@ -591,7 +591,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
             room->Update_KoukuPlayerTargets(owner, tracking, trackingLedger, room->m_GameplayCatalog.Active(), 6305u);
             tests.Require(!trackingLedger.bTrackingTargetReached && !trackingLedger.PlayerTargetWindows.front().bClosed,
                 "An interior tracking window never truncates later landing or attack stages");
-            for (const auto* ballPatternId : {"KAKULSAYDON_G1_PATTERN_81", "KAKULSAYDON_G1_PATTERN_118"})
+            for (const auto* ballPatternId : {"KOUKUSAYDON_G1_PATTERN_81", "KOUKUSAYDON_G1_PATTERN_118"})
             {
                 std::string ballStatus;
                 const auto* ballPattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(), ballPatternId, ballStatus);
@@ -608,7 +608,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
                     "Published rolling-ball contact preserves its landing clock and cannot advance the raid flow");
             }
 
-            for (const auto& [pursuitId, completesOnContact] : {std::pair{"KAKULSAYDON_G1_PATTERN_101", false}, std::pair{"KAKULSAYDON_G1_PATTERN_104", true}})
+            for (const auto& [pursuitId, completesOnContact] : {std::pair{"KOUKUSAYDON_G1_PATTERN_101", false}, std::pair{"KOUKUSAYDON_G1_PATTERN_104", true}})
             {
                 std::string pursuitStatus;
                 const auto* pursuit = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog.Active(), pursuitId, pursuitStatus);
@@ -881,7 +881,7 @@ int LostArk::Server::Run_ServerBingoContractTests()
             while (std::getline(sourceRows, line))
                 if (!line.starts_with("PATTERNBINGOBOARD\t") && !line.starts_with("PATTERNBINGOCONTROL\t")) stripped += line + "\n";
             baseRows = std::move(stripped);
-            const std::string identity = "\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_129\tKAKULSAYDON_G1_PATTERN_129.logic.1";
+            const std::string identity = "\tENCOUNTER_KOUKUSAYDON_G1\tKOUKUSAYDON_G1_PATTERN_129\tKOUKUSAYDON_G1_PATTERN_129.logic.1";
             const std::string settingsRow = "PATTERNBINGOBOARD" + identity + "\tWINDOW\t1000\t5000\t2000\t1000\t8000\t7\n";
             const std::string controlRow = "PATTERNBINGOCONTROL" + identity + "\n";
             const auto directory = fs::temp_directory_path() / (L"LostArkBingoSettings-" + std::to_wstring(GetCurrentProcessId()));
@@ -901,8 +901,8 @@ int LostArk::Server::Run_ServerBingoContractTests()
             if (!validSettings) std::cout << "[BINGO SETTINGS] " << admitted->Get_Status() << '\n';
             tests.Require(validSettings, "Native catalog admits authored Bingo settings and the explicit pure-control marker");
             const auto locateSettings = [&]() -> const BOSS_PATTERN_MECHANIC_TRIGGER* {
-                const auto* patterns = admitted->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
-                if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_129")
+                const auto* patterns = admitted->Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
+                if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_129")
                     for (const auto& item : pattern.MechanicTriggers) if (item.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD) return &item;
                 return nullptr;
             };
@@ -913,8 +913,8 @@ int LostArk::Server::Run_ServerBingoContractTests()
             if (validSettings)
             {
                 auto controlCatalog = std::make_shared<CGameplayCatalog>(*admitted);
-                auto* patterns = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(controlCatalog->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1"));
-                auto control = std::find_if(patterns->begin(), patterns->end(), [](const auto& pattern) { return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_129"; });
+                auto* patterns = const_cast<std::vector<BOSS_PATTERN_DEFINITION>*>(controlCatalog->Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1"));
+                auto control = std::find_if(patterns->begin(), patterns->end(), [](const auto& pattern) { return pattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_129"; });
                 control->Stages.front().iDurationMs = control->iTimelineDurationMs = 600000u;
                 control->MechanicTriggers.front().iDurationMs = 600000u;
                 auto& run = room->m_KoukuRaid; run.pCatalog = controlCatalog; run.iPrimaryBossId = owner.iNetEntityId;

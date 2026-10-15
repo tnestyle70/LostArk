@@ -43,12 +43,12 @@ def main():
         method(object_source, 'bool_t CDeployPropObject::Is_BasePresentationSuppressed('),
         method(runtime_source, 'bool_t CDeployPropRuntime::Try_PickMovementSurface(')))
     lambdas = {}
-    for level in ('ValtanArena', 'KakulSaydonArena', 'Bern', 'CharacterSelect', 'Development'):
+    for level in ('ValtanArena', 'KoukuSaydonArena', 'Bern', 'CharacterSelect', 'Development'):
         source = (ROOT / f'Client/Private/Level_{level}.cpp').read_text(encoding='utf-8-sig')
         candidate = resolver(source)
         if 'm_DeployRuntime.Try_PickMovementSurface' in candidate:
             lambdas[level] = candidate
-    assert 'ValtanArena' in lambdas and 'KakulSaydonArena' in lambdas, 'Deploy floors need both arena consumers'
+    assert 'ValtanArena' in lambdas and 'KoukuSaydonArena' in lambdas, 'Deploy floors need both arena consumers'
     cpp = r'''
 #include <DirectXMath.h>
 #include <algorithm>

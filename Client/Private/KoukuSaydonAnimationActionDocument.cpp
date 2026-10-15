@@ -1,3 +1,5 @@
+﻿// 애니메이션 참조 카탈로그와 선택적인 슬롯 재정의를 읽고 저장한다.
+// 이 문서는 REFERENCE_ONLY이며 보스 PRODUCT의 Server 게시 데이터와 별도 계약이다.
 #include "KoukuSaydonAnimationActionDocument.h"
 
 #include "DataJson.h"
@@ -20,6 +22,7 @@ namespace
 {
 	using namespace Client;
 
+	// 참조와 저작 재정의는 서로 다른 schema와 경로를 사용한다. authority는 양쪽 모두 REFERENCE_ONLY다.
 	constexpr std::string_view REFERENCE_SCHEMA =
 		"lostark.kouku-saydon-animation-action-reference";
 	constexpr std::string_view AUTHORED_SCHEMA =
@@ -37,6 +40,7 @@ namespace
 	constexpr std::uintmax_t MAX_REFERENCE_BYTES = 16u * 1024u * 1024u;
 	constexpr std::uintmax_t MAX_AUTHORED_BYTES = 8u * 1024u * 1024u;
 
+	// 파서가 필수 키와 타입을 확인한다. 반환 포인터는 입력 JSON이 소유하며 호출 중에만 차용한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char* name,
@@ -46,6 +50,7 @@ namespace
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
 
+	// 정해진 키 집합만 허용하여 필수 값 누락과 알 수 없는 추가 필드를 함께 거절한다.
 	bool Has_ExactProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> names)
@@ -60,6 +65,7 @@ namespace
 		return true;
 	}
 
+	// 저장 identity와 클립 이름에 허용한 ASCII 문자와 길이를 검사한다. 점 경로를 의미하는 두 토큰은 제외한다.
 	bool Is_StableToken(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 255u)
@@ -77,6 +83,7 @@ namespace
 		return value != "." && value != "..";
 	}
 
+	// 모델 ID를 슬래시로 나눈 상대 경로로 검사한다. 절대 경로, drive 구분자와 점 경로를 허용하지 않는다.
 	bool Is_SafeAssetId(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 1024u ||
@@ -103,6 +110,7 @@ namespace
 		return true;
 	}
 
+	// 해시 문자열이 소문자 16진수 64자리인지 확인한다. 이 함수가 파일 내용의 해시를 계산하지는 않는다.
 	bool Is_LowerHexSha256(const std::string_view value)
 	{
 		if (64u != value.size())
@@ -114,6 +122,7 @@ namespace
 		});
 	}
 
+	// 표시 이름의 byte 길이와 제어 문자를 검사한다. UTF-8 바이트열 전체의 유효성 검사는 아니다.
 	bool Is_DisplayName(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 1024u)
@@ -124,6 +133,7 @@ namespace
 		});
 	}
 
+	// 유한한 정수 값인지와 최댓값을 확인한 뒤 출력한다. 이 파서는 실수 토큰 표기라도 값이 정수이면 허용한다.
 	bool Try_ParseUnsigned(
 		const DATA_JSON_VALUE& value,
 		const std::uint32_t maximum,
@@ -142,6 +152,7 @@ namespace
 		return true;
 	}
 
+	// 재생 길이는 양수 ms여야 한다. 값 0에서는 false지만 하위 파서가 outValue에 0을 쓸 수 있어 임시 행에만 사용한다.
 	bool Try_ParsePlayMs(
 		const DATA_JSON_VALUE& value,
 		std::uint32_t& outValue)
@@ -150,6 +161,7 @@ namespace
 			0u != outValue;
 	}
 
+	// 원본 클립 시계의 배율을 0.01부터 16까지의 유한한 값으로 읽는다.
 	bool Try_ParsePlayRate(
 		const DATA_JSON_VALUE& value,
 		f32_t& outValue)
@@ -163,6 +175,7 @@ namespace
 		return std::isfinite(outValue);
 	}
 
+	// 문서에 저장한 시작 ms, 양수 길이 ms와 배율의 한계를 검사한다. 실제 클립 끝 시각과의 비교는 여기서 하지 않는다.
 	bool Is_ValidTiming(
 		const std::uint32_t sourceStartMs,
 		const std::uint32_t playMs,
@@ -174,6 +187,7 @@ namespace
 			playRate <= 16.f;
 	}
 
+	// 크기를 확인한 파일을 임시 문자열로 읽는다. 크기와 읽기 상태가 맞을 때만 outText를 교체한다.
 	bool Read_Text(
 		const std::filesystem::path& path,
 		const std::uintmax_t maximumBytes,
@@ -211,6 +225,7 @@ namespace
 		return true;
 	}
 
+	// 재정의의 identity는 Action ID, Stage ID와 Slot ID의 조합이다. ID에 허용되지 않는 개행으로 구분하여 결합 충돌을 피한다.
 	std::string Build_SlotKey(
 		const std::uint32_t sourceActionId,
 		const std::string_view stageId,
@@ -220,6 +235,8 @@ namespace
 			std::string(stageId) + "\n" + std::string(slotId);
 	}
 
+	// 재정의 목록만 JSON으로 쓴다. float가 재파싱 후 같은 값으로 돌아오도록 필요한 자릿수를 유지한다.
+	// PROJECT_AUTHORED는 연결 근거이며 문서와 행의 실행 권한은 계속 REFERENCE_ONLY다.
 	std::string Serialize_Authored(
 		const KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT& document)
 	{
@@ -264,6 +281,7 @@ namespace
 		return output.str();
 	}
 
+	// Load와 Save가 참조 파일을 읽고 엄격하게 검증하는 공통 경로다. 성공한 임시 문서만 outReference에 넘긴다.
 	bool Load_ReferenceFromPath(
 		const std::filesystem::path& path,
 		const std::string_view expectedProfileId,
@@ -288,6 +306,7 @@ namespace
 		return true;
 	}
 
+	// 저장 실패로 남은 임시 파일을 정리한다. 정리 실패가 원래 실패를 새 예외로 가리지 않게 error_code를 사용한다.
 	void Remove_Temporary(const std::filesystem::path& path)
 	{
 		std::error_code cleanupError;
@@ -295,6 +314,7 @@ namespace
 	}
 }
 
+// 안전한 프로필 ID로 프로젝트 Data 루트의 참조 경로를 만든다. 알 수 없는 파일의 존재 확인은 하지 않는다.
 std::filesystem::path
 Client::CKoukuSaydonAnimationActionDocument::Resolve_ReferencePath(
 	const std::string_view profileId)
@@ -307,6 +327,7 @@ Client::CKoukuSaydonAnimationActionDocument::Resolve_ReferencePath(
 			std::string(profileId) + ".actionreference.json"));
 }
 
+// 재정의 저장 파일의 경로를 만든다. 읽기 전용 참조와 같은 파일에 쓰지 않는다.
 std::filesystem::path
 Client::CKoukuSaydonAnimationActionDocument::Resolve_AuthoredPath(
 	const std::string_view profileId)
@@ -319,6 +340,9 @@ Client::CKoukuSaydonAnimationActionDocument::Resolve_AuthoredPath(
 			std::string(profileId) + ".actionbindings.json"));
 }
 
+// Composition 편집은 allowPartial로 읽고 Animation Tool의 엄격한 Load는 기본 false로 읽는다.
+// 오류 시 기존 outDocument를 보존하며 부분 허용 모드에서는 잘못된 Action, Stage, 보류 이름 또는 Slot만 건너뛴다.
+// 성공 후에도 중복 identity, 단계 순서와 실제 모델의 클립 연결은 Validate_Reference에서 별도로 검사해야 한다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	const std::string_view text,
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& outDocument,
@@ -379,6 +403,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	staged.strAuthority = authority->Get_String();
 	staged.Actions.reserve(actions->Get_Array().size());
 
+	// 건너뛴 하위 행 수를 보고한다. 부모 행이 남아도 내용이 비어 있을 수 있으므로 부분 파싱 성공을 엄격한 검증 성공으로 보지 않는다.
 	std::size_t skippedRows = 0u;
 	for (const DATA_JSON_VALUE& actionValue : actions->Get_Array())
 	{
@@ -387,7 +412,11 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				  "authority", "stages" }))
 		{
 			outStatus = "KoukuSaydon action reference row has unexpected properties.";
-			if (allowPartial) { ++skippedRows; continue; }
+			if (allowPartial)
+			{
+				++skippedRows;
+				continue;
+			}
 			return false;
 		}
 		const DATA_JSON_VALUE* actionId = Required(
@@ -416,7 +445,11 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 			stages->Get_Array().size() > MAX_STAGES_PER_ACTION)
 		{
 			outStatus = "KoukuSaydon action reference row is invalid.";
-			if (allowPartial) { ++skippedRows; continue; }
+			if (allowPartial)
+			{
+				++skippedRows;
+				continue;
+			}
 			return false;
 		}
 		stagedAction.strDisplayName = displayName->Get_String();
@@ -430,8 +463,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 					{ "stageId", "stageOrdinal", "holdoutClipNames", "slots" }))
 			{
 				outStatus = "KoukuSaydon action stage has unexpected properties.";
-				if (allowPartial) { ++skippedRows; continue; }
-			return false;
+				if (allowPartial)
+				{
+					++skippedRows;
+					continue;
+				}
+				return false;
 			}
 			const DATA_JSON_VALUE* stageId = Required(
 				stageValue, "stageId", DATA_JSON_TYPE::STRING);
@@ -453,8 +490,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				nullptr == slots || slots->Get_Array().size() > MAX_SLOTS_PER_STAGE)
 			{
 				outStatus = "KoukuSaydon action stage is invalid.";
-				if (allowPartial) { ++skippedRows; continue; }
-			return false;
+				if (allowPartial)
+				{
+					++skippedRows;
+					continue;
+				}
+				return false;
 			}
 			stagedStage.strStageId = stageId->Get_String();
 			stagedStage.HoldoutClipNames.reserve(holdouts->Get_Array().size());
@@ -463,8 +504,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 				if (!holdout.Is_String() || !Is_StableToken(holdout.Get_String()))
 				{
 					outStatus = "KoukuSaydon action holdout clip name is invalid.";
-					if (allowPartial) { ++skippedRows; continue; }
-			return false;
+					if (allowPartial)
+					{
+						++skippedRows;
+						continue;
+					}
+					return false;
 				}
 				stagedStage.HoldoutClipNames.push_back(holdout.Get_String());
 			}
@@ -478,8 +523,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 						  "mappingBasis", "authority" }))
 				{
 					outStatus = "KoukuSaydon action slot has unexpected properties.";
-					if (allowPartial) { ++skippedRows; continue; }
-			return false;
+					if (allowPartial)
+					{
+						++skippedRows;
+						continue;
+					}
+					return false;
 				}
 				const DATA_JSON_VALUE* slotId = Required(
 					slotValue, "slotId", DATA_JSON_TYPE::STRING);
@@ -519,8 +568,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 					slotAuthority->Get_String() != REFERENCE_ONLY)
 				{
 					outStatus = "KoukuSaydon action slot is invalid.";
-					if (allowPartial) { ++skippedRows; continue; }
-			return false;
+					if (allowPartial)
+					{
+						++skippedRows;
+						continue;
+					}
+					return false;
 				}
 				stagedSlot.strSlotId = slotId->Get_String();
 				stagedSlot.strExtractedClip = extractedClip->Get_String();
@@ -540,6 +593,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_ReferenceText(
 	return true;
 }
 
+// 저작 JSON을 별도 임시 문서로 파싱한다. 모든 binding의 필수 값이 맞아야 출력을 교체하며 중간 실패는 기존 출력을 유지한다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_AuthoredText(
 	const std::string_view text,
 	KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT& outDocument,
@@ -658,6 +712,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Parse_AuthoredText(
 	return true;
 }
 
+// Load와 재정의 검증이 예상 프로필, 모델과 실제 클립 목록을 참조 문서에 대조한다. 입력은 읽기 전용이다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Reference(
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& document,
 	const std::string_view expectedProfileId,
@@ -679,6 +734,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Reference(
 		return false;
 	}
 
+	// 모델이 제공한 클립 이름을 집합으로 바꾸어 각 슬롯이 실제 재생 가능한 이름을 가리키는지 확인한다.
 	std::unordered_set<std::string> availableClipSet;
 	availableClipSet.reserve(availableClips.size());
 	for (const std::string& clip : availableClips)
@@ -759,6 +815,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Reference(
 	return true;
 }
 
+// 참조 전체를 먼저 검사한 뒤 revision과 정확한 슬롯 조합을 맞춘다. 같은 슬롯의 중복 재정의도 거절한다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Authored(
 	const KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT& document,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -782,6 +839,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Authored(
 		return false;
 	}
 
+	// 벡터 index 대신 저장된 세 identity의 조합으로 연결한다. 참조 목록의 순서가 달라도 같은 슬롯을 찾는다.
 	std::unordered_set<std::string> referenceSlots;
 	for (const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE& action : reference.Actions)
 	{
@@ -824,6 +882,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Validate_Authored(
 	return true;
 }
 
+// 참조와 재정의를 각각 임시 문서로 읽는다. 둘의 검증이 모두 성공하기 전에는 호출자의 기존 출력을 바꾸지 않는다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Load_FromPaths(
 	const std::filesystem::path& referencePath,
 	const std::filesystem::path& authoredPath,
@@ -858,6 +917,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Load_FromPaths(
 	return true;
 }
 
+// Animation Tool의 프로필 선택에서 사용하는 기본 로드다. 경로를 만든 뒤 동일한 검증 경로로 위임한다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Load(
 	const std::string_view profileId,
 	const std::string_view expectedModelAssetId,
@@ -878,6 +938,8 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Load(
 		outStatus);
 }
 
+// Animation Tool이 편집한 슬롯 재정의만 저장한다. 입력 참조가 최신 파일과 같은지 확인하고 임시 파일을 검증한 뒤 교체한다.
+// Composition의 세 문서 병합이나 목적 파일 bytes CAS는 하지 않는다. 이 함수는 참조 파일을 수정하지 않는다.
 bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 	const KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT& document,
 	const KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT& reference,
@@ -902,6 +964,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 사용자가 보던 참조와 현재 디스크 참조가 달라졌으면 stale 재정의를 저장하지 않는다.
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT currentReference;
 	if (!Load_ReferenceFromPath(referencePath, expectedProfileId,
 		expectedModelAssetId, availableClips, currentReference, outStatus))
@@ -924,6 +987,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 같은 디렉터리에 프로세스, 스레드와 tick으로 구분한 임시 파일을 만든다. write, flush, commit과 close를 모두 확인한다.
 	std::filesystem::path temporary = destination;
 	temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) +
 		L"." + std::to_wstring(GetCurrentThreadId()) +
@@ -947,6 +1011,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 임시 파일을 재파싱하고 참조 연결 및 구조체 전체 동등성을 검사한다. 실패하면 목적 파일을 바꾸지 않는다.
 	std::string verificationText;
 	KOUKU_SAYDON_ANIMATION_ACTION_AUTHORED_DOCUMENT reparsed;
 	std::string verificationStatus;
@@ -963,6 +1028,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 임시 파일을 쓰는 동안 참조가 바뀌었는지 교체 직전에 다시 확인한다. 비교 대상은 목적 binding 파일이 아닌 참조 문서다.
 	KOUKU_SAYDON_ANIMATION_ACTION_REFERENCE_DOCUMENT finalReference;
 	if (!Load_ReferenceFromPath(referencePath, expectedProfileId,
 		expectedModelAssetId, availableClips, finalReference,
@@ -980,6 +1046,7 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 모든 검사가 끝난 임시 파일로 재정의 파일을 원자적으로 교체한다. 이후에는 재열기 단계 없이 성공을 반환한다.
 	if (!MoveFileExW(temporary.c_str(), destination.c_str(),
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
@@ -993,12 +1060,12 @@ bool_t Client::CKoukuSaydonAnimationActionDocument::Save_Atomic(
 	return true;
 }
 
+// Animation Tool과 Composition Workbench에 표시할 분류를 정적 문자열로 반환한다. 반환 포인터는 해제하지 않는다.
 const char_t* Client::CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(
 	const std::string_view profileId,
 	const std::string_view displayName)
 {
-	/* UTF-8 bytes of the authored large-Kouku prefix so this rule compares the
-	   same bytes the reference JSON carries under every source charset. */
+	// 원본 JSON에 있는 큰 쿠크 접두사를 UTF-8 byte로 적어 소스 문자셋과 무관하게 같은 값을 비교한다.
 	constexpr std::string_view LARGE_KOUKU_PREFIX =
 		"\xEB\x8C\x80\xED\x98\x95 \xEC\xBF\xA0\xED\x81\xAC_";
 	if ("MN_RPCZ_00" == profileId && 0u == displayName.find(LARGE_KOUKU_PREFIX))

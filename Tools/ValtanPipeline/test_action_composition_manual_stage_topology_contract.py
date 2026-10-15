@@ -8,7 +8,7 @@ import unittest
 
 import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "Build"))
-from cpp_source_domains import cpp_function_body
+from cpp_source_domains import cpp_function_body, read_source_text
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -31,7 +31,7 @@ class ActionCompositionManualStageTopologyContractTests(unittest.TestCase):
         cls.balance_h = BALANCE_H.read_text(encoding="utf-8")
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")
         cls.workbench_h = WORKBENCH_H.read_text(encoding="utf-8")
-        cls.workbench_cpp = WORKBENCH_CPP.read_text(encoding="utf-8")
+        cls.workbench_cpp = read_source_text(WORKBENCH_CPP, encoding="utf-8")
         cls.workbench_blueprint_cpp = WORKBENCH_BLUEPRINT_CPP.read_text(
             encoding="utf-8"
         )

@@ -1,3 +1,5 @@
+// 정적 shadow texture의 거리 값을 전송 곡선으로 바꿔 빛의 통과 비율을 계산한다.
+// PickPos.w에는 기존 법선 비트를 보존하며 shadow 채널 번호를 함께 기록한다.
 #ifndef LOSTARK_STATIC_SHADOW_MAP_INCLUDED
 #define LOSTARK_STATIC_SHADOW_MAP_INCLUDED
 

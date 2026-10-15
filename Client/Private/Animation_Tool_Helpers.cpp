@@ -42,7 +42,7 @@ namespace AnimationToolDetail
 	f32_t Large_SaydonPreviewMultiplier()
 	{
 		const Client::BOSS_ACTOR_ENTRY* pBigSaydon =
-			Client::CActorCatalog::Find_Boss("BOSS_KAKULSAYDON_G2_BIG_SAYDON");
+			Client::CActorCatalog::Find_Boss("BOSS_KOUKUSAYDON_G2_BIG_SAYDON");
 		const auto asset = std::find_if(
 			Client::ANIMATION_PREVIEW_ASSETS.begin(), Client::ANIMATION_PREVIEW_ASSETS.end(),
 			[](const Client::ANIMATION_PREVIEW_ASSET& candidate)

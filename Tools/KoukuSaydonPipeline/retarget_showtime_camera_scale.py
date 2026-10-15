@@ -97,7 +97,7 @@ def main():
     if original.startswith(b"\xef\xbb\xbf"):
         raise ValueError("Unexpected BOM; inspect source encoding before editing")
     catalog = json.loads((root / "Data/Actors/BossCatalog.json").read_text(encoding="utf-8-sig"))
-    boss, = [b for b in catalog["bosses"] if b["archetypeId"] == "BOSS_KAKULSAYDON_G3_SAYDON"]
+    boss, = [b for b in catalog["bosses"] if b["archetypeId"] == "BOSS_KOUKUSAYDON_G3_SAYDON"]
     if boss.get("presentationScale") != 1 or boss.get("bodyModelPreScale") != .017:
         raise ValueError("Boss scale changed; recalculate against the original actor")
     ratio = boss["bodyModelPreScale"] / (.01 * SOURCE_DRAW_SCALE)

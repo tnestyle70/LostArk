@@ -1,28 +1,28 @@
 {
   "schema": "lostark.arena-sequencer-product",
   "formatVersion": 1,
-  "sequencerId": "arena.sequencer.kakulsaydon",
+  "sequencerId": "arena.sequencer.koukusaydon",
   "sourceRevision": 2,
-  "compositionRevision": "78c9b436e5a516f89c58705b189af95bb3c1a460cee506415c345d61287d6064",
+  "compositionRevision": "1f1238c50021a634d7b6932bc875472c8724f4e9a4f311150ab29567fb5936ff",
   "status": "SHADOW",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Arena Sequencer",
   "areaId": "LV_LUT_MIDNIGHTC_ED",
-  "bossCompositionId": "boss.composition.kakulsaydon",
+  "bossCompositionId": "boss.composition.koukusaydon",
   "durationMs": 21010,
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "78c9b436e5a516f89c58705b189af95bb3c1a460cee506415c345d61287d6064",
+    "sourceManifestId": "1f1238c50021a634d7b6932bc875472c8724f4e9a4f311150ab29567fb5936ff",
     "files": [
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
-        "sha256": "a2f9f586470836d0f4494959718e773c7e854caf4545e78663d45f5270415811",
+        "sha256": "ccafc45b2f121de3a92d39e067031ef88f7954f25a4762609db2d3cd15fae3a0",
         "bytes": 4371
       },
       {
         "path": "Data/Compositions/Sequences/KoukuSaydonArena.sequencer.json",
-        "sha256": "f9223d2eceb142eaf93a039602fdf3306e7597f5747e5270a1bb355fe12b5286",
+        "sha256": "d6023decd91f906b45c1fe9ef669a8ec594e52b635dc084beb42246751a1c6a6",
         "bytes": 1332
       },
       {
@@ -32,19 +32,19 @@
       },
       {
         "path": "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json",
-        "sha256": "16980c380ebd4c07821f7519fa53169d58d35d98335bb4faba03720025135d5b",
-        "bytes": 14333673
+        "sha256": "7e0c532070cd83dddbfb081507b250bbed1de9c977ab096ed9fd3c510785bb57",
+        "bytes": 14333556
       },
       {
         "path": "Data/Rendering/Authored/RenderingProfiles.json",
-        "sha256": "bf0f1964766f4d9955a0324ea580873a93408361a90a36d46b7025b1c5df7201",
-        "bytes": 121029
+        "sha256": "f8bf71d1f9eaaa4888ace463551a00836797b9abd6ca7a309e081d6393c895b9",
+        "bytes": 130038
       }
     ]
   },
   "tracks": [
     {
-      "trackId": "track.kakulsaydon.circus-finale.world",
+      "trackId": "track.koukusaydon.circus-finale.world",
       "kind": "WORLD_SEQUENCE",
       "startMs": 0,
       "payload": {
@@ -52,7 +52,7 @@
       }
     },
     {
-      "trackId": "track.kakulsaydon.circus-finale.camera",
+      "trackId": "track.koukusaydon.circus-finale.camera",
       "kind": "CAMERA_SHOT",
       "startMs": 0,
       "endMs": 21010,

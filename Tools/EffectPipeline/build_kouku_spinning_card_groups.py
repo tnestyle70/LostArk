@@ -284,7 +284,7 @@ def build(evidence):
         particleSystem=dict(uniformScaleMultiplier=1, yawOffsetDegrees=0, directionYawDegrees=0, initialSpeedMultiplier=1),
         modelCues=[], elements=[], runtimeExtensions=dict(formatVersion=1, bakedEdgeHistories=[]),
         sourceModelPreview=dict(gateId='GATE1', actorProfileId='MN_RPCT_05',
-            targetBossPlacementId='boss.kakulsaydon.g1.saydon', animations=[]))
+            targetBossPlacementId='boss.koukusaydon.g1.saydon', animations=[]))
     for stage in contract['stages']:
         document['sourceModelPreview']['animations'].append(dict(runtimeClip=stage['runtimeClip'],
             startOffsetMs=round(stage['startSeconds'] * 1000), sourceStartMs=0,

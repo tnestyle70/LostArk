@@ -1,25 +1,18 @@
-#include "Logic_GuardianKnight.h"
+﻿#include "Logic_GuardianKnight.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* One halberd in the right hand. The dk rig carries the GunSlinger/Artist
-	family of socket names -- b_wp_1 / b_wp_2 / b_wp_3, no b_weapon_* -- and the
-	source LookInfo binds the battle socket wp_ddk_r_battle to b_wp_1. The socket
-	name has to be read off each class's own rig: one the rig lacks fails
-	silently, since Get_BoneMatrix returns identity and the body's 0.0001
-	preTransform never reaches the weapon. */
+	// 오른손의 b_wp_1에 무기를 붙인다. 소켓 누락은 현재 Part 초기화가 거부한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
 		  TEXT("Prototype_Component_Model_GuardianKnight_Weapon"), "b_wp_1" },
 	};
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before the weapon tags. The wings are the identity part
-	SK_DDK_WIN_00: skinned to the body's own b_wing_* bones, never covered by an
-	avatar set, and drawn only while the dragon stance is active. */
+	// 본체 뒤에 장비를 갱신한다. Wing은 옷 교체 슬롯이 없는 IDENTITY Part이며 dragon stance를 요구한다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_GuardianKnight_Arm"),
@@ -43,32 +36,20 @@ namespace
 		  LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON },
 	};
 
-	/* The cook lays this body out 0 hair / 1 avatar upper1 / 2 avatar upper /
-	3 face / 4 eye ao / 5 eye. pc_dk_00_sk ships no skin under its clothes: the
-	two pc_dl_av_018a pieces are the avatar outfit the base body wears, and the
-	armour parts carry their own pc_dk_av_base skin, so those two submeshes hide
-	while the armour draws. These bits are read off the cooked model every
-	time, never copied from another class, and re-cooking the body with
-	different content invalidates them. */
+	// 장비와 겹치는 본체 outfit submesh 1·2를 숨긴다. mask는 해당 Model의 mesh 순서에 의존한다.
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 1) | (1u << 2);
 
-	/* The body supplies pc_ft_15_hair at submesh 0 when no separate HEAD set is
-	worn. Keep its mask so a committed hairstyle replaces it without overlap;
-	this class has no default hair part to cover an uncustomized spawn. */
+	// 본체 hair 0번은 별도 HEAD 교체가 성공하기 전까지 fallback으로 유지한다.
 	constexpr uint32_t BAKED_HAIR = (1u << 0);
 
-	/* The dragon form is a posture, not a weapon swap: the class stands and runs
-	on its identity clips until it leaves the stance. */
+	// dragon stance에서는 공통 idle/run 대신 identity 자세 clip을 선택한다.
 	constexpr STANCE_LOCOMOTION_SPEC StanceLocomotion[] =
 	{
 		{ LostArk::Shared::PLAYER_STANCE_ID::GUARDIANKNIGHT_DRAGON,
 		  "ddk_idle_identity1_1", "ddk_run_identity1_1" },
 	};
 
-	/* The source rig keys only the first bone of each chain and leaves the
-	links below it in bind pose, because the original solves them at runtime.
-	Link counts are this body's own, read off the 282-bone armour master the
-	body was rebound to. */
+	// 치마·망토·머리카락 체인에 적용할 solver 계수다. 실제 root와 개수는 아래 목록에 정의한다.
 	constexpr f32_t PLATE_STIFFNESS = 0.12f;
 	constexpr f32_t PLATE_DAMPING = 0.45f;
 	constexpr f32_t PLATE_GRAVITY = 12.f;
@@ -130,12 +111,12 @@ namespace
 		{ "b_hair04_fr_01", 3u, HAIR_STIFFNESS, HAIR_DAMPING,
 		  HAIR_GRAVITY, HAIR_MAX_DISPLACEMENT, HAIR_WIND_RESPONSE, 40.0f },
 
-		/* The belt tail lives only on the armour master; the body's 278-bone psa
-		never keys it, so it rides the solver like the Warlord one. */
+		// 허리 장식 체인도 animation 뒤 solver에서 처리한다.
 		{ "b_add_tail_1_01", 4u, HAIR_STIFFNESS, HAIR_DAMPING,
 		  HAIR_GRAVITY, HAIR_MAX_DISPLACEMENT, HAIR_WIND_RESPONSE, 40.0f },
 	};
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_GuardianKnight>();
@@ -144,6 +125,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_GuardianKnight::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -152,7 +134,8 @@ void CLogic_GuardianKnight::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// catalog가 extern으로 참조하는 프로세스 수명의 직업 설정이다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_GuardianKnight =
 {
 	"GuardianKnight",
@@ -163,8 +146,7 @@ const CHARACTER_SPEC Spec_GuardianKnight =
 	COVERED_BY_ARMOUR,
 	BAKED_HAIR,
 
-	/* Item 1071002 is this class's default weapon and names WP_WDDK_04, a
-	single halberd mesh cooked static like the other weapons. */
+	// 무기를 단일 본에 부착하는 static mesh 셰이더를 사용한다.
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,
 	static_cast<uint32_t>(size(Weapons)),
@@ -172,10 +154,7 @@ const CHARACTER_SPEC Spec_GuardianKnight =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
-	ESTHER_CAST -- FBX takes are "<armature>_<action>" and the armature is
-	named "ddk", so every clip carries that prefix. The cast, customizing and
-	music clips come from attached animation sets. */
+	// CHARACTER_ANIM 순서에 ddk 계열 기본·에스더·외형 편집·노래 clip을 대응시킨다.
 	{
 		"ddk_idle_battle_1",
 		"ddk_run_battle_1",
@@ -203,7 +182,7 @@ const CHARACTER_SPEC Spec_GuardianKnight =
 	static_cast<uint32_t>(size(BoneChains)),
 
 	"DK",
-	true, // Preserve the body hairstyle until a HEAD replacement commits.
+	true, // HEAD 교체 commit 전까지 본체 머리카락을 유지한다.
 };
 
 NS_END

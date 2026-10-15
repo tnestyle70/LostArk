@@ -366,7 +366,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 			"Retain a valid monster target, release it at hysteresis range, and lock the replacement through windup");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& room = *roomStorage;
 		tests.Require(room.Is_Ready(),
@@ -475,7 +475,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				0u != player.iCurrentHp,
 				"Change dead player class and respawn at projected original spawn");
 
-			/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+			/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 			auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
 			CGameRoom& bernRoom = *bernRoomStorage;
 			const SERVER_PLAYER beforeWrongWorld = player;
@@ -887,7 +887,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 			for (const std::size_t count : { 1u, 2u, 3u, 4u })
 			for (const bool accept : { false, true })
 			{
-				auto fixture = makeParty(count, count > 1u, WORLD_ID::KAKULSAYDON_ARENA);
+				auto fixture = makeParty(count, count > 1u, WORLD_ID::KOUKUSAYDON_ARENA);
 				const auto guide = findGuide(*fixture->Source);
 				tests.Require(fixture->Ready && guide != fixture->Source->m_WorldEntities.end(),
 					"Create one-to-four participant Kouku raid-entry fixture");
@@ -898,7 +898,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				C2S_RAID_ENTRY_PROPOSE propose{};
 				propose.iRequestSequence = 84u;
 				propose.strNpcPlacementId = guide->strPlacementId;
-				propose.eTarget = RAID_ENTRY_TARGET::KAKULSAYDON;
+				propose.eTarget = RAID_ENTRY_TARGET::KOUKUSAYDON;
 				fixture->Source->Handle_RaidEntryPropose(
 					fixture->Sessions.front()->Get_SessionId(), propose);
 				tests.Require(1u == fixture->Source->m_RaidEntryProposals.size(),
@@ -934,7 +934,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 					continue;
 				}
 				const bool staged = fixture->Source->Try_DequeueWorldTransfer(fixture->Request) &&
-					fixture->Request.eTargetWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+					fixture->Request.eTargetWorldId == WORLD_ID::KOUKUSAYDON_ARENA &&
 					fixture->Request.PartyBatchSessionIds.size() == (count > 1u ? count : 0u);
 				CServerApp::SESSION_WORLD_TRANSFER_FAILURE failure{};
 				bool committed = staged && fixture->App->Transfer_SessionWorld(fixture->Source, fixture->Request, failure);
@@ -956,7 +956,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 						if (frame.ePacketType != PACKET_TYPE::S2C_ENTER_ACCEPTED) continue;
 						CPacketReader reader{ std::span<const std::uint8_t>{ frame.Bytes }.subspan(PACKET_HEADER_BYTES) };
 						S2C_ENTER_ACCEPTED message{};
-						committed = Read_Message(reader, message) && message.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && committed;
+						committed = Read_Message(reader, message) && message.eWorldId == WORLD_ID::KOUKUSAYDON_ARENA && committed;
 						++accepted;
 					}
 					const auto index = static_cast<std::uint8_t>(session->Get_SessionId() - 96001u);
@@ -970,7 +970,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 								[index](const auto& item) { return item.iDurabilityPercent == 60u + index; });
 					}
 					const auto& binding = fixture->App->m_GameplayBindingBySessionId.at(session->Get_SessionId());
-					committed = committed && 1u == accepted && binding.eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+					committed = committed && 1u == accepted && binding.eWorldId == WORLD_ID::KOUKUSAYDON_ARENA &&
 						binding.pSimulation == fixture->Target;
 				}
 				tests.Require(committed, "Accepted Kouku vote transfers all participants through ServerApp; entry collider still owns raid START");
@@ -1035,7 +1035,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_CharacterAdmission(TEST
 				}
 			}
 		}
-		for (const auto targetWorld : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA })
+		for (const auto targetWorld : { WORLD_ID::VALTAN_ARENA, WORLD_ID::KOUKUSAYDON_ARENA })
 		{
 			auto fixture = makeParty(2u, true, targetWorld);
 			tests.Require(fixture->Ready, "Create Valtan/Kouku party transfer rollback fixture");

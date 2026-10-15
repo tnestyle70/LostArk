@@ -23,7 +23,7 @@
 #include "GameInstance.h"
 #include "Profiler.h"
 #include "CombatHUDViewModel.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "LightResourceCatalog.h"
 #include "MapAssetCatalog.h"
 #include "Presentation_Manager.h"
@@ -330,7 +330,7 @@ std::optional<CWorldSequencePlayer::OBJECT_PLACEMENT> WorldPlacementFromOccurren
 std::uint32_t Camera_ReturnMs(const RESOURCE& resource, const bool authoring)
 {
     if (resource.eKind != KIND::CAMERA) return 0u;
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level) return 0u;
     if (authoring) { std::string status; if (!level->Ensure_CameraShotAuthoring(status)) return 0u; }
     const auto& shots = authoring ? level->Get_CameraShots() : level->Get_PublishedCameraShots();
@@ -643,7 +643,7 @@ DATA_JSON_VALUE Read_ProductPresentationRoot(const std::string* supplied = nullp
             throw std::runtime_error("KoukuSaydon Product parse failed: " + parseStatus);
         if (Text(root, "schema") != "lostark.kouku-saydon-pattern-bindings" ||
             UInt(root, "formatVersion", 1u, 1u) != 1u ||
-            Text(root, "bossArchetypeId") != "BOSS_KAKULSAYDON_G1_KOUKU")
+            Text(root, "bossArchetypeId") != "BOSS_KOUKUSAYDON_G1_KOUKU")
             throw std::runtime_error("KoukuSaydon Product presentation header is incompatible.");
     return root;
 }
@@ -2533,7 +2533,7 @@ void Client::CKoukuSaydonPresentationPlayer::Retire_ProductSession(SESSION& sess
     const auto definition = m_Product.find(session.productPatternId);
     const auto view = std::find_if(bosses.begin(), bosses.end(), [&](const auto& row) {
         return row.Snapshot.iNetEntityId == session.bossEntityId && row.Snapshot.iCurrentHp && !row.pNpc.expired(); });
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
     using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
     const bool cancelled = session.runEpoch && (!run || run->iRunEpoch != session.runEpoch || run->eState == STATE::ABORTED);
@@ -2572,7 +2572,7 @@ void Client::CKoukuSaydonPresentationPlayer::Retire_ProductBundleSession()
 {
     auto& session = m_ProductBundleSession;
     const auto definition = m_ProductBundles.find(session.productPatternId);
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
     using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
     float seconds = 0.f;
@@ -2597,7 +2597,7 @@ void Client::CKoukuSaydonPresentationPlayer::Retire_ProductBundleSession()
 void Client::CKoukuSaydonPresentationPlayer::Update_ProductTails(const float dt,
     const std::vector<KOUKU_BOSS_PRESENTATION_VIEW>& bosses)
 {
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
     using STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
     for (auto tail = m_ProductTails.begin(); tail != m_ProductTails.end();)
@@ -2916,7 +2916,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
             return selected && selected->Try_GetSequencePivot(world->strSequenceInstanceId, anchor, box.iWorldEmissionIndex,
                 box.strBone, box.strBoneRotation == "BONE", box.strWorldEffectTrackId);
         }
-        const auto* level = CLevel_KakulSaydonArena::Get_Active();
+        const auto* level = CLevel_KoukuSaydonArena::Get_Active();
         if (!level) return false;
         if (session.runEpoch)
             return level->Try_GetOwnedCompositionWorldPivot(session.runEpoch, session.memberId,
@@ -2929,7 +2929,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sample(SESSION& session,
     std::optional<float3_t> presentationTarget = session.presentationTarget;
     if (previewSession)
     {
-        const auto* level = CLevel_KakulSaydonArena::Get_Active();
+        const auto* level = CLevel_KoukuSaydonArena::Get_Active();
         const auto player = level ? level->Get_LocalCharacter() : nullptr;
         if (player && player->Get_Transform())
         {
@@ -3636,7 +3636,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_SharedPresentation()
         }
         else m_strStatus = status;
     }
-    if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+    if (auto* level = CLevel_KoukuSaydonArena::Get_Active())
     {
         const bool cameraEnabled = level->Is_CompositionCameraEnabled();
         if (camera && cameraEnabled)
@@ -3667,7 +3667,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_FearPresentation(float dt,
     const auto localId = CNetworkManager::Get().Get_LocalEntityId();
     const auto player = std::find_if(players.begin(), players.end(), [&](const auto& view)
         { return view.Snapshot.iNetEntityId == localId; });
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     if (!arena || !localId || player == players.end() || !player->Snapshot.iCurrentHp ||
         player->Snapshot.eAction != LostArk::Shared::PLAYER_ACTION_STATE::FEAR)
     { stopFear(); m_strCompletedFearKey.clear(); return; }
@@ -3748,7 +3748,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_AdmittedRun(
     }
     // Product success precedes the optional Camera reload. A failed immutable
     // Product is not reparsed every frame, and cannot release the old camera.
-    if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+    if (auto* level = CLevel_KoukuSaydonArena::Get_Active())
     {
         std::string cameraStatus;
         if (!level->Reload_PublishedCameraShots(cameraStatus)) m_strStatus = cameraStatus;
@@ -3810,7 +3810,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update(float dt,
         }
     Update_TargetedCombatVisuals(dt, bosses);
     Update_ContactCombatEffects(dt);
-    const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     const auto* run = arena ? &arena->Get_KoukuBundleState() : nullptr;
     using RUN_STATE = LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE_STATE;
     const bool runLive = run && run->iRunEpoch &&
@@ -4264,7 +4264,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_Preview(
 void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
     std::vector<BUNDLE_PREVIEW_MEMBER>& members)
 {
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     for (auto& member : members)
     {
         if (const auto source = member.suppressedSourceActor.lock())
@@ -4291,7 +4291,7 @@ void Client::CKoukuSaydonPresentationPlayer::Release_BundlePreviewMembers(
             level->Release_CompositionPreviewActor(member.actor);
         }
         else if (member.actor)
-            CGameInstance::Get().Remove_GameObject_from_Layer(ETOUI(LEVEL::KAKULSAYDON_ARENA),
+            CGameInstance::Get().Remove_GameObject_from_Layer(ETOUI(LEVEL::KOUKUSAYDON_ARENA),
                 L"Layer_KoukuCompositionPreview", member.actor);
     }
     members.clear();
@@ -4327,7 +4327,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Prepare_CloneSplitPreview(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     std::vector<BUNDLE_PREVIEW_MEMBER>& members, std::string& status)
 {
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     std::vector<BUNDLE_PREVIEW_MEMBER> clones;
     const auto fail = [&](const std::string& reason) {
         Release_BundlePreviewMembers(clones); status = reason; return false;
@@ -4523,7 +4523,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
     CSoundCueCatalog::Load_ClassSnapshot("KoukuSaydon", m_SoundEventVariants, soundStatus);
     const auto bundle = std::find_if(document.Bundles.begin(), document.Bundles.end(),
         [&](const auto& value) { return value.strBundleId == bundleId; });
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level || bundle == document.Bundles.end() || !bundle->strLoadError.empty() ||
         bundle->Members.empty() || bundle->Members.size() > LostArk::Shared::MAX_KOUKUSAYDON_BUNDLE_MEMBERS)
     { status = "Bundle preview requires an active arena and a valid nonempty bundle."; return false; }
@@ -4634,7 +4634,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Begin_BundlePreview(
             { return a.iStartOffsetMs != b.iStartOffsetMs ? a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
         // World-only cinematics already own their visible actors. Keep this
         // boss as an anchor donor without drawing an additional idle body.
-        if (document.strCompositionId == "boss.composition.kakulsaydon.sequencer" && member.animations.empty())
+        if (document.strCompositionId == "boss.composition.koukusaydon.sequencer" && member.animations.empty())
             member.actor->Set_PresentationVisible(false);
         bool airborne = false, spatialLogic = false;
         for (const auto& box : source->LogicOccurrences)
@@ -4916,7 +4916,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Resolve_PatternModelTarget(
             if (!member.finiteActorLifetime && member.pattern.strPatternId == pattern.strPatternId &&
                 member.pattern.strActorProfileId == pattern.strActorProfileId && member.actor &&
                 member.actor->Try_GetAnimationModelTarget(target, view)) return true;
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     const auto archetype = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(pattern.strTargetBossPlacementId);
     if (!level || archetype.empty() || CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(
         pattern.strTargetBossPlacementId) != pattern.strActorProfileId) return false;
@@ -4950,7 +4950,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         yaw = cached->second.second;
         return true;
     }
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     const auto player = level ? level->Get_LocalCharacter() : nullptr;
     std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
     std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
@@ -5070,7 +5070,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         if (!std::isfinite(dx) || !std::isfinite(dz) || dx * dx + dz * dz <= .000001f) return false;
         targetYaw = XMConvertToDegrees(std::atan2(dx, dz));
         if (CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
-            member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_BIG_SAYDON") targetYaw -= 90.f;
+            member.pattern.strTargetBossPlacementId) == "BOSS_KOUKUSAYDON_G2_BIG_SAYDON") targetYaw -= 90.f;
         return true;
     };
     struct FACING_EVENT final
@@ -5134,10 +5134,10 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
             if (dx * dx + dz * dz > .000001f)
             {
                 const auto& archetype = member.sourceArchetypeId;
-                const bool saydon = archetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-                    archetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
-                    archetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
-                    archetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+                const bool saydon = archetype == "BOSS_KOUKUSAYDON_G1_SAYDON" ||
+                    archetype == "BOSS_KOUKUSAYDON_G3_SAYDON" ||
+                    archetype == "BOSS_KOUKUSAYDON_BINGO_SAYDON" ||
+                    archetype == "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
                 yaw = XMConvertToDegrees(std::atan2(dx, dz)) - (saydon ? 90.f : 0.f);
             }
             size_t activeRow = 0u;
@@ -5186,7 +5186,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
                 {
                     if (targetYawAt(origin, *targetPosition, sample->second) &&
                         CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
-                            member.pattern.strTargetBossPlacementId) == "BOSS_KAKULSAYDON_G2_KOUKU")
+                            member.pattern.strTargetBossPlacementId) == "BOSS_KOUKUSAYDON_G2_KOUKU")
                         sample->second -= 90.f; // Match the Server stage retarget for the laser's model +X front.
                 }
                 yaw = sample->second;
@@ -5239,13 +5239,13 @@ bool Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreviewPose(
         if (!sample->second || !targetYawAt(origin, *sample->second, targetYaw)) continue;
         const auto movingArchetype = CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(
             member.pattern.strTargetBossPlacementId);
-        const bool saydon = movingArchetype == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-            movingArchetype == "BOSS_KAKULSAYDON_G3_SAYDON" ||
-            movingArchetype == "BOSS_KAKULSAYDON_BINGO_SAYDON" ||
-            movingArchetype == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+        const bool saydon = movingArchetype == "BOSS_KOUKUSAYDON_G1_SAYDON" ||
+            movingArchetype == "BOSS_KOUKUSAYDON_G3_SAYDON" ||
+            movingArchetype == "BOSS_KOUKUSAYDON_BINGO_SAYDON" ||
+            movingArchetype == "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
         // Stationary Showtime and moving pursuit use the same model +X front.
         // targetYawAt already applies BIG_SAYDON's existing basis correction.
-        if (saydon && movingArchetype != "BOSS_KAKULSAYDON_G2_BIG_SAYDON")
+        if (saydon && movingArchetype != "BOSS_KOUKUSAYDON_G2_BIG_SAYDON")
             targetYaw = float(std::remainder(double(targetYaw) - 90.0, 360.0));
         if (window.immediate) yaw = targetYaw;
         else
@@ -5361,7 +5361,7 @@ Client::CKoukuSaydonPresentationPlayer::Resolve_PreviewAnimation(
 void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility()
 {
     if (m_BundlePreviewMembers.empty()) return;
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     std::vector<KOUKU_BOSS_PRESENTATION_VIEW> bosses;
     std::vector<KOUKU_CARD_PRESENTATION_VIEW> players;
     if (level) level->Collect_KoukuPresentationViews(bosses, players);
@@ -5390,7 +5390,7 @@ void Client::CKoukuSaydonPresentationPlayer::Sync_PreviewSourceVisibility(
 void Client::CKoukuSaydonPresentationPlayer::Sample_BundlePreview()
 {
     Engine::CProfilerScope scope(CGameInstance::Get().Get_Profiler(), "Kouku.Presentation.BundleSample");
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     Sync_PreviewSourceVisibility();
     if (!level || !m_bPreviewPlaying || !Prepare_PreviewEffects()) return;
     std::uint32_t effectiveMs = Preview_ClockMs();
@@ -5806,7 +5806,7 @@ void Client::CKoukuSaydonPresentationPlayer::Stop_Preview()
     Clear_LogicPreview();
 #ifdef _DEBUG
     if (m_bBundleWorldExternal)
-        if (auto* level = CLevel_KakulSaydonArena::Get_Active()) level->Debug_StopCompositionWorldPreview();
+        if (auto* level = CLevel_KoukuSaydonArena::Get_Active()) level->Debug_StopCompositionWorldPreview();
 #endif
     m_bBundleWorldExternal = false;
     m_strCompletedPreviewPatternId.clear();
@@ -5967,7 +5967,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_MazeMarks(
             Sync_MazeMark(m_MazeExits[s.iNetEntityId], std::string("cardmaze.exit.") + suit, pivot);
         }
     }
-    if (const auto* arena = CLevel_KakulSaydonArena::Get_Active(); mazeActive && arena)
+    if (const auto* arena = CLevel_KoukuSaydonArena::Get_Active(); mazeActive && arena)
     {
         std::vector<KOUKU_MAZE_TARGET_VIEW> targets;
         arena->Collect_KoukuMazeTargets(targets);
@@ -6008,7 +6008,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoBombs(
     using namespace LostArk::Shared;
     constexpr const char* motionId = "world.sequence.instance.kouku.bingo.bomb.marked";
     const std::vector<std::string> effectTargets{"effect.kouku.gate3.showtime.bomb.fuse"};
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
     if (!arena || !board.iBombCount) { m_BingoBombs.clear(); return; }
     std::erase_if(m_BingoBombs, [&](const auto& row) {
@@ -6084,7 +6084,7 @@ void Client::CKoukuSaydonPresentationPlayer::Update_BingoBombs(
 void Client::CKoukuSaydonPresentationPlayer::Update_BingoMarks(float dt)
 {
     const auto& board = CCombatHUDViewModel::Get().Get_BingoBoard();
-    auto* arena = CLevel_KakulSaydonArena::Get_Active();
+    auto* arena = CLevel_KoukuSaydonArena::Get_Active();
     if (!arena || board.iWhiteMask == 0u)
     {
         m_BingoMarks.clear();
@@ -6257,7 +6257,7 @@ bool Client::CKoukuSaydonPresentationPlayer::Preview_HasActiveWorldBox(const std
         if (box == pattern.WorldOccurrences.end()) return false;
         if (!bundle)
         {
-            const auto* level = CLevel_KakulSaydonArena::Get_Active();
+            const auto* level = CLevel_KoukuSaydonArena::Get_Active();
             return level && level->Debug_HasVisibleCompositionWorldBox(occurrenceId);
         }
         const auto world = std::find_if(m_PreviewDocument.Worlds.begin(), m_PreviewDocument.Worlds.end(),
@@ -6279,7 +6279,7 @@ void Client::CKoukuSaydonPresentationPlayer::Refresh_WorldPlacementAuthoring(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document)
 {
 #ifdef _DEBUG
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level || !m_bPreviewPlaying || m_bModelReferencePreview) return;
     const auto targets = level->Get_CompositionWorldTargets();
     const auto refresh = [&](KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, SESSION& session, const bool bundle)

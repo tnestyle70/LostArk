@@ -129,7 +129,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
         existing_names={r['displayName'] for r in out['presentationResources']}
         def allocate_logic(values):
             ordinal=out.get('nextLogicOrdinal',1);out['nextLogicOrdinal']=ordinal+1
-            item=dict(logicId=f'kakulsaydon.g1.logic.{ordinal}',**values);out['logics'].append(item);definitions[item['logicId']]=item;return item['logicId']
+            item=dict(logicId=f'koukusaydon.g1.logic.{ordinal}',**values);out['logics'].append(item);definitions[item['logicId']]=item;return item['logicId']
         trigger_id=result_id=None
         for pattern in out['patterns']:
             facing = facing_yaw_degrees if facing_yaw_degrees is not None else 90.0
@@ -167,7 +167,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
                 logicbox=dict(occurrenceId=lid,logicId=trigger_id,startMs=at,durationMs=34,enabled=True,onSuccessLogicIds=[result_id],onFailLogicIds=[],onTimeoutLogicIds=[])
                 pattern.setdefault('logicOccurrences',[]).append(logicbox)
                 for identifier,shape,item in items[:64]:
-                    row=item['row'];n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'kakulsaydon.g1.presentation.{n}'
+                    row=item['row'];n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'koukusaydon.g1.presentation.{n}'
                     resource=dict(resourceId=rid,displayName=TAG+identifier,defaultAnchorKind='BOSS',kind='COLLIDER',assetId='',resourceKind='GROUP',elementId='',durationMs=34,colliderKind='GEOMETRY',**shape)
                     out['presentationResources'].append(resource)
                     forward=(row['AreaOffsetX']+item['notifyPositionCm'][0])*.01+(row['AreaRange']*.005 if shape['shape']=='BOX' else 0)
@@ -183,7 +183,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
         impact_assets={f'effect.kouku.gate3.showtime.{shape}.impact':eid for shape,eid in
                        (('circle',421991218),('innerdonut',421991220),('outerdonut',421991222))}
         for pattern in out['patterns']:
-            if pattern['patternId']!='KAKULSAYDON_G1_PATTERN_35':continue
+            if pattern['patternId']!='KOUKUSAYDON_G1_PATTERN_35':continue
             for effect in list(pattern.get('presentationOccurrences',[])):
                 eid=impact_assets.get(resources.get(effect['resourceId'],{}).get('assetId',''))
                 if not eid:continue
@@ -200,7 +200,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
                     result_id=allocate_logic(dict(displayName=TAG+f'max HP {damage_percent} percent (tuning)',logicType='RESULT',outcomeKind='MAX_HP_PERCENT_DAMAGE',percent=damage_percent,durationMs=0,followupPatternId=''))
                 n=pattern.get('nextLogicOccurrenceOrdinal',1);pattern['nextLogicOccurrenceOrdinal']=n+1;lid=f"{pattern['patternId']}.logic.{n}"
                 pattern.setdefault('logicOccurrences',[]).append(dict(occurrenceId=lid,logicId=trigger_id,startMs=at,durationMs=34,enabled=True,onSuccessLogicIds=[result_id],onFailLogicIds=[],onTimeoutLogicIds=[]))
-                n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'kakulsaydon.g1.presentation.{n}'
+                n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'koukusaydon.g1.presentation.{n}'
                 out['presentationResources'].append(dict(resourceId=rid,displayName=name,defaultAnchorKind='MAP',kind='COLLIDER',assetId='',durationMs=34,
                     colliderKind='GEOMETRY',shape='CIRCLE',radiusM=row['AreaRange']*.01,innerRadiusM=row['AreaRemoveRange']*.01,halfExtents=[1,1,1],halfAngleDegrees=180))
                 n=pattern.get('nextPresentationOccurrenceOrdinal',1);pattern['nextPresentationOccurrenceOrdinal']=n+1;cid=f"{pattern['patternId']}.presentation.{n}"
@@ -212,7 +212,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
         circus_assets={f'effect.kouku.common.circus.{shape}.warning':eid for shape,eid in
                        (('circle',421980629),('innerdonut',421980630),('outerdonut',421980631))}
         for pattern in out['patterns']:
-            if pattern['patternId']!='KAKULSAYDON_G1_PATTERN_83':continue
+            if pattern['patternId']!='KOUKUSAYDON_G1_PATTERN_83':continue
             for impact in list(pattern.get('presentationOccurrences',[])):
                 if resources.get(impact['resourceId'],{}).get('assetId')!='effect.kouku.gate1.circus.rainbow.impact':continue
                 group=impact.get('selectionGroupId')
@@ -230,7 +230,7 @@ def prepare(document, source_root=DEFAULT_SOURCE, *, damage_percent=10, facing_y
                     scale=warning.get('scale',[1,1,1]);rotation=warning.get('rotationDegrees',[0,0,0])
                     if abs(scale[0]-scale[2])>.0001 or rotation[0]!=0 or rotation[2]!=0:raise ValueError('Circus hollow rings require uniform X/Z and yaw-only geometry')
                     eid=circus_assets[resources[warning['resourceId']]['assetId']];row=next(r for r in skill_rows[eid] if r['Key']==2)
-                    n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'kakulsaydon.g1.presentation.{n}'
+                    n=out['nextPresentationResourceOrdinal'];out['nextPresentationResourceOrdinal']=n+1;rid=f'koukusaydon.g1.presentation.{n}'
                     out['presentationResources'].append(dict(resourceId=rid,displayName=name,defaultAnchorKind='MAP',kind='COLLIDER',assetId='',durationMs=34,
                         colliderKind='GEOMETRY',shape='CIRCLE',radiusM=row['AreaRange']*.01,innerRadiusM=row['AreaRemoveRange']*.01,halfExtents=[1,1,1],halfAngleDegrees=180))
                     n=pattern.get('nextPresentationOccurrenceOrdinal',1);pattern['nextPresentationOccurrenceOrdinal']=n+1;cid=f"{pattern['patternId']}.presentation.{n}"

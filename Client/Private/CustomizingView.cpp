@@ -2,9 +2,10 @@
 
 #include "Character.h"
 #include "CharacterOutfitApplier.h"
+#include "DataJson.h"
 #include "FaceCustomizeApplier.h"
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "Model.h"
 #include "RuntimeAssetRoot.h"
 #include "SoundCueCatalog.h"
@@ -782,7 +783,7 @@ void Client::CCustomizingView::Update_Tabs()
 
 		if (bHovered && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedTab = i;
 		}
 	}
@@ -817,7 +818,7 @@ void Client::CCustomizingView::Update_Tabs()
 			Is_Hovered(fX, fY, fWidth, fHeight) &&
 			Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (m_iSelectedCostume != i)
 				m_bCostumeChanged = true;
 			m_iSelectedCostume = i;
@@ -1317,7 +1318,7 @@ void Client::CCustomizingView::Update_ActionList(const shared_ptr<CCharacter>& p
 		}
 		if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
 			continue;
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		m_iSelectedAction = i;
 		/* The pose cell goes back to what the screen stands in, which Set_Animation(IDLE)
 		already resolves to the creation clip while the preview is up (see
@@ -1606,7 +1607,7 @@ void Client::CCustomizingView::Update_FaceCategoryHeader(
 		return;
 	if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
 		return;
-	CMainApp::Play_UIButtonClickSound();
+	Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 	isExpanded = !isExpanded;
 	/* The two categories are one accordion, not two independent folds: opening either closes
 	the other, so the section below always sits directly under the collapsed header above it. */
@@ -1939,7 +1940,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 	};
 	if (Fn_PickerClicked("CC_PickerApply"))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		if (nullptr != pCharacter)
 		{
 			/* The second hair colour follows the first until its own picker exists; a
@@ -1952,7 +1953,7 @@ bool_t Client::CCustomizingView::Update_ColorPicker(
 	}
 	if (Fn_PickerClicked("CC_PickerCancel"))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		if (nullptr != pCharacter)
 		{
 			Apply_SurfaceColor(pCharacter, m_iPickerSurface, m_vPickerRestore);
@@ -2038,7 +2039,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 		if (Get_SlotRect(pId, fX, fY, fW, fH) &&
 			Is_Hovered(fX, fY, fW, fH) && Is_Clicked(fX, fY, fW, fH))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iPickerSurface = iSurface;
 			m_vPickerRestore = vWorn;
 		}
@@ -2089,7 +2090,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			}
 			if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iSelectedHair = iEntry;
 				m_bHairChanged = true;
 			}
@@ -2181,7 +2182,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
 				continue;
 
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedEyeIris = iEntry;
 			if (nullptr == pCharacter || nullptr == pIrisTextures)
 			{
@@ -2239,7 +2240,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			fX, fY, fWidth, fHeight) &&
 			Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedAdornSub = i;
 		}
 	}
@@ -2277,7 +2278,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			if (!Is_Hovered(fX, fY, fWidth, fHeight) || !Is_Clicked(fX, fY, fWidth, fHeight))
 				continue;
 
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (nullptr == pStamps || m_iSelectedAdornSub >= 3)
 			{
 				OutputDebugStringA("[FaceMakeup] this page has no stamp list\n");
@@ -2332,7 +2333,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			if (Get_SlotRect((string(pId) + "_Bg").c_str(), fX, fY, fWidth, fHeight) &&
 				Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_isHairTwoTone = 1 == i;
 			}
 		}
@@ -2346,7 +2347,7 @@ void Client::CCustomizingView::Update_SecondaryTabs(const shared_ptr<CCharacter>
 			if (Get_SlotRect((string(pId) + "_Bg").c_str(), fX, fY, fWidth, fHeight) &&
 				Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_isEyeOddSelected = 1 == i;
 				/* The material decides whether the left-eye colours are read at all, and the
 				two swatches now stand for the other eye, so they show its colours. */
@@ -2478,7 +2479,7 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 			continue;
 		if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedFacePreset = iEntry;
 			Apply_FacePreset(pCharacter, iEntry);
 		}
@@ -2508,7 +2509,7 @@ void Client::CCustomizingView::Update_FaceTab(const shared_ptr<CCharacter>& pCha
 		m_pView->Set_SlotTexture(strBgId, bHovered ? ASSET_SUBTAB_OVER : ASSET_SUBTAB_NORMAL);
 		if (bHovered && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedPart = i;
 			m_iDraggingRow = -1;
 		}
@@ -2607,7 +2608,7 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 		}
 		if (Is_Hovered(fX, fY, fWidth, fHeight) && Is_Clicked(fX, fY, fWidth, fHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedSaveSlot = i;
 		}
 	}
@@ -2660,7 +2661,7 @@ void Client::CCustomizingView::Update_Buttons(const shared_ptr<CCharacter>& pCha
 		if (!bHovered || !Is_Clicked(fX, fY, fWidth, fHeight))
 			continue;
 
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		if (0 == std::strcmp(Button.pSlotId, "CC_FaceRandomBtn"))
 			Fn_RandomizeFace();
 		else if (0 == std::strcmp(Button.pSlotId, "CC_FaceResetBtn"))

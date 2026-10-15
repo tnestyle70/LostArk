@@ -49,7 +49,7 @@ class KoukuSaydonWorldAuthoringTests(unittest.TestCase):
     def test_stage_document_does_not_infer_mario_or_gate(self) -> None:
         waypoint = builder.StageWaypoint(
             source_level_id="LV_LUT_MIDNIGHTC_ED_SL02",
-            placement_id="stage.kakul.sl02",
+            placement_id="stage.kouku.sl02",
             cell_x=1,
             cell_z=2,
             x=4.0,
@@ -66,7 +66,7 @@ class KoukuSaydonWorldAuthoringTests(unittest.TestCase):
     def test_world_uses_stable_spawns_and_disabled_stage_waypoints(self) -> None:
         waypoint = builder.StageWaypoint(
             source_level_id="LV_LUT_MIDNIGHTC_ED_SL01",
-            placement_id="stage.kakul.sl01",
+            placement_id="stage.kouku.sl01",
             cell_x=1,
             cell_z=2,
             x=4.0,
@@ -80,7 +80,7 @@ class KoukuSaydonWorldAuthoringTests(unittest.TestCase):
         )
         self.assertEqual(4, text.count('"enabled": true'))
         self.assertEqual(1, text.count('"enabled": false'))
-        self.assertIn('"placementId": "stage.kakul.sl01"', text)
+        self.assertIn('"placementId": "stage.kouku.sl01"', text)
         self.assertNotIn("random", text.casefold())
 
 

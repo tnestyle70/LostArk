@@ -1,4 +1,4 @@
-#include "ActionCompositionGraphModel.h"
+﻿#include "ActionCompositionGraphModel.h"
 
 #include "ValtanPatternTree.h"
 
@@ -11,6 +11,7 @@
 
 namespace
 {
+	// pan/zoom 전 그래프의 고정 배치 단위다. 실제 화면 확대/이동은 소비자에서 적용한다.
 	constexpr float GRAPH_MARGIN = 32.f;
 	constexpr float NODE_WIDTH = 240.f;
 	constexpr float NODE_HEIGHT = 104.f;
@@ -18,6 +19,7 @@ namespace
 	constexpr float NODE_ROW_GAP = 52.f;
 	constexpr float TERMINAL_EDGE_LENGTH = 72.f;
 
+	// 입력 stable ID의 길이와 ASCII 문자 집합을 검사한다. 외부 asset이나 다른 Pattern의 존재 확인은 아니다.
 	bool Is_StableToken(const std::string_view Value)
 	{
 		if (Value.empty() || Value.size() > 255u)
@@ -35,11 +37,13 @@ namespace
 		return true;
 	}
 
+	// 기본 TIMEOUT 경로가 자동 진입하지 않는 GROGGY/PART_BREAK를 구분한다. 수동 audition은 이 건너뛰기를 쓰지 않는다.
 	bool Is_EventEnteredStage(const std::string_view StageKind)
 	{
 		return "GROGGY" == StageKind || "PART_BREAK" == StageKind;
 	}
 
+	// 오류 위치를 값으로 채우고 false를 반환한다. 호출자가 만드는 임시 snapshot 외 기존 화면은 여기서 바꾸지 않는다.
 	bool Fail(
 		Client::ACTION_COMPOSITION_GRAPH_ERROR& OutError,
 		const Client::ACTION_COMPOSITION_GRAPH_ERROR_CODE eCode,
@@ -58,6 +62,7 @@ namespace
 		return false;
 	}
 
+	// 노드 사각형과 간선 점을 포함하도록 전체 그래프 범위를 넓힌다. Renderer의 Fit 계산에 사용한다.
 	void Expand_Bounds(
 		Client::ACTION_COMPOSITION_GRAPH_RECT& Bounds,
 		const Client::ACTION_COMPOSITION_GRAPH_POINT& Point)
@@ -68,6 +73,7 @@ namespace
 		Bounds.fBottom = (std::max)(Bounds.fBottom, Point.fY);
 	}
 
+	// 바로 앞 점과 같은 좌표만 생략해 길이 0인 인접 선분을 줄인다. 전체 경로의 중복 점을 제거하는 함수는 아니다.
 	void Push_UniquePoint(
 		std::vector<Client::ACTION_COMPOSITION_GRAPH_POINT>& Points,
 		const Client::ACTION_COMPOSITION_GRAPH_POINT Point)
@@ -80,6 +86,7 @@ namespace
 		Points.push_back(Point);
 	}
 
+	// stage 기간(ms)을 uint64 합에 더하기 전 overflow를 검사한다. false이면 기존 합은 유지한다.
 	bool Add_Duration(
 		std::uint64_t& InOutDuration,
 		const std::uint32_t iDurationMs)
@@ -94,6 +101,7 @@ namespace
 		return true;
 	}
 
+	// 한 노드의 TIMEOUT 기본 간선을 찾는다. 앞선 구성 단계가 기본 간선을 하나씩 보장한다.
 	std::size_t Find_DefaultEdge(
 		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 		const std::vector<std::vector<std::size_t>>& OutgoingEdges,
@@ -107,6 +115,7 @@ namespace
 		return Client::ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 	}
 
+	// 선택된 outcome과 같은 표시 간선을 찾는다. 없는 선택은 Project의 override 검증에서 거부한다.
 	std::size_t Find_OutcomeEdge(
 		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 		const std::vector<std::vector<std::size_t>>& OutgoingEdges,
@@ -121,13 +130,15 @@ namespace
 		return Client::ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 	}
 
+	// 지정한 Trash 패턴/Stage의 TIMEOUT 재진입만 허용한다. 이 간선은 위상 정렬에서 빼고 경로에는 반복 끝점으로 남긴다.
 	bool Is_CounterRetryEdge(
 		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 		const Client::ACTION_COMPOSITION_GRAPH_EDGE& Edge)
 	{
 		if (Edge.bTerminal || Edge.strOutcome != "TIMEOUT" ||
 			(Snapshot.strPatternId != "VALTAN_TRASH" &&
-			 Snapshot.strPatternId != "VALTAN_TRASH_CATCH_IF")) return false;
+			 Snapshot.strPatternId != "VALTAN_TRASH_CATCH_IF"))
+			return false;
 		const auto& Source = Snapshot.Nodes[Edge.iSourceNodeIndex];
 		return Source.iBranchCount == 1u &&
 			(Source.Key.strStageId == "RETRY_EXHAUSTED" ||
@@ -135,6 +146,8 @@ namespace
 			Snapshot.Nodes[Edge.iTargetNodeIndex].Key.strStageId == "RECHARGE_WAIT_02";
 	}
 
+	// entry부터 선택 outcome 또는 기본 TIMEOUT을 따라 한 표시 경로를 만든다. 재시도 간선은 반복 표시 후 멈춘다.
+	// OutPath는 처음에 비우며 도중 실패 시 부분 결과가 남지만 Project의 임시 snapshot 안에서만 사용한다.
 	bool Build_Path(
 		const Client::ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 		const std::vector<std::vector<std::size_t>>& OutgoingEdges,
@@ -186,6 +199,7 @@ namespace
 		return true;
 	}
 
+	// 점의 선분 투영 비율을 0~1로 제한한 뒤 제곱 거리를 구한다. 제곱 오차와 비교하므로 제곱근 계산이 필요 없다.
 	float Point_SegmentDistanceSquared(
 		const Client::ACTION_COMPOSITION_GRAPH_POINT& Point,
 		const Client::ACTION_COMPOSITION_GRAPH_POINT& Start,
@@ -211,6 +225,7 @@ namespace
 	}
 }
 
+// 경계 포함 사각형 검사다. 호출자는 화면 점을 먼저 그래프 좌표로 변환한다.
 bool Client::ACTION_COMPOSITION_GRAPH_RECT::Contains(
 	const ACTION_COMPOSITION_GRAPH_POINT& Point) const noexcept
 {
@@ -218,6 +233,7 @@ bool Client::ACTION_COMPOSITION_GRAPH_RECT::Contains(
 		Point.fY >= fTop && Point.fY <= fBottom;
 }
 
+// vector 위치가 같아도 stable ID가 바뀌면 다른 노드로 취급한다.
 bool Client::ACTION_COMPOSITION_GRAPH_NODE_KEY::operator==(
 	const ACTION_COMPOSITION_GRAPH_NODE_KEY& Right) const noexcept
 {
@@ -225,6 +241,7 @@ bool Client::ACTION_COMPOSITION_GRAPH_NODE_KEY::operator==(
 		strStageId == Right.strStageId && strActionId == Right.strActionId;
 }
 
+// 이전 실패 식별자와 문구를 함께 비운다. 성공한 투영에서도 호출해 오래된 오류가 남지 않게 한다.
 void Client::ACTION_COMPOSITION_GRAPH_ERROR::Clear()
 {
 	eCode = ACTION_COMPOSITION_GRAPH_ERROR_CODE::NONE;
@@ -235,6 +252,7 @@ void Client::ACTION_COMPOSITION_GRAPH_ERROR::Clear()
 	strOutcome.clear();
 }
 
+// BossLogicFlowViewModel 등이 분기 override 없이 기본 표시를 요청하는 진입점이다. 빈 목록의 수명은 정적이다.
 bool Client::CActionCompositionGraphModel::Project(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const std::uint64_t iSourceGeneration,
@@ -247,6 +265,7 @@ bool Client::CActionCompositionGraphModel::Project(
 		InOutSnapshot, OutError);
 }
 
+// 원본을 변경하지 않고 임시 snapshot을 완성한 뒤 마지막에 교체한다. 명시적 false는 기존 snapshot을 보존하고 OutError만 갱신한다.
 bool Client::CActionCompositionGraphModel::Project(
 	const VALTAN_PATTERN_VIEW& Pattern,
 	const std::uint64_t iSourceGeneration,
@@ -277,6 +296,7 @@ bool Client::CActionCompositionGraphModel::Project(
 			Pattern.strPatternId);
 	}
 
+	// Stage ID의 중복은 set, action→노드 연결은 map으로 검증한다. 원본 vector 순서는 canonical stage index로 유지한다.
 	ACTION_COMPOSITION_GRAPH_SNAPSHOT Staged;
 	Staged.iSourceGeneration = iSourceGeneration;
 	Staged.strPatternId = Pattern.strPatternId;
@@ -353,6 +373,7 @@ bool Client::CActionCompositionGraphModel::Project(
 			Pattern.strEntryActionId);
 	}
 
+	// 각 노드의 outgoing 간선 index를 따로 모아 경로 탐색과 위상 정렬에서 같은 연결을 사용한다.
 	std::vector<std::vector<std::size_t>> OutgoingEdges(Staged.Nodes.size());
 	Staged.Edges.reserve(Pattern.Stages.size() * 2u);
 	for (std::size_t iStage = 0u; iStage < Pattern.Stages.size(); ++iStage)
@@ -410,8 +431,7 @@ bool Client::CActionCompositionGraphModel::Project(
 						Pattern.strPatternId, Stage.strStageId,
 						Stage.strActionId, Branch.strOutcome);
 				}
-				/* This projection owns one Pattern only. The destination is retained
-				   for inspection, while its entry Stage begins in the next snapshot. */
+				// 한 Pattern만 투영하므로 대상 Pattern ID만 남기고 현재 경로는 끝낸다. 대상의 첫 Stage는 별도 Pattern view가 담당한다.
 				Edge.bTerminal = true;
 			}
 			else if (!Branch.strNextActionId.has_value())
@@ -447,11 +467,8 @@ bool Client::CActionCompositionGraphModel::Project(
 			Edge.eOrigin = ACTION_COMPOSITION_GRAPH_EDGE_ORIGIN::DERIVED_TIMEOUT;
 			Edge.bDefault = true;
 			std::size_t iNextStage = iStage + 1u;
-			/* A manual audition Pattern is an ordered authoring chain: its
-			   implicit default edge is always the immediate vector-next Stage,
-			   including WINDUP -> GROGGY -> ACTIVE.  Canonical encounter graphs
-			   retain their event-entered fallback rule; an explicit authored
-			   TIMEOUT above always owns its exact target in both modes. */
+			// 수동 audition의 기본 연결은 바로 다음 vector Stage다. 일반 패턴은 이벤트 진입 Stage를 건너뛴다.
+			// 명시적으로 저작한 TIMEOUT이 있으면 이 보충 간선을 만들지 않는다.
 			while (!Pattern.bManualServerAudition &&
 				iNextStage < Pattern.Stages.size() &&
 				Is_EventEnteredStage(Pattern.Stages[iNextStage].strStageKind))
@@ -472,6 +489,7 @@ bool Client::CActionCompositionGraphModel::Project(
 		}
 	}
 
+	// 동일 action의 중복 선택이나 실제 없는 outcome은 허용하지 않는다. 선택 값은 표시 경로에만 반영한다.
 	std::map<std::string, std::string, std::less<>> SelectedOutcomes;
 	for (const ACTION_COMPOSITION_GRAPH_OUTCOME_OVERRIDE& Override :
 		OutcomeOverrides)
@@ -506,6 +524,8 @@ bool Client::CActionCompositionGraphModel::Project(
 		}
 	}
 
+	// Kahn 위상 정렬이다. terminal과 허용된 retry는 차수에서 제외하고 남은 모든 노드의 순환 여부를 검사한다.
+	// Ready를 정렬 set으로 두어 동시에 가능한 노드는 canonical index가 작은 순서로 처리한다.
 	std::vector<std::size_t> Indegrees(Staged.Nodes.size(), 0u);
 	for (const ACTION_COMPOSITION_GRAPH_EDGE& Edge : Staged.Edges)
 	{
@@ -549,6 +569,7 @@ bool Client::CActionCompositionGraphModel::Project(
 				Staged.Nodes[iCycleNode].Key.strActionId : std::string{});
 	}
 
+	// entry에서 도달 가능한 노드를 stack으로 표시한다. retry도 방문 표시를 이용해 한 번만 확장한다.
 	std::vector<std::size_t> ReachableStack{ Staged.iEntryNodeIndex };
 	Staged.Nodes[Staged.iEntryNodeIndex].bReachable = true;
 	while (!ReachableStack.empty())
@@ -575,6 +596,8 @@ bool Client::CActionCompositionGraphModel::Project(
 			Pattern.strPatternId);
 	}
 
+	// 위상 순서의 역순으로 가장 긴 자식 경로 시간을 누적한다. retry는 이후 시간을 0으로 보고 한 표시 회차에서 멈춘다.
+	// 기간이 같으면 먼저 만난 outgoing 간선을 유지하므로 저작 순서가 동점 선택을 결정한다.
 	std::vector<std::uint64_t> MaximumDuration(Staged.Nodes.size(), 0u);
 	std::vector<std::size_t> MaximumEdge(
 		Staged.Nodes.size(), ACTION_COMPOSITION_GRAPH_INVALID_INDEX);
@@ -608,6 +631,7 @@ bool Client::CActionCompositionGraphModel::Project(
 		}
 	}
 
+	// 위에서 기록한 최장 간선을 entry부터 따라 실제 표시할 index 목록을 복원한다.
 	std::size_t iMaximumNode = Staged.iEntryNodeIndex;
 	while (ACTION_COMPOSITION_GRAPH_INVALID_INDEX != iMaximumNode)
 	{
@@ -631,6 +655,7 @@ bool Client::CActionCompositionGraphModel::Project(
 	Staged.MaximumPath.iDurationMs =
 		MaximumDuration[Staged.iEntryNodeIndex];
 
+	// 재시도 간선을 제외한 최장 선행 깊이를 열 번호로 사용한다. 도달 불가 노드도 원본 확인을 위해 배치한다.
 	for (const std::size_t iNode : TopologicalOrder)
 	{
 		for (const std::size_t iEdge : OutgoingEdges[iNode])
@@ -644,6 +669,7 @@ bool Client::CActionCompositionGraphModel::Project(
 			}
 		}
 	}
+	// 같은 깊이의 노드는 canonical 순서대로 아래에 쌓는다. 겹침 최적화나 전역 최단 배선을 수행하지는 않는다.
 	std::map<std::size_t, std::size_t> RowByDepth;
 	for (ACTION_COMPOSITION_GRAPH_NODE& Node : Staged.Nodes)
 	{
@@ -664,6 +690,7 @@ bool Client::CActionCompositionGraphModel::Project(
 			{ Node.Bounds.fRight, Node.Bounds.fBottom });
 	}
 
+	// 같은 source의 간선 시작점을 분산하고 직각 꺾은선을 만든다. 뒤로 향하는 연결은 노드 오른쪽 바깥으로 우회한다.
 	std::vector<std::size_t> SourceEdgeOrdinal(Staged.Nodes.size(), 0u);
 	for (ACTION_COMPOSITION_GRAPH_EDGE& Edge : Staged.Edges)
 	{
@@ -703,11 +730,13 @@ bool Client::CActionCompositionGraphModel::Project(
 			Expand_Bounds(Staged.GraphBounds, Point);
 	}
 
+	// 검증·경로·배치가 끝난 독립 값을 한 번에 교체한다. 기존 snapshot의 index/참조를 보관한 소비자는 새 generation에 맞춰 다시 조회해야 한다.
 	InOutSnapshot = std::move(Staged);
 	OutError.Clear();
 	return true;
 }
 
+// 뒤쪽 노드부터 경계 포함 검사해 하나를 반환한다. 원본 선택의 stable ID 재검증은 Workbench가 담당한다.
 std::size_t Client::CActionCompositionGraphModel::Hit_TestNode(
 	const ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 	const ACTION_COMPOSITION_GRAPH_POINT& GraphPoint) noexcept
@@ -720,6 +749,7 @@ std::size_t Client::CActionCompositionGraphModel::Hit_TestNode(
 	return ACTION_COMPOSITION_GRAPH_INVALID_INDEX;
 }
 
+// 허용 오차 안의 가장 가까운 선분을 찾는다. 같은 거리면 나중에 검사한 간선을 선택하며 잘못된 오차는 거부한다.
 std::size_t Client::CActionCompositionGraphModel::Hit_TestEdge(
 	const ACTION_COMPOSITION_GRAPH_SNAPSHOT& Snapshot,
 	const ACTION_COMPOSITION_GRAPH_POINT& GraphPoint,

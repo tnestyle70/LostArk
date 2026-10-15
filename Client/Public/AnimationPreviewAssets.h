@@ -41,7 +41,7 @@ struct ANIMATION_PREVIEW_ASSET final
 // Debug authoring targets reuse the same CModel path as the playable
 // DimensionMaster body. The core and summon remain optional preview-only models;
 // the Animation Tool drives whichever admitted model target is selected.
-inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
+inline constexpr std::array<ANIMATION_PREVIEW_ASSET, 30> ANIMATION_PREVIEW_ASSETS =
 {
 	ANIMATION_PREVIEW_ASSET
 	{
@@ -255,7 +255,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	   These descriptors do not supply a Server entity or boss archetype identity. */
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpct-00",
+		"koukusaydon.mn-rpct-00",
 		"[KoukuSaydon Reference] MN_RPCT_00 (249 clips)",
 		"MN_RPCT_00",
 		"Character/KoukuSaton/MN_RPCT_00/MN_RPCT_00.wmodel",
@@ -269,7 +269,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	   package ships no AnimSet, so the cook bakes the MN_RPCT_00 PSA pair. */
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpct-03",
+		"koukusaydon.mn-rpct-03",
 		"[KoukuSaydon Reference] MN_RPCT_03 colorless Saydon body, RPCT_00 rig (249 clips)",
 		"MN_RPCT_03",
 		"Character/KoukuSaton/MN_RPCT_03/MN_RPCT_03.wmodel",
@@ -281,7 +281,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpct-05",
+		"koukusaydon.mn-rpct-05",
 		"[KoukuSaydon Reference] MN_RPCT_05 / MN_RPCT_07 alias (249 clips)",
 		"MN_RPCT_05",
 		"Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
@@ -293,7 +293,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpct-06",
+		"koukusaydon.mn-rpct-06",
 		"[KoukuSaydon Reference] MN_RPCT_06 (34 clips)",
 		"MN_RPCT_06",
 		"Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
@@ -305,7 +305,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	},
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpcz-00",
+		"koukusaydon.mn-rpcz-00",
 		"[KoukuSaydon Reference] MN_RPCZ_00 (91 clips)",
 		"MN_RPCZ_00",
 		"Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
@@ -319,7 +319,7 @@ inline constexpr std::array ANIMATION_PREVIEW_ASSETS =
 	   and animation set; this donor never replaces the MN_RPCZ_00 boss. */
 	ANIMATION_PREVIEW_ASSET
 	{
-		"kakulsaydon.mn-rpcz-00-1",
+		"koukusaydon.mn-rpcz-00-1",
 		"[KoukuSaydon Player] MN_RPCZ_00-1 madness doll",
 		"MN_RPCZ_00-1",
 		"Character/KoukuSaton/MN_RPCZ_00-1/MN_RPCZ_00-1.wmodel",

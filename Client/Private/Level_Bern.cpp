@@ -2,10 +2,7 @@
 #include <dinput.h>
 #include "imgui.h"
 #include "UITextOcclusion.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "Level_Bern.h"
 
@@ -649,9 +646,8 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 	}
 	m_CharacterRestoreStarted.reset();
 	if (CLevelTransitionService::Is_Pending()) return;
-#ifdef _DEBUG
+	// F1 렌더 도중 카메라를 바꾸지 않고, Debug/Release 모두 이 Level 갱신 경계에서 요청을 소비한다.
 	Consume_DebugEntranceReplay();
-#endif
 	Update_EntranceCinematic(fTimeDelta);
 
 	const shared_ptr<CCharacter> localCharacter =
@@ -715,7 +711,6 @@ void CLevel_Bern::Update(f32_t fTimeDelta)
 
 }
 
-#ifdef _DEBUG
 bool_t CLevel_Bern::Can_DebugEntranceReplay(std::string& outStatus) const
 {
 	if (s_pActiveInstance != this || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::BERN) ||
@@ -741,12 +736,15 @@ bool_t CLevel_Bern::Can_DebugEntranceReplay(std::string& outStatus) const
 		outStatus = "Another presentation currently owns the camera.";
 		return false;
 	}
+#ifdef _DEBUG
+	// Release에는 저작 도구가 없으므로 이 추가 충돌 검사만 Debug 경계에 남긴다.
 	if (m_bMapAuthoringActive || m_MapRuntime.Has_DebugPlacementPreview() ||
 		m_PlayerController.Is_DebugPlayerPlacementArmed() || m_PlayerController.Is_DebugPlayerPlacementPending())
 	{
 		outStatus = "Finish the map preview or Move Player operation before replaying.";
 		return false;
 	}
+#endif
 	outStatus.clear();
 	return true;
 }
@@ -802,7 +800,6 @@ void CLevel_Bern::Consume_DebugEntranceReplay()
 	m_bDebugEntranceReplayActive = true;
 	m_strDebugEntranceReplayStatus = "Playing Bern cutscene. Esc skips.";
 }
-#endif
 
 std::optional<f32_t> CLevel_Bern::Get_EntranceCinematicFovYOverride()
 {
@@ -875,13 +872,11 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 			m_pCamera->Set_FollowTarget(m_pEntranceRestoreTarget.lock());
 			m_pCamera->Set_FollowEnabled(m_bEntranceRestoreFollowRequested);
 			m_bEntranceCinematicDone = true;
-#ifdef _DEBUG
 			if (m_bDebugEntranceReplayActive)
 			{
 				m_bDebugEntranceReplayActive = false;
 				m_strDebugEntranceReplayStatus = "Cannot start Bern cutscene: camera ownership changed.";
 			}
-#endif
 			return;
 		}
 		m_bEntranceCinematicApplied = true;
@@ -920,16 +915,16 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 			BERN_ENTRANCE_CINEMATIC_OWNER_ID,
 			pose.vEye, pose.vLookAt, pose.fFovYDegrees))
 	{
-#ifdef _DEBUG
 		if (m_bDebugEntranceReplayActive)
 		{
 			m_bDebugEntranceReplayActive = false;
 			m_strDebugEntranceReplayStatus = "Bern cutscene stopped: camera pose or ownership is unavailable.";
 		}
-#endif
 		End_EntranceCinematic();
 		return;
 	}
+	// 카메라 소유권과 pose 적용 성공 후에만 저폴리 색상 선택을 허용한다.
+	m_MapRuntime.Set_CutsceneGeometryEnabled(true);
 	// Failed loading, ownership or pose application must not consume the first visit.
 	s_hasPresentedBernEntranceThisSession = true;
 	if (m_fEntranceCinematicSeconds >=
@@ -941,6 +936,7 @@ void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)
 
 void CLevel_Bern::End_EntranceCinematic()
 {
+	m_MapRuntime.Set_CutsceneGeometryEnabled(false);
 	if (m_bEntranceCinematicApplied && nullptr != m_pCamera)
 	{
 		(void)m_pCamera->End_PresentationOverride(
@@ -952,13 +948,11 @@ void CLevel_Bern::End_EntranceCinematic()
 	m_bEntranceRestoreFollowRequested = false;
 	m_bEntranceCinematicApplied = false;
 	m_bEntranceCinematicDone = true;
-#ifdef _DEBUG
 	if (m_bDebugEntranceReplayActive)
 	{
 		m_bDebugEntranceReplayActive = false;
 		m_strDebugEntranceReplayStatus = "Bern cutscene completed.";
 	}
-#endif
 }
 
 HRESULT CLevel_Bern::Render()

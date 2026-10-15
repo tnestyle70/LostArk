@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>LostArk 함수</Title>
+      <Shortcut>la_function</Shortcut>
+      <Description>함수 목적과 다음 줄 중괄호</Description>
+      <Author>LostArk</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal><ID>purpose</ID><ToolTip>호출자가 사용하는 목적</ToolTip><Default>호출자가 이 함수를 사용하는 목적</Default></Literal>
+        <Literal><ID>returnType</ID><ToolTip>현재 계약의 반환 타입</ToolTip><Default>void</Default></Literal>
+        <Literal><ID>functionName</ID><ToolTip>함수 이름</ToolTip><Default>FunctionName</Default></Literal>
+        <Literal><ID>parameters</ID><ToolTip>입력과 출력 매개변수</ToolTip><Default></Default></Literal>
+      </Declarations>
+      <Code Language="CPP"><![CDATA[//$purpose$
+$returnType$ $functionName$($parameters$)
+{
+    $end$
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

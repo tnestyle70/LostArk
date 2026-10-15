@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "ServerCombatHitRuntime.h"
@@ -532,7 +532,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			"Load the rear-cone grab with explicit captured/timeout branches and forward-facing 180-degree, 24m/s minimum-12m arena ejection");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		room.m_WorldEntities.clear();
@@ -754,7 +754,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 			"Recover a null pattern-start target as the nearest engageable player from the live boss position");
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		room.m_WorldEntities.clear();
@@ -874,7 +874,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanLifecycle(TESTS& 
 		}
 	}
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto grabRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& grabRoom = *grabRoomStorage;
 		SERVER_WORLD_ENTITY grabBoss{};

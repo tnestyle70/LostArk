@@ -1,11 +1,8 @@
 #include "RaidEntryPreviewView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "RaidBossShowcaseService.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
@@ -122,7 +119,7 @@ namespace
 		const wchar_t*	pGateLevels;	// 관문별 아이템 레벨 row
 		const wchar_t*	pMatchLimit;	// 아이템 레벨 N 미만 매칭 불가
 		/* Live showcase boss for this raid, rendered over the portrait by
-		   CRaidBossShowcaseService -- nullptr keeps the static key art (Kakul's model is
+		   CRaidBossShowcaseService -- nullptr keeps the static key art (Kouku's model is
 		   still in production). */
 		const char_t*	pShowcaseArchetypeId;
 		const char_t*	pBossPortrait;
@@ -140,7 +137,7 @@ namespace
 		const char_t*	pBgMoviePrefix;
 		int32_t			iBgMovieFrames;
 		/* 입장하기 투표 발의 시 이 탭이 고르는 목표 레이드. Server가 이 값으로 target world를
-		   결정한다(발탄->VALTAN_ARENA, 쿠크->KAKULSAYDON_ARENA). */
+		   결정한다(발탄->VALTAN_ARENA, 쿠크->KOUKUSAYDON_ARENA). */
 		LostArk::Shared::RAID_ENTRY_TARGET eTarget;
 	};
 	const RAID_DEF RAID_DEFS[] =
@@ -157,13 +154,13 @@ namespace
 			nullptr,
 			"UI/RaidEntry/RaidEntry_BossPortrait.png",
 			"UI/RaidEntry/RaidEntry_LeftPanel_2.png", false,
-			/* Kakul's three esther skills, in the order the real window lists them.
+			/* Kouku's three esther skills, in the order the real window lists them.
 			   esther_icon_3/4 are cut from EFUI_ICONATLAS_E/esther_0.dds; only the three
 			   already on disk had names, so the rest keep their atlas index. */
 			{ "UI/Esther/esther_icon_3.png",
 			  "UI/Esther/esther_portrait_wei.png",
 			  "UI/Esther/esther_icon_4.png" },
-			/* Kakul drops the one item, so the remaining seven entries stay null and their
+			/* Kouku drops the one item, so the remaining seven entries stay null and their
 			   slots are hidden rather than padded with a repeat. Grade 4 is the relic
 			   background (see GRADE_BACKGROUNDS -- the file names do not match the retail
 			   grade names, but the colours run normal/고급/희귀/영웅/전설/유물/아바타 in
@@ -171,7 +168,7 @@ namespace
 			{ "UI/Items/Common/portfolio.png" },
 			{ 4 },
 			"UI/RaidEntry/RaidEntry_BG_Kukusaton/RaidEntry_BG_Kukusaton", 300,
-			LostArk::Shared::RAID_ENTRY_TARGET::KAKULSAYDON,
+			LostArk::Shared::RAID_ENTRY_TARGET::KOUKUSAYDON,
 		},
 		{
 			0,
@@ -415,7 +412,7 @@ void CRaidEntryPreviewView::Update_TabStrip(f32_t fTimeDelta)
 		if (Router.Is_Clicked(pBase[0], pBase[1], pBase[2], pBase[3], fRefWidth, fRefHeight) &&
 			iRaid != m_iSelectedRaid)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedRaid = iRaid;
 			Apply_RaidSelection();
 			break;
@@ -625,7 +622,7 @@ bool_t CRaidEntryPreviewView::Render()
 		if (isHovered && !wasJustOpened &&
 			Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (button.isConfirm)
 				confirmClicked = true;
 			else
@@ -988,7 +985,7 @@ bool_t CRaidEntryPreviewView::Render_ConfirmStep()
 			"UI/ClassSelect/Common/NormalButtonHover.png" : "");
 		if (isHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (button.isConfirm)
 				confirmClicked = true;
 			else
@@ -1042,7 +1039,7 @@ void CRaidEntryPreviewView::Open_VoteConfirm(
 	m_isOpen = true;
 	m_isConfirmStepOpen = true;
 	m_hasJustOpened = true;
-	CMainApp::Play_PopupRequestSound();
+	Client::Play_UISound(Client::UI_SOUND_CUE::POPUP_REQUEST);
 }
 
 void CRaidEntryPreviewView::Close_VoteConfirm()
@@ -1069,7 +1066,7 @@ void CRaidEntryPreviewView::Open_SimpleConfirm(
 	m_isOpen = true;
 	m_isConfirmStepOpen = true;
 	m_hasJustOpened = true;
-	CMainApp::Play_PopupRequestSound();
+	Client::Play_UISound(Client::UI_SOUND_CUE::POPUP_REQUEST);
 }
 
 void CRaidEntryPreviewView::RenderText_ConfirmStep()
@@ -1165,7 +1162,7 @@ void CRaidEntryPreviewView::Open_ColosseumOffer()
 	Hide_AllSlots();
 	Hide_ConfirmSlots();
 	Apply_ColosseumSlots();
-	CMainApp::Play_PopupRequestSound();
+	Client::Play_UISound(Client::UI_SOUND_CUE::POPUP_REQUEST);
 }
 
 void CRaidEntryPreviewView::Set_ColosseumQueueState(
@@ -1284,7 +1281,7 @@ bool_t CRaidEntryPreviewView::Render_ColosseumQueue(
 		if (isHovered && !wasJustOpened &&
 			Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (button.isAccept)
 				acceptClicked = true;
 			else

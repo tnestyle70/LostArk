@@ -109,7 +109,7 @@ try {
     # The World publisher owns its complete output inventory. Include optional
     # spawn groups too: their PROFILE rows carry Retail monster HP and damage.
     foreach ($requiredWorld in @('BERN', 'VALTAN_ARENA', 'TRAINING_GROUND',
-        'CHARACTER_SELECT_ARENA', 'KAKULSAYDON_ARENA')) {
+        'CHARACTER_SELECT_ARENA', 'KOUKUSAYDON_ARENA')) {
         $requiredPath = Join-Path $stagedWorldRoot "$requiredWorld.worldbootstrap"
         if (-not [IO.File]::Exists($requiredPath)) {
             throw "Balance runtime staged output is missing: $requiredPath"

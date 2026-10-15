@@ -28,9 +28,9 @@ ROOT = Path(__file__).resolve().parents[2]
 SEQUENCES = ROOT / "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"
 COMPOSITION = ROOT / "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json"
 
-FIRE_WORLD_IDS = [f"kakulsaydon.g1.world.{index}" for index in range(7, 13)]
-HOOK_WORLD_ID = "kakulsaydon.g1.world.13"
-PATTERN_IDS = ("KAKULSAYDON_G1_PATTERN_18", "KAKULSAYDON_G1_PATTERN_19")
+FIRE_WORLD_IDS = [f"koukusaydon.g1.world.{index}" for index in range(7, 13)]
+HOOK_WORLD_ID = "koukusaydon.g1.world.13"
+PATTERN_IDS = ("KOUKUSAYDON_G1_PATTERN_18", "KOUKUSAYDON_G1_PATTERN_19")
 SAMPLE_STEPS = 240
 
 

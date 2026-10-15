@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
-
+//Ananymous Namespace 안에 존재하는 변수 함수, 왜 LostArk::Server 내부에 넣으면 안 되는 이유가 있을까?
 namespace
 {
 	constexpr std::uint64_t SERVER_TICK_HZ = 30u;
@@ -21,6 +21,7 @@ namespace
     bool Has_LethalResult(const std::vector<LostArk::Server::BOSS_PATTERN_LOGIC_RESULT>& results)
     {
         using namespace LostArk::Server;
+
         return std::any_of(results.begin(), results.end(), [](const auto& result) {
             return result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH ||
                 (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MAX_HP_PERCENT_DAMAGE && result.iPercent >= 100u);

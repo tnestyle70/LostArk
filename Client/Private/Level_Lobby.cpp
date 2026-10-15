@@ -466,8 +466,8 @@ bool_t CLevel_Lobby::Resolve_Stage(
 		outTargetLevel = LEVEL::VALTAN_ARENA;
 		return true;
 	case LOBBY_STAGE::KOUKU_SAYDON:
-		outWorldId = WORLD_ID::KAKULSAYDON_ARENA;
-		outTargetLevel = LEVEL::KAKULSAYDON_ARENA;
+		outWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+		outTargetLevel = LEVEL::KOUKUSAYDON_ARENA;
 		return true;
 	case LOBBY_STAGE::BERN:
 		outWorldId = WORLD_ID::BERN;

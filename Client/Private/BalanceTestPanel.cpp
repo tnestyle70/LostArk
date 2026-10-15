@@ -199,7 +199,7 @@ void CBalanceTestPanel::Render_KillBossControl()
     static std::string status;
     const auto level = CGameInstance::Get().Get_CurrentLevelID();
     const auto world = level == ETOUI(LEVEL::VALTAN_ARENA) ? WORLD_ID::VALTAN_ARENA :
-        (level == ETOUI(LEVEL::KAKULSAYDON_ARENA) ? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::END);
+        (level == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ? WORLD_ID::KOUKUSAYDON_ARENA : WORLD_ID::END);
     const auto& boss = CCombatHUDViewModel::Get().Get_Boss();
     S2C_DEBUG_KILL_GATE_BOSSES_RESULT result;
     while (sink.Consume_DebugKillGateBossesResult(result))
@@ -338,7 +338,7 @@ void CBalanceTestPanel::Render_CooldownControl()
     {
     case LEVEL::BERN: world = WORLD_ID::BERN; break;
     case LEVEL::VALTAN_ARENA: world = WORLD_ID::VALTAN_ARENA; break;
-    case LEVEL::KAKULSAYDON_ARENA: world = WORLD_ID::KAKULSAYDON_ARENA; break;
+    case LEVEL::KOUKUSAYDON_ARENA: world = WORLD_ID::KOUKUSAYDON_ARENA; break;
     case LEVEL::CHARACTER_SELECT: world = WORLD_ID::CHARACTER_SELECT_ARENA; break;
     case LEVEL::DEVELOPMENT: world = WORLD_ID::TRAINING_GROUND; break;
     case LEVEL::MAHARAKA: world = WORLD_ID::MAHARAKA; break;

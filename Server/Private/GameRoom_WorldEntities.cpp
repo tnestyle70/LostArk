@@ -172,7 +172,7 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 					pattern.Finale.strGhostArchetypeId == staged.strArchetypeId;
 			});
 		const bool isKoukuClone = LostArk::Shared::INVALID_NET_ENTITY_ID != ownerBossNetEntityId &&
-			LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+			LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId &&
 			staged.strArchetypeId.starts_with(KOUKUSAYDON_ARENA_BOSS_ARCHETYPE_PREFIX);
 		if ((isDependentArchetype || isKoukuClone) !=
 			(LostArk::Shared::INVALID_NET_ENTITY_ID != ownerBossNetEntityId))
@@ -277,8 +277,8 @@ bool LostArk::Server::CGameRoom::Build_WorldEntity(
 			/* Big Saydon stands above the G2 floor. Its saved transform owns
 			the height while navigation still admits its XZ footprint. */
 			const bool preserveAuthoredHeight =
-				LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
-				staged.strArchetypeId == "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+				LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId &&
+				staged.strArchetypeId == "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
 			SERVER_NAV_POINT projected{};
 			if (m_ServerNavigation.Is_PointWalkableExact(
 					staged.fPositionX, staged.fPositionZ) &&
@@ -353,7 +353,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	}
 	if ((WORLD_ID::CHARACTER_SELECT_ARENA != m_eWorldId &&
 		WORLD_ID::VALTAN_ARENA != m_eWorldId &&
-		WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) || Count_HumanPlayers() != 0u)
+		WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId) || Count_HumanPlayers() != 0u)
 		return true;
 
 	Clear_KoukuSaydonPatternAudition();
@@ -364,7 +364,7 @@ bool LostArk::Server::CGameRoom::Reset_ReplayableArenaWhenEmpty()
 	m_iArenaAssemblyStartTick = m_iArenaAssemblyRaidEpoch = 0u;
 	m_bArenaAssemblyAttempted = false;
 	m_ArenaAssemblyParticipants.clear();
-	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId)
 	{
 		Stop_KoukuBingoDuration(true);
 		Reset_CardMaze();

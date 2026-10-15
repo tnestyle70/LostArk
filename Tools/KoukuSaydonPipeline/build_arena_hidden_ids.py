@@ -23,7 +23,7 @@ ARENA_CENTER_XZ = (-0.3, 737.5)
 ARENA_RADIUS_M = 80.0
 PLACEMENT_FIELD_COUNT = 16
 VISIBLE_FIELD_INDEX = 15
-HEADER_RELATIVE_PATH = "Client/Public/KakulArenaHiddenPlacements.h"
+HEADER_RELATIVE_PATH = "Client/Public/KoukuArenaHiddenPlacements.h"
 
 
 def read_arena_placement_ids(placement_path):
@@ -70,7 +70,7 @@ def write_header(header_path, ids):
         handle.write("namespace Client\n")
         handle.write("{\n")
         handle.write(f"\tinline constexpr std::array<uint64_t, {len(ids)}> "
-                     "KAKUL_ARENA_HIDDEN_PLACEMENT_IDS = {{\n")
+                     "KOUKU_ARENA_HIDDEN_PLACEMENT_IDS = {{\n")
         for index in range(0, len(ids), 4):
             row = " ".join(f"{value}ull," for value in ids[index:index + 4])
             handle.write(f"\t\t{row}\n")

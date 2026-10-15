@@ -1,0 +1,37 @@
+# 지정한 C++ 파일의 줄 배치만 다룬다. 기존 파일의 인코딩은 별도로 보존한다.
+BasedOnStyle: Microsoft
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+AccessModifierOffset: -4
+PointerAlignment: Left
+ReferenceAlignment: Left
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortLambdasOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowAllArgumentsOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+# 중괄호 추가·삭제와 표현식 변경은 formatter에 맡기지 않는다.
+InsertBraces: false
+RemoveBracesLLVM: false
+RemoveParentheses: Leave
+RemoveSemicolon: false
+QualifierAlignment: Leave
+# PCH·매크로·외부 헤더의 기존 순서와 문자열·사용자 주석을 보존한다.
+SortIncludes: false
+IncludeBlocks: Preserve
+SortUsingDeclarations: Never
+ReflowComments: false
+BreakStringLiterals: false
+FixNamespaceComments: false
+NamespaceIndentation: All
+SeparateDefinitionBlocks: Leave
+MaxEmptyLinesToKeep: 2
+LineEnding: DeriveCRLF

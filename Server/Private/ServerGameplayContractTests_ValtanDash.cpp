@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "BossCombatRuntime.h"
 #include "GameplayCatalog.h"
@@ -46,7 +46,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 		out of the arena floor would otherwise leave the boss standing inside a wall's own
 		navigation blocker, which nothing can then path out of without being
 		projected first. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto navigableStepRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& navigableStepRoom = *navigableStepRoomStorage;
 		constexpr float STEP_FROM_Z = -120.2f;
@@ -206,7 +206,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 	}
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
@@ -358,7 +358,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 			return room.m_WorldEntities.back();
 		};
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto ordinaryWallRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& ordinaryWallRoom = *ordinaryWallRoomStorage;
 		const BOSS_RUNTIME_PROFILE* ordinaryWallProfile =
@@ -459,7 +459,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 			"GROGGY" == ordinaryGroggyThirdTick.strPatternStageId,
 			"Keep the same Dash occurrence in GROGGY without starting a second pattern");
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto boundRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& boundRoom = *boundRoomStorage;
 		const BOSS_RUNTIME_PROFILE* boundProfile =
@@ -575,7 +575,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 			"Refuse a consumed dash receiver without changing the active CHARGE stage");
 
 	#ifdef _DEBUG
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto outerRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& outerRoom = *outerRoomStorage;
 		const BOSS_RUNTIME_PROFILE* outerProfile =
@@ -744,7 +744,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 		   but the intact collision surface is a real wall contact and must end the
 		   charge in RECOVERY. The same consumed group then proves the later 109 stage
 		   admits only the other twenty-nine in Release as well. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto partialOuterRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& partialOuterRoom = *partialOuterRoomStorage;
 		const BOSS_RUNTIME_PROFILE* partialOuterProfile =
@@ -1063,7 +1063,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanDash(TESTS& tests
 	}
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};

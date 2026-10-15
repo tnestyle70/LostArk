@@ -1,17 +1,14 @@
-#include "Logic_DimensionMaster.h"
+﻿#include "Logic_DimensionMaster.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh 9 is
-	pc_sp_m_hair_55, read off the cooked model's material order. */
+	// 별도 HEAD 표현과 겹치지 않도록 본체의 9번 hair submesh를 숨길 때 쓰는 mask다.
 	constexpr uint32_t BAKED_HAIR = (1u << 9);
 
-	/* This class's only equipment part. The hairstyle is a part, not something the body
-	draws: character creation picks one and swaps this out for it. Style 0 of this class's
-	list is what a character that has never been through that screen wears. */
+	// 기본 장비 목록은 별도 머리카락 Part 하나다. 외형 편집은 HEAD 슬롯의 모델을 교체한다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_DimensionMaster_Hair"),
@@ -19,9 +16,7 @@ namespace
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 	};
 
-	/* TownDefaultWeapon 106600901 resolves to WP_WSWP_M_06. Its LookInfo splits
-	the weapon into four meshes and gives each one a distinct battle socket. The
-	E piece carries the original RelativeRotationYaw=32768 (180 degrees). */
+	// 무기 네 조각을 서로 다른 본에 붙인다. E 조각에는 180degree yaw를 추가한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_L"),
@@ -38,38 +33,34 @@ namespace
 		  "b_wp_swm_m_4_02", 180.f },
 	};
 
+	// Server action의 skill ID에 대응해 적용할 표면 발광 색·강도다. 여기서 스킬을 실행하지 않는다.
 	constexpr SKILL_SURFACE_EMISSIVE_SPEC SkillSurfaceEmissives[] =
 	{
 		{ 2050210u, float4_t(1.f, 1.f, 1.f, 1.f), 4.f },
 	};
 
-	/* The robe's lower panels. They hang from the hips, so they swing wide on a turn
-	and need the longest travel of the three groups. Eight chains of four: b_skirt_f
-	and b_skirt_b1 front and back, l1..l3 and r1..r3 down each side. */
+	// 치마 체인의 복원·감쇠·중력·최대 변위·이동풍 계수다.
 	constexpr f32_t SKIRT_STIFFNESS = 0.1f;
 	constexpr f32_t SKIRT_DAMPING = 0.5f;
 	constexpr f32_t SKIRT_GRAVITY = 15.f;
 	constexpr f32_t SKIRT_MAX_DISPLACEMENT = 0.35f;
 	constexpr f32_t SKIRT_WIND_RESPONSE = 4.f;
 
-	/* The shoulder mantle. It rides higher and is the piece a run pushes back, so it
-	takes the strongest wind of the three. Its chains start at 00, not 01. */
+	// 어깨 망토 체인에 별도의 계수를 적용한다. 이 체인 이름은 00부터 시작한다.
 	constexpr f32_t CAPE_STIFFNESS = 0.08f;
 	constexpr f32_t CAPE_DAMPING = 0.55f;
 	constexpr f32_t CAPE_GRAVITY = 13.f;
 	constexpr f32_t CAPE_MAX_DISPLACEMENT = 0.4f;
 	constexpr f32_t CAPE_WIND_RESPONSE = 5.f;
 
-	/* Hair and the belt tail. Both hang off fast-moving parents, so they stay stiffer
-	and drier than the cloth -- the same split the other classes use. */
+	// 머리카락과 허리 장식은 천과 별도 계수를 사용한다.
 	constexpr f32_t HAIR_STIFFNESS = 0.12f;
 	constexpr f32_t HAIR_DAMPING = 0.5f;
 	constexpr f32_t HAIR_GRAVITY = 15.f;
 	constexpr f32_t HAIR_MAX_DISPLACEMENT = 0.25f;
 	constexpr f32_t HAIR_WIND_RESPONSE = 3.f;
 
-	/* Link counts are this body's own: read off DimensionMaster_Character.wmodel's
-	225-bone palette, not assumed from the other classes. */
+	// 각 행은 실제 root 본 이름·본 개수와 해당 체인의 solver 계수·각도 제한이다.
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  4u, SKIRT_STIFFNESS, SKIRT_DAMPING,
@@ -111,6 +102,7 @@ namespace
 		  HAIR_GRAVITY, HAIR_MAX_DISPLACEMENT, HAIR_WIND_RESPONSE, 40.f },
 	};
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<Client::CLogic_DimensionMaster>();
@@ -119,6 +111,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_DimensionMaster::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -127,6 +120,7 @@ void CLogic_DimensionMaster::Update_Presentation(
 	(void)fTimeDelta;
 }
 
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_DimensionMaster =
 {
 	"DimensionMaster",
@@ -144,8 +138,7 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* The combined body has no separate down loop, so DOWN_LOOP stays null and
-	the land clip's final lying pose holds until the standup. */
+	// DOWN_LOOP은 지정하지 않았다. 후속 pose 선택은 CCharacter의 공통 애니메이션 경로가 처리한다.
 	{
 		"pc_sp_m_00_sk_idle_battle_1",
 		"pc_sp_m_00_sk_run_battle_1",
@@ -156,11 +149,10 @@ const CHARACTER_SPEC Spec_DimensionMaster =
 		nullptr,
 		"pc_sp_m_00_sk_standup_1",
 		"pc_sp_m_00_sk_act_estherskill_1",
-		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
+		// 캐릭터 생성 화면에서 사용할 idle clip이다.
 		"idle_charactercustomizing_1",
 		"pc_sp_m_00_sk_abn_fear_1",
-		/* Square-hole song: the family PSA act_music_loop_1 appended to the body cook
-		(append_psa_clip_to_wmodel.py --name), named like the other body clips. */
+		// 스퀘어홀 노래 상태에 사용할 body clip이다.
 		"pc_sp_m_00_sk_act_music_loop_1",
 	},
 

@@ -2911,8 +2911,8 @@
                                                                          "desaturation":  0
                                                                      }
                                              },
-                         "displayName":  "kakulsaydon: before source restoration",
-                         "profileId":  "scene.kakulsaydon.before-restoration.v1",
+                         "displayName":  "koukusaydon: before source restoration",
+                         "profileId":  "scene.koukusaydon.before-restoration.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4061,7 +4061,7 @@
                                                                        }
                                              },
                          "displayName":  "Card maze - saved current baseline",
-                         "profileId":  "scene.kakulsaydon.compare.card-maze.v1",
+                         "profileId":  "scene.koukusaydon.compare.card-maze.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4207,7 +4207,7 @@
                                                                        }
                                              },
                          "displayName":  "Gate 1 - source LUT02",
-                         "profileId":  "scene.kakulsaydon.compare.gate1.v1",
+                         "profileId":  "scene.koukusaydon.compare.gate1.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4353,7 +4353,7 @@
                                                                        }
                                              },
                          "displayName":  "Gate 2 - source baseline",
-                         "profileId":  "scene.kakulsaydon.compare.gate2.v1",
+                         "profileId":  "scene.koukusaydon.compare.gate2.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4499,7 +4499,7 @@
                                                                        }
                                              },
                          "displayName":  "Gate 3 - source tone, LUT off",
-                         "profileId":  "scene.kakulsaydon.compare.gate3.v1",
+                         "profileId":  "scene.koukusaydon.compare.gate3.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4645,7 +4645,7 @@
                                                                        }
                                              },
                          "displayName":  "Start area - recovered source world",
-                         "profileId":  "scene.kakulsaydon.compare.start.v1",
+                         "profileId":  "scene.koukusaydon.compare.start.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -4733,7 +4733,7 @@
                      },
                      {
                          "displayName":  "씬프로필_암전",
-                         "profileId":  "scene.kakulsaydon.find-true-dark.v1",
+                         "profileId":  "scene.koukusaydon.find-true-dark.v1",
                          "exposureMultiplier":  0.100000001,
                          "bloomIntensityMultiplier":  0.800000012,
                          "mapLightIntensityMultiplier":  0.5,
@@ -4864,7 +4864,7 @@
                                                                            "colorGradingLut":  ""
                                                                        }
                                              },
-                         "profileId":  "scene.kakulsaydon.g1.base.v1",
+                         "profileId":  "scene.koukusaydon.g1.base.v1",
                          "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  0,
                          "mapLightIntensityMultiplier":  1,
@@ -6503,7 +6503,7 @@
                      },
                      {
                          "displayName":  "쿠크 1관문 책 펼침 / 원본 무대 분위기",
-                         "profileId":  "scene.kakulsaydon.g1.book-open.v1",
+                         "profileId":  "scene.koukusaydon.g1.book-open.v1",
                          "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -6737,7 +6737,7 @@
                      },
                      {
                          "displayName":  "1관문 팝업북 환경",
-                         "profileId":  "scene.kakulsaydon.g1.popup.v1",
+                         "profileId":  "scene.koukusaydon.g1.popup.v1",
                          "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -6971,7 +6971,7 @@
                      },
                      {
                          "displayName":  "1관문_스포트라이트 무대",
-                         "profileId":  "scene.kakulsaydon.g1.spotlight-stage.v1",
+                         "profileId":  "scene.koukusaydon.g1.spotlight-stage.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  0,
@@ -7045,7 +7045,7 @@
                      },
                      {
                          "displayName":  "쿠크 3관문 어두운 무대 / 파란 스포트라이트",
-                         "profileId":  "scene.kakulsaydon.g3.dark.v1",
+                         "profileId":  "scene.koukusaydon.g3.dark.v1",
                          "exposureMultiplier":  0.5,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -7330,8 +7330,8 @@
                                                                            "colorGradingLut":  ""
                                                                        }
                                              },
-                         "displayName":  "kakulsaydon: source tone and grading",
-                         "profileId":  "scene.kakulsaydon.source-rendering.v1",
+                         "displayName":  "koukusaydon: source tone and grading",
+                         "profileId":  "scene.koukusaydon.source-rendering.v1",
                          "exposureMultiplier":  1,
                          "bloomIntensityMultiplier":  1,
                          "mapLightIntensityMultiplier":  1,
@@ -8970,7 +8970,7 @@
                      },
                      {
                          "displayName":  "거미카운터_완전암전",
-                         "profileId":  "scene.kakulsaydon.spider-blackout.v1",
+                         "profileId":  "scene.koukusaydon.spider-blackout.v1",
                          "exposureMultiplier":  0.100000001,
                          "bloomIntensityMultiplier":  0,
                          "mapLightIntensityMultiplier":  0,

@@ -156,7 +156,7 @@ def build():
     append(overhead, stage, 'overhead', 0, snapshot=False)
     repairs += restore_nested_defaults(overhead)
     overhead['sourceModelPreview'] = dict(gateId='GATE1', actorProfileId='MN_RPCT_05',
-        targetBossPlacementId='boss.kakulsaydon.g1.saydon', animations=[dict(
+        targetBossPlacementId='boss.koukusaydon.g1.saydon', animations=[dict(
             runtimeClip='rpct00_att_battle_4_04', startOffsetMs=0, sourceStartMs=0,
             playMs=2833, playRate=1, endPolicy='HOLD_LAST_POSE')])
     # Preserve the authored throw clock and all ring/dust/projectile occurrences.

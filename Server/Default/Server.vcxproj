@@ -257,7 +257,7 @@
       <PrecompiledHeader Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">Create</PrecompiledHeader>
       <ExcludedFromBuild Condition="'$(LostArkUsePch)'!='true' or '$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h" />
+    <ClInclude Include="..\..\Tools\Build\PCH.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
@@ -283,6 +283,11 @@
     <ClCompile Include="..\Private\ServerGameplayContractTests_KoukuRaid.cpp" />
     <ClCompile Include="..\Private\GameRoom_PlayerSimulation.cpp" />
     <ClCompile Include="..\Private\GameRoom_BossSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_WorldEntitySimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_ValtanSimulation.cpp" />
+    <ClCompile Include="..\Private\GameRoom_ValtanGhost.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuTargeting.cpp" />
+    <ClCompile Include="..\Private\GameRoom_KoukuMechanics.cpp" />
     <ClCompile Include="..\Private\GameRoom_Helpers.cpp" />
   </ItemGroup>
   <ItemGroup>

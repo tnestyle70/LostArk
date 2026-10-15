@@ -56,13 +56,13 @@ class BernEntranceCameraContractTests(unittest.TestCase):
         ]
         self.assertNotIn("CNetworkManager", cinematic)
 
-    def test_project_exposes_single_source_document(self) -> None:
-        entry = r"..\..\Data\Encounters\Bern\BernEntranceCamera.json"
-        project = read("Client/Default/Client.vcxproj")
-        filters = read("Client/Default/Client.vcxproj.filters")
-        self.assertEqual(1, project.count(entry))
-        self.assertEqual(1, filters.count(entry))
-        self.assertIn("96.DataFiles\\Encounters", filters)
+    def test_solution_exposes_single_source_document(self) -> None:
+        entry = r"Data\Encounters\Bern\BernEntranceCamera.json"
+        solution_lines = [line.strip() for line in read("Framework.sln").splitlines()]
+        self.assertEqual(1, solution_lines.count(entry + " = " + entry))
+        self.assertTrue((ROOT / entry.replace("\\", "/")).is_file())
+        self.assertNotIn("BernEntranceCamera.json", read("Client/Default/Client.vcxproj"))
+        self.assertNotIn("BernEntranceCamera.json", read("Client/Default/Client.vcxproj.filters"))
 
     def test_session_latch_survives_level_recreation_and_preserves_failure_retry(self) -> None:
         source = read("Client/Private/Level_Bern.cpp")

@@ -16,11 +16,11 @@ from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as subjec
 
 ROOT = Path(__file__).resolve().parents[2]
 WORLD_SEQUENCES = Path(str(subject.WORLD_SEQUENCE_PATH).format(area=subject.AREA_ID))
-FIRST_PRODUCT_ID = "KAKULSAYDON_G1_PATTERN_1"
-DRAFT_ID = "KAKULSAYDON_G1_PATTERN_3"
-ROULETTE_ID = "KAKULSAYDON_G1_PATTERN_7"
-DANCE_ID = "KAKULSAYDON_G1_PATTERN_6"
-GAZE_ID = "KAKULSAYDON_G1_PATTERN_2"
+FIRST_PRODUCT_ID = "KOUKUSAYDON_G1_PATTERN_1"
+DRAFT_ID = "KOUKUSAYDON_G1_PATTERN_3"
+ROULETTE_ID = "KOUKUSAYDON_G1_PATTERN_7"
+DANCE_ID = "KOUKUSAYDON_G1_PATTERN_6"
+GAZE_ID = "KOUKUSAYDON_G1_PATTERN_2"
 
 
 def copy_repository_inputs(root: Path) -> None:
@@ -35,12 +35,12 @@ def copy_repository_inputs(root: Path) -> None:
 class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_mario_curtain_audience_survives_product_projection_without_gameplay_logic(self):
         document = copy.deepcopy(self.hierarchy_document)
-        phase_two = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+        phase_two = self.find(document, "KOUKUSAYDON_G1_PATTERN_33")
         dance = self.find(document, DANCE_ID)
         before = copy.deepcopy(document)
         projected = subject._project_pattern_presentation(document, phase_two)
         curtains = [row for row in projected["presentationOccurrences"] if row.get("suppressLocalMario")]
-        self.assertEqual(["KAKULSAYDON_G1_PATTERN_33.presentation.1"], [row["occurrenceId"] for row in curtains])
+        self.assertEqual(["KOUKUSAYDON_G1_PATTERN_33.presentation.1"], [row["occurrenceId"] for row in curtains])
         self.assertEqual(("boss.kouku.curtain_1", "LEAF", 0, 3255),
                          tuple(curtains[0][key] for key in ("assetId", "resourceKind", "startMs", "durationMs")))
         self.assertNotIn("logicOccurrences", projected)
@@ -56,7 +56,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         for mutation in ("disabled", "wrong-kind", "wrong-trigger", "missing"):
             with self.subTest(mutation=mutation):
                 document = copy.deepcopy(self.hierarchy_document)
-                phase_two = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+                phase_two = self.find(document, "KOUKUSAYDON_G1_PATTERN_33")
                 logic = next(row for row in document["logics"] if row.get("triggerKind") == "MARIO_PHASE2_PLAYERS")
                 if mutation == "disabled":
                     for occurrence in phase_two["logicOccurrences"]:
@@ -74,8 +74,8 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_dice_bind_visual_projects_only_an_enabled_dice_mechanic(self):
         document = copy.deepcopy(self.hierarchy_document)
-        dice = self.find(document, "KAKULSAYDON_G1_PATTERN_78")
-        maiden = self.find(document, "KAKULSAYDON_G1_PATTERN_33")
+        dice = self.find(document, "KOUKUSAYDON_G1_PATTERN_78")
+        maiden = self.find(document, "KOUKUSAYDON_G1_PATTERN_33")
         before = copy.deepcopy(document)
         self.assertTrue(subject._project_pattern_presentation(document, dice)["diceBindVisual"])
         self.assertNotIn("diceBindVisual", subject._project_pattern_presentation(document, maiden))
@@ -90,13 +90,13 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     @staticmethod
     def summon_layout_document(count=10):
-        child = dict(patternId="KAKULSAYDON_G1_PATTERN_202", actorProfileId="MN_RPCZ_00",
-            gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.kouku", category="MECHANIC",
+        child = dict(patternId="KOUKUSAYDON_G1_PATTERN_202", actorProfileId="MN_RPCZ_00",
+            gateId="GATE2", targetBossPlacementId="boss.koukusaydon.g2.kouku", category="MECHANIC",
             stages=[dict(durationMs=2000, animationOccurrences=[dict(runtimeClip="rpcz00_att_battle_12_start")])],
             logicOccurrences=[dict(logicId="jump"), dict(logicId="slam")],
             presentationOccurrences=[dict(resourceId="hoop", anchorKind="BOSS")])
-        owner = dict(patternId="KAKULSAYDON_G1_PATTERN_201", actorProfileId="MN_RPCZ_00",
-            gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.kouku", category="MECHANIC",
+        owner = dict(patternId="KOUKUSAYDON_G1_PATTERN_201", actorProfileId="MN_RPCZ_00",
+            gateId="GATE2", targetBossPlacementId="boss.koukusaydon.g2.kouku", category="MECHANIC",
             stages=[dict(durationMs=4000)], summonOccurrences=[dict(startMs=1000, durationMs=3000,
                 patternSpawns=[dict(spawnId=f"spawn.{i+1}", patternId=child["patternId"], anchorKind="MAP",
                     positionOffset=[-5 if i < 5 else 5, 10.56, 320 + 2 * (i % 5)], yawOffsetDegrees=90 if i < 5 else -90)
@@ -182,7 +182,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     @staticmethod
     def world_group_fixture():
         members = [f"test.group.motion.g{i}" for i in range(6)]
-        world = dict(worldId="kakulsaydon.g1.world.1", displayName="Group",
+        world = dict(worldId="koukusaydon.g1.world.1", displayName="Group",
                      sequenceInstanceId="test.group", objectResourceId="test.group")
         sequences = dict(objectResources=[dict(objectId="test.group", modelAssetId="", anchorKind="WORLD", motionInstanceIds=members),
                          dict(objectId="test.model", modelAssetId="Effect/test.wmodel", anchorKind="WORLD")], templates=[], instances=[])
@@ -197,7 +197,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
 
     def test_world_group_projects_one_owned_cue_for_all_six_generations(self):
         world, sequences = self.world_group_fixture()
-        document = subject._publication_candidate(self.hierarchy_document, {"KAKULSAYDON_G1_PATTERN_81"})
+        document = subject._publication_candidate(self.hierarchy_document, {"KOUKUSAYDON_G1_PATTERN_81"})
         pattern = document["patterns"][0]
         pattern["logicOccurrences"] = []
         document["worlds"] = [world]
@@ -243,7 +243,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             startMs=100, durationMs=34, positionOffset=[0, 0, 0], halfExtents=[2, .5, 2],
             yawDegrees=0, shape="CYLINDER", behavior="DAMAGE", damagePercent=10,
             gripLocalOffset=[0, 0, 0])]
-        document = subject._publication_candidate(self.hierarchy_document, {"KAKULSAYDON_G1_PATTERN_81"})
+        document = subject._publication_candidate(self.hierarchy_document, {"KOUKUSAYDON_G1_PATTERN_81"})
         pattern = document["patterns"][0]
         pattern["logicOccurrences"] = []
         document["worlds"] = [world]
@@ -290,7 +290,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         group_id = "world.object.kouku.saydon.circus.split"
         world = next(row for row in self.hierarchy_document["worlds"]
                      if row["sequenceInstanceId"] == group_id)
-        pattern = self.find(self.hierarchy_document, "KAKULSAYDON_G1_PATTERN_83")
+        pattern = self.find(self.hierarchy_document, "KOUKUSAYDON_G1_PATTERN_83")
         boxes = [row for row in pattern["worldOccurrences"] if row["worldId"] == world["worldId"]]
         self.assertEqual(1, len(boxes))
         expected_ids = ["world.object.instance.kouku.saydon.circus.split.g" + str(i) for i in range(4)]
@@ -358,19 +358,19 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
         document["nextPatternOrdinal"] = 1000
         document["nextLogicOrdinal"] = 1000
         document["nextSummonOrdinal"] = 1000
-        definition = dict(logicId="kakulsaydon.g1.logic.999", displayName="Cross", logicType="DURATION",
+        definition = dict(logicId="koukusaydon.g1.logic.999", displayName="Cross", logicType="DURATION",
                           judgementKind="CROSS_DIRECTION_CLONES", cloneEndStageId="STAGE_1",
                           summonOccurrenceId=parent["patternId"] + ".summon.1", directionPatternIds=[])
         parent["logicOccurrences"] = [dict(occurrenceId=parent["patternId"] + ".logic.1",
             logicId=definition["logicId"], startMs=500, durationMs=2000)]
         parent["summonOccurrences"] = [dict(occurrenceId=definition["summonOccurrenceId"],
-            summonId="kakulsaydon.g1.summon.999", startMs=500, durationMs=4500)]
-        document["summons"] = [dict(summonId="kakulsaydon.g1.summon.999", displayName="Bodies")]
+            summonId="koukusaydon.g1.summon.999", startMs=500, durationMs=4500)]
+        document["summons"] = [dict(summonId="koukusaydon.g1.summon.999", displayName="Bodies")]
         document["logics"] = [definition]
         children = []
         for index in range(4):
             child = copy.deepcopy(template)
-            child.update(patternId=f"KAKULSAYDON_G1_PATTERN_{101 + index}", category="MECHANIC",
+            child.update(patternId=f"KOUKUSAYDON_G1_PATTERN_{101 + index}", category="MECHANIC",
                          durationMs=2000, nextStageOrdinal=3, nextAnimationOrdinal=3)
             child["stages"] = [copy.deepcopy(template["stages"][0]) for _ in range(2)]
             for stage_index, stage in enumerate(child["stages"], 1):
@@ -399,7 +399,7 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
     def test_cross_direction_actor_facing_is_instant_local_and_projects_exact_child_clock(self):
         document, parent, definition = self.cross_direction_document()
         child = document["patterns"][1]
-        facing = dict(logicId="kakulsaydon.g1.logic.998", displayName="Nearest", logicType="TRIGGER",
+        facing = dict(logicId="koukusaydon.g1.logic.998", displayName="Nearest", logicType="TRIGGER",
                       triggerKind="BOSS_TRACK_TARGET")
         document["logics"].append(facing)
         child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1",
@@ -430,10 +430,10 @@ class KoukuSaydonCompositionProjectionTests(unittest.TestCase):
             self.skipTest("PowerShell is required for the actual bootstrap predicate")
         document, _, _ = self.cross_direction_document()
         child = document["patterns"][1]
-        document["logics"].append(dict(logicId="kakulsaydon.g1.logic.998", displayName="Nearest",
+        document["logics"].append(dict(logicId="koukusaydon.g1.logic.998", displayName="Nearest",
             logicType="TRIGGER", triggerKind="BOSS_TRACK_TARGET"))
         child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1",
-            logicId="kakulsaydon.g1.logic.998", startMs=700, durationMs=34)]
+            logicId="koukusaydon.g1.logic.998", startMs=700, durationMs=34)]
         with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
             encounter = subject.project_encounter(document)
         projected = next(row for row in encounter["patterns"] if row["patternId"] == child["patternId"])
@@ -529,9 +529,9 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_cross_direction_parent_expansion_remaps_the_exact_named_summon(self):
         document, child, definition = self.cross_direction_document()
         parent = copy.deepcopy(child)
-        parent.update(patternId="KAKULSAYDON_G1_PATTERN_201", stages=[], durationMs=6000,
+        parent.update(patternId="KOUKUSAYDON_G1_PATTERN_201", stages=[], durationMs=6000,
             logicOccurrences=[], summonOccurrences=[], nextPatternOccurrenceOrdinal=2,
-            patternOccurrences=[dict(occurrenceId="KAKULSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
+            patternOccurrences=[dict(occurrenceId="KOUKUSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
                 startMs=1000, durationMs=5000, repeat=False)])
         document["patterns"].append(parent)
         expanded = subject.expand_pattern_document(document, parent["patternId"])
@@ -605,7 +605,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_cross_summon_preserves_other_parent_logic(self):
         document, parent, definition = self.cross_summon_document()
-        document["logics"] = [dict(logicId="kakulsaydon.g1.logic.998", displayName="HUD", logicType="TRIGGER",
+        document["logics"] = [dict(logicId="koukusaydon.g1.logic.998", displayName="HUD", logicType="TRIGGER",
             triggerKind="HUD_ENTER", hudMode="MARIO")]
         parent["logicOccurrences"] = [dict(occurrenceId=parent["patternId"] + ".logic.1",
             logicId=document["logics"][0]["logicId"], startMs=4800, durationMs=100)]
@@ -645,9 +645,9 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_cross_summon_parent_repeats_keep_definition_and_remap_occurrence_clock(self):
         document, child, definition = self.cross_summon_document()
         parent = copy.deepcopy(child)
-        parent.update(patternId="KAKULSAYDON_G1_PATTERN_201", stages=[], durationMs=11000,
+        parent.update(patternId="KOUKUSAYDON_G1_PATTERN_201", stages=[], durationMs=11000,
             logicOccurrences=[], summonOccurrences=[], nextPatternOccurrenceOrdinal=2,
-            patternOccurrences=[dict(occurrenceId="KAKULSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
+            patternOccurrences=[dict(occurrenceId="KOUKUSAYDON_G1_PATTERN_201.pattern.1", patternId=child["patternId"],
                 startMs=1000, durationMs=10000, repeat=True)])
         document["patterns"].append(parent)
         expanded = subject.expand_pattern_document(document, parent["patternId"])
@@ -668,7 +668,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                       "assetId": f"effect.kouku.card.match.{suit}", "resourceKind": "V1_EFFECT", "durationMs": 1000}
                      for suit in ("heart", "clover", "diamond", "spade", "explosion")]
         document["presentationResources"] = resources
-        document["logics"][0] = {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Pursuit", "logicType": "DURATION",
+        document["logics"][0] = {"logicId": "koukusaydon.g1.logic.1", "displayName": "Pursuit", "logicType": "DURATION",
             "judgementKind": "PURSUIT_PROJECTILES", "visualIds": [row["resourceId"] for row in resources[:4]],
             "contactVisualId": resources[4]["resourceId"], "speedMps": 3.5, "contactRadiusM": .4,
             "spawnRadiusM": 2.0, "lifetimeMs": 0, "spawnIntervalMs": 0, "homing": True}
@@ -743,7 +743,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)
             script += "\n$fixture=Get-Content -Raw (Join-Path $PSScriptRoot 'fixture.json') | ConvertFrom-Json\n"
             script += "$visuals=Get-KoukuTargetedVisualIndex $fixture.bindings $fixture.revision\n"
-            script += "$rows=@(New-KoukuPursuitProjectileRows $fixture.pattern 'ENCOUNTER_KAKULSAYDON_G1' 6000 $visuals)\n"
+            script += "$rows=@(New-KoukuPursuitProjectileRows $fixture.pattern 'ENCOUNTER_KOUKUSAYDON_G1' 6000 $visuals)\n"
             script += "ConvertTo-Json -InputObject @($rows) -Compress\n"
             path = folder / "validate.ps1"
             path.write_text(script, encoding="utf-8-sig")
@@ -796,7 +796,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
              "rotationDegrees": [12, 31, -8], "scale": [2, .7, 3], "fadeInMs": 20, "fadeOutMs": 30,
              "dissolveStart": .7, "dissolveEnd": .9, "anchorKind": "MAP", "followBoss": False,
              **({"selectionGroupId": group} if i < 4 else {})} for i in range(6)]
-        definition = {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Showtime targets", "logicType": "DURATION",
+        definition = {"logicId": "koukusaydon.g1.logic.1", "displayName": "Showtime targets", "logicType": "DURATION",
                       "judgementKind": "SHOWTIME_PLAYER_TARGETS", "fixedSelectionGroupId": group,
                       "trackingPresentationOccurrenceId": f"{FIRST_PRODUCT_ID}.presentation.5",
                       "spawnIntervalMs": 2000, "followSpeedScale": .5}
@@ -807,7 +807,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def airborne_document(self, phase="JUMP"):
         document = self.showtime_document()
-        document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Albion air",
+        document["logics"][0] = dict(logicId="koukusaydon.g1.logic.1", displayName="Albion air",
             logicType="TRIGGER", triggerKind="ALBION_AIRBORNE", airbornePhase=phase,
             airborneHeightM=13.6788133052 if phase=="JUMP" else (3.27831143163 if phase=="APPEAR_PLAYER" else 0),
             airborneDurationMs=200 if phase=="JUMP" else 0,
@@ -928,7 +928,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_rotate_only_duration_projects_without_visual_templates(self):
         document = self.showtime_document()
-        document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Track target",
+        document["logics"][0] = dict(logicId="koukusaydon.g1.logic.1", displayName="Track target",
                                       logicType="DURATION", judgementKind="BOSS_TRACK_TARGET")
         before = copy.deepcopy(document)
         self.validate(document)
@@ -946,16 +946,16 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_rotate_only_duration_rejects_template_and_outcome_values(self):
         document = self.showtime_document()
-        definition = document["logics"][0] = dict(logicId="kakulsaydon.g1.logic.1", displayName="Track target",
+        definition = document["logics"][0] = dict(logicId="koukusaydon.g1.logic.1", displayName="Track target",
                                                  logicType="DURATION", judgementKind="BOSS_TRACK_TARGET")
         for field, value in (("fixedSelectionGroupId", "effect.group"), ("followSpeedScale", .5), ("threshold", 1)):
             with self.subTest(field=field):
                 bad = copy.deepcopy(document); bad["logics"][0][field] = value
                 with self.assertRaises(subject.CompositionError): self.validate(bad)
         document["nextLogicOrdinal"] = 3
-        document["logics"].append(dict(logicId="kakulsaydon.g1.logic.2", displayName="Damage", logicType="RESULT",
+        document["logics"].append(dict(logicId="koukusaydon.g1.logic.2", displayName="Damage", logicType="RESULT",
                                        outcomeKind="MAX_HP_PERCENT_DAMAGE", percent=10, durationMs=0))
-        document["patterns"][0]["logicOccurrences"][0]["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.2"]
+        document["patterns"][0]["logicOccurrences"][0]["onSuccessLogicIds"] = ["koukusaydon.g1.logic.2"]
         with self.assertRaisesRegex(subject.CompositionError, "has no outcomes"):
             self.validate(document)
 
@@ -1487,7 +1487,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             script = "$ErrorActionPreference='Stop'\n$stableIdPattern='^[A-Za-z0-9_.-]{1,128}$'\n" + "\n".join(definitions)
             script += "\n$fixture=Get-Content -Raw (Join-Path $PSScriptRoot 'fixture.json') | ConvertFrom-Json\n"
             script += "$visuals=Get-KoukuTargetedVisualIndex $fixture.bindings $fixture.revision\n"
-            script += "$rows=@(New-KoukuShowtimeTargetRows $fixture.pattern 'ENCOUNTER_KAKULSAYDON_G1' 6000 $visuals)\n"
+            script += "$rows=@(New-KoukuShowtimeTargetRows $fixture.pattern 'ENCOUNTER_KOUKUSAYDON_G1' 6000 $visuals)\n"
             script += "ConvertTo-Json -InputObject @($rows) -Compress\n"
             path = folder / "validate.ps1"
             path.write_text(script, encoding="utf-8-sig")
@@ -1499,7 +1499,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.assertEqual(0, result.returncode, result.stderr)
             fields = json.loads(result.stdout)[0].split("\t")
             self.assertEqual(11, len(fields))
-            self.assertEqual(["PATTERNSHOWTIMETARGETS", "ENCOUNTER_KAKULSAYDON_G1", FIRST_PRODUCT_ID], fields[:3])
+            self.assertEqual(["PATTERNSHOWTIMETARGETS", "ENCOUNTER_KOUKUSAYDON_G1", FIRST_PRODUCT_ID], fields[:3])
             self.assertEqual(["3400", "2000", "0.5"], fields[-3:])
             tracking_only = copy.deepcopy(encounter)
             tracking_only["showtimeTargets"][0].update(fixedVisualId="", fixedLifetimeMs=0)
@@ -1665,7 +1665,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_parent_repeat_and_clipping_remove_derived_selection_groups_only(self):
         document, parent, child = self.parent_fixture()
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append({"resourceId": resource_id, "displayName": "Group box",
             "kind": "COLLIDER", "assetId": "", "shape": "BOX"})
@@ -1698,7 +1698,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             import build_gate2_intro_composition as builder
         finally:
             sys.path.pop(0)
-        source = {"compositionId": "boss.composition.kakulsaydon.sequencer", "revision": 3,
+        source = {"compositionId": "boss.composition.koukusaydon.sequencer", "revision": 3,
             "worlds": [{"worldId": "world.keep"}], "presentationResources": [{"resourceId": "resource.keep"}],
             "patterns": [{"patternId": "pattern.intro"}, {"patternId": "pattern.keep"}]}
         pattern = {"patternId": "pattern.intro", "worldOccurrences": [{"worldId": "world.intro"}],
@@ -1762,14 +1762,14 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             "sequenceInstanceId": "world.sequence.instance.kouku.gate2.intro.saydon"}]}
         def check(document):
             return subject._validate_catalog(document, "nextWorldOrdinal", "worlds", "worldId",
-                subject.GENERATED_WORLD_RE, subject.WORLD_KEYS, subject.MAX_WORLDS, "kakulsaydon.g1.world")
+                subject.GENERATED_WORLD_RE, subject.WORLD_KEYS, subject.MAX_WORLDS, "koukusaydon.g1.world")
         identities, _ = check(source)
         self.assertEqual({"world.kouku.gate2.intro.saydon"}, identities)
         for identity, instance in [
             ("world.unrelated.saydon", "world.sequence.instance.kouku.gate2.intro.saydon"),
             ("world.kouku.gate2.intro.saydon", "world.sequence.instance.kouku.gate2.intro.kouku"),
             ("world.kouku.gate2.intro.", "world.sequence.instance.kouku.gate2.intro."),
-            ("kakulsaydon.g1.world.1", "world.sequence.instance.existing")]:
+            ("koukusaydon.g1.world.1", "world.sequence.instance.existing")]:
             invalid = copy.deepcopy(source)
             invalid["worlds"][0].update(worldId=identity, sequenceInstanceId=instance)
             with self.subTest(identity=identity), self.assertRaises(subject.CompositionError):
@@ -1789,7 +1789,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                 with self.assertRaisesRegex(subject.CompositionError, "worldId must use"):
                     subject.projected_outputs({}, root)
                 project.assert_not_called()
-                sequence["worlds"][0]["worldId"] = "kakulsaydon.g1.world.35"
+                sequence["worlds"][0]["worldId"] = "koukusaydon.g1.world.35"
                 path.write_text(json.dumps(sequence), encoding="utf-8")
                 self.assertIn(subject.ENCOUNTER_PATH, subject.projected_outputs({}, root))
                 project.assert_called_once_with({}, sequence)
@@ -1862,7 +1862,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = copy.deepcopy(self.document)
         for pattern in document["patterns"]:
             pattern["authoringStatus"] = "DRAFT"
-        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_13")
+        pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_13")
         pattern["authoringStatus"] = "PRODUCT"
         clips = [row for stage in pattern["stages"] for row in stage["animationOccurrences"]]
         selected = next(row for row in clips if row["occurrenceId"].endswith(".animation.16"))
@@ -1937,14 +1937,14 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def mario_completion_document(self):
         source = copy.deepcopy(self.hierarchy_document)
-        definition = next(row for row in source["logics"] if row["logicId"] == "kakulsaydon.g1.logic.55")
-        definition.update(completionCount=2, patternIds=[f"KAKULSAYDON_G1_PATTERN_{number}"
+        definition = next(row for row in source["logics"] if row["logicId"] == "koukusaydon.g1.logic.55")
+        definition.update(completionCount=2, patternIds=[f"KOUKUSAYDON_G1_PATTERN_{number}"
             for number in (38, 39, 40, 43, 52, 46)])
-        owner = self.find(source, "KAKULSAYDON_G1_PATTERN_34")
+        owner = self.find(source, "KOUKUSAYDON_G1_PATTERN_34")
         chain = next(row for row in owner["logicOccurrences"] if row["logicId"] == definition["logicId"])
         chain["onSuccessLogicIds"] = []
         patterns = {row["patternId"]: row for row in source["patterns"]}
-        closure, pending = set(), [owner["patternId"], "KAKULSAYDON_G1_PATTERN_33"]
+        closure, pending = set(), [owner["patternId"], "KOUKUSAYDON_G1_PATTERN_33"]
         while pending:
             identity = pending.pop()
             if identity in closure:
@@ -1959,29 +1959,29 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         subject.validate_document(document)
         with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
             encounter = subject.project_encounter(document)
-        root = self.find(encounter, "KAKULSAYDON_G1_PATTERN_34")
+        root = self.find(encounter, "KOUKUSAYDON_G1_PATTERN_34")
         chain = next(row for row in root["logicWindows"] if row["kind"] == "PATTERN_COMPLETION_COUNT")
         self.assertEqual(2, chain["completionCount"])
         self.assertEqual(6, len(set(chain["patternIds"])))
         self.assertEqual([], chain["onSuccess"])
-        parent = self.find(encounter, "KAKULSAYDON_G1_PATTERN_52")
-        self.assertEqual(self.find(document, "KAKULSAYDON_G1_PATTERN_52")["durationMs"],
+        parent = self.find(encounter, "KOUKUSAYDON_G1_PATTERN_52")
+        self.assertEqual(self.find(document, "KOUKUSAYDON_G1_PATTERN_52")["durationMs"],
                          sum(row["durationMs"] for row in parent["stages"]))
         self.assertEqual("CROSS_DIRECTION_CLONES", parent["mechanicTriggers"][0]["kind"])
         self.assertEqual(before, document)
-        owner = self.find(document, "KAKULSAYDON_G1_PATTERN_34")
-        next(row for row in owner["logicOccurrences"] if row["logicId"] == "kakulsaydon.g1.logic.55")["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.60"]
+        owner = self.find(document, "KOUKUSAYDON_G1_PATTERN_34")
+        next(row for row in owner["logicOccurrences"] if row["logicId"] == "koukusaydon.g1.logic.55")["onSuccessLogicIds"] = ["koukusaydon.g1.logic.60"]
         subject.validate_document(document)
 
     def mario_parent_entry_document(self, stage=1, kind="MARIO_ENTER", gate_id=None):
         # The saved 1마리오 Parent P88 owns an ENTER_AREA box without a completion chain.
         source = copy.deepcopy(self.hierarchy_document)
-        logic_id = f"kakulsaydon.g1.logic.{source['nextLogicOrdinal']}"
+        logic_id = f"koukusaydon.g1.logic.{source['nextLogicOrdinal']}"
         source["nextLogicOrdinal"] += 1
         source["logics"].append(dict(logicId=logic_id, displayName="Mario stage entry", logicType="RESULT",
                                      outcomeKind=kind, percent=0, durationMs=0, followupPatternId="", marioStage=stage))
-        owner = self.find(source, "KAKULSAYDON_G1_PATTERN_88")
-        box = next(row for row in owner["logicOccurrences"] if row["occurrenceId"] == "KAKULSAYDON_G1_PATTERN_88.logic.1")
+        owner = self.find(source, "KOUKUSAYDON_G1_PATTERN_88")
+        box = next(row for row in owner["logicOccurrences"] if row["occurrenceId"] == "KOUKUSAYDON_G1_PATTERN_88.logic.1")
         box["onSuccessLogicIds"] = [logic_id]
         patterns = {row["patternId"]: row for row in source["patterns"]}
         closure, pending = set(), [owner["patternId"]]
@@ -2003,7 +2003,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_mario_entry_without_chain_admits_gate3_parent_and_projects_stage(self):
         document = self.mario_parent_entry_document(stage=1)
-        owner = self.find(document, "KAKULSAYDON_G1_PATTERN_88")
+        owner = self.find(document, "KOUKUSAYDON_G1_PATTERN_88")
         logics = {row["logicId"]: row for row in document["logics"]}
         self.assertFalse(any(logics[row["logicId"]].get("judgementKind") == "PATTERN_COMPLETION_COUNT"
                              for row in owner["logicOccurrences"]))
@@ -2012,7 +2012,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
             encounter = subject.project_encounter(document)
         self.assertEqual(before, document)
-        root = self.find(encounter, "KAKULSAYDON_G1_PATTERN_88")
+        root = self.find(encounter, "KOUKUSAYDON_G1_PATTERN_88")
         windows = [row for row in root["logicWindows"] if row["kind"] == "ENTER_AREA"]
         self.assertEqual(1, len(windows))
         self.assertEqual([dict(kind="MARIO_ENTER", percent=0, durationMs=0, patternId="", marioStage=1)], windows[0]["onSuccess"])
@@ -2022,7 +2022,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         subject.validate_document(live)
         with mock.patch.object(subject, "_project_pattern_root_motion", return_value={}):
             encounter = subject.project_encounter(live)
-        window = next(row for row in self.find(encounter, "KAKULSAYDON_G1_PATTERN_88")["logicWindows"] if row["kind"] == "ENTER_AREA")
+        window = next(row for row in self.find(encounter, "KOUKUSAYDON_G1_PATTERN_88")["logicWindows"] if row["kind"] == "ENTER_AREA")
         self.assertEqual([dict(kind="MARIO_ENTER", percent=0, durationMs=0, patternId="")], window["onSuccess"])
 
     def test_mario_stage_rejects_out_of_range_non_mario_kind_and_non_gate3(self):
@@ -2044,12 +2044,12 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         for mutation in ("duplicate_success", "wrong_success", "timeout", "untimed_parent", "nested_chain"):
             with self.subTest(mutation=mutation):
                 document = self.mario_completion_document()
-                owner = self.find(document, "KAKULSAYDON_G1_PATTERN_34")
-                chain = next(row for row in owner["logicOccurrences"] if row["logicId"] == "kakulsaydon.g1.logic.55")
-                if mutation == "duplicate_success": chain["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.60"] * 2
-                if mutation == "wrong_success": chain["onSuccessLogicIds"] = ["kakulsaydon.g1.logic.61"]
-                if mutation == "timeout": chain["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.60"]
-                parent = self.find(document, "KAKULSAYDON_G1_PATTERN_52")
+                owner = self.find(document, "KOUKUSAYDON_G1_PATTERN_34")
+                chain = next(row for row in owner["logicOccurrences"] if row["logicId"] == "koukusaydon.g1.logic.55")
+                if mutation == "duplicate_success": chain["onSuccessLogicIds"] = ["koukusaydon.g1.logic.60"] * 2
+                if mutation == "wrong_success": chain["onSuccessLogicIds"] = ["koukusaydon.g1.logic.61"]
+                if mutation == "timeout": chain["onTimeoutLogicIds"] = ["koukusaydon.g1.logic.60"]
+                parent = self.find(document, "KOUKUSAYDON_G1_PATTERN_52")
                 if mutation == "untimed_parent": parent.pop("durationMs")
                 if mutation == "nested_chain":
                     parent["nextLogicOccurrenceOrdinal"] = 2
@@ -2059,7 +2059,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_parent_repeats_full_child_and_cancels_only_truncated_logic(self):
         document, parent, child = self.parent_fixture()
-        logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        logic_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append(dict(logicId=logic_id, displayName="Pose", logicType="DURATION",
                                       judgementKind="POSE_INPUT", poseIndex=0))
@@ -2340,7 +2340,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         logic.clear()
         logic.update(logicId=logic_id, displayName="Object overlap", logicType="DURATION",
                      judgementKind="OBJECT_OVERLAP", targetWorldInstanceId=target, targetRadiusM=1.25)
-        result_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        result_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append(dict(logicId=result_id, displayName="Flip the same card", logicType="RESULT",
             outcomeKind="PLAY_WORLD_OBJECT_MOTION", targetWorldInstanceId=target,
@@ -2348,7 +2348,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         box["onSuccessLogicIds"] = [result_id]
         box["onFailLogicIds"] = []
         box["onTimeoutLogicIds"] = []
-        world_id = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+        world_id = f"koukusaydon.g1.world.{document['nextWorldOrdinal']}"
         document["nextWorldOrdinal"] += 1
         document["worlds"].append(dict(worldId=world_id, displayName="Target card", sequenceInstanceId=target,
                                        positionOffset=[100, 0, 900]))
@@ -2364,7 +2364,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         box = pattern["logicOccurrences"][0]
         first = pattern["worldOccurrences"][-1]
         world = copy.deepcopy(next(row for row in document["worlds"] if row["worldId"] == first["worldId"]))
-        world["worldId"] = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+        world["worldId"] = f"koukusaydon.g1.world.{document['nextWorldOrdinal']}"
         document["nextWorldOrdinal"] += 1
         world["positionOffset"][0] += 10
         document["worlds"].append(world)
@@ -2382,13 +2382,13 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         result.clear()
         result.update(logicId=result_id, displayName="Flip contacted card", logicType="RESULT", outcomeKind="PLAY_CONTACT_WORLD_OBJECT_MOTION",
                       contactMotions=[dict(targetWorldOccurrenceId=target, motionInstanceId="world.object.instance.kouku.card_flip") for target in candidates])
-        signal_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
-        complete_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']+1}"
-        followup_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']+2}"
+        signal_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
+        complete_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']+1}"
+        followup_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']+2}"
         document["nextLogicOrdinal"] += 3
         signal_box = dict(occurrenceId=f"{pattern['patternId']}.logic.{pattern['nextLogicOccurrenceOrdinal']}",
                           logicId=signal_id, startMs=box["startMs"], durationMs=box["durationMs"],
-                          onSuccessLogicIds=[followup_id], onFailLogicIds=[], onTimeoutLogicIds=["kakulsaydon.g1.logic.2"])
+                          onSuccessLogicIds=[followup_id], onFailLogicIds=[], onTimeoutLogicIds=["koukusaydon.g1.logic.2"])
         pattern["nextLogicOccurrenceOrdinal"] += 1
         document["logics"].extend([
             dict(logicId=signal_id, displayName="Full deadline", logicType="DURATION", judgementKind="EXTERNAL_SIGNAL", endsPatternOnSuccess=True),
@@ -2438,7 +2438,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             elif invalid == "signal_disabled": signal["enabled"] = False
             elif invalid == "filter": complete["contactTargetWorldOccurrenceId"] = "missing.world"
             elif invalid == "lifetime": pattern["worldOccurrences"][0]["durationMs"] = 1
-            elif invalid == "timeout": box["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.2"]
+            elif invalid == "timeout": box["onTimeoutLogicIds"] = ["koukusaydon.g1.logic.2"]
             else: box["onSuccessLogicIds"].append(box["onSuccessLogicIds"][0])
             with self.subTest(invalid=invalid), self.assertRaises(subject.CompositionError):
                 self.validate(document)
@@ -2450,7 +2450,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         sibling = dict(copy.deepcopy(box), occurrenceId=f"{pattern['patternId']}.logic.{pattern['nextLogicOccurrenceOrdinal']}")
         pattern["nextLogicOccurrenceOrdinal"] += 1
         definition = copy.deepcopy(next(row for row in document["logics"] if row["logicId"] == box["logicId"]))
-        definition["logicId"] = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        definition["logicId"] = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append(definition)
         sibling["logicId"] = definition["logicId"]
@@ -2484,7 +2484,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def bone_contact_document(self):
         document = self.object_contact_document()
         pattern = self.first_product(document)
-        pattern.update(actorProfileId="MN_RPCT_06", gateId="GATE2", targetBossPlacementId="boss.kakulsaydon.g2.big-saydon")
+        pattern.update(actorProfileId="MN_RPCT_06", gateId="GATE2", targetBossPlacementId="boss.koukusaydon.g2.big-saydon")
         pattern.pop("folderId", None)
         stages = pattern["stages"][:2]
         for stage, suffix in zip(stages, ("8_01", "8_02")):
@@ -2556,7 +2556,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern = self.first_product(document)
         original = copy.deepcopy(pattern["worldOccurrences"][0])
         joker_world = copy.deepcopy(world)
-        joker_world.update(worldId=f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}",
+        joker_world.update(worldId=f"koukusaydon.g1.world.{document['nextWorldOrdinal']}",
                            objectResourceId="world.object.kouku.joker_card", sequenceInstanceId="world.object.instance.kouku.joker_card")
         document["nextWorldOrdinal"] += 1
         document["worlds"].append(joker_world)
@@ -3236,8 +3236,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.assertGreaterEqual(self.document["revision"], 51)
         self.assertEqual(3, self.document["formatVersion"])
         self.assertEqual(
-            ["KAKULSAYDON_G1_PATTERN_1", "KAKULSAYDON_G1_PATTERN_2", "KAKULSAYDON_G1_PATTERN_4",
-             "KAKULSAYDON_G1_PATTERN_5", "KAKULSAYDON_G1_PATTERN_6", "KAKULSAYDON_G1_PATTERN_7"],
+            ["KOUKUSAYDON_G1_PATTERN_1", "KOUKUSAYDON_G1_PATTERN_2", "KOUKUSAYDON_G1_PATTERN_4",
+             "KOUKUSAYDON_G1_PATTERN_5", "KOUKUSAYDON_G1_PATTERN_6", "KOUKUSAYDON_G1_PATTERN_7"],
             self.document["playAllPatternIds"],
         )
         for pattern in self.product_patterns(self.document):
@@ -3246,7 +3246,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             for stage in pattern["stages"]:
                 self.assertEqual(1, len(stage["animationOccurrences"]))
                 self.assertEqual("EXACT", stage["animationOccurrences"][0]["endPolicy"])
-        self.assertNotIn("KAKULSAYDON_G1_PIZZA", [p["patternId"] for p in self.document["patterns"]])
+        self.assertNotIn("KOUKUSAYDON_G1_PIZZA", [p["patternId"] for p in self.document["patterns"]])
         self.assertEqual("DRAFT", self.draft(self.document)["authoringStatus"])
         self.assertEqual({"maximum": 100, "clownHoldMs": 15000}, self.document["madnessPolicy"])
         self.assertEqual(
@@ -3254,7 +3254,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             {row["displayName"]: row["sequenceInstanceId"] for row in self.document["worlds"]},
         )
         self.assertEqual(
-            {"씬프로필_암전": "scene.kakulsaydon.find-true-dark.v1"},
+            {"씬프로필_암전": "scene.koukusaydon.find-true-dark.v1"},
             {row["displayName"]: row["renderingProfileId"] for row in self.document["sceneProfiles"]},
         )
         roulette = self.find(self.document, ROULETTE_ID)
@@ -3287,7 +3287,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         wrong_version["formatVersion"] = subject.FORMAT_VERSION + 1
         mutations.append(wrong_version)
         wrong_id = copy.deepcopy(self.document)
-        wrong_id["bossPlacementId"] = "boss.kakulsaydon.g1.other"
+        wrong_id["bossPlacementId"] = "boss.koukusaydon.g1.other"
         mutations.append(wrong_id)
         boolean_revision = copy.deepcopy(self.document)
         boolean_revision["revision"] = True
@@ -3305,7 +3305,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.validate(duplicate)
 
         pattern_counter = copy.deepcopy(self.document)
-        ahead_id = f"KAKULSAYDON_G1_PATTERN_{pattern_counter['nextPatternOrdinal']}"
+        ahead_id = f"KOUKUSAYDON_G1_PATTERN_{pattern_counter['nextPatternOrdinal']}"
         self.draft(pattern_counter)["patternId"] = ahead_id
         with self.assertRaisesRegex(subject.CompositionError, "nextPatternOrdinal"):
             self.validate(pattern_counter)
@@ -3320,7 +3320,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         draft = self.strip_lanes(copy.deepcopy(self.first_product(document)))
         draft_ordinal = document["nextPatternOrdinal"]
         draft.update(
-            patternId=f"KAKULSAYDON_G1_PATTERN_{draft_ordinal}",
+            patternId=f"KOUKUSAYDON_G1_PATTERN_{draft_ordinal}",
             displayName="초안",
             authoringStatus="DRAFT",
             nextStageOrdinal=1,
@@ -3349,7 +3349,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document["playAllPatternIds"] = []
         for ordinal in range(1, subject.MAX_PRODUCT_PATTERNS + 2):
             pattern = copy.deepcopy(seed)
-            pattern_id = f"KAKULSAYDON_G1_PATTERN_{ordinal}"
+            pattern_id = f"KOUKUSAYDON_G1_PATTERN_{ordinal}"
             pattern["patternId"] = pattern_id
             pattern["displayName"] = f"Product {ordinal}"
             pattern["nextStageOrdinal"] = len(seed["stages"]) + 1
@@ -3390,13 +3390,13 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                      (ROOT / "Tools/KoukuSaydonPipeline/KoukuBootstrapRows.ps1").read_text(encoding="utf-8-sig"))
         header = publisher[publisher.index("if ([string]$koukuEncounterDocument.schema"):
                            publisher.index("$koukuEncounterBosses =")]
-        fixture = dict(schema="lostark.encounter-profile", encounterId="ENCOUNTER_KAKULSAYDON_G1",
-                       bossArchetypeId="BOSS_KAKULSAYDON_G1_KOUKU", authority="server", fixedTickHz=30,
+        fixture = dict(schema="lostark.encounter-profile", encounterId="ENCOUNTER_KOUKUSAYDON_G1",
+                       bossArchetypeId="BOSS_KOUKUSAYDON_G1_KOUKU", authority="server", fixedTickHz=30,
                        patterns=[], playAllPatternIds=[])
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "header.ps1"
             script = "$ErrorActionPreference='Stop'\n$fixture='" + json.dumps(fixture) + "' | ConvertFrom-Json\n"
-            script += "$bossIds=@('BOSS_KAKULSAYDON_G1_KOUKU')\n"
+            script += "$bossIds=@('BOSS_KOUKUSAYDON_G1_KOUKU')\n"
             for count in (64, 65, 255, 256):
                 script += f"$koukuEncounterDocument=$fixture; $koukuEncounterDocument.patterns=@(1..{count})\n"
                 script += "$accepted=$true; try {\n" + header + "\n} catch { $accepted=$false }\n"
@@ -3413,15 +3413,15 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_product_pattern_ids_cannot_collapse_to_one_runtime_action_id(self):
         document = copy.deepcopy(self.document)
         duplicate = self.strip_lanes(copy.deepcopy(self.first_product(document)))
-        duplicate["patternId"] = "KAKULSAYDON.G1.PATTERN.1"
+        duplicate["patternId"] = "KOUKUSAYDON.G1.PATTERN.1"
         duplicate["displayName"] = "Derived action collision"
         for ordinal, stage in enumerate(duplicate["stages"], 1):
-            stage["actionId"] = f"kakulsaydon.g1.collision.stage.{ordinal}"
+            stage["actionId"] = f"koukusaydon.g1.collision.stage.{ordinal}"
             stage["animationOccurrences"][0]["occurrenceId"] = (
-                f"KAKULSAYDON.G1.PATTERN.1.animation.{ordinal}"
+                f"KOUKUSAYDON.G1.PATTERN.1.animation.{ordinal}"
             )
         document["patterns"].append(duplicate)
-        document["playAllPatternIds"].append("KAKULSAYDON.G1.PATTERN.1")
+        document["playAllPatternIds"].append("KOUKUSAYDON.G1.PATTERN.1")
 
         with self.assertRaisesRegex(subject.CompositionError, "duplicate actionId"):
             self.validate(document)
@@ -3822,7 +3822,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with self.assertRaisesRegex(subject.CompositionError, "PRODUCT patternIds"):
             self.validate(missing)
         unknown = copy.deepcopy(self.document)
-        unknown["playAllPatternIds"] = ["KAKULSAYDON_G1_UNKNOWN"]
+        unknown["playAllPatternIds"] = ["KOUKUSAYDON_G1_UNKNOWN"]
         with self.assertRaisesRegex(subject.CompositionError, "PRODUCT patternIds"):
             self.validate(unknown)
 
@@ -3880,7 +3880,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document["nextLogicOrdinal"] = 2
         document["logics"] = [
             {
-                "logicId": "kakulsaydon.g1.logic.1",
+                "logicId": "koukusaydon.g1.logic.1",
                 "displayName": "방패 무력화",
                 "logicType": "DURATION",
             }
@@ -3898,7 +3898,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         product["logicOccurrences"] = [
             {
                 "occurrenceId": f"{FIRST_PRODUCT_ID}.logic.1",
-                "logicId": "kakulsaydon.g1.logic.1",
+                "logicId": "koukusaydon.g1.logic.1",
                 "startMs": 0,
                 "durationMs": 1000,
             }
@@ -3921,7 +3921,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with self.assertRaisesRegex(subject.CompositionError, "nextLogicOrdinal"):
             self.validate(ahead)
         dangling = copy.deepcopy(draft)
-        self.first_product(dangling)["logicOccurrences"][0]["logicId"] = "kakulsaydon.g1.logic.9"
+        self.first_product(dangling)["logicOccurrences"][0]["logicId"] = "koukusaydon.g1.logic.9"
         with self.assertRaisesRegex(subject.CompositionError, "unknown logicId"):
             self.validate(dangling)
         foreign_box = copy.deepcopy(draft)
@@ -3936,7 +3936,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document["playAllPatternIds"] = []
         document["nextLogicOrdinal"] = 2
         document["logics"] = [{
-            "logicId": "kakulsaydon.g1.logic.1",
+            "logicId": "koukusaydon.g1.logic.1",
             "displayName": "Logic window",
             "logicType": "DURATION",
         }]
@@ -3945,7 +3945,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern["presentationOccurrences"] = []
         pattern["logicOccurrences"] = [{
             "occurrenceId": pattern["patternId"] + ".logic.1",
-            "logicId": "kakulsaydon.g1.logic.1",
+            "logicId": "koukusaydon.g1.logic.1",
             "startMs": 0,
             "durationMs": 1000,
         }]
@@ -4012,7 +4012,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern["presentationOccurrences"] = []
         pattern["logicOccurrences"] = [{
             "occurrenceId": pattern["patternId"] + f".logic.{ordinal}",
-            "logicId": "kakulsaydon.g1.logic.1",
+            "logicId": "koukusaydon.g1.logic.1",
             "startMs": 0,
             "durationMs": 1,
         } for ordinal in range(1, 1025)]
@@ -4029,9 +4029,9 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
         document["nextLogicOrdinal"] = 4
         document["logics"] = [
-            {"logicId": "kakulsaydon.g1.logic.1", "displayName": "방패 무력화", "logicType": "DURATION"},
-            {"logicId": "kakulsaydon.g1.logic.2", "displayName": "그로기 패턴", "logicType": "RESULT"},
-            {"logicId": "kakulsaydon.g1.logic.3", "displayName": "전원 전멸", "logicType": "RESULT"},
+            {"logicId": "koukusaydon.g1.logic.1", "displayName": "방패 무력화", "logicType": "DURATION"},
+            {"logicId": "koukusaydon.g1.logic.2", "displayName": "그로기 패턴", "logicType": "RESULT"},
+            {"logicId": "koukusaydon.g1.logic.3", "displayName": "전원 전멸", "logicType": "RESULT"},
         ]
         for pattern in self.product_patterns(document):
             pattern["authoringStatus"] = "DRAFT"
@@ -4042,18 +4042,18 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         product["logicOccurrences"] = [
             {
                 "occurrenceId": f"{FIRST_PRODUCT_ID}.logic.1",
-                "logicId": "kakulsaydon.g1.logic.1",
+                "logicId": "koukusaydon.g1.logic.1",
                 "startMs": 0,
                 "durationMs": 1000,
-                "onSuccessLogicId": "kakulsaydon.g1.logic.2",
-                "onTimeoutLogicId": "kakulsaydon.g1.logic.3",
+                "onSuccessLogicId": "koukusaydon.g1.logic.2",
+                "onTimeoutLogicId": "koukusaydon.g1.logic.3",
             }
         ]
         self.validate(copy.deepcopy(document))
         box = product["logicOccurrences"][0]
-        self.assertEqual(["kakulsaydon.g1.logic.2"], subject.outcome_logic_ids(box, "Success"))
+        self.assertEqual(["koukusaydon.g1.logic.2"], subject.outcome_logic_ids(box, "Success"))
         self.assertEqual([], subject.outcome_logic_ids(box, "Fail"))
-        self.assertEqual(["kakulsaydon.g1.logic.3"], subject.outcome_logic_ids(box, "Timeout"))
+        self.assertEqual(["koukusaydon.g1.logic.3"], subject.outcome_logic_ids(box, "Timeout"))
 
         unwired = copy.deepcopy(document)
         box = self.first_product(unwired)["logicOccurrences"][0]
@@ -4062,15 +4062,15 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.validate(unwired)
 
         not_result = copy.deepcopy(document)
-        self.first_product(not_result)["logicOccurrences"][0]["onSuccessLogicId"] = "kakulsaydon.g1.logic.1"
+        self.first_product(not_result)["logicOccurrences"][0]["onSuccessLogicId"] = "koukusaydon.g1.logic.1"
         with self.assertRaisesRegex(subject.CompositionError, "RESULT logic"):
             self.validate(not_result)
         dangling = copy.deepcopy(document)
-        self.first_product(dangling)["logicOccurrences"][0]["onTimeoutLogicId"] = "kakulsaydon.g1.logic.9"
+        self.first_product(dangling)["logicOccurrences"][0]["onTimeoutLogicId"] = "koukusaydon.g1.logic.9"
         with self.assertRaisesRegex(subject.CompositionError, "RESULT logic"):
             self.validate(dangling)
         on_result_box = copy.deepcopy(document)
-        self.first_product(on_result_box)["logicOccurrences"][0]["logicId"] = "kakulsaydon.g1.logic.2"
+        self.first_product(on_result_box)["logicOccurrences"][0]["logicId"] = "koukusaydon.g1.logic.2"
         with self.assertRaisesRegex(subject.CompositionError, "DURATION logic box"):
             self.validate(on_result_box)
         wrong_type = copy.deepcopy(document)
@@ -4078,15 +4078,15 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with self.assertRaisesRegex(subject.CompositionError, "must be text"):
             self.validate(wrong_type)
         wrong_list = copy.deepcopy(document)
-        self.first_product(wrong_list)["logicOccurrences"][0]["onFailLogicIds"] = "kakulsaydon.g1.logic.3"
+        self.first_product(wrong_list)["logicOccurrences"][0]["onFailLogicIds"] = "koukusaydon.g1.logic.3"
         with self.assertRaisesRegex(subject.CompositionError, "list of text"):
             self.validate(wrong_list)
 
     def test_fear_result_projects_only_stable_server_presentation_and_rejects_bad_references(self):
         document = copy.deepcopy(self.document)
-        logic = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.2")
+        logic = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.2")
         logic.clear()
-        logic.update(logicId="kakulsaydon.g1.logic.2", displayName="Fear", logicType="RESULT",
+        logic.update(logicId="koukusaydon.g1.logic.2", displayName="Fear", logicType="RESULT",
                      outcomeKind="FEAR", durationMs=3000,
                      sceneProfileId=document["sceneProfiles"][0]["sceneProfileId"])
         self.validate(document)
@@ -4111,7 +4111,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                      soundEvent="fear.event")
         effect = dict(resourceId="fear.effect", displayName="Fear face", kind="EFFECT",
                       assetId="effect.fear", resourceKind="V1_EFFECT", durationMs=1000)
-        logic = dict(logicId="kakulsaydon.g1.logic.1", displayName="Fear", logicType="RESULT",
+        logic = dict(logicId="koukusaydon.g1.logic.1", displayName="Fear", logicType="RESULT",
                      outcomeKind="FEAR", durationMs=3000, effectDelayMs=1000,
                      effectResourceId=effect["resourceId"], soundResourceId=sound["resourceId"])
         document = dict(logics=[logic], presentationResources=[sound, effect])
@@ -4143,7 +4143,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             with self.subTest(invalid_id=invalid_id), self.assertRaises(subject.CompositionError):
                 subject._validate_logic_definition(invalid, "fear sound", 2)
         for value in ("", sound["resourceId"]):
-            invalid = dict(logicId="kakulsaydon.g1.logic.1", displayName="Other", logicType="RESULT",
+            invalid = dict(logicId="koukusaydon.g1.logic.1", displayName="Other", logicType="RESULT",
                            outcomeKind="INSTANT_DEATH", soundResourceId=value)
             with self.subTest(non_fear_value=value), self.assertRaisesRegex(
                     subject.CompositionError, "only FEAR"):
@@ -4179,7 +4179,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_gaze_facing_outcome_projects_and_preserves_default(self):
         document = copy.deepcopy(self.document)
         logics = {row["logicId"]: row for row in document["logics"]}
-        gaze = logics["kakulsaydon.g1.logic.16"]
+        gaze = logics["koukusaydon.g1.logic.16"]
         gaze.pop("insideOutcome", None)
         box = next(row for row in self.find(document, GAZE_ID)["logicOccurrences"]
                    if row["logicId"] == gaze["logicId"])
@@ -4197,7 +4197,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_gaze_during_window_projects_only_explicit_facing_fail(self):
         document = copy.deepcopy(self.document)
         logics = {row["logicId"]: row for row in document["logics"]}
-        gaze = logics["kakulsaydon.g1.logic.16"]
+        gaze = logics["koukusaydon.g1.logic.16"]
         box = next(row for row in self.find(document, GAZE_ID)["logicOccurrences"] if row["logicId"] == gaze["logicId"])
         self.assertNotIn("gazeDuringWindow", subject._project_logic_window(box, gaze, logics, 0))
         gaze.update(insideOutcome="FAIL", gazeDuringWindow=True)
@@ -4218,9 +4218,9 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_counter_window_projects_followup_and_refuses_per_player_fail(self):
         document = copy.deepcopy(self.document)
-        logic = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.1")
+        logic = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.1")
         logic.clear()
-        logic.update(logicId="kakulsaydon.g1.logic.1", displayName="Counter", logicType="DURATION",
+        logic.update(logicId="koukusaydon.g1.logic.1", displayName="Counter", logicType="DURATION",
                      judgementKind="COUNTER_WINDOW", endsPatternOnSuccess=True)
         pattern = self.first_product(document)
         pattern["presentationOccurrences"] = [row for row in pattern.get("presentationOccurrences", [])
@@ -4233,7 +4233,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.assertEqual("FOLLOWUP_PATTERN", window["onSuccess"][0]["kind"])
         invalid = copy.deepcopy(document)
         next(row for row in self.first_product(invalid)["logicOccurrences"]
-             if row["logicId"] == logic["logicId"])["onFailLogicIds"] = ["kakulsaydon.g1.logic.2"]
+             if row["logicId"] == logic["logicId"])["onFailLogicIds"] = ["koukusaydon.g1.logic.2"]
         with self.assertRaises(subject.CompositionError):
             self.validate(invalid)
 
@@ -4241,7 +4241,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = copy.deepcopy(self.document)
         ordinal = document["nextLogicOrdinal"]
         document["nextLogicOrdinal"] += 1
-        definition = {"logicId": f"kakulsaydon.g1.logic.{ordinal}",
+        definition = {"logicId": f"koukusaydon.g1.logic.{ordinal}",
                       "displayName": "Sequence arrival", "logicType": "TRIGGER",
                       "triggerKind": "ROOM_PLAYER_ARRIVAL"}
         document["logics"].append(definition)
@@ -4255,16 +4255,16 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_typed_logic_definitions_follow_their_kind(self):
         logics = {logic["logicId"]: logic for logic in self.document["logics"]}
-        self.assertEqual("STAGGER_WINDOW", logics["kakulsaydon.g1.logic.1"]["judgementKind"])
-        self.assertEqual(1000, logics["kakulsaydon.g1.logic.1"]["threshold"])
-        self.assertEqual("FOLLOWUP_PATTERN", logics["kakulsaydon.g1.logic.7"]["outcomeKind"])
-        self.assertEqual("KAKULSAYDON_G1_PATTERN_4", logics["kakulsaydon.g1.logic.7"]["followupPatternId"])
+        self.assertEqual("STAGGER_WINDOW", logics["koukusaydon.g1.logic.1"]["judgementKind"])
+        self.assertEqual(1000, logics["koukusaydon.g1.logic.1"]["threshold"])
+        self.assertEqual("FOLLOWUP_PATTERN", logics["koukusaydon.g1.logic.7"]["outcomeKind"])
+        self.assertEqual("KOUKUSAYDON_G1_PATTERN_4", logics["koukusaydon.g1.logic.7"]["followupPatternId"])
         self.assertEqual(
             [1, 2, 3, 0],
-            [logics[f"kakulsaydon.g1.logic.{n}"]["poseIndex"] for n in (10, 11, 12, 13)],
+            [logics[f"koukusaydon.g1.logic.{n}"]["poseIndex"] for n in (10, 11, 12, 13)],
         )
-        self.assertEqual(8, len(logics["kakulsaydon.g1.logic.14"]["regionIds"]))
-        self.assertEqual("TRIGGER", logics["kakulsaydon.g1.logic.9"]["logicType"])
+        self.assertEqual(8, len(logics["koukusaydon.g1.logic.14"]["regionIds"]))
+        self.assertEqual("TRIGGER", logics["koukusaydon.g1.logic.9"]["logicType"])
 
         def mutate(logic_id, **changes):
             document = copy.deepcopy(self.document)
@@ -4277,29 +4277,29 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             return document
 
         rejected = {
-            "unknown judgement kind": mutate("kakulsaydon.g1.logic.1", judgementKind="COIN_FLIP"),
-            "values of another kind": mutate("kakulsaydon.g1.logic.1", poseIndex=1),
-            "judgement values on a RESULT": mutate("kakulsaydon.g1.logic.2", threshold=5),
-            "outcome values on a DURATION": mutate("kakulsaydon.g1.logic.1", percent=5),
-            "unknown outcome kind": mutate("kakulsaydon.g1.logic.2", outcomeKind="HEAL"),
-            "percent outcome without percent": mutate("kakulsaydon.g1.logic.4", percent=0),
-            "percent on a death outcome": mutate("kakulsaydon.g1.logic.2", percent=10),
-            "duration on a damage outcome": mutate("kakulsaydon.g1.logic.4", durationMs=100),
-            "follow-up without a target": mutate("kakulsaydon.g1.logic.7", followupPatternId=""),
-            "target on a non follow-up": mutate("kakulsaydon.g1.logic.2", followupPatternId="KAKULSAYDON_G1_PATTERN_4"),
-            "follow-up naming an unknown pattern": mutate("kakulsaydon.g1.logic.7", followupPatternId="KAKULSAYDON_G1_PATTERN_99"),
-            "pose index past the four poses": mutate("kakulsaydon.g1.logic.10", poseIndex=4),
-            "duplicate region ID": mutate("kakulsaydon.g1.logic.14", regionIds=["same"] * 8),
-            "invalid region ID": mutate("kakulsaydon.g1.logic.14", regionIds=["has space"]),
-            "gaze cone wider than a half turn": mutate("kakulsaydon.g1.logic.16", halfAngleDegrees=181),
-            "trigger with values": mutate("kakulsaydon.g1.logic.9", threshold=1),
+            "unknown judgement kind": mutate("koukusaydon.g1.logic.1", judgementKind="COIN_FLIP"),
+            "values of another kind": mutate("koukusaydon.g1.logic.1", poseIndex=1),
+            "judgement values on a RESULT": mutate("koukusaydon.g1.logic.2", threshold=5),
+            "outcome values on a DURATION": mutate("koukusaydon.g1.logic.1", percent=5),
+            "unknown outcome kind": mutate("koukusaydon.g1.logic.2", outcomeKind="HEAL"),
+            "percent outcome without percent": mutate("koukusaydon.g1.logic.4", percent=0),
+            "percent on a death outcome": mutate("koukusaydon.g1.logic.2", percent=10),
+            "duration on a damage outcome": mutate("koukusaydon.g1.logic.4", durationMs=100),
+            "follow-up without a target": mutate("koukusaydon.g1.logic.7", followupPatternId=""),
+            "target on a non follow-up": mutate("koukusaydon.g1.logic.2", followupPatternId="KOUKUSAYDON_G1_PATTERN_4"),
+            "follow-up naming an unknown pattern": mutate("koukusaydon.g1.logic.7", followupPatternId="KOUKUSAYDON_G1_PATTERN_99"),
+            "pose index past the four poses": mutate("koukusaydon.g1.logic.10", poseIndex=4),
+            "duplicate region ID": mutate("koukusaydon.g1.logic.14", regionIds=["same"] * 8),
+            "invalid region ID": mutate("koukusaydon.g1.logic.14", regionIds=["has space"]),
+            "gaze cone wider than a half turn": mutate("koukusaydon.g1.logic.16", halfAngleDegrees=181),
+            "trigger with values": mutate("koukusaydon.g1.logic.9", threshold=1),
         }
         for label, document in rejected.items():
             with self.subTest(label=label):
                 with self.assertRaises(subject.CompositionError):
                     self.validate(document)
         # A typed value may be dropped again on a DRAFT-only definition.
-        untyped = mutate("kakulsaydon.g1.logic.16", judgementKind=None, halfAngleDegrees=None, maxDistanceM=None)
+        untyped = mutate("koukusaydon.g1.logic.16", judgementKind=None, halfAngleDegrees=None, maxDistanceM=None)
         with self.assertRaisesRegex(subject.CompositionError, "without a judgementKind"):
             self.validate(untyped)
         self.find(untyped, GAZE_ID)["authoringStatus"] = "DRAFT"
@@ -4310,10 +4310,10 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = copy.deepcopy(self.document)
         gaze_box = next(
             box for box in self.find(document, GAZE_ID)["logicOccurrences"]
-            if box["logicId"] == "kakulsaydon.g1.logic.16"
+            if box["logicId"] == "koukusaydon.g1.logic.16"
         )
         self.assertEqual([], gaze_box["onTimeoutLogicIds"])
-        self.assertEqual(["kakulsaydon.g1.logic.3"], gaze_box["onFailLogicIds"])
+        self.assertEqual(["koukusaydon.g1.logic.3"], gaze_box["onFailLogicIds"])
         stagger_box = self.first_product(document)["logicOccurrences"][0]
         self.assertEqual([], stagger_box["onFailLogicIds"])
         dance_boxes = self.find(document, DANCE_ID)["logicOccurrences"]
@@ -4324,28 +4324,28 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         end_tick_timeout = copy.deepcopy(document)
         next(
             box for box in self.find(end_tick_timeout, GAZE_ID)["logicOccurrences"]
-            if box["logicId"] == "kakulsaydon.g1.logic.16"
-        )["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.3"]
+            if box["logicId"] == "koukusaydon.g1.logic.16"
+        )["onTimeoutLogicIds"] = ["koukusaydon.g1.logic.3"]
         with self.assertRaisesRegex(subject.CompositionError, "no Timeout slot"):
             self.validate(end_tick_timeout)
         stagger_fail = copy.deepcopy(document)
-        self.first_product(stagger_fail)["logicOccurrences"][0]["onFailLogicIds"] = ["kakulsaydon.g1.logic.2"]
+        self.first_product(stagger_fail)["logicOccurrences"][0]["onFailLogicIds"] = ["koukusaydon.g1.logic.2"]
         with self.assertRaisesRegex(subject.CompositionError, "no Fail slot"):
             self.validate(stagger_fail)
         too_many = copy.deepcopy(document)
         self.find(too_many, DANCE_ID)["logicOccurrences"][0]["onTimeoutLogicIds"] = [
-            "kakulsaydon.g1.logic.4", "kakulsaydon.g1.logic.5", "kakulsaydon.g1.logic.6",
-            "kakulsaydon.g1.logic.15", "kakulsaydon.g1.logic.8",
+            "koukusaydon.g1.logic.4", "koukusaydon.g1.logic.5", "koukusaydon.g1.logic.6",
+            "koukusaydon.g1.logic.15", "koukusaydon.g1.logic.8",
         ]
         with self.assertRaisesRegex(subject.CompositionError, "more than 4"):
             self.validate(too_many)
         followup_on_dance = copy.deepcopy(document)
-        self.find(followup_on_dance, DANCE_ID)["logicOccurrences"][0]["onTimeoutLogicIds"] = ["kakulsaydon.g1.logic.7"]
+        self.find(followup_on_dance, DANCE_ID)["logicOccurrences"][0]["onTimeoutLogicIds"] = ["koukusaydon.g1.logic.7"]
         with self.assertRaisesRegex(subject.CompositionError, "FOLLOWUP_PATTERN is only valid"):
             self.validate(followup_on_dance)
         stacked = copy.deepcopy(document)
         self.find(stacked, DANCE_ID)["logicOccurrences"][0]["onTimeoutLogicIds"] = [
-            "kakulsaydon.g1.logic.15", "kakulsaydon.g1.logic.5",
+            "koukusaydon.g1.logic.15", "koukusaydon.g1.logic.5",
         ]
         self.validate(copy.deepcopy(stacked))
         window = subject.project_encounter(stacked)["patterns"][4]["logicWindows"][0]
@@ -4355,8 +4355,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         )
         # A follow-up the Server starts must itself be a published Product.
         draft_followup = copy.deepcopy(document)
-        self.find(draft_followup, "KAKULSAYDON_G1_PATTERN_4")["authoringStatus"] = "DRAFT"
-        draft_followup["playAllPatternIds"].remove("KAKULSAYDON_G1_PATTERN_4")
+        self.find(draft_followup, "KOUKUSAYDON_G1_PATTERN_4")["authoringStatus"] = "DRAFT"
+        draft_followup["playAllPatternIds"].remove("KOUKUSAYDON_G1_PATTERN_4")
         self.validate(copy.deepcopy(draft_followup))
         with self.assertRaisesRegex(subject.CompositionError, "must name a PRODUCT pattern"):
             subject.validate_publishable(draft_followup, ROOT)
@@ -4364,12 +4364,12 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_summon_and_trigger_boxes_are_authoring_only_on_product(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
         # Untyped legacy TRIGGERs remain authoring-only; typed triggers project.
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         document["nextSummonOrdinal"] = 2
         document["summons"] = [
-            {"summonId": "kakulsaydon.g1.summon.1", "displayName": "가짜 세이튼 3"}
+            {"summonId": "koukusaydon.g1.summon.1", "displayName": "가짜 세이튼 3"}
         ]
         self.validate(copy.deepcopy(document))
         baseline = subject.project_encounter(self.without_catalog_boxes(copy.deepcopy(self.document)))
@@ -4378,7 +4378,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         product["summonOccurrences"] = [
             {
                 "occurrenceId": f"{FIRST_PRODUCT_ID}.summon.1",
-                "summonId": "kakulsaydon.g1.summon.1",
+                "summonId": "koukusaydon.g1.summon.1",
                 "startMs": 0,
                 "durationMs": 16334,
             }
@@ -4388,7 +4388,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         product["logicOccurrences"] = [
             {
                 "occurrenceId": f"{FIRST_PRODUCT_ID}.logic.1",
-                "logicId": "kakulsaydon.g1.logic.9",
+                "logicId": "koukusaydon.g1.logic.9",
                 "startMs": 0,
                 "durationMs": 1000,
             }
@@ -4401,7 +4401,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with self.assertRaisesRegex(subject.CompositionError, "nextSummonOrdinal"):
             self.validate(ahead)
         dangling = copy.deepcopy(document)
-        self.first_product(dangling)["summonOccurrences"][0]["summonId"] = "kakulsaydon.g1.summon.9"
+        self.first_product(dangling)["summonOccurrences"][0]["summonId"] = "koukusaydon.g1.summon.9"
         with self.assertRaisesRegex(subject.CompositionError, "unknown summonId"):
             self.validate(dangling)
         foreign_box = copy.deepcopy(document)
@@ -4451,12 +4451,12 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.assertEqual(pairs, {(r["cardSymbol"],r["cardColor"]) for r in window["cardRegions"]})
             self.assertTrue(all(abs(r["radiusM"]-8.0)<0.001 and r["anchorKind"] == "BOSS_SPAWN" for r in window["cardRegions"]))
         gaze = next(p for p in encounter["patterns"] if p["patternId"] == GAZE_ID)
-        self.assertEqual("scene.kakulsaydon.find-true-dark.v1", gaze["sceneProfiles"][0]["renderingProfileId"])
+        self.assertEqual("scene.koukusaydon.find-true-dark.v1", gaze["sceneProfiles"][0]["renderingProfileId"])
         dance = next(p for p in encounter["patterns"] if p["patternId"] == DANCE_ID)
         self.assertEqual("world.sequence.instance.curtain_drop",dance["worldSequences"][0]["sequenceInstanceId"])
         # A partial mapping fails projection and leaves the previous Product intact.
         unmapped = copy.deepcopy(document)
-        next(l for l in unmapped["logics"] if l["logicId"] == "kakulsaydon.g1.logic.14")["regionIds"].pop()
+        next(l for l in unmapped["logics"] if l["logicId"] == "koukusaydon.g1.logic.14")["regionIds"].pop()
         with self.assertRaisesRegex(subject.CompositionError,"eight explicit"):
             subject.project_encounter(unmapped)
         duplicated = copy.deepcopy(document)
@@ -4484,13 +4484,13 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.find(slow, ROULETTE_ID)["worldOccurrences"][0]["playbackSpeed"] = 0.01
         rejected["playback speed below the floor"] = (slow, "playbackSpeed")
         unknown_world = copy.deepcopy(document)
-        self.find(unknown_world, ROULETTE_ID)["worldOccurrences"][0]["worldId"] = "kakulsaydon.g1.world.9"
+        self.find(unknown_world, ROULETTE_ID)["worldOccurrences"][0]["worldId"] = "koukusaydon.g1.world.9"
         rejected["unknown world"] = (unknown_world, "unknown worldId")
         long_scene = copy.deepcopy(document)
         self.find(long_scene, GAZE_ID)["sceneProfileOccurrences"][0]["durationMs"] += 1
         rejected["scene profile past the pattern"] = (long_scene, "exceeds the Pattern lifetime")
         unknown_scene = copy.deepcopy(document)
-        self.find(unknown_scene, GAZE_ID)["sceneProfileOccurrences"][0]["sceneProfileId"] = "kakulsaydon.g1.sceneprofile.9"
+        self.find(unknown_scene, GAZE_ID)["sceneProfileOccurrences"][0]["sceneProfileId"] = "koukusaydon.g1.sceneprofile.9"
         rejected["unknown scene profile"] = (unknown_scene, "unknown sceneProfileId")
         world_ahead = copy.deepcopy(document)
         world_ahead["nextWorldOrdinal"] = 1
@@ -4520,7 +4520,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         for ordinal, (kind, asset) in enumerate((
             ("EFFECT", "Effect/V2/example.group.json"), ("SOUND", "Sound/example.wav"),
             ("CAMERA", "camera.shot.example"), ("COLLIDER", "")), 1):
-            resource_id = f"kakulsaydon.g1.presentation.{ordinal}"
+            resource_id = f"koukusaydon.g1.presentation.{ordinal}"
             document["presentationResources"].append({
                 "resourceId": resource_id, "displayName": kind, "kind": kind, "assetId": asset,
             })
@@ -4555,7 +4555,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = copy.deepcopy(self.document)
         ordinal = document.get("nextPresentationResourceOrdinal", 1)
         document["nextPresentationResourceOrdinal"] = ordinal + 1
-        resource_id = f"kakulsaydon.g1.presentation.{ordinal}"
+        resource_id = f"koukusaydon.g1.presentation.{ordinal}"
         document.setdefault("presentationResources", []).append({
             "resourceId": resource_id, "displayName": "Character spotlight", "kind": "LIGHT",
             "assetId": asset, "resourceKind": "", "defaultAnchorKind": anchor, "durationMs": 500,
@@ -4744,7 +4744,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                 self.validate(rejected)
         rejected = copy.deepcopy(document)
         self.first_product(rejected)["bossMotion"] = copy.deepcopy(
-            self.find(document, "KAKULSAYDON_G1_PATTERN_8")["bossMotion"])
+            self.find(document, "KOUKUSAYDON_G1_PATTERN_8")["bossMotion"])
         with self.assertRaisesRegex(subject.CompositionError, "retargetOnEnter.*bossMotion"):
             self.validate(rejected)
         stage["retargetOnEnter"] = False
@@ -4753,7 +4753,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_animation_root_vertical_scale_projects_only_its_actions(self):
         document = copy.deepcopy(self.document)
-        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_8")
         # This regression owns the animation lane and its manual/automatic root
         # authority; unrelated live lane edits must not alter its lifetime.
         document["patterns"] = [self.strip_lanes(pattern)]
@@ -4783,7 +4783,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_animation_root_horizontal_scale_is_optional_bounded_pattern_metadata(self):
         document = copy.deepcopy(self.document)
-        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_21")
+        pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_21")
         document["patterns"] = [self.strip_lanes(pattern)]
         for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
             document[key] = []
@@ -4804,7 +4804,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.assertNotIn("animationRootHorizontalScale", subject.project_presentation(document)["patterns"][0])
 
     def test_animation_root_vertical_scale_matches_original_rise_and_cache_isolation(self):
-        pattern = self.find(self.document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern = self.find(self.document, "KOUKUSAYDON_G1_PATTERN_8")
         actor = subject._load_bone_bake_actor(pattern, ROOT, {})
         root_index = next(i for i, bone in enumerate(actor["body"].skeleton_bones) if bone.name == "b_root")
         clip = "rpcz00_att_battle_7_01"
@@ -4823,7 +4823,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_boss_motion_projects_authoritative_and_presentation_origins(self):
         document = copy.deepcopy(self.document)
-        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_8")
         pattern["authoringStatus"] = "PRODUCT"
         pattern["resetBossToSpawn"] = False
         pattern.pop("resetBossYawDegrees", None)
@@ -4832,7 +4832,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern["bossMotion"] = motion
         document["playAllPatternIds"] = [p["patternId"] for p in document["patterns"] if p["authoringStatus"] == "PRODUCT"]
         self.validate(copy.deepcopy(document))
-        projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == "KAKULSAYDON_G1_PATTERN_8")
+        projected = next(p for p in subject.project_encounter(document)["patterns"] if p["patternId"] == "KOUKUSAYDON_G1_PATTERN_8")
         self.assertEqual(motion, projected["bossMotion"])
         presentation = subject._project_pattern_presentation(document, pattern)
         self.assertEqual(motion, presentation["bossMotion"])
@@ -4851,7 +4851,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                              ("yawDegrees", float("nan")), ("yawDegrees", 361),
                              ("startPosition", [0, False, 0]), ("endPosition", [0, 11, 0])):
             document = copy.deepcopy(self.document)
-            pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+            pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_8")
             pattern["resetBossToSpawn"] = False
             pattern.pop("resetBossYawDegrees", None)
             pattern["bossMotion"] = {"startMs": 1870, "endMs": 5780, "startPosition": [2.04, 10.56, 316.95],
@@ -4860,7 +4860,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             with self.subTest(field=field, value=value), self.assertRaisesRegex(subject.CompositionError, "bossMotion"):
                 self.validate(document)
         document = copy.deepcopy(self.document)
-        pattern = self.find(document, "KAKULSAYDON_G1_PATTERN_8")
+        pattern = self.find(document, "KOUKUSAYDON_G1_PATTERN_8")
         pattern["resetBossToSpawn"] = True
         pattern["bossMotion"] = {"startMs": 0, "endMs": 100, "startPosition": [0, 0, 0],
                                  "endPosition": [1, 0, 1], "yawDegrees": 0}
@@ -4985,7 +4985,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.assertEqual(b'{"revision": 2}\n', destination.read_bytes())
 
     def test_effect_source_loop_window_is_explicit_and_excludes_stretch(self):
-        pattern_id = "KAKULSAYDON_G1_PATTERN_33"
+        pattern_id = "KOUKUSAYDON_G1_PATTERN_33"
         resource = dict(resourceId="effect.hand", kind="EFFECT", resourceKind="V1_EFFECT")
         row = dict(occurrenceId=pattern_id + ".presentation.3", resourceId="effect.hand",
                    startMs=3035, durationMs=24959, loopEffectToDuration=True)
@@ -5010,7 +5010,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         validate()
 
     def test_collider_contact_role_is_authoring_only_and_requires_plain_enter_area(self):
-        base = dict(logicId="kakulsaydon.g1.logic.1", displayName="Renamable contact",
+        base = dict(logicId="koukusaydon.g1.logic.1", displayName="Renamable contact",
                     logicType="TRIGGER", triggerKind="ENTER_AREA")
         _, expected = subject._validate_logic_definition(base, "contact role", 2)
         for role in ("", "DAMAGE", "KNOCKBACK"):
@@ -5139,7 +5139,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             subject._validate_presentation_occurrences(pattern, resources, 8000, {})
 
     def test_effect_bone_rotation_requires_a_boss_effect_bone(self):
-        pattern_id = "KAKULSAYDON_G1_PATTERN_27"
+        pattern_id = "KOUKUSAYDON_G1_PATTERN_27"
         resource = dict(resourceId="effect.firebreath", kind="EFFECT", resourceKind="V1_EFFECT")
         row = dict(occurrenceId=pattern_id + ".presentation.2", resourceId="effect.firebreath",
                    startMs=2366, durationMs=5500)
@@ -5184,8 +5184,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern.pop("bossMotion", None)
         document["playAllPatternIds"] = [pattern["patternId"]]
         ordinal = document["nextLogicOrdinal"]
-        logic_id = f"kakulsaydon.g1.logic.{ordinal}"
-        result_id = f"kakulsaydon.g1.logic.{ordinal + 1}"
+        logic_id = f"koukusaydon.g1.logic.{ordinal}"
+        result_id = f"koukusaydon.g1.logic.{ordinal + 1}"
         document["nextLogicOrdinal"] += 2
         document["logics"].extend([
             dict(logicId=logic_id, displayName="Safe zone", logicType="DURATION",
@@ -5342,7 +5342,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
                 subject._validate_logic_definition(dict(trigger, **changes), "Tick contact", document["nextLogicOrdinal"])
 
     def test_linked_map_collider_projects_absolute_world_anchor(self):
-        pattern_id = "KAKULSAYDON_G1_PATTERN_34"
+        pattern_id = "KOUKUSAYDON_G1_PATTERN_34"
         logic_box = dict(occurrenceId=pattern_id + ".logic.3", startMs=2998, durationMs=21160)
         row = dict(occurrenceId=pattern_id + ".presentation.3", resourceId="collider.portal",
                    startMs=2998, durationMs=21160, logicOccurrenceId=logic_box["occurrenceId"],
@@ -5388,17 +5388,17 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             with self.subTest(kind=kind):
                 document = copy.deepcopy(self.document)
                 pattern = self.strip_lanes(self.first_product(document))
-                logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+                logic_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
                 document["nextLogicOrdinal"] += 1
                 document["logics"].append({"logicId":logic_id,"displayName":"Geometry judgement","logicType":logic_type,field:kind})
-                resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+                resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
                 document["nextPresentationResourceOrdinal"] += 1
                 document["presentationResources"].append({"resourceId":resource_id,"displayName":"Geometry","kind":"COLLIDER","assetId":"",
                     "shape":"BOX","halfExtents":[2,1,3]})
                 box_id = pattern["patternId"]+".logic.1"
                 pattern["nextLogicOccurrenceOrdinal"] = 2
                 pattern["logicOccurrences"] = [{"occurrenceId":box_id,"logicId":logic_id,"startMs":0,"durationMs":1000,
-                    "onSuccessLogicIds":["kakulsaydon.g1.logic.4"],"onTimeoutLogicIds":["kakulsaydon.g1.logic.5"]}]
+                    "onSuccessLogicIds":["koukusaydon.g1.logic.4"],"onTimeoutLogicIds":["koukusaydon.g1.logic.5"]}]
                 pattern["nextPresentationOccurrenceOrdinal"] = 2
                 pattern["presentationOccurrences"] = [{"occurrenceId":pattern["patternId"]+".presentation.1","resourceId":resource_id,
                     "startMs":0,"durationMs":1000,"logicOccurrenceId":box_id,"positionOffset":[0,0,5],"rotationDegrees":[0,90,0]}]
@@ -5419,7 +5419,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = copy.deepcopy(self.document)
         pattern = self.strip_lanes(self.first_product(document))
         ordinal = document["nextLogicOrdinal"]
-        trigger_id, hold_id, result_id = [f"kakulsaydon.g1.logic.{ordinal + i}" for i in range(3)]
+        trigger_id, hold_id, result_id = [f"koukusaydon.g1.logic.{ordinal + i}" for i in range(3)]
         document["nextLogicOrdinal"] += 3
         document["logics"].extend([
             dict(logicId=trigger_id, displayName="Grab contact", logicType="TRIGGER", triggerKind="ENTER_AREA"),
@@ -5427,7 +5427,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             dict(logicId=result_id, displayName="Left hand", logicType="RESULT", outcomeKind="CAPTURE_PLAYER",
                  attachmentSlot="BOSS_LEFT_HAND", gripLocalOffset=dict(forwardM=.2, upM=-.1, rightM=.3)),
         ])
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append(dict(resourceId=resource_id, displayName="Grab fan", kind="COLLIDER",
                                                      assetId="", shape="SECTOR", radiusM=4, halfAngleDegrees=45))
@@ -5470,7 +5470,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             elif bad == "hold_outcome": hold["onSuccessLogicIds"] = [result["logicId"]]
             elif bad == "hold_collider":
                 pattern["presentationOccurrences"][0].update(logicOccurrenceId=hold["occurrenceId"], durationMs=900)
-            elif bad == "mixed_success": trigger["onSuccessLogicIds"].append("kakulsaydon.g1.logic.4")
+            elif bad == "mixed_success": trigger["onSuccessLogicIds"].append("koukusaydon.g1.logic.4")
             elif bad == "timeout_capture": trigger["onTimeoutLogicIds"] = trigger.pop("onSuccessLogicIds")
             elif bad == "bad_slot": result["attachmentSlot"] = "NONE"
             elif bad == "offset_range": result["gripLocalOffset"]["forwardM"] = 10.01
@@ -5490,7 +5490,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         self.validate(document)
         document, pattern, result = self.capture_fixture()
         other = copy.deepcopy(result)
-        other["logicId"] = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        other["logicId"] = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append(other)
         clone = copy.deepcopy(pattern["logicOccurrences"][0])
@@ -5512,7 +5512,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern["authoringStatus"] = "PRODUCT"
         document["playAllPatternIds"] = [row["patternId"] for row in self.product_patterns(document)]
         ordinal = document["nextLogicOrdinal"]
-        trigger_id, result_id = (f"kakulsaydon.g1.logic.{ordinal + index}" for index in range(2))
+        trigger_id, result_id = (f"koukusaydon.g1.logic.{ordinal + index}" for index in range(2))
         document["nextLogicOrdinal"] += 2
         document["logics"].extend([
             dict(logicId=trigger_id, displayName="Reenter hit", logicType="TRIGGER",
@@ -5520,7 +5520,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             dict(logicId=result_id, displayName="Hit and push", logicType="RESULT",
                  outcomeKind="MAX_HP_PERCENT_DAMAGE", percent=10, pushRangeM=2.0, pushMs=242),
         ])
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append(dict(resourceId=resource_id, displayName="Hit circle",
             kind="COLLIDER", assetId="", shape="CIRCLE", radiusM=3))
@@ -5795,11 +5795,11 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         pattern.pop("bossMotion", None)
         for stage in pattern["stages"]:
             stage.pop("retargetOnEnter", None)
-        logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        logic_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append({"logicId": logic_id, "displayName": "Body charge", "logicType": "TRIGGER",
                                    "triggerKind": "ENTER_AREA", "bossChargeDistanceM": 7, "chargeYawOffsetDegrees": 90})
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append({"resourceId": resource_id, "displayName": "Body", "kind": "COLLIDER",
                                                   "assetId": "", "shape": "CIRCLE", "radiusM": 1})
@@ -5858,19 +5858,19 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_world_enter_trigger_projects_real_transform_keys_and_clock(self):
         document = copy.deepcopy(self.document)
         pattern = self.strip_lanes(self.first_product(document))
-        logic_id = f"kakulsaydon.g1.logic.{document['nextLogicOrdinal']}"
+        logic_id = f"koukusaydon.g1.logic.{document['nextLogicOrdinal']}"
         document["nextLogicOrdinal"] += 1
         document["logics"].append({"logicId":logic_id,"displayName":"WORLD entry","logicType":"TRIGGER","triggerKind":"ENTER_AREA"})
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append({"resourceId":resource_id,"displayName":"Trigger box","kind":"COLLIDER","assetId":"","resourceKind":"","shape":"BOX"})
         box_id = pattern["patternId"]+".logic.1"
         pattern["nextLogicOccurrenceOrdinal"] = pattern["nextPresentationOccurrenceOrdinal"] = pattern["nextWorldOccurrenceOrdinal"] = 2
         pattern["logicOccurrences"] = [{"occurrenceId":box_id,"logicId":logic_id,"startMs":200,"durationMs":1000,
-            "onSuccessLogicIds":["kakulsaydon.g1.logic.4"]}]
-        pattern["worldOccurrences"] = [{"occurrenceId":pattern["patternId"]+".world.1","worldId":"kakulsaydon.g1.world.1","startMs":200,"durationMs":1200,"playbackSpeed":2}]
+            "onSuccessLogicIds":["koukusaydon.g1.logic.4"]}]
+        pattern["worldOccurrences"] = [{"occurrenceId":pattern["patternId"]+".world.1","worldId":"koukusaydon.g1.world.1","startMs":200,"durationMs":1200,"playbackSpeed":2}]
         pattern["presentationOccurrences"] = [{"occurrenceId":pattern["patternId"]+".presentation.1","resourceId":resource_id,"startMs":200,"durationMs":1000,
-            "logicOccurrenceId":box_id,"anchorKind":"WORLD","worldId":"kakulsaydon.g1.world.1","positionOffset":[0,0,1],"rotationDegrees":[0,90,0]}]
+            "logicOccurrenceId":box_id,"anchorKind":"WORLD","worldId":"koukusaydon.g1.world.1","positionOffset":[0,0,1],"rotationDegrees":[0,90,0]}]
         self.validate(document)
         sequences = subject.load_world_sequences(ROOT,subject.AREA_ID)
         instance = next(r for r in sequences["instances"] if r["instanceId"] == "world.sequence.instance.8")
@@ -5948,10 +5948,10 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_saved_gate1_sequence_camera_rows_survive_shared_anchor_validation(self):
         source = subject.load_json(ROOT / "Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json")
-        pattern = copy.deepcopy(self.find(source, "KAKULSAYDON_G1_PATTERN_4"))
+        pattern = copy.deepcopy(self.find(source, "KOUKUSAYDON_G1_PATTERN_4"))
         resources = {row["resourceId"]: row for row in source["presentationResources"]}
         cameras = [row for row in pattern["presentationOccurrences"] if resources[row["resourceId"]]["kind"] == "CAMERA"]
-        self.assertTrue(any(row["occurrenceId"] == "KAKULSAYDON_G1_PATTERN_4.presentation.23" for row in cameras))
+        self.assertTrue(any(row["occurrenceId"] == "KOUKUSAYDON_G1_PATTERN_4.presentation.23" for row in cameras))
         pattern["presentationOccurrences"] = cameras
         before = copy.deepcopy(pattern)
         subject._validate_presentation_occurrences(pattern, resources, subject._pattern_duration(pattern),
@@ -6002,11 +6002,11 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_world_companion_effect_is_explicit_and_keeps_independent_timing(self):
         document = copy.deepcopy(self.document)
         pattern = self.strip_lanes(self.first_product(document))
-        resource_id = f"kakulsaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
+        resource_id = f"koukusaydon.g1.presentation.{document['nextPresentationResourceOrdinal']}"
         document["nextPresentationResourceOrdinal"] += 1
         document["presentationResources"].append({"resourceId":resource_id,"displayName":"Curtain companion",
             "kind":"EFFECT","assetId":"boss.kouku.curtain_1","resourceKind":"LEAF"})
-        world_id = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+        world_id = f"koukusaydon.g1.world.{document['nextWorldOrdinal']}"
         document["nextWorldOrdinal"] += 1
         document["worlds"].append({"worldId":world_id,"displayName":"Curtain World","sequenceInstanceId":document["worlds"][0]["sequenceInstanceId"],
             "companionEffectResourceId":resource_id})
@@ -6029,7 +6029,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         with self.assertRaisesRegex(subject.CompositionError,"same-pattern"):
             self.validate(invalid)
         invalid = copy.deepcopy(document)
-        invalid["worlds"][-1]["companionEffectResourceId"] = "kakulsaydon.g1.presentation.999999"
+        invalid["worlds"][-1]["companionEffectResourceId"] = "koukusaydon.g1.presentation.999999"
         with self.assertRaisesRegex(subject.CompositionError,"EFFECT resource"):
             self.validate(invalid)
         invalid = copy.deepcopy(document)
@@ -6068,11 +6068,11 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.assertEqual(0, result.returncode, result.stderr)
             legacy = copy.deepcopy(baseline)
             for row in legacy["bosses"]:
-                if row["archetypeId"].startswith("BOSS_KAKULSAYDON_"):
+                if row["archetypeId"].startswith("BOSS_KOUKUSAYDON_"):
                     row["combatObjectVisuals"] = []
             result = run(legacy)
             self.assertEqual(0, result.returncode, result.stderr)
-            target_id = "BOSS_KAKULSAYDON_G1_KOUKU"
+            target_id = "BOSS_KOUKUSAYDON_G1_KOUKU"
             visual = next(row for row in baseline["bosses"] if row["archetypeId"] == target_id)["combatObjectVisuals"][0]
             for invalid_visuals in (None, visual, [visual, visual],
                     [{**visual, "combatObjectArchetypeId": "combatobject.unknown"}],
@@ -6090,7 +6090,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_albion_trigger_projects_user_timing_layout_and_separate_effect_lifetime(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         trigger.update(triggerKind="ALBION_BLUE_CIRCLE", countPerPlayer=1, radiusM=0.0, effectLifetimeMs=7000)
@@ -6122,7 +6122,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_albion_nav_supplement_and_one_random_player_are_preserved_and_validated(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         trigger.update(triggerKind="ALBION_BLUE_CIRCLE", countPerPlayer=1, radiusM=0.0, effectLifetimeMs=7000,
@@ -6148,7 +6148,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_xz_teleport_preserves_reference_y_and_rejects_absolute_motion(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         trigger.update(triggerKind="BOSS_TELEPORT_XZ", teleportPosition=[2.57, 1.3, 952.27])
@@ -6178,7 +6178,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_grounded_teleport_preserves_reference_y_and_rejects_absolute_motion(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         trigger.update(triggerKind="BOSS_TELEPORT_GROUNDED", teleportPosition=[2.57, 1.3, 952.27])
@@ -6208,7 +6208,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_typed_trigger_projects_exact_target_and_rejects_missing_clone(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         trigger.update(triggerKind="REAL_GAZE_TELEPORT", teleportPosition=[-6.36, 1.3, 937.92],
                        clonePatternId=FIRST_PRODUCT_ID, clockHours=[4, 7, 10])
         product = self.find(document, GAZE_ID)
@@ -6221,7 +6221,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         row = next(p for p in projected["patterns"] if p["patternId"] == GAZE_ID)["mechanicTriggers"][0]
         self.assertEqual([-6.36, 1.3, 937.92], row["teleportPosition"])
         self.assertEqual([4, 7, 10], row["clockHours"])
-        trigger["clonePatternId"] = "KAKULSAYDON_MISSING_CLONE"
+        trigger["clonePatternId"] = "KOUKUSAYDON_MISSING_CLONE"
         with self.assertRaisesRegex(subject.CompositionError, "clone pattern must be PRODUCT"):
             subject.project_encounter(document)
         trigger["clockHours"] = [5, 5, 10]
@@ -6229,10 +6229,10 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.validate(document)
 
     def test_card_maze_triggers_preserve_authored_times_and_typed_destination(self):
-        document = subject._publication_candidate(self.document, {"KAKULSAYDON_G1_PATTERN_28"})
+        document = subject._publication_candidate(self.document, {"KOUKUSAYDON_G1_PATTERN_28"})
         self.validate(document)
         pattern = next(row for row in subject.project_encounter(document)["patterns"]
-                       if row["patternId"] == "KAKULSAYDON_G1_PATTERN_28")
+                       if row["patternId"] == "KOUKUSAYDON_G1_PATTERN_28")
         triggers = sorted(pattern["mechanicTriggers"], key=lambda row: row["startMs"])
         self.assertEqual([3744, 4182, 4529, 4824, 5136], [row["startMs"] for row in triggers])
         self.assertEqual(["CARD_MAZE_HIDE_NEXT"] * 4 + ["CARD_MAZE_ENTER"], [row["kind"] for row in triggers])
@@ -6243,8 +6243,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             self.validate(document)
 
     def test_presentation_equal_dissolve_lifetime_endpoints_remain_valid(self):
-        document = subject._publication_candidate(self.document, {"KAKULSAYDON_G1_PATTERN_28"})
-        row = self.find(document, "KAKULSAYDON_G1_PATTERN_28")["presentationOccurrences"][0]
+        document = subject._publication_candidate(self.document, {"KOUKUSAYDON_G1_PATTERN_28"})
+        row = self.find(document, "KOUKUSAYDON_G1_PATTERN_28")["presentationOccurrences"][0]
         row["dissolveStart"] = row["dissolveEnd"] = 1.0
         self.validate(document)
         row["dissolveEnd"] = 0.5
@@ -6253,7 +6253,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def test_hud_enter_trigger_projects_mode_on_authored_start_tick(self):
         document = self.without_catalog_boxes(copy.deepcopy(self.document))
-        trigger = next(row for row in document["logics"] if row["logicId"] == "kakulsaydon.g1.logic.9")
+        trigger = next(row for row in document["logics"] if row["logicId"] == "koukusaydon.g1.logic.9")
         for key in subject.LOGIC_TRIGGER_VALUE_KEYS:
             trigger.pop(key, None)
         trigger.update(triggerKind="HUD_ENTER", hudMode="MAZE")
@@ -6293,7 +6293,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
 
     def direct_parent_document(self):
         document = copy.deepcopy(self.document)
-        folder = {"folderId": f"kakulsaydon.folder.{document['nextFolderOrdinal']}",
+        folder = {"folderId": f"koukusaydon.folder.{document['nextFolderOrdinal']}",
                   "gateId": "GATE1", "displayName": "Independent outcomes"}
         document["nextFolderOrdinal"] += 1
         document["folders"].append(folder)
@@ -6391,7 +6391,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         for product in (subject.project_encounter(document), subject.project_presentation(document)):
             bundle = product["bundles"][0]
             self.assertEqual(34, bundle["members"][1]["startOffsetMs"])
-            self.assertEqual("boss.kakulsaydon.g2.big-saydon", bundle["members"][1]["targetBossPlacementId"])
+            self.assertEqual("boss.koukusaydon.g2.big-saydon", bundle["members"][1]["targetBossPlacementId"])
             self.assertNotIn("stages", bundle["members"][0])
             self.assertEqual(subject._bundle_duration(document, document["bundles"][0]), bundle["durationMs"])
         self.assertEqual(before, document["patterns"])
@@ -6407,7 +6407,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             lambda d: d["bundles"][0].update(authoringStatus=[]),
             lambda d: d["bundles"][0].update(folderId=[]),
             lambda d: d["bundles"][0]["members"][0].update(patternId=[]),
-            lambda d: d["patterns"][0].update(targetBossPlacementId="boss.kakulsaydon.g3.saydon"),
+            lambda d: d["patterns"][0].update(targetBossPlacementId="boss.koukusaydon.g3.saydon"),
             lambda d: d["bundles"][0].update(gateId="GATE1"),
             lambda d: d["bundles"][0]["members"][1].update(patternId=d["bundles"][0]["members"][0]["patternId"]),
             lambda d: d["bundles"][0]["members"][0].update(startOffsetMs=-1),
@@ -6421,8 +6421,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_v3_empty_draft_and_shared_pattern_references_roundtrip(self):
         document = copy.deepcopy(self.hierarchy_document)
         duplicate = copy.deepcopy(document["bundles"][0])
-        duplicate["bundleId"] = "kakulsaydon.bundle.2"
-        for ordinal, member in enumerate(duplicate["members"], 1): member["memberId"] = f"kakulsaydon.bundle.2.member.{ordinal}"
+        duplicate["bundleId"] = "koukusaydon.bundle.2"
+        for ordinal, member in enumerate(duplicate["members"], 1): member["memberId"] = f"koukusaydon.bundle.2.member.{ordinal}"
         document["bundles"].append(duplicate); document["nextBundleOrdinal"] = 3
         self.validate(document)
         self.assertEqual(document, json.loads(subject.serialize_json(document)))
@@ -6437,7 +6437,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document["bundles"][0]["authoringStatus"] = "PRODUCT"
         with self.assertRaisesRegex(subject.CompositionError, "DRAFT child"): self.validate(document)
         document["bundles"][0]["authoringStatus"] = "DRAFT"
-        document["patterns"] = [p for p in document["patterns"] if p["patternId"] != "KAKULSAYDON_G1_PATTERN_8"]
+        document["patterns"] = [p for p in document["patterns"] if p["patternId"] != "KOUKUSAYDON_G1_PATTERN_8"]
         with self.assertRaisesRegex(subject.CompositionError, "missing pattern"): self.validate(document)
 
     def test_v3_common_scene_uses_reserved_blend_and_detects_child_conflict(self):
@@ -6486,7 +6486,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         bundle = document["bundles"][0]
         ordinal = document["nextPresentationResourceOrdinal"]
         document["nextPresentationResourceOrdinal"] += 1
-        resource = dict(resourceId=f"kakulsaydon.g1.presentation.{ordinal}", displayName="Camera", kind="CAMERA", assetId="camera.test", resourceKind="")
+        resource = dict(resourceId=f"koukusaydon.g1.presentation.{ordinal}", displayName="Camera", kind="CAMERA", assetId="camera.test", resourceKind="")
         document["presentationResources"].append(resource)
         bundle["nextPresentationOccurrenceOrdinal"] = 2
         bundle["presentationOccurrences"] = [dict(occurrenceId=bundle["bundleId"] + ".presentation.1", resourceId=resource["resourceId"], startMs=0, durationMs=100)]
@@ -6519,7 +6519,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
         document = self.bundle_product_document()
         for member in document["bundles"][0]["members"]:
             child = self.find(document, member["patternId"])
-            child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="kakulsaydon.g1.logic.10",
+            child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="koukusaydon.g1.logic.10",
                                                startMs=0, durationMs=1)]
             child["nextLogicOccurrenceOrdinal"] = 2
         with self.assertRaisesRegex(subject.CompositionError, "multiple owners of shared player mode"):
@@ -6530,8 +6530,8 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
     def test_v3_followup_must_stay_on_the_same_gate_and_boss(self):
         document = self.bundle_product_document()
         child = self.find(document, document["bundles"][0]["members"][0]["patternId"])
-        child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="kakulsaydon.g1.logic.1",
-                                          startMs=0, durationMs=1, onSuccessLogicIds=["kakulsaydon.g1.logic.7"])]
+        child["logicOccurrences"] = [dict(occurrenceId=child["patternId"] + ".logic.1", logicId="koukusaydon.g1.logic.1",
+                                          startMs=0, durationMs=1, onSuccessLogicIds=["koukusaydon.g1.logic.7"])]
         child["nextLogicOccurrenceOrdinal"] = 2
         with self.assertRaisesRegex(subject.CompositionError, "retain Gate and target boss"):
             self.validate(document)
@@ -6575,7 +6575,7 @@ Write-Output 'PASS actual bootstrap actor-local trigger admission'
             product_path.write_text(json.dumps(encounter), encoding="utf-8")
             self.assertNotEqual(0, run().returncode)
             encounter["folders"][0]["gateId"] = "GATE2"
-            encounter["bundles"][0]["members"][1]["targetBossPlacementId"] = "boss.kakulsaydon.g1.saydon"
+            encounter["bundles"][0]["members"][1]["targetBossPlacementId"] = "boss.koukusaydon.g1.saydon"
             product_path.write_text(json.dumps(encounter), encoding="utf-8")
             self.assertNotEqual(0, run().returncode)
 
@@ -6587,14 +6587,14 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         stages = copy.deepcopy(pattern["stages"])
         stage_ms = sum(stage["durationMs"] for stage in stages)
         lifetime_ms = stage_ms + 7000
-        source["logics"] = [{"logicId": "kakulsaydon.g1.logic.1", "displayName": "Tail window",
+        source["logics"] = [{"logicId": "koukusaydon.g1.logic.1", "displayName": "Tail window",
             "logicType": "DURATION", "judgementKind": "STAGGER_WINDOW",
             "threshold": 1, "shieldArcDegrees": 0}]
         pattern.update(nextLogicOccurrenceOrdinal=2, logicOccurrences=[{
-            "occurrenceId": identity + ".logic.1", "logicId": "kakulsaydon.g1.logic.1",
+            "occurrenceId": identity + ".logic.1", "logicId": "koukusaydon.g1.logic.1",
             "startMs": stage_ms - 1000, "durationMs": 8000}])
-        source["patternFlows"] = [{"flowId": "kakulsaydon.flow.gate2", "gateId": "GATE2",
-            "displayName": "Tail admission", "entries": [{"entryId": "kakulsaydon.flow.gate2.entry.1",
+        source["patternFlows"] = [{"flowId": "koukusaydon.flow.gate2", "gateId": "GATE2",
+            "displayName": "Tail admission", "entries": [{"entryId": "koukusaydon.flow.gate2.entry.1",
                 "kind": "PATTERN", "targetId": identity, "waitAfterMs": 0}]}]
         before = copy.deepcopy(source)
         product, inventory = subject.prepare_publication(source, ROOT)
@@ -6639,7 +6639,7 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         source = subject.load_json(ROOT / subject.SOURCE_PATH)
         source.pop("patternFlows", None)  # This fixture retains only three local Pattern identities.
         by_id = {p["patternId"]: p for p in source["patterns"]}
-        source["patterns"] = [by_id[f"KAKULSAYDON_G1_PATTERN_{n}"] for n in (8, 9, 3)]
+        source["patterns"] = [by_id[f"KOUKUSAYDON_G1_PATTERN_{n}"] for n in (8, 9, 3)]
         for row in source["patterns"]:
             KoukuSaydonCompositionProjectionTests.strip_lanes(row)
             row["authoringStatus"] = "DRAFT"
@@ -6647,11 +6647,11 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         source["patterns"][2]["stages"] = []
         for key in ("logics", "summons", "worlds", "sceneProfiles", "presentationResources"):
             source[key] = []
-        source["folders"] = [f for f in source["folders"] if f["folderId"] in {"kakulsaydon.folder.1", "kakulsaydon.folder.4"}]
-        source["bundles"] = [b for b in source["bundles"] if b["bundleId"] in {"kakulsaydon.bundle.1", "kakulsaydon.bundle.4"}]
+        source["folders"] = [f for f in source["folders"] if f["folderId"] in {"koukusaydon.folder.1", "koukusaydon.folder.4"}]
+        source["bundles"] = [b for b in source["bundles"] if b["bundleId"] in {"koukusaydon.bundle.1", "koukusaydon.bundle.4"}]
         for row in source["bundles"]:
             row.update(authoringStatus="DRAFT", sceneProfileOccurrences=[], presentationOccurrences=[])
-            if row["bundleId"] == "kakulsaydon.bundle.4": row["members"] = []
+            if row["bundleId"] == "koukusaydon.bundle.4": row["members"] = []
         source["playAllPatternIds"] = []
         return source
 
@@ -6662,7 +6662,7 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         self.assertEqual(original, source)
         self.assertEqual([p["patternId"] for p in source["patterns"][:2]], product["playAllPatternIds"])
         self.assertEqual((3, 2, 2), tuple(len(inventory[k]) for k in ("patterns", "folders", "bundles")))
-        self.assertEqual(["kakulsaydon.bundle.1"], [b["bundleId"] for b in product["bundles"]])
+        self.assertEqual(["koukusaydon.bundle.1"], [b["bundleId"] for b in product["bundles"]])
         self.assertIn("no stages", inventory["patterns"][2]["unavailableReason"])
         self.assertIn("at least one member", inventory["bundles"][1]["unavailableReason"])
         outputs = subject.projected_outputs(product, ROOT, inventory)
@@ -6680,24 +6680,24 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
         self.assertEqual("NORMAL", source["patterns"][0]["category"])
         self.assertEqual("NORMAL", inventory["patterns"][0]["category"])
         self.assertIn("MECHANIC category", inventory["patterns"][0]["unavailableReason"])
-        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertEqual(["KOUKUSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
         self.assertIn("child is unavailable", inventory["bundles"][0]["unavailableReason"])
 
     def test_followup_dependency_cannot_publish_without_its_incomplete_target(self):
         source = self.source()
         source["logics"] = [
-            {"logicId": "kakulsaydon.g1.logic.1", "displayName": "Window", "logicType": "DURATION",
+            {"logicId": "koukusaydon.g1.logic.1", "displayName": "Window", "logicType": "DURATION",
              "judgementKind": "STAGGER_WINDOW", "threshold": 1, "shieldArcDegrees": 0},
-            {"logicId": "kakulsaydon.g1.logic.2", "displayName": "Follow-up", "logicType": "RESULT",
-             "outcomeKind": "FOLLOWUP_PATTERN", "followupPatternId": "KAKULSAYDON_G1_PATTERN_3"},
+            {"logicId": "koukusaydon.g1.logic.2", "displayName": "Follow-up", "logicType": "RESULT",
+             "outcomeKind": "FOLLOWUP_PATTERN", "followupPatternId": "KOUKUSAYDON_G1_PATTERN_3"},
         ]
         first = source["patterns"][0]
         first["nextLogicOccurrenceOrdinal"] = 2
         first["logicOccurrences"] = [{"occurrenceId": first["patternId"] + ".logic.1",
-            "logicId": "kakulsaydon.g1.logic.1", "startMs": 0, "durationMs": 100,
-            "onSuccessLogicIds": ["kakulsaydon.g1.logic.2"]}]
+            "logicId": "koukusaydon.g1.logic.1", "startMs": 0, "durationMs": 100,
+            "onSuccessLogicIds": ["koukusaydon.g1.logic.2"]}]
         product, inventory = subject.prepare_publication(source)
-        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertEqual(["KOUKUSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
         self.assertIn("no stages", inventory["patterns"][0]["unavailableReason"])
         self.assertIn("PATTERN_3", inventory["patterns"][0]["unavailableReason"])
 
@@ -6709,20 +6709,20 @@ class KoukuPublishAllInventoryTests(unittest.TestCase):
 
     def test_clone_dependency_is_admitted_together_and_incomplete_clone_is_isolated(self):
         source = self.source()
-        source["logics"] = [{"logicId": "kakulsaydon.g1.logic.1", "displayName": "Clone", "logicType": "TRIGGER",
+        source["logics"] = [{"logicId": "koukusaydon.g1.logic.1", "displayName": "Clone", "logicType": "TRIGGER",
             "triggerKind": "REAL_GAZE_TELEPORT", "teleportPosition": [0, 0, 0],
-            "clonePatternId": "KAKULSAYDON_G1_PATTERN_9", "clockHours": [4, 7, 10]}]
+            "clonePatternId": "KOUKUSAYDON_G1_PATTERN_9", "clockHours": [4, 7, 10]}]
         first = source["patterns"][0]
         first.pop("bossMotion", None)
         first["nextLogicOccurrenceOrdinal"] = 2
         first["logicOccurrences"] = [{"occurrenceId": first["patternId"] + ".logic.1",
-            "logicId": "kakulsaydon.g1.logic.1", "startMs": 0, "durationMs": 100}]
+            "logicId": "koukusaydon.g1.logic.1", "startMs": 0, "durationMs": 100}]
         product, inventory = subject.prepare_publication(source)
         self.assertEqual(2, len(product["patterns"]))
         self.assertEqual("", inventory["patterns"][0]["unavailableReason"])
-        source["logics"][0]["clonePatternId"] = "KAKULSAYDON_G1_PATTERN_3"
+        source["logics"][0]["clonePatternId"] = "KOUKUSAYDON_G1_PATTERN_3"
         product, inventory = subject.prepare_publication(source)
-        self.assertEqual(["KAKULSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
+        self.assertEqual(["KOUKUSAYDON_G1_PATTERN_9"], product["playAllPatternIds"])
         self.assertIn("no stages", inventory["patterns"][0]["unavailableReason"])
 
     def test_publish_then_validate_uses_the_same_complete_inventory(self):
@@ -7227,7 +7227,7 @@ class KoukuAnimationRootMotionTests(unittest.TestCase):
 
     def test_albion_takeoff_balances_installed_repeated_landings_without_source_changes(self):
         document = subject.load_json(ROOT / "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json")
-        pattern = next(row for row in document["patterns"] if row["patternId"] == "KAKULSAYDON_G1_PATTERN_39")
+        pattern = next(row for row in document["patterns"] if row["patternId"] == "KOUKUSAYDON_G1_PATTERN_39")
         before = copy.deepcopy(pattern)
         with subject._publication_session() as inputs:
             actor = subject._load_bone_bake_actor(pattern, ROOT, inputs.actors)

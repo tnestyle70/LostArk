@@ -1,10 +1,7 @@
 #include <WinSock2.h>
 #include <dinput.h>
 #include "imgui.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "Level_CharacterSelect.h"
 
@@ -28,6 +25,7 @@
 #include "LevelTransitionService.h"
 #include "LobbyCommandService.h"
 #include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "MapAssetCatalog.h"
 #include "MapLightPresentationRuntime.h"
 #include "MapEffectPresentationRuntime.h"
@@ -1262,7 +1260,7 @@ void CLevel_CharacterSelect::Update_ServerArena()
 {
 	/* A Debug arena transfer publishes S2C_ENTER_ACCEPTED before the target
 	world's spawn/snapshot events. Consume that authority edge first so this
-	Character Select replication instance never tries to present Kakul entities
+	Character Select replication instance never tries to present Kouku entities
 	with the Character Select map/prototype scope. */
 	const SERVER_WORLD_TRANSFER_PUMP_RESULT transferResult =
 		CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
@@ -1810,7 +1808,7 @@ void CLevel_CharacterSelect::Render_CreateCharacterModal()
 			Router.Claim_Mouse_This_Frame();
 			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				*Button.pOutClicked = true;
 			}
 		}
@@ -1955,7 +1953,7 @@ bool_t CLevel_CharacterSelect::Enter_Stage(const LOBBY_STAGE stage)
 }
 
 #ifdef _DEBUG
-bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
+bool_t CLevel_CharacterSelect::Debug_Request_KoukuSaydonArena()
 {
 	if (MODE::SERVER_ARENA != m_eMode ||
 		m_iSelectedClassIndex >= SUPPORTED_CLASSES.size() ||
@@ -1976,10 +1974,10 @@ bool_t CLevel_CharacterSelect::Debug_Request_KakulSaydonArena()
 	}
 
 	const std::uint32_t requestSequence =
-		m_iNextKakulArenaRequestSequence++;
-	if (0u == m_iNextKakulArenaRequestSequence)
-		m_iNextKakulArenaRequestSequence = 1u;
-	if (!m_pWorldEntityCommandSink->Request_EnterKakulSaydonArena(
+		m_iNextKoukuArenaRequestSequence++;
+	if (0u == m_iNextKoukuArenaRequestSequence)
+		m_iNextKoukuArenaRequestSequence = 1u;
+	if (!m_pWorldEntityCommandSink->Request_EnterKoukuSaydonArena(
 		requestSequence))
 	{
 		m_strStatus =
@@ -2819,7 +2817,7 @@ void CLevel_CharacterSelect::Render_SelectionPanel()
 		Enter_Stage(LOBBY_STAGE::VALTAN);
 	ImGui::SameLine();
 	if (ImGui::Button("Enter KoukuSaydon Arena"))
-		(void)Debug_Request_KakulSaydonArena();
+		(void)Debug_Request_KoukuSaydonArena();
 	ImGui::SameLine();
 	if (ImGui::Button("Back"))
 		Leave_ServerArena();
@@ -3284,7 +3282,7 @@ void CLevel_CharacterSelect::Update_ClassList()
 			Router.Claim_Mouse_This_Frame();
 			if (Router.Is_Clicked(Entry.fX, fRowY, Entry.fWidth, Entry.fHeight, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iExpandedCategory = bExpanded ? -1 : i;
 				Set_BrowseStage(CLASS_BROWSE_STAGE::CATEGORY, "category-row-click");
 				const bool selectedMovie = Select_ClassCinematic(SUPPORTED_CLASSES[Entry.iSupportedClassIndex]);
@@ -3339,7 +3337,7 @@ void CLevel_CharacterSelect::Update_ClassList()
 				Router.Claim_Mouse_This_Frame();
 				if (Router.Is_Clicked(Entry.fX, fThumbY, THUMB_W, THUMB_H, fRefWidth, fRefHeight))
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					if (Request_ClassChange(Entry.iSupportedClassIndex) &&
 						CLASS_BROWSE_STAGE::CATEGORY == m_eBrowseStage)
 						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "class-thumbnail-click");
@@ -3607,7 +3605,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 			Router.Claim_Mouse_This_Frame();
 			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iSelectedArenaSpawnIndex = Button.iOptionIndex;
 				Request_SelectedArenaSpawn();
 			}
@@ -3634,7 +3632,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 					nullptr != m_pWorldEntityCommandSink)
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					m_pWorldEntityCommandSink->Request_DespawnAllWorldEntities(
 						m_iNextDespawnRequestSequence++);
 					/* Request_SelectedArenaSpawn refuses to resend once
@@ -3669,7 +3667,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 				Router.Claim_Mouse_This_Frame();
 				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					Request_CreateCharacterButtonClick();
 				}
 			}
@@ -3696,7 +3694,7 @@ void CLevel_CharacterSelect::Update_ArenaSpawnButtons()
 				Router.Claim_Mouse_This_Frame();
 				if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					if (CLASS_BROWSE_STAGE::TRIAL == m_eBrowseStage)
 						Set_BrowseStage(CLASS_BROWSE_STAGE::PREVIEW, "go-back-icon-click");
 					else
@@ -3737,7 +3735,7 @@ void CLevel_CharacterSelect::Update_BrowseButtons()
 		Router.Claim_Mouse_This_Frame();
 		if (!Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			continue;
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		/* Preview has no action yet. Trial waits for a class change still in flight, the same
 		condition the corner create button already waits on. */
 		if (0 == std::strcmp(pId, "TrialButton") && !m_iPendingClassIndex.has_value() &&

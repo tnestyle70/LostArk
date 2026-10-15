@@ -1,9 +1,11 @@
-#include "ActionPresentationTimeline.h"
+﻿#include "ActionPresentationTimeline.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
+// 저작 Tool이 모델의 ticks/rate를 전달해 원본 시작/재생 구간을 검증한다.
+// play rate는 양의 유한 값인지 확인하지만 iPlayMs는 원본 시각이므로 잔여 ms 계산에서 rate로 나누지 않는다.
 bool Client::CActionPresentationTimeline::Validate_AuthoredSourceWindow(
 	const float fNativeDurationTicks,
 	const float fNativeTicksPerSecond,
@@ -36,10 +38,13 @@ bool Client::CActionPresentationTimeline::Validate_AuthoredSourceWindow(
 	{
 		return false;
 	}
+	// 정수 ms 계약에 맞춰 남은 길이를 가장 가까운 ms로 반올림한다. 명시 길이가 넘으면 false지만 이 출력 계산값은 유지된다.
 	iOutRoundedRemainingMs = static_cast<uint32_t>(fRoundedRemainingMs);
 	return 0u == iPlayMs || iPlayMs <= iOutRoundedRemainingMs;
 }
 
+// Character와 Tool이 공유하는 원본/경과 길이 계산이다. start 이후 잔여 원본을 명시 playMs로 clamp하고 play rate로 나눈다.
+// 출력은 시작 때 0으로 지우지만 마지막 유효성 검사에서 실패하면 계산된 값이 남을 수 있다.
 bool Client::CActionPresentationTimeline::Resolve_ClipDuration(
 	const ACTION_PRESENTATION_CLIP_TIMING& Clip,
 	float& fOutSourceDurationSeconds,
@@ -71,6 +76,7 @@ bool Client::CActionPresentationTimeline::Resolve_ClipDuration(
 		fOutWallDurationSeconds > 0.f;
 }
 
+// 원본 길이를 경과 길이로 바꿔 앞 clip 시간을 차례로 뺀다. 성공 지점에서만 OutSample을 쓰므로 false는 기존 sample을 보존한다.
 bool Client::CActionPresentationTimeline::Resolve_Sample(
 	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 	const float fStageWallTimeSeconds,
@@ -94,6 +100,7 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 		}
 
 		const bool bLastClip = iClip + 1u == Clips.size();
+		// 처음 도달한 loop가 이후 시간을 모두 소비한다. 반복 회차와 나머지 시간을 분리해 원본 offset을 더한다.
 		if (Clips[iClip].bLoop)
 		{
 			const double fEpoch = std::floor(
@@ -117,8 +124,7 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 			return true;
 		}
 
-		/* An exact boundary belongs to the next sequential clip. This keeps
-		seek and cue crossing on one unambiguous wall-time partition. */
+		// 정확히 clip 끝인 시각은 다음 순차 clip에 속한다. seek와 cue가 같은 경계를 사용하도록 한다.
 		if (!bLastClip &&
 			fRemainingWallSeconds >= fWallDurationSeconds)
 		{
@@ -139,6 +145,7 @@ bool Client::CActionPresentationTimeline::Resolve_Sample(
 	return false;
 }
 
+// Effect Tool의 유한 저작 목록을 위해 모든 clip/budget을 먼저 검사한다. 기본 runtime loop와 달리 budget 끝에서는 다음 occurrence로 간다.
 bool Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
 	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 	const std::span<const float> WallBudgets,
@@ -158,12 +165,13 @@ bool Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
 	float Remaining = fTimelineWallTimeSeconds;
 	for (std::size_t i = 0u; i < Clips.size(); ++i)
 	{
-		// Millisecond stage boundaries can differ by a float rounding unit.
+		// ms 경계를 float 초로 바꾼 오차를 고려해 다음 구간 진입에 1마이크로초 여유를 둔다.
 		if (i + 1u < Clips.size() && Remaining + 0.000001f >= WallBudgets[i])
 		{
 			Remaining = (std::max)(0.f, Remaining - WallBudgets[i]);
 			continue;
 		}
+		// 마지막 budget 이후는 경계에 붙이고 loop 끝은 1마이크로초 앞을 표본화해 다음 반복의 시작 포즈로 튀지 않게 한다.
 		float LocalWall = (std::min)(Remaining, WallBudgets[i]);
 		if (Clips[i].bLoop && LocalWall >= WallBudgets[i])
 			LocalWall = (std::max)(0.f, LocalWall - 0.000001f);
@@ -178,6 +186,7 @@ bool Client::CActionPresentationTimeline::Resolve_PreviewSequenceSample(
 	return false;
 }
 
+// animation index가 같아도 occurrence index가 바뀌면 경계를 넘은 것이다. 모델 재시작/seek는 호출자가 수행한다.
 bool Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
 	const std::size_t iCurrentClipOccurrenceIndex,
 	const std::size_t iExpectedClipOccurrenceIndex,
@@ -190,12 +199,15 @@ bool Client::CActionPresentationTimeline::Requires_ClipOccurrenceTransition(
 
 namespace
 {
+	// cue 시작과 종료가 원본 구간 끝점을 공유할 때 사용하는 서로 다른 경계 정책이다.
 	enum class CUE_SOURCE_BOUNDARY
 	{
 		START_HALF_OPEN,
 		END_INCLUSIVE
 	};
 
+	// 앞선 non-loop 길이 합 + 현재 반복 회차 길이 + cue 원본 offset/rate를 경과 시각으로 계산한다.
+	// 출력은 먼저 0으로 초기화하고 모든 검사 후에만 계산값을 대입한다.
 	bool ResolveCueWallOffset(
 		const std::span<const Client::ACTION_PRESENTATION_CLIP_TIMING> Clips,
 		const std::size_t iClipIndex,
@@ -225,8 +237,7 @@ namespace
 			}
 			if (iClip < iClipIndex)
 			{
-				/* A loop consumes the rest of its stage, so a later clip is not
-				reachable until the Server starts a new authored stage. */
+				// 이 변환에서 loop는 남은 stage 시간을 차지한다. 따라서 같은 순차 목록에서 loop 뒤 clip의 cue는 도달 불가다.
 				if (Clips[iClip].bLoop)
 					return false;
 				fWallOffset += fWallDurationSeconds;
@@ -237,8 +248,7 @@ namespace
 				Clips[iClip].fSourceStartSeconds;
 			const float fSourceEndSeconds =
 				fSourceStartSeconds + fSourceDurationSeconds;
-			/* Starts keep adjacent explicit source slices half-open.  A finite
-			cue end may close exactly on its own slice boundary. */
+			// 명시 원본 구간은 시작 cue에서 끝점을 제외한다. 종료 cue는 자기 구간 끝점과 1마이크로초 오차를 허용한다.
 			const bool bPastSourceEnd = 0u != Clips[iClip].iPlayMs ?
 				(CUE_SOURCE_BOUNDARY::END_INCLUSIVE == eBoundary ?
 					fCueSourceTimeSeconds > fSourceEndSeconds + 0.000001f :
@@ -268,6 +278,7 @@ namespace
 	}
 }
 
+// Character와 cue 문서 검증이 쓰는 시작 시각 변환이다. 명시 원본 slice의 끝은 다음 slice가 소유한다.
 bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 	const std::size_t iClipIndex,
@@ -280,6 +291,7 @@ bool Client::CActionPresentationTimeline::Resolve_CueWallOffset(
 		fOutStageWallTimeSeconds);
 }
 
+// 유한 cue 종료가 자기 원본 slice의 끝과 같을 수 있도록 종료 경계 정책을 사용한다.
 bool Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
 	const std::span<const ACTION_PRESENTATION_CLIP_TIMING> Clips,
 	const std::size_t iClipIndex,
@@ -292,6 +304,8 @@ bool Client::CActionPresentationTimeline::Resolve_CueEndWallOffset(
 		fOutStageWallTimeSeconds);
 }
 
+// Effect Tool의 clip 기준 경과 시간에서 cue 시작을 뺀 뒤 play rate를 곱해 Effect sample 시각을 얻는다.
+// 출력은 호출 시작에 비우며 false에서도 그 초기화는 남는다. bVisible은 시작 포함/끝 제외 구간 검사다.
 bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
 	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 	const float fTimelineWallSeconds,
@@ -322,6 +336,7 @@ bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
 		(static_cast<double>(Timing.fCueSourceEndSeconds) -
 		 static_cast<double>(Timing.fClipSourceStartSeconds)) /
 			static_cast<double>(Timing.fPlayRate) : 0.0;
+	// cue 이전의 Effect sample은 0으로 제한한다. 유한 종료 이후에도 sample 계산값은 남지만 bVisible은 false가 된다.
 	const double fEffectSample = (std::max)(
 		0.0, (static_cast<double>(fTimelineWallSeconds) - fWallStart) *
 			static_cast<double>(Timing.fPlayRate));
@@ -348,6 +363,8 @@ bool Client::CActionPresentationTimeline::Resolve_CuePreviewSample(
 	return true;
 }
 
+// Effect sample을 rate로 나누고 owning clip offset과 cue 시작을 더하는 역방향 변환이다.
+// 결과가 cue의 보이는 구간 안인지까지 검사하지 않으며 실패 시 출력은 0이다.
 bool Client::CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
 	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 	const float fOwningClipTimelineOffsetSeconds,
@@ -376,6 +393,8 @@ bool Client::CActionPresentationTimeline::Resolve_CuePreviewTimelineTime(
 	return true;
 }
 
+// 기존 timeline 끝과 Effect tail 끝 중 더 긴 쪽을 선택한다. 유한 cue는 tail 기여를 자기 종료에서 제한한다.
+// 입력 검증 실패 시 출력은 0이며 모델/Effect 인스턴스 수명은 바꾸지 않는다.
 bool Client::CActionPresentationTimeline::Resolve_CuePreviewDuration(
 	const ACTION_PRESENTATION_CUE_PREVIEW_TIMING& Timing,
 	const float fOwningClipTimelineOffsetSeconds,
@@ -417,6 +436,8 @@ bool Client::CActionPresentationTimeline::Resolve_CuePreviewDuration(
 	return true;
 }
 
+// Effect Tool이 모델 시계 대신 wall 시계를 진행할지 결정하는 조건만 반환한다.
+// non-loop의 hold 여부는 호출자가 저작 wall 길이와 실제 clip 길이를 비교해 전달한다.
 bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	const bool bHasExplicitLoopPolicy,
 	const bool bLoop,
@@ -436,8 +457,7 @@ bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 	}
 	if (bLoop)
 	{
-		/* LOOP_TO_STAGE_END can stop partway through its final source epoch.
-		   Only the final finite wall boundary releases a natural Effect tail. */
+		// LOOP_TO_STAGE_END는 마지막 원본 반복 도중 멈출 수 있다. 마지막 유한 wall 경계 이후에만 자연 Effect tail용 시계 전환을 허용한다.
 		return bLastClip && std::isfinite(fCurrentClipWallSeconds) &&
 			fCurrentClipWallSeconds >= 0.f &&
 			std::isfinite(fAuthoredClipWallDurationSeconds) &&
@@ -448,6 +468,8 @@ bool Client::CActionPresentationTimeline::Should_ReleaseCompletedAnimationClock(
 		fCurrentSourceSeconds + 0.0001f >= fSourceDurationSeconds;
 }
 
+// replication/Character/보스 표시가 승인된 action 시작 tick에서 지난 초를 구한다.
+// 미설정 tick이나 역방향 tick은 거부하고 예약값 0을 건너뛴 wrap 차이를 계산한다.
 bool Client::CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
 	const uint32_t iServerTick,
 	const uint32_t iActionStartTick,
@@ -473,6 +495,7 @@ bool Client::CActionPresentationTimeline::Try_ResolveActionAgeSeconds(
 	return std::isfinite(fOutActionAgeSeconds);
 }
 
+// unsigned 차이를 signed로 해석하는 순환 순서 비교다. 같은 tick은 전진이 아니며 previous 0은 첫 유효 tick을 받는다.
 bool Client::CActionPresentationTimeline::Is_ForwardTick(
 	const uint32_t iCandidateTick,
 	const uint32_t iPreviousTick)

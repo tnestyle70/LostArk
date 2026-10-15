@@ -133,6 +133,7 @@
 /Server/Bin/DataFiles/**/*.retired.*
 /Server/Default/out/
 [Ii]mgui.ini
+*.aps
 __pycache__/
 *.py[cod]
 *.tmp

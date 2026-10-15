@@ -26,8 +26,8 @@ class EncoreTrimTests(unittest.TestCase):
 
     def test_saved_sequences_and_sounds(self):
         for path, pattern_id in [
-            ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KAKULSAYDON_G1_PATTERN_10'),
-            ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KAKULSAYDON_G1_PATTERN_97')]:
+            ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KOUKUSAYDON_G1_PATTERN_10'),
+            ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KOUKUSAYDON_G1_PATTERN_97')]:
             document = read(path)
             pattern = next(p for p in document['patterns'] if p['patternId'] == pattern_id)
             self.assertEqual(pattern['durationMs'], 21322)

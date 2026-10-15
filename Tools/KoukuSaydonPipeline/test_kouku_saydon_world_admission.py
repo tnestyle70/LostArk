@@ -68,7 +68,7 @@ class Fixture:
             {
                 "schema": "lostark.resource-intake",
                 "formatVersion": 2,
-                "intakeId": "raid.fixture.kakul",
+                "intakeId": "raid.fixture.kouku",
                 "aliasContract": {
                     "alias": COLLECTION_NAME,
                     "kind": "user-folder-alias",
@@ -177,7 +177,7 @@ class Fixture:
                 "revision": 1,
                 "placements": [
                     {
-                        "placementId": "player.spawn.kakul.slot01",
+                        "placementId": "player.spawn.kouku.slot01",
                         "kind": "playerSpawn",
                         "archetypeId": None,
                         "encounterId": None,
@@ -244,42 +244,42 @@ class Fixture:
         )
         self.write_text(
             "Client/Private/LevelRegistry.cpp",
-            "CreateKakulSaydonArena\n"
+            "CreateKoukuSaydonArena\n"
             f"LEVEL::{CLIENT_LEVEL_TOKEN}\n"
             "CLIENT_LEVEL_KIND::PRODUCT\n"
-            '"raid.kakul-saydon.arena"\n'
+            '"raid.kouku-saydon.arena"\n'
             f'"{AREA_ID}"\n'
-            "Ready_For_KakulSaydonArena\n",
+            "Ready_For_KoukuSaydonArena\n",
         )
         self.write_text(
-            "Client/Public/Loader.h", "HRESULT Ready_For_KakulSaydonArena();\n"
+            "Client/Public/Loader.h", "HRESULT Ready_For_KoukuSaydonArena();\n"
         )
         self.write_text(
             "Client/Private/Loader.cpp",
-            f"Ready_For_KakulSaydonArena LEVEL::{CLIENT_LEVEL_TOKEN}\n",
+            f"Ready_For_KoukuSaydonArena LEVEL::{CLIENT_LEVEL_TOKEN}\n",
         )
         self.write_text(
             "Client/Private/LevelTransitionService.cpp",
             f"WORLD_ID::{WORLD_ID} LEVEL::{CLIENT_LEVEL_TOKEN}\n",
         )
         self.write_text(
-            "Client/Public/Level_KakulSaydonArena.h",
-            "class CLevel_KakulSaydonArena {};\n",
+            "Client/Public/Level_KoukuSaydonArena.h",
+            "class CLevel_KoukuSaydonArena {};\n",
         )
         self.write_text(
-            "Client/Private/Level_KakulSaydonArena.cpp",
-            f"CLevel_KakulSaydonArena {AREA_ID}\n",
+            "Client/Private/Level_KoukuSaydonArena.cpp",
+            f"CLevel_KoukuSaydonArena {AREA_ID}\n",
         )
         self.write_text(
             "Client/Default/Client.vcxproj",
-            "Level_KakulSaydonArena.h\nLevel_KakulSaydonArena.cpp\n",
+            "Level_KoukuSaydonArena.h\nLevel_KoukuSaydonArena.cpp\n",
         )
         self.write_text(
             "Client/Default/Client.vcxproj.filters",
-            "Level_KakulSaydonArena.h\nLevel_KakulSaydonArena.cpp\n",
+            "Level_KoukuSaydonArena.h\nLevel_KoukuSaydonArena.cpp\n",
         )
 
-CLIENT_LEVEL_TOKEN = "KAKULSAYDON_ARENA"
+CLIENT_LEVEL_TOKEN = "KOUKUSAYDON_ARENA"
 
 
 class KoukuSaydonWorldAdmissionTests(unittest.TestCase):

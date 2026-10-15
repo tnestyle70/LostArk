@@ -13,7 +13,7 @@ from Tools.KoukuSaydonPipeline import prepare_kouku_draft_play as subject
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGET = "KAKULSAYDON_G1_PATTERN_1"
+TARGET = "KOUKUSAYDON_G1_PATTERN_1"
 
 
 class KoukuDraftEncodingTests(unittest.TestCase):
@@ -61,7 +61,7 @@ class KoukuDraftPlayContractTests(unittest.TestCase):
     def test_target_validation_and_projection_leave_snapshot_immutable(self):
         source = copy.deepcopy(self.source)
         before = copy.deepcopy(source)
-        for target in ({}, {"pattern_id": TARGET, "bundle_id": "kakulsaydon.bundle.1"},
+        for target in ({}, {"pattern_id": TARGET, "bundle_id": "koukusaydon.bundle.1"},
                        {"pattern_id": "missing.pattern"}, {"bundle_id": "missing.bundle"}):
             with self.subTest(target=target), self.assertRaises(subject.composition.CompositionError):
                 subject.prepare(source, ROOT, **target)

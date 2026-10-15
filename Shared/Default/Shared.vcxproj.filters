@@ -119,7 +119,7 @@
     <ClInclude Include="..\Public\GameplayDataRevision.h">
       <Filter>03.Revision</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Tools\Build\CppStandardPch.h">
+    <ClInclude Include="..\..\Tools\Build\PCH.h">
       <Filter>99.Default</Filter>
     </ClInclude>
   </ItemGroup>

@@ -473,17 +473,17 @@ int LostArk::Server::Run_ServerVehicleRidingContractTests()
             "A raid arena refuses ships too");
 	}
 
-    auto kouku = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    auto kouku = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
     tests.Require(kouku->Is_Ready(), "Kouku room loads for the Ancient Sea exception");
     if (kouku->Is_Ready())
     {
         SERVER_PLAYER& raider = kouku->m_Players[RIDER_PLAYER];
         raider.iPlayerId = RIDER_PLAYER; raider.iCurrentHp = raider.iMaximumHp = 50000u;
         tests.Require(kouku->Apply_SetVehicleRiding(raider, Make_VehicleRequest(1u,
-            WORLD_ID::KAKULSAYDON_ARENA, GOLDEN_TERPEION)).eResult == VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED,
+            WORLD_ID::KOUKUSAYDON_ARENA, GOLDEN_TERPEION)).eResult == VEHICLE_RIDING_RESULT::REJECTED_WORLD_NOT_ALLOWED,
             "Kouku still rejects ordinary vehicles");
         tests.Require(kouku->Apply_SetVehicleRiding(raider, Make_VehicleRequest(2u,
-            WORLD_ID::KAKULSAYDON_ARENA, ANCIENT_SEA_VEHICLE_ID)).eResult == VEHICLE_RIDING_RESULT::ACCEPTED,
+            WORLD_ID::KOUKUSAYDON_ARENA, ANCIENT_SEA_VEHICLE_ID)).eResult == VEHICLE_RIDING_RESULT::ACCEPTED,
             "Kouku admits Ancient Sea");
     }
 	/* Bern3 voyage ships (EFTable_VoyageShip 8200..8208) ride like any vehicle: Bern only, at the

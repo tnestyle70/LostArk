@@ -1794,7 +1794,7 @@
       "staggerGaugeMaximum": 40000
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
       "sourceNpcId": 480601,
       "maximumHp": 1699175467,
       "attackPower": 6067,
@@ -1802,7 +1802,7 @@
       "staggerGaugeMaximum": 30000
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
       "sourceNpcId": 480621,
       "maximumHp": 191997228,
       "attackPower": 6259,
@@ -1810,7 +1810,7 @@
       "staggerGaugeMaximum": 10000
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
       "sourceNpcId": 480611,
       "maximumHp": 1393899875,
       "attackPower": 6259,
@@ -1818,7 +1818,7 @@
       "staggerGaugeMaximum": 25000
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "sourceNpcId": 480631,
       "maximumHp": 1280621510,
       "attackPower": 5145,
@@ -1826,7 +1826,7 @@
       "staggerGaugeMaximum": 25000
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_BINGO_SAYDON",
       "sourceNpcId": 480635,
       "maximumHp": 1868133028,
       "attackPower": 6067,

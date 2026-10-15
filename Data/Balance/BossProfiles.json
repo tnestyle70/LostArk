@@ -44,8 +44,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_KOUKU",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "쿠크세이튼",
       "maximumHp": 1000000,
       "maximumHealthBars": 1,
@@ -59,8 +59,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "세이튼",
       "maximumHp": 600000,
       "maximumHealthBars": 160,
@@ -74,8 +74,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "대형 세이튼",
       "maximumHp": 600000,
       "maximumHealthBars": 160,
@@ -89,8 +89,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "쿠크",
       "maximumHp": 600000,
       "maximumHealthBars": 160,
@@ -104,8 +104,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "세이튼",
       "maximumHp": 600000,
       "maximumHealthBars": 160,
@@ -119,8 +119,8 @@
       "armorPlates": []
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
-      "encounterId": "ENCOUNTER_KAKULSAYDON_G1",
+      "archetypeId": "BOSS_KOUKUSAYDON_BINGO_SAYDON",
+      "encounterId": "ENCOUNTER_KOUKUSAYDON_G1",
       "displayName": "앵콜을 외친 쿠크세이튼",
       "maximumHp": 600000,
       "maximumHealthBars": 77,

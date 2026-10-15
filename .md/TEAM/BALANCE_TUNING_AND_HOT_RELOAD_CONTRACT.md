@@ -10,8 +10,8 @@ Player, skill, damage, boss 기본 수치 정본은 `Data/Balance/*.json`이며 
 Release 선택은 Retail 원값을 사용하며 현재 cooldown duration과 mode가 snapshot으로 복제된다.
 서버 전체 catalog나 다른 room의 정책은 변경하지 않는다.
 
-Visual Studio Client 프로젝트의
-`96.DataFiles/Balance` 필터는 이 원본을 직접 보여 줄 뿐 복사본을 만들지 않는다. Server 생성물인
+Visual Studio 솔루션 직속 `Data/Balance`는 저장소 원본을 직접 여는 `SolutionItems` 링크이며
+복사본을 만들지 않는다. 파일 목록 갱신은 `Tools/Build/data_solution.py`를 사용한다. Server 생성물인
 `Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap`은 직접 편집하지 않는다.
 
 공용 숫자 편집은 Debug/Release `F1 -> Balance Test -> Save + Apply`를 사용한다.

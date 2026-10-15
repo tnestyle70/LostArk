@@ -10,7 +10,7 @@
 #include "CombatHUDViewModel.h"
 #include "DataJson.h"
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "PlayerController.h"
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
@@ -294,7 +294,7 @@ void Client::CVehicleWindowView::Update_Chrome()
 	m_pView->Set_SlotTexture("VH_Close", bHovered ? ART_CLOSE_OVER : ART_CLOSE_NORMAL);
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -330,7 +330,7 @@ void Client::CVehicleWindowView::Update_Rows(const std::shared_ptr<CCharacter>& 
 			m_iHoveredRow = iRow;
 			if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) && iRow != m_iSelectedRow)
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iSelectedRow = iRow;
 				/* The H key mounts the window's current choice too. */
 				if (!m_bShipMode)
@@ -380,7 +380,7 @@ void Client::CVehicleWindowView::Update_Buttons(const HUD_PLAYER_STATE& Player)
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) && bCanRequest &&
 			m_iSelectedRow >= 0 && m_iSelectedRow < static_cast<int32_t>(m_Rows.size()))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_pView->Set_SlotTexture("VH_MountBtn", ART_BTN_DOWN);
 			m_bRidingRequested = true;
 			m_iRequestedVehicleId = m_bSelectedIsMounted ?
@@ -395,7 +395,7 @@ void Client::CVehicleWindowView::Update_Buttons(const HUD_PLAYER_STATE& Player)
 		m_pView->Set_SlotTexture("VH_CloseBtn", bHovered ? ART_BTN_OVER : ART_BTN_NORMAL);
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			Close();
 		}
 	}

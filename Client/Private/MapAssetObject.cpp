@@ -1,13 +1,12 @@
 #include "MapAssetObject.h"
 #include "CardMazeVisualPolicy.h"
 
-#pragma push_macro("new")
-#undef new
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
 
 #include "GameInstance.h"
 #include "Model.h"
+#include "MeshLod.h"
+#include "Engine_RenderTypes.h"
 #include "Shader.h"
 #include "Profiler.h"
 
@@ -105,6 +104,8 @@ HRESULT CMapAssetObject::Initialize(void* pArg)
 	m_bApplyBottomCenter = desc.applyBottomCenter;
 	m_bVisible = desc.visible;
 	m_RenderProfile = desc.renderProfile;
+    m_bBernVisibility = desc.prototypeLevelIndex == ETOUI(LEVEL::BERN);
+    m_SceneVisibilityKind = CMapAssetRenderUtils::Classify_SceneVisibility(*m_pModelCom, m_RenderProfile, desc.assetGroupId);
 	m_BakedLighting = desc.bakedLighting;
 	m_SourceWind = desc.sourceWind;
 	m_FrustumCulling = desc.frustumCulling;
@@ -324,6 +325,13 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 			Engine::EProfilerCounter::MapVisibleInstances);
 	}
 
+    Engine::MESH_SCREEN_LOD_DESC screenLod{};
+    const bool useScreenLod = m_bBernVisibility && group == RENDERGROUP::NONBLEND &&
+        m_SceneVisibilityKind != MAP_SCENE_VISIBILITY_KIND::ORDERED_SURFACE &&
+        m_SceneVisibilityKind != MAP_SCENE_VISIBILITY_KIND::DEFORMING &&
+        m_fPresentationOpacityMultiplier == 1.f && cameraSnapshot && m_bHasWorldCullBounds &&
+        CMapAssetRenderUtils::Build_ObjectScreenLod(*cameraSnapshot, m_vWorldCullCenter, m_fWorldCullRadius,
+            *m_pTransformCom->Get_WorldMatrixPtr(), CGameInstance::Get().Get_ViewportSize(), 1.f, screenLod);
     const float4_t worldCullSphere(m_vWorldCullCenter.x, m_vWorldCullCenter.y,
         m_vWorldCullCenter.z, m_fWorldCullRadius);
 	// Only PS_WATER consumes the water uniforms. Ordinary meshes need no
@@ -364,7 +372,7 @@ HRESULT CMapAssetObject::Render_Group(RENDERGROUP group)
 
 				FAILED(m_pShaderCom->Begin(passIndex)) ||
 
-				FAILED(m_pModelCom->Render(meshIndex)))
+				FAILED(m_pModelCom->Render(meshIndex, useScreenLod ? &screenLod : nullptr)))
 			{
 				renderResult = E_FAIL;
 				break;
@@ -641,29 +649,68 @@ void CMapAssetObject::Ready_StaticShadowInputs()
 	m_bStaticShadowMaterialInputs = valid && hasCaster;
 }
 
+bool_t CMapAssetObject::Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATIAL_BOUNDS& bounds) const
+{
+    bounds = {};
+    if (!m_bBernVisibility || !m_bHasWorldCullBounds || m_FrustumCulling.bypass || m_FrustumCulling.diagnostics ||
+        m_SceneVisibilityKind == MAP_SCENE_VISIBILITY_KIND::DEFORMING ||
+        m_SceneVisibilityKind == MAP_SCENE_VISIBILITY_KIND::ORDERED_SURFACE ||
+        m_RenderProfile.renderMode == MAP_ASSET_RENDER_MODE::BACKGROUND) return false;
+    float margin = (std::max)(0.f, m_FrustumCulling.baseMargin);
+    if (m_fWorldCullRadius >= m_FrustumCulling.largeObjectRadiusThreshold)
+        margin += (std::max)(m_FrustumCulling.largeObjectAbsoluteMargin,
+            m_fWorldCullRadius*m_FrustumCulling.largeObjectRelativeMargin);
+    bounds.Center = m_vWorldCullCenter;
+    bounds.Radius = std::nextafter(m_fWorldCullRadius + margin, INFINITY);
+    bounds.RejectGraceFrames = (std::max)(m_FrustumCulling.rejectHysteresisFrames, m_FrustumState.rejectGraceFrames);
+    // Layer가 색상 후보를 제외해도 별도 light volume의 shadow 제출은 유지한다.
+    bounds.ShadowCaster = m_RenderProfile.castsShadow ||
+        std::any_of(m_StaticShadowCasterMeshes.begin(), m_StaticShadowCasterMeshes.end(),
+            [](uint8_t castsShadow) { return castsShadow != 0u; });
+    return std::isfinite(bounds.Radius) && bounds.Radius > 0.f;
+}
+
 bool_t CMapAssetObject::Should_CullCamera(const MAP_CAMERA_CULL_SNAPSHOT& snapshot)
 {
-	if (!m_bHasWorldCullBounds)
-		return false;
-	if ((m_bCameraCullCached || m_bFinalCameraCullPrepared) &&
-		m_iCameraCullRevision == snapshot.revision)
-		return !m_bCameraCullShouldRender;
-	MAP_FRUSTUM_CULL_DECISION decision{};
-	if (!CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, snapshot,
-		m_AssetId, m_AssetGroupId, m_iPlacementId, m_vWorldCullCenter,
-		m_fWorldCullRadius, m_FrustumState, decision))
-	{
-		m_bCameraCullCached = false;
-		m_bFinalCameraCullPrepared = false;
-		return false;
-	}
-	m_iCameraCullRevision = snapshot.revision;
-	m_bCameraCullShouldRender = decision.shouldRender;
-	m_bFinalCameraCullPrepared = true;
-	// Stable results survive frames. A final-camera preparation also survives
-	// this frame's Render_Group callbacks so reject grace advances only once.
-	m_bCameraCullCached = decision.wouldBeVisible || !decision.shouldRender || m_FrustumCulling.bypass;
-	return !decision.shouldRender;
+    if (!m_bHasWorldCullBounds) return false;
+    auto& game = CGameInstance::Get();
+    const auto settings = game.Get_MapVisibilitySettings();
+    const auto viewport = game.Get_ViewportSize();
+    const bool distanceEnabled = m_bBernVisibility && settings.DistanceEnabled && !m_FrustumCulling.bypass &&
+        !m_FrustumCulling.diagnostics && !CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive();
+    if ((m_bCameraCullCached || m_bFinalCameraCullPrepared) && m_iCameraCullRevision == snapshot.revision &&
+        m_iDistanceSettingsRevision == settings.Revision && m_bDistanceWasEnabled == distanceEnabled &&
+        m_CullViewport.x == viewport.x && m_CullViewport.y == viewport.y) return !m_bCameraCullShouldRender;
+    MAP_FRUSTUM_CULL_DECISION decision{};
+    if (!CMapAssetRenderUtils::Evaluate_FrustumVisibility(m_FrustumCulling, snapshot,
+        m_AssetId, m_AssetGroupId, m_iPlacementId, m_vWorldCullCenter, m_fWorldCullRadius, m_FrustumState, decision))
+    {
+        m_bCameraCullCached = m_bFinalCameraCullPrepared = false;
+        return false;
+    }
+    bool hidden = false;
+    float limit = 0.f, pixels = 0.f;
+    const auto* position = game.Get_CamPosition();
+    if (decision.shouldRender && distanceEnabled && position &&
+        CMapAssetRenderUtils::Get_SceneDistancePolicy(m_SceneVisibilityKind, m_fWorldCullRadius, settings, limit, pixels))
+    {
+        hidden = CMapAssetRenderUtils::Is_SceneDistanceHidden(m_vWorldCullCenter, m_fWorldCullRadius,
+            *position, snapshot, viewport, limit, pixels, decision.margin,
+            m_bDistanceHidden && m_iDistanceSettingsRevision == settings.Revision);
+        if (auto* profiler = game.Get_Profiler())
+        {
+            profiler->Add_Counter(Engine::EProfilerCounter::MapDistanceTestedInstances);
+            if (hidden) profiler->Add_Counter(Engine::EProfilerCounter::MapDistanceRejectedInstances);
+        }
+    }
+    m_bDistanceHidden = hidden;
+    m_iDistanceSettingsRevision = settings.Revision;
+    m_bDistanceWasEnabled = distanceEnabled; m_CullViewport = viewport;
+    m_iCameraCullRevision = snapshot.revision;
+    m_bCameraCullShouldRender = decision.shouldRender && !hidden;
+    m_bFinalCameraCullPrepared = true;
+    m_bCameraCullCached = decision.wouldBeVisible || !decision.shouldRender || m_FrustumCulling.bypass;
+    return !m_bCameraCullShouldRender;
 }
 
 HRESULT CMapAssetObject::Ready_Components(
@@ -915,6 +962,8 @@ void CMapAssetObject::Ready_CullBounds()
 
 void CMapAssetObject::Update_WorldCullBounds()
 {
+    Invalidate_FinalCameraSpatialBounds();
+    m_bDistanceHidden = false;
 	m_bHasWorldCullBounds = false;
 
 	if (!m_bHasLocalCullBounds ||

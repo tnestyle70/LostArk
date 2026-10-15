@@ -10,12 +10,12 @@
     "nextWorldOrdinal": 40,
     "patterns": [
       {
-        "patternId": "KAKULSAYDON_G1_PATTERN_33",
+        "patternId": "KOUKUSAYDON_G1_PATTERN_33",
         "nextWorldOccurrenceOrdinal": 6,
         "worldOccurrences": [
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.world.2",
-            "worldId": "kakulsaydon.g1.world.37",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_33.world.2",
+            "worldId": "koukusaydon.g1.world.37",
             "startMs": 1242,
             "durationMs": 31419,
             "playbackSpeed": 1,
@@ -38,8 +38,8 @@
             }
           },
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_33.world.4",
-            "worldId": "kakulsaydon.g1.world.19",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_33.world.4",
+            "worldId": "koukusaydon.g1.world.19",
             "startMs": 1242,
             "durationMs": 31419,
             "playbackSpeed": 1,
@@ -64,13 +64,13 @@
         ]
       },
       {
-        "patternId": "KAKULSAYDON_G1_PATTERN_91",
+        "patternId": "KOUKUSAYDON_G1_PATTERN_91",
         "durationMs": 126104,
         "nextWorldOccurrenceOrdinal": 5,
         "worldOccurrences": [
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.1",
-            "worldId": "kakulsaydon.g1.world.35",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_91.world.1",
+            "worldId": "koukusaydon.g1.world.35",
             "startMs": 3365,
             "durationMs": 46635,
             "playbackSpeed": 1,
@@ -93,8 +93,8 @@
             }
           },
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.2",
-            "worldId": "kakulsaydon.g1.world.35",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_91.world.2",
+            "worldId": "koukusaydon.g1.world.35",
             "startMs": 3365,
             "durationMs": 46635,
             "playbackSpeed": 1,
@@ -117,8 +117,8 @@
             }
           },
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.3",
-            "worldId": "kakulsaydon.g1.world.22",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_91.world.3",
+            "worldId": "koukusaydon.g1.world.22",
             "startMs": 3365,
             "durationMs": 46635,
             "playbackSpeed": 1,
@@ -141,8 +141,8 @@
             }
           },
           {
-            "occurrenceId": "KAKULSAYDON_G1_PATTERN_91.world.4",
-            "worldId": "kakulsaydon.g1.world.22",
+            "occurrenceId": "KOUKUSAYDON_G1_PATTERN_91.world.4",
+            "worldId": "koukusaydon.g1.world.22",
             "startMs": 3365,
             "durationMs": 46635,
             "playbackSpeed": 1,
@@ -169,7 +169,7 @@
     ],
     "worlds": [
       {
-        "worldId": "kakulsaydon.g1.world.19",
+        "worldId": "koukusaydon.g1.world.19",
         "displayName": "바닥_일반칼날",
         "sequenceInstanceId": "world.object.kouku.cutting_blade.state.1.instance",
         "objectResourceId": "world.object.kouku.cutting_blade",
@@ -187,7 +187,7 @@
         "companionEffectResourceId": ""
       },
       {
-        "worldId": "kakulsaydon.g1.world.22",
+        "worldId": "koukusaydon.g1.world.22",
         "displayName": "괴기스러운 인형 - 큰 사이즈",
         "sequenceInstanceId": "world.object.instance.kouku.odd_doll.large.att_battle_2_01",
         "objectResourceId": "world.object.kouku.odd_doll.large",
@@ -205,7 +205,7 @@
         "companionEffectResourceId": ""
       },
       {
-        "worldId": "kakulsaydon.g1.world.35",
+        "worldId": "koukusaydon.g1.world.35",
         "displayName": "마리오 소환 공 (원본 크기)",
         "sequenceInstanceId": "world.object.instance.kouku.mario_circus_ball.aura",
         "objectResourceId": "world.object.kouku.mario_circus_ball",
@@ -223,7 +223,7 @@
         "companionEffectResourceId": ""
       },
       {
-        "worldId": "kakulsaydon.g1.world.37",
+        "worldId": "koukusaydon.g1.world.37",
         "displayName": "원본_갈고리",
         "sequenceInstanceId": "world.sequence.instance.kouku.hook.original_preview",
         "objectResourceId": "world.object.kouku.hook",
@@ -241,7 +241,7 @@
         "companionEffectResourceId": ""
       },
       {
-        "worldId": "kakulsaydon.g1.world.38",
+        "worldId": "koukusaydon.g1.world.38",
         "displayName": "바닥_즉사칼날",
         "sequenceInstanceId": "world.object.kouku.cutting_blade.state.instant_death.instance",
         "objectResourceId": "world.object.kouku.cutting_blade",

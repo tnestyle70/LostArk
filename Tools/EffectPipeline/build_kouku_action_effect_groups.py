@@ -24,10 +24,10 @@ import build_kouku_gate3_slam_mario_restore as exact
 ROOT = source.ROOT
 IMPORTED = source.imported
 PROFILES = {
-    'MN_RPCT_05': ('GATE1', 'MN_RPCT_05', 'boss.kakulsaydon.g1.saydon', 'mn_rpct_05.mesh.mn_rpct_05_sk'),
-    'MN_RPCT_07': ('GATE3', 'MN_RPCT_05', 'boss.kakulsaydon.g3.saydon', 'mn_rpct_05.mesh.mn_rpct_05_sk'),
-    'MN_RPCZ_00': ('GATE2', 'MN_RPCZ_00', 'boss.kakulsaydon.g2.kouku', 'mn_rpcz_00.mesh.mn_rpcz_00_sk'),
-    'MN_RPCT_06': ('GATE2', 'MN_RPCT_06', 'boss.kakulsaydon.g2.big-saydon', 'mn_rpct_06.mesh.mn_rpct_06_sk'),
+    'MN_RPCT_05': ('GATE1', 'MN_RPCT_05', 'boss.koukusaydon.g1.saydon', 'mn_rpct_05.mesh.mn_rpct_05_sk'),
+    'MN_RPCT_07': ('GATE3', 'MN_RPCT_05', 'boss.koukusaydon.g3.saydon', 'mn_rpct_05.mesh.mn_rpct_05_sk'),
+    'MN_RPCZ_00': ('GATE2', 'MN_RPCZ_00', 'boss.koukusaydon.g2.kouku', 'mn_rpcz_00.mesh.mn_rpcz_00_sk'),
+    'MN_RPCT_06': ('GATE2', 'MN_RPCT_06', 'boss.koukusaydon.g2.big-saydon', 'mn_rpct_06.mesh.mn_rpct_06_sk'),
 }
 
 

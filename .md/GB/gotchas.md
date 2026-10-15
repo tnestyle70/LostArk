@@ -29,6 +29,10 @@
 - NPC·이펙트 전체 Update는 순수 CPU 함수가 아니다. network/collider/sound/event/provider/렌더 상태를 포함한 함수를 통째로 병렬 루프에 넣지 않는다. 작업 분산은 계산량 제거와 다르며 fixture의 wall time을 실FPS 향상으로 바꾸어 보고하지 않는다.
 
 ## Bern 가림·거리 컬링의 보수성과 검증
+
+- LOD 옵션 ON을 실제 축약과 혼동하지 않는다. 설치 geometry/submesh 전체 → 재질 적격 → 생성 하한 → positive/negative cache → 실제 화면 단계 → GPU index buffer·primitive 수를 각각 확인한다. 작은 메시 하한만 낮추고 기존 오차·UV 제약으로 모두 negative가 되면 최적화가 완료된 것이 아니다. 원본 미세 단계의 생성 결과를 보존해도 화면 오차 예산을 바꾸면 선택 결과는 달라진다.
+- 거리 컬링의 크기·거리·화면 지름 조건은 AND다. 큰 구조물이 정책 밖인지, 작은 소품이 pixel 조건에서 막히는지 먼저 세고 표시 배율이 모든 문턱에 일관되게 작용하는지 단조성을 확인한다. 제외 instance 수·원본 제출 후보·실제 draw와 FPS를 같은 지표로 쓰지 않는다.
+- CCamera inverse의 `_44`를 정확히1과 비교하면 정상 affine view의 몇 ULP 오차에도 가림 검사를 건너뛸 수 있다. camera의 동차 표현만 제한된 epsilon 안에서 정규화하고 projective·비유한 입력과 object world 검증은 유지한다. Begin 실패는 이전 depth를 폐기해야 하며 앞·뒤·근평면 AABB로 검사한다.
 - occlusion 옵션 ON과 실제 가림 판정 실행을 구분한다. Bern의 frame state가 없는 객체는 descriptor를 거절하지만 전역 패스에 들어가면 후보 순회 비용은 남는다. Client가 매 프레임 Bern 정책을 Render 호출에 전달하고 다른 Level은 패스 진입 전에 건너뛴다. A/B의 사용자 bool을 레벨마다 덮어쓰지 않는다. 후보·래스터·검사 수가0인 캡처를 실제 depth 계산의 성능 회귀라고 설명하지 않는다.
 - 노트북 성능 비교는 같은 EXE·adapter·viewport·장면·수집 조건에 AC 전원 상태도 맞춘다. 가용 RAM과 system page-in을 함께 보되 메모리 압박이나 배터리 상태만으로 해당 프레임 병목을 확정하지 않는다.
 
@@ -36,10 +40,13 @@
 - CPU와 D3D의 front face·mirror·cull을 실제 GPU 깊이와 비교한다. 같은 viewport 픽셀 중심과 triangle farthest-depth, 확장 query bounds로 보수성을 유지한다. 낮은 해상도 중심 샘플의 꽉 찬 셀 추정은 작은 틈을 메울 수 있고, 모든 삼각형의 안쪽 축소는 공유 내부 edge에 인위적 틈을 만든다.
 - 가림 결과는 view/projection·viewport·설정·weak owner·geometry/visibility revision과 descriptor 전체가 같을 때만 재사용한다. visible payload에 대응하는 tight world AABB는 upload 성공과 함께 commit한다. queue 준비 실패는 원본을 보존하고 실제 제외 counter는 commit 뒤 기록한다. 입력 삼각형 budget과 rasterized 삼각형은 서로 다르다.
 - Distance culling은 LOD와 별개다. 작은 정적 소품의 거리와 보수적 투영 크기 조건을 함께 검사하며 near plane/invalid 입력은 표시한다. 같은 aspect의 resize도 pixel 조건을 바꾸므로 viewport를 cache key에 넣는다. 거리·pixel hysteresis는 TRS/표시/설정 변경에 맞춰 무효화한다.
-- 컬링 CPU 비용·원본 source draw 상한·후속 instancing 이후 실제 draw·게임 FPS는 다른 수치다. 저장 카메라에서 distance 제외가0이면 그 사실을 기록하고 성능 향상을 주장하지 않는다. 작은 파생 청크와 atlas는 현재 Bern 기본 경로에서 생성하지 않는다. [구현·검증 결과](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md).
+- 컬링 CPU 비용·원본 source draw 상한·후속 instancing 이후 실제 draw·게임 FPS는 다른 수치다. 저장 카메라에서 distance 제외가0이면 그 사실을 기록하고 성능 향상을 주장하지 않는다. Bern은 기존 Stage의 축약 geometry를 원거리 전용으로 준비한다. 근거리 병합과 atlas 후보는 사용하지 않는다. [구현·검증 결과](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md).
 
 ## 정적 청크 병합과 HLOD 검증 경계
 
+- Bern 전체 LOD/거리 정책은 batch·fallback·Deploy·terrain·masked/wind·별도 actor/effect의 소비자와 분모를 구분한다. 큰 정적 구조물은120m+2px, 작은 소품은 기존 거리+화면 조건을 사용하고 지형·물·반투명·wind는 보존한다. ordinary/instanced/indirect의 현재 재질 LOD admission과 v3/v4 파생 cache, GPU compaction→indirect·현재 depth HiZ의 연결 여부를 확인한다. 원본 WModel은 여전히 단일 geometry 계약이며 원본 자산 존재, 파생 생성, 실제 선택과 FPS는 별개다. [현재 범위 G32](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md).
+
+- atlas material 병합과 geometry HLOD를 혼동하지 않는다. Stage_Proxy는 원본 index를 유지하므로 atlasEnabled만 켜서 삼각형 축약 완료로 보고하지 않는다. Bern의 Stage는 hasFarGeometry가 있는 결과만 소유하고 투영 오차를 통과한 far 선택, 현재 원본 mesh LOD보다 엄격한 index 감소, 기존 인스턴싱을 고려한 최소3draw를 함께 요구한다. 두 Stage가 같은 mesh의 claim을 덮지 않게 하며, 생성·선택·실제 GPU 제출·게임 FPS를 각각 확인한다.
 - WModel 파일을 하나로 만들거나 material 이름이 같은 것만으로 한 draw가 되지 않는다. 활성 shader 입력·texture·pass·cull 상태의 호환성을 검사하고 실제 병합 vertex/index buffer를 제출해야 한다. RNM atlas와 static shadow의 서로 다른 원본 입력은 source별 payload와 lighting bank로 보존한다.
 - 공간 분할 없이 멀리 떨어진 모든 동일 asset을 합치면 bounds가 커져 culling 이득을 잃는다. Bern은 원본 instancing부터 32m XZ origin cell로 나누고 geometry bounds를 별도로 보존한다. GPU 메모리·준비 시간과 현재 카메라의 실제 draw도 함께 측정한다.
 - 파생 청크는 placement/picking/shadow의 새 정본이 아니다. TRS·visible·stage/camera suppression은 공유 claim을 무효화하고 원본 제출로 복귀한다. source와 chunk의 활동 상태는 같은 frame 결정으로 고정한다. 원본 material 편집을 추가할 때도 같은 invalidation을 연결한다.
@@ -1867,7 +1874,7 @@ Server 회귀에서는 Pattern ID branch가 `Reset_ValtanBossOnlyAuditionState`�
   존재하는 것은 다른 계약이다. 현재 Valtan은 기존 canonical source/Product 경로와
   Tool/Server의 직접 reader를 소비하며, 별도 `ENCOUNTER_DATASET` registry나 공용
   `BossPatternGraphRuntime`을 완료 계약으로 두지 않는다.
-- `KAKULSAYDON`은 public logical ID이고
+- `KOUKUSAYDON`은 public logical ID이고
   `KoukuSaton`은 실제 animation/resource 저장 alias이므로 spelling을 통일한다는 이유로 raw asset을 바꾸거나,
   존재하지 않는 Kakul gameplay source/Product 경로를 catalog에 추가하지 않는다.
 - 향후 공용 Dataset/runtime을 도입하려면 새 encounter source/Product를 먼저 publish한 뒤
@@ -2002,6 +2009,11 @@ Client 배포 DLL의 유효 크기/PE 형식·일치 여부도 확인한다. 실
 
 - 수만 draw에 raw CPU scope를 항상 기록하면 scope cap에 걸리고 측정 자체가 frame을 늘린다. 기본은 pass/counter이며 per-draw detail은 별도 비교 실험에서만 켠다. frame의 droppedCpuScopes와 window 합계는 누적 drop과 구별한다. cpuScopesWithinBudget는 overflow가 없었다는 뜻이며 모든 함수의 계측 완료를 뜻하지 않는다.
 - Capture/Reset/detail 변경은 frame 경계에서 적용하고 pause 전 열린 worker scope가 재개 history에 들어오지 않도록 epoch를 확인한다. worker가 mutex를 기다린 뒤에도 epoch를 다시 확인한다. Reset 후 첫 frame interval은 이전 pause 시간을 포함하지 않는다. export metadata는 저장 시점 snapshot이며 과거 모든 frame의 설정 증거가 아니다.
+- 저폴리의 package 준비, 카메라 조건에 따른 선택, 실제 draw 성공은 별도 counter로 기록한다. prepared/selected 수를 제출량 감소로 바꾸어 읽지 않으며 실제 submitted indices와 원본 fallback을 함께 확인한다. 준비 실패의 asset/HRESULT/reason을 담는 export preparation metadata도 저장 시점 상태이지 프레임 전체의 이력이 아니다.
+- 공유 저폴리 atlas의 미러 배치는 determinant 부호만으로 거절하지 않는다. finite·비퇴화·균일 직교 affine과 동일 재질 identity를 검증하고 기존 mirrored cull pass를 사용한다. 비균일 배율은 원본 vertex별 TBN 처리와 atlas의 보간 후 변환이 달라지므로 같은 허용으로 넓히지 않는다. 준비 대상 증가와 실제 화면의 geometry 감소는 별도 검증한다.
+- 일반 Profiler JSON 저장에서도 보관한 컷신 거리 표본을 같은 exporter에 포함한다. `BeginSave` 성공은 디스크 commit 완료가 아니며 `Poll` 결과로 완료·실패를 표시한다. 준비 예외 전에 요청을 지워 표본을 묵살하지 않고 실패 후 immutable 표본을 명시 재시도까지 보존한다. raw history·거리 기록·저장 시점 metadata의 시간 범위를 동일하다고 가정하지 않는다.
+- Profiler counter 이름 배열은 CTAD로 initializer의 실제 개수를 추론하고 enum `Count`와 `static_assert`로 대조한다. 배열 크기를 처음부터 `Count`로 고정하면 누락된 이름이 기본 초기화돼 개수 검사를 통과할 수 있다.
+- 저폴리 선택 때문에 batch 전체를 HiZ 깊이 제공자에서 제외하지 않는다. descriptor 집계와 실제 depth payload 양쪽에서 `ColorProxySuppressed`인 원본 slot만 제외하고 남은 원본의 기존 occluder 역할을 유지한다. 선택된 저폴리를 원본 고기하 depth로 대신 채우지도 않는다. 적용·검증 범위는 [HLOD 결과 G43](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md)에서 구분한다.
 
 ### ImGui backend에 Engine 헤더를 넣을 때 Debug new 매크로를 격리한다
 
@@ -2442,7 +2454,7 @@ Tool factory·Catalog 직접 로드·worker·Debug 등록/교체와 이전 cache
 - 완성 Composition의 이펙트·UV·타이밍을 보존하는 병합에서도 별도 World Sequence의 승인된 맵 움직임을 파일 전체 `ours`로 누락시키지 않는다. 표시 WORLD row → sequence instance → template track·binding과 MAP placement를 함께 비교하고, 요청된 row의 변경만 선별한다. `피날레_맵`은 배치 3·419의 수정만 들어오고 `circus_finale`의 앞판 키·뒤판 바인딩이 빠지면 수정 배치와 이전 움직임이 섞인다. 같은 숫자 worldId도 Boss Composition과 Sequence Composition에서 의미가 다르므로 파일·displayName·instanceId를 함께 확인한다.
 - 한 인스턴스는 같은 Object Resource를 한 번만 바인딩할 수 있다(`WorldSequenceDocument.cpp` Validate `boundTargets`, `Publish-MapAuthoring.ps1`의 같은 검사). 같은 모델을 여러 슬롯에 두려면 조각마다 Object Resource를 만든다. 이 규칙에 걸린 문서는 publisher만이 아니라 툴/Client 로드도 실패하므로 설치 전에 후보로 검사한다.
 - 정본 `.worldsequences.json`은 python `json.dumps(indent=2)`(배열 한 줄에 한 값)로 쓰면 같은 내용이 툴 Save 형식(배열 한 줄, float32 9자리)보다 약 1.4배 크다. 2관문 소품 165개 설치 뒤 indent=2 형식은 16MiB reader 한도를 넘는다. 이 문서를 다시 쓰는 생성기는 `Tools/KoukuSaydonPipeline/build_gate_cutscenes_g12.py`의 `tool_document`(툴 Save와 같은 형식, 재파싱 float32 동일성 검증 포함)를 사용한다. minify는 툴이 재확장하므로 해결책이 아니다.
-- Composition(`KoukuSaydonSequenceComposition.json`)의 `worlds` 등록 ID는 reader가 `kakulsaydon.g1.world.<n>`(n < `nextWorldOrdinal`) 또는 `world.kouku.gate2.intro.<x>`(인스턴스 `world.sequence.instance.kouku.gate2.intro.<x>`와 짝)만 받는다(`KoukuSaydonCompositionDocument.cpp` 1165행). 다른 이름을 등록하면 Composition 전체가 "not admitted"로 로드되지 않으므로 생성기는 `nextWorldOrdinal`을 소비해 ID를 발급한다.
+- Composition(`KoukuSaydonSequenceComposition.json`)의 `worlds` 등록 ID는 reader가 `koukusaydon.g1.world.<n>`(n < `nextWorldOrdinal`) 또는 `world.kouku.gate2.intro.<x>`(인스턴스 `world.sequence.instance.kouku.gate2.intro.<x>`와 짝)만 받는다(`KoukuSaydonCompositionDocument.cpp` 1165행). 다른 이름을 등록하면 Composition 전체가 "not admitted"로 로드되지 않으므로 생성기는 `nextWorldOrdinal`을 소비해 ID를 발급한다.
 - 원본 Matinee의 배우 `drawscale` float 트랙은 `build_source_sequences.actor_world`가 굽지 않는다. 배우가 커지거나 작아지는 컷(3관문 비행 6→2, 1→0.3)은 template `scaleMultiplier` 키로 따로 넣어야 한다. 근거는 09-13/2026-09-13_KOUKU_G12_CUTSCENES_CAMERA_MAP_RESULT.md G13-R3/R4.
 
 ### 탈것·NPC 재질의 UV와 shader cache 해석
@@ -3598,13 +3610,17 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 - 배경을 읽는 CubeSample의 `5*C^5` 본체가 tone shoulder에 몰리면 Bloom 증폭만으로 면과 모서리 대비를 복구할 수 없다. 실제 blend 상태와 배경 샘플 식을 구분하고, 대응 skillbinding/cue가 쓰는 저작 문서와 Tool 비교본을 모두 확인한다.
 - CubeSample의 선택적 `project_clarity_strength`는 기존 named scalar와 `SourceScalars0.w`를 사용한다. 생략/0은 기존 계산이며 유한한 0~1만 허용한다. Parse/Save가 통과하는 공통 MaterialValidation과 resource staging에서 검증하고 다른 재질에 전파하지 않는다.
-- SceneColor를 보정하는 gain과 coverage는 Bloom/black 보조 평가에서도 실제 SceneHDR로 고정한다. 억제된 배경 Bloom을 HDR에서 다시 생성하지 않는다. 큰 HDR 값의 `lerp(큰 값, 작은 값, 1)`은 상쇄될 수 있으므로 보정 transmission은 가중합으로 계산한다. alpha clip은 원본 alpha로 판정한다.
+- SceneColor를 보정하는 gain과 coverage는 실제 SceneHDR로 고정한다. CubeSample은 그 RGB 전달 계수 T로 가중된 배경 Bloom을 선형 운반한다. 큰 HDR 값의 `lerp(큰 값, 작은 값, 1)`은 상쇄될 수 있으므로 보정 transmission은 가중합으로 계산한다. alpha clip은 원본 alpha로 판정한다.
 - opt-off 동일성, 어두운 배경, 밝은 유색 HDR, alpha 끝값과 Bloom 운반 수치 검사는 실제 맵 화면의 선명도 승인과 구분한다. Q 적용 범위·검증·남은 단계는 `09-21/2026-09-21_DIMENSIONMASTER_Q_CUBE_CLARITY_IMPLEMENTATION_RESULT.md`를 따른다.
-- 배경 의존 본체는 `F(black)`에서0이므로 본체 밝기 제한을 조정하거나 Bloom intensity만 올려도 자기 발광은 생기지 않는다. 독립 발광을 추가할 때는 세 scene read mode에서 같은 값을 더하고 `F(SceneBloom)-F(black)+Write_SceneBloom(F(black))`를 유지한다. 광도 압축만 하고 alpha를 높이면 밝은 배경을 어두운 면으로 더 많이 교체하는 회귀가 생긴다.
+- 배경 의존 본체는 `F(black)`에서0이므로 과거 `F(SceneBloom)-F(black)+Write_SceneBloom(F(black))`만으로는 재질 증폭이 새로 threshold를 넘긴 Bloom을 만들지 못했다. CubeSample은 `T*B + I*max(Extract(F(C))-T*Extract(C),0)`로 전달분과 새 bright-pass를 나눈다. C는 HDR 배경, B는 이미 가중된 배경 Bloom, I는 현재 문서 배율이다. 항등 전달에서 억제된 B를 재생성하지 않고, C^5에 B를 대입해 다른 문서 배율을5승으로 왜곡하지 않는다. 실제 CubeSample 분기가 쓴 RT2만 carrier가 보존하며 다른 재질의 분해식을 일괄 변경하지 않는다.
+- emissive GPU 바인딩, 자체 발광, 재질의 배경 증폭, Bloom 추출, 최종 tone/LUT를 구분한다. Q는 기존 clarity의 자체 면 발광이 이미 있고, R/A 보라 큐브는 동일 보정이 없는 배경 의존 본체다. Q 비교 문서의 Bloom16을 실제 cue가 쓰는 tuning 문서의 생략 기본1.3으로 오인하지 않는다. 전역 Bloom OFF에서 halo가 없는 것은 별도 설정이며 임의로 켜지 않는다.
 - 합성 보라색 입력의 shader 검사로 실제 Q의 금색을 검증했다고 기록하지 않는다. 실제 particle `(7,6,1,.6)`, MIC tint, 원본 DDS, face/edge UV, 활성 tone과 alpha 합성을 사용한다. `R>G>B`만으로 금색이 충분히 남았다고 판단하지 말고 백색화 정도도 비교한다. Character Select의 LUT OFF는 source tone OFF가 아니며 directional OFF도 baked 배경을 제거하지 않는다.
 - unlit·자체 RGB·개별 Bloom은 최종 맵 tone/LUT 제외를 뜻하지 않는다. 보라색이 특정 맵에서 청색으로 바뀌면 실제 활성 region/LUT와 동일 HDR 입력의 후처리를 먼저 비교한다. 원본 추출이 검증된 LUT도 의도적으로 큰 색 회전을 만들 수 있으므로 재질 누락이나 잘못된 텍스처로 단정하지 않는다.
 - 대상의 청색화를 줄이려고 최종 LUT를 통째로 해제하면 배경의 분위기와 대비도 함께 바뀐다. LUT 복구와 환경광 조정을 한 번에 섞지 않고 같은 카메라의 비교 기준을 보존한다. light receiver는 조명 수신 경계이며 합성 이후 LUT의 대상별 제외 기능이 아니다.
 - 3D 투명 이펙트의 색을 보호할 때 이미 섞인 pixel 전체에서 LUT를 끄면 배경까지 바뀐다. 원본 SceneColor 투과와 자체 발광을 구분하고 depth·반투명 정렬·distortion·Bloom을 포함한 합성을 검토한다. 화면 overlay를 3D 유리의 우회 경로로 사용하지 않는다.
+- emissive를 바꿔도 화면 차이가 작으면 재질 바인딩 실패로 바로 결론 내리지 않는다. native RT0, alpha-over, 현재 source tone의 saturate와 LUT를 단계별로 대조한다. 최초 복구 색의 기준은 당시 shader와 저장된 후처리 값을 함께 확인하며, 보존된 설정을 당시 미저장 세션값이나 확보하지 못한 스크린샷의 증거로 확대하지 않는다.
+- Q/R/A의 국소 색 응답은 exact 문서·element ID와 source profile42가 모두 일치한 여섯 요소에만 적용한다. generic mesh draw마다 활성 flag를 초기화하고 Renderer의 현재 tone/LUT를 읽기만 한다. 굴절 샘플 C와 굴절 전 목적지 배경 D를 구분해 현재 배경 표시색에 초기 Hable의 큐브 기여분만 더한 목표를 구한다. alpha·clip·UV·RT2는 보존하며, source-post OFF·비유한 입력·오차가 악화되는 해는 기존 RT0를 유지한다. LUT의 비가역성과 같은 occurrence의 고정 snapshot 겹침은 근사 한계다. 전역 Bloom OFF에서 과거 halo까지 복구됐다고 기록하지 않는다. 실제 연결과 검증 상태는 위 RESULT의 후속 색 응답 항목을 따른다.
+- 색 응답의 기준 RGB/alpha에서 저작 clarity를 빼면 독립 면 발광과 투과 보정이 다시 취소될 수 있다. selector만 검사하지 말고 실제 저작 결과가 target까지 이어지는지 확인한다. 배경 의존 면의0은 emissive 배수로 복구되지 않고 이미 포화한 historical target도 gain만으로 밝아지지 않는다. 현재 저작 RGB/coverage를 target에 쓰며 emissive·clarity 데이터 변경과 solver 전후 RT2/alpha 보존을 구분한다. 단순8배처럼 큰 배수가 보라색을 흰색으로 만들 수 있으므로 dark/bright 배경에서 색과 에너지를 따로 대조한다.
 
 ### 차원술사 유리의 coverage와 T의 환경 조명 경로
 
@@ -3613,7 +3629,7 @@ lease에 연결한다. 저장된 DURATION은 timing 존재와 PRODUCT 의미의 
 
 ### 2026-09-21 쿠크 연출·빙고·크기 반영 경계
 
-- Composition World ID는 첫 행의 접두사로 추측하지 않는다. `world.kouku.gate2.intro.*`는 동일 suffix의 `world.sequence.instance.kouku.gate2.intro.*`와 한 쌍인 source 전용 ID다. 새 저작 행은 `kakulsaydon.g1.world.<ordinal>`을 쓰고 nextWorldOrdinal·모든 occurrence 참조를 함께 갱신한다. Action뿐 아니라 Sequence도 Python 게시 진입점과 실제 Client codec으로 검증한다.
+- Composition World ID는 첫 행의 접두사로 추측하지 않는다. `world.kouku.gate2.intro.*`는 동일 suffix의 `world.sequence.instance.kouku.gate2.intro.*`와 한 쌍인 source 전용 ID다. 새 저작 행은 `koukusaydon.g1.world.<ordinal>`을 쓰고 nextWorldOrdinal·모든 occurrence 참조를 함께 갱신한다. Action뿐 아니라 Sequence도 Python 게시 진입점과 실제 Client codec으로 검증한다.
 - Effect 고정 월드 좌표는 MAP anchor다. WORLD는 실재 World resource ID가 필요한 오브젝트 추적이다. 카메라의 WORLD 허용을 Effect에 그대로 옮기지 않는다.
 - V1 World Object effect는 부모 scale을 보존한다. 원본 fixed-axis sprite의 XY 크기가 바닥면으로 재배치되므로 offset·최종 quad 폭/길이/높이를 실제 renderer 행렬로 검사한다. 필요한 요소에만 followEmitterAxisRotation을 적용한다.
 - Native ScreenPost의 원본 재질 곡선은 authoring binding 검증과 GPU 제출 snapshot 양쪽에 연결해야 한다. 시간별 수치 검사와 FXC 성공을 실제 화면 확인으로 기록하지 않는다.
@@ -6389,3 +6405,93 @@ runtime preScale·presentation 배율을 함께 적용하고, 큰 무기를 포�
   기존 executor의 결과 goal과 요청한 안전 후보를 비교한다. STANDUP도 실제 published 정의가 있는
   직업만 검사하며 미정의 기상기를 합성하지 않는다.
 근거는 [콜로세움 용병 결과 G10](10-01/2026-10-01_COLOSSEUM_PVP_MERCENARY_RESULT.md)에 둔다.
+
+### Effect 전체가 사라졌으면 변환보다 문서 준비 실패를 먼저 확인한다
+
+추가한 mesh 한 파일이 누락돼도 fail-closed Codec 검증이 전체 Effect 문서 Stage를 거절할 수 있다.
+`V1.loading`의 resource 오류와 `V1.queue`의 unprepared를 먼저 연결하고, 실제 cue 문서의
+geometry와 native texture 참조를 전수 확인한다. 등록 JSON과 회전값이 존재한다는 이유로
+shader0 출력이나 잘못된 좌표로 단정하지 않는다. Resources는 Git 제외이므로 Data 전달과
+추가 물리 파일 전달을 구분한다. 동일 source donor의 로드 복구도 이전 파생본의 tangent.w
+원본 일치를 자동 보장하지 않으며, Codec/Stage 성공과 GPU·사용자 화면 성공은 별도다.
+근거는 [워로드 결과 G24](09-09/2026-09-09_WARLORD_ASVF_FULL_RESTORE_IMPLEMENTATION_RESULT.md)에 둔다.
+
+
+### GPU cohort의 대표 모델·실패·계측 계약
+
+- 첫 가시 batch가 RNM bank0이라는 가정을 하지 않는다. `Bind_StaticLightingBankMesh`의 models.front()==this 계약과 payload bank index를 고정 대표로 맞춘다. GPU-ready member를 CPU 인접 병합이 소비하거나, 준비 완료 후 material 실패를 member별 CPU 재시도로 처리하면 중복 draw가 생긴다.
+- GPU 화면 LOD는 x/y off-axis와 geometry의 z 오차를 함께 상계한다. HiZ occluder는 같은 프레임의 실제 불투명 색상 geometry와 일치해야 하며 원본 depth로 축약 후 구멍까지 가리지 않는다.
+- visible/suppression은 resident 전체 재생성이 아니라 active mask 변경이다. TRS·실제 payload·재질 호환성 변경은 따로 무효화한다.
+- 기존 CPU Material/Pass/Draw 계측을 GPU 제출 함수에도 유지한다. CPU-only survivor/LOD 수의 감소를 GPU 전체 감소로 오인하지 않으며 indirect 용량 상한을 실측 indices로 보고하지 않는다.
+
+### GPU 가시성에서도 그림자 후보와 색상 후보를 구분한다
+
+Layer의 final-camera 후보에는 화면 밖 shadow caster도 포함된다. CPU visibility의 broad
+bounds 검사를 건너뛰는 GPU 경로는 같은 보수적 batch sphere로 color 후보를 먼저 제한하고,
+Mark_Submitted는 통과 뒤에만 호출한다. 거절해도 기존 shadow upload/제출은 계속한다.
+검사 실패·frustum OFF는 표시를 보존하며 local frustum 상태로 CPU grace를 중복 진행하지 않는다.
+
+cohort 호환 검사와 HLOD claim 조회는 현재 제출 여부를 확인한 뒤 수행한다. D3D11의 빈 LOD
+bin도 CPU indirect 명령을 요구하므로 현재 cell의 개별 원본 draw 상한과 비교한다. CPU 복귀는
+같은 프레임 가시성을 먼저 준비해 인접 병합과 CPU 가림을 보존하며 GPU-ready 소유자는 CPU
+가림 후보에서 명시적으로 제외한다. 상주 scene 크기와 active source 수, GPU 실제 생존 수는
+다르다. HiZ admission에는 active 수를 사용하고 두 가림 경로의 비용은 캡처로 확인한다.
+코드 검증·제품 빌드와 실제 기본 카메라/컷신 FPS는 [HLOD 결과 G33](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md)에서 구분한다.
+
+
+### GPU 적격 HLOD의 소유권은 mesh 단위로 확정한다
+
+GPU 적격 조건만으로 native HLOD를 제외하면 원경 후보가 생성돼도 실제 선택되지 않는다.
+제외 조건만 제거해도 안 된다. claim을 발견한 뒤 scene 전체를 CPU로 되돌리거나 instance의 모든
+mesh를 함께 끄면 원본 draw 증가 또는 submesh 누락이 생긴다. mesh별 active lane을 사용하고
+남은 원본이 없는 mesh의 material/pass/indirect 명령을 모두 생략한다. CPU fallback한 cohort의
+mask는 다른 cohort dispatch 전에 지워야 중복 작업을 막는다.
+
+HLOD 비용은 같은 후보가 cohort/mesh의 잠재 가시 원본을 전부 덮을 때만 GPU draw 1개 이상을
+없애는 것으로 센다. 후보 밖 원본이 있거나 모든 peer가 색상 후보 밖이면 credit은 0이다.
+비용 조회에서 다른 chunk의 lazy claim을 호출하지 않는다. CPU VB 준비 전 source별 1px 및
+index 감소 가능성을 검사하고, GPU 사용 가능 mesh는 모든 resident LOD 중 최소 index와도 비교한다.
+CPU batch LOD만 기준으로 삼으면 GPU의 더 작은 instance별 LOD보다 HLOD가 무거울 수 있다.
+mesh lane 수 `ActiveSources`와 고유 instance 수 `ActiveOwners`를 분리해 HiZ 128개 기준을 보존한다.
+기본 카메라/FPS와 컷신 실제 제출 여부는 빌드나 dependency fixture의 성공으로 대신 기록하지 않는다.
+근거는 [HLOD 결과 G34](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md)에 둔다.
+
+
+### 컷신 거리와 GPU draw 계측은 관측 frame을 맞춘다
+
+F7 Capture OFF의 기존 raw counter는 갱신되지 않는다. 항상 보이는 HUD는 별도 완료 geometry
+frame을 사용하고, indirect 용량 상한을 실제 indices로 표시하지 않는다. VSInvocations는 전체
+GPU frame(TK/UI 포함), index 참조는 계측된 Engine draw 범위이므로 서로 다른 분모를 명시한다.
+args readback은 geometry frame+buffer ordinal+offset이 모두 같은 draw에만 결합한다.
+source별 model sphere 거리는 GPU 후보 정보이며 bin survivor 수로 개별 생존/LOD를 역추정하지 않는다.
+관측을 위해 visibility prepare/lazy HLOD claim을 다시 호출하지 않는다. 고정 tick을 놓쳤으면
+실제 관측 시간과 skipped tick을 남기며 보간한 카메라를 측정값으로 저장하지 않는다.
+새 계측의 실행 증거는 [컷신 geometry 결과](10-13/2026-10-13_BERN_CUTSCENE_GEOMETRY_PROFILER_RESULT.md)에 둔다.
+
+### 한국어 shader 주석을 추가할 때 UTF-8 BOM을 붙이지 않는다
+
+현재 제품 FXC는 UTF-8 BOM을 shader 첫 토큰으로 읽어 X3000을 낼 수 있다. include 파일의
+첫 `#ifndef` 앞에 BOM이 있으면 뒤의 `#endif`에서 X1510도 발생한다. C++의 ASCII→UTF-8 BOM
+저장 정책을 HLSL/HLSLI에 그대로 적용하지 않는다. 기존 인코딩을 확인하고, ASCII shader에
+한국어를 추가할 때는 UTF-8 BOM 없음으로 저장한다. Engine 정본과 Client 사본을 함께 대조한다.
+주석 제거 후 토큰 동일 검사만으로 이 파일 바이트 문제를 검출할 수 없으므로 실제 FXC 입력을
+컴파일한다. 한글 주석을 삭제하거나 shader 수식을 바꾸어 우회하지 않는다.
+근거는 [코드 정비 RESULT](10-11/2026-10-11_CODE_READABILITY_RESULT.md)의 2026-10-14 검증과
+`out/CodeReadability/session-20261014-all/fxc-encoding-audit/result.json`에 기록한다.
+
+
+### 임시 표시 변경은 불변 HLOD geometry를 폐기하지 않는다
+
+visible/무대 suppression/camera preview는 source geometry와 변환을 바꾸지 않는다.
+`claim.valid=false`로 처리하면 숨김 해제 뒤에도 HLOD가 영구 탈락한다. 현재 프레임의
+frameActive/activeMembers/owner selection만 초기화하고 CPU visible cache를 다시 준비한다.
+TRS·실제 payload 변경의 영구 invalidation은 유지하며 표시 복귀가 무효 claim을 되살리지
+못하게 한다. 부분/전체 숨김 복귀의 실제 draw 집합과 GPU active lane을 함께 대조한다.
+mutation은 기존 main-thread final-camera traversal 이전 계약을 지킨다.
+근거는 [HLOD 결과 G39](10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md)에 둔다.
+
+### 쿠크세이튼 저장 ID와 파일명을 함께 변경한다
+
+- 2026-10-14 사용자 요청으로 자체 코드·world/boss/pattern/placement/scene ID와 게시 파일을 `KoukuSaydon` / `KOUKUSAYDON` / `koukusaydon` 계열로 통일했다. 과거 기록에 인용된 Kakul 표기는 당시의 이름이다. 새 구현·검증은 현재 정본의 이름을 따른다.
+- `CNpcPlacementPresentationService::Load`의 world 문자열은 표시 문구가 아니라 파일명과 JSON `worldId`의 조회 키다. 한 호출 문자열만 바꾸면 선택적 NPC 로드가 누락될 수 있으므로 저작 JSON·publisher·Client/Server 소비자를 함께 변경한다.
+- wire enum 숫자와 렌더링 튜닝은 이름 변경과 무관하다. 원본 `KoukuSaton` 리소스 별칭 및 과거 cook schema/구형 이름 제거 검사는 현재 저장 ID와 구분한다.

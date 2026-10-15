@@ -1,4 +1,4 @@
-#include "Profiler.h"
+﻿#include "Profiler.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,11 +10,12 @@
 
 using namespace Engine;
 
+#include "Profiler_Geometry.inl"
+
 namespace
 {
     constexpr size_t MAX_SCOPES_PER_FRAME = 8192;
-    // Children complete first. Keep main-thread pass/root samples available
-    // after dense map/particle detail exhausts its bounded frame budget.
+    // 자식 sample이 먼저 끝나므로 상세 sample 예산이 소진되어도 주 스레드의 pass·root sample 공간을 남긴다.
     constexpr size_t MAIN_PASS_SCOPE_RESERVE = 1024;
     constexpr size_t MAIN_ROOT_SCOPE_RESERVE = 128;
     constexpr size_t MAX_OPEN_SCOPES_PER_THREAD = 64;
@@ -54,13 +55,7 @@ namespace
         uint64_t CaptureEpoch;
     };
 
-    /* Each thread owns its own nesting stack. A token is the index into this
-       stack on the thread that began the scope.
-       Kept trivially constructible (fixed array, no std::vector) on purpose: a thread_local
-       with a dynamic initializer runs on every thread the process ever creates -- D3D driver,
-       FMOD and PhysX workers included -- and the debug STL vector's heap-allocated container
-       proxy then shows up in the CRT exit leak dump for every such thread still alive at
-       shutdown. */
+    /* 중첩 stack은 thread별 고정 배열이며 token은 시작한 thread의 index다. 동적 TLS 컨테이너를 피해 외부 worker의 종료 시 heap 수명에 의존하지 않는다. */
     struct FOpenScopeStack final
     {
         FOpenScope Scopes[MAX_OPEN_SCOPES_PER_THREAD];
@@ -97,14 +92,15 @@ HRESULT CProfiler::Initialize(
         (void)adapter.As(&m_pMemoryAdapter);
     }
     m_GpuQueriesAvailable = Create_GpuQueries();
+    Initialize_Geometry();
     return S_OK;
 }
 
 void CProfiler::Begin_Frame()
 {
-    // Counts real main-loop frame boundaries even while capture is paused.
-    // Query latency must not be synthesized by advancing the capture number.
+    // capture 정지 중에도 실제 main-loop 프레임을 센다. GPU query 지연을 capture 번호로 대신 계산하지 않는다.
     ++m_PollFrameNumber;
+    Begin_GeometryFrame();
     if (m_ResetRequested.exchange(false, std::memory_order_relaxed))
         Reset_History();
     const bool enabled = m_Enabled.load(std::memory_order_relaxed);
@@ -156,6 +152,7 @@ void CProfiler::Begin_Frame()
 
 void CProfiler::End_Frame()
 {
+    End_GeometryFrame();
     if (!m_FrameActive)
     {
         Resolve_GpuFrames(m_PollFrameNumber);
@@ -195,8 +192,7 @@ void CProfiler::End_Frame()
     }
 
     {
-        /* Every scope that ended since the previous frame, on any thread,
-           belongs to this frame. */
+        /* 이전 프레임 뒤 종료된 모든 thread의 scope를 현재 프레임에 기록한다. */
         std::lock_guard lock(m_Mutex);
         m_CurrentFrame.DroppedCpuScopes = m_PendingDroppedCpuScopes;
         m_PendingDroppedCpuScopes = 0;
@@ -253,8 +249,7 @@ void CProfiler::Sample_Memory(uint64_t tick)
         read(DXGI_MEMORY_SEGMENT_GROUP_LOCAL, sampled.Local);
         read(DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, sampled.NonLocal);
     }
-    // A failed attempt replaces the previous values with unavailable rather
-    // than silently presenting the last successful sample as a fresh success.
+    // 조회 실패는 이전 성공값 대신 unavailable을 기록해 오래된 값을 새 측정처럼 표시하지 않는다.
     m_MemorySample = sampled;
 }
 
@@ -321,8 +316,7 @@ void CProfiler::End_Scope(uint32_t token) noexcept
 
     const uint64_t endTick = Query_Tick();
     const FOpenScope open = openScopes.Scopes[token];
-    /* Unwinding to the token also closes any inner scope whose End_Scope was
-       skipped, so a mismatched pair cannot corrupt later depths. */
+    /* token까지 풀면서 End_Scope가 빠진 내부 scope도 닫아 이후 중첩 깊이를 복구한다. */
     openScopes.Count = token;
     if (!m_Collecting.load(std::memory_order_relaxed) ||
         open.CaptureEpoch != m_CaptureEpoch.load(std::memory_order_relaxed))
@@ -350,8 +344,7 @@ void CProfiler::End_Scope(uint32_t token) noexcept
     }
     if (m_PendingScopes.size() < sampleLimit)
     {
-        // Cap vector growth as well as sample count; normal frames still grow
-        // on demand and the history ring continues to recycle their buffers.
+        // sample 수와 vector 용량 증가를 함께 제한하며 history ring의 buffer를 재사용한다.
         if (m_PendingScopes.size() == m_PendingScopes.capacity())
             m_PendingScopes.reserve((std::min)(MAX_SCOPES_PER_FRAME,
                 (std::max)(size_t{128}, m_PendingScopes.capacity() * 2)));
@@ -563,7 +556,7 @@ void CProfiler::Record_MeshSubmitted(const void* mesh, uint32_t indexCount, uint
     {
         if (m_CurrentFrame.MeshDraws.size() < MAX_MESH_DRAWS_PER_FRAME)
         {
-            // Allocate one bounded block, only in the explicitly enabled detail mode.
+            // 상세 계측을 명시적으로 켰을 때만 제한된 크기의 block을 할당한다.
             if (m_CurrentFrame.MeshDraws.empty())
                 m_CurrentFrame.MeshDraws.reserve(MAX_MESH_DRAWS_PER_FRAME);
             FProfilerMeshDrawSample sample{};
@@ -616,6 +609,8 @@ FProfilerDrawStats CProfiler::Read_DrawCounters() const noexcept
 void CProfiler::Add_Counter(
     EProfilerCounter counter, uint64_t value) noexcept
 {
+    if (counter == EProfilerCounter::Indices)
+        Add_GeometryDirectIndices(value);
     if (!m_Collecting.load(std::memory_order_relaxed) || !m_FrameActive)
         return;
     const size_t index = static_cast<size_t>(counter);
@@ -833,15 +828,12 @@ void CProfiler::Get_ScopeAggregates(
         for (size_t index = 0; index < scopeCount; ++index)
         {
             const FProfilerScopeSample& sample = scopes[index];
-            // Completed events belong to the frame in which they ended. A parent
-            // crossing its bounds may have children in another frame, so this
-            // frame-local reduction cannot prove self time. Keep inclusive time.
+            // 완료된 event는 종료 프레임에 속한다. 부모·자식이 다른 프레임에 걸칠 수 있어 이 집계는 inclusive 시간만 유지한다.
             if (sample.BeginTick < frame.FrameBeginTick || sample.EndTick > frame.FrameEndTick ||
                 sample.EndTick < sample.BeginTick) selfComplete = false;
             if (sample.NameId >= m_ScopeNames.size()) continue;
             FThreadReduction& thread = threadFor(sample.ThreadId);
-            // There is at most one push per input sample. Allocate the bounded
-            // stack once and avoid Debug STL container churn for every scope.
+            // 입력 sample마다 최대 한 번 push하므로 상한 크기의 stack을 한 번 할당해 재사용한다.
             if (thread.Completed.size() < scopeCount) thread.Completed.resize(scopeCount);
             size_t* completed = thread.Completed.data();
             const double inclusiveMs = Ticks_ToMs(sample.EndTick >= sample.BeginTick ?
@@ -1028,7 +1020,7 @@ uint32_t CProfiler::Intern_Name(std::string_view name)
         uint64_t InstanceId = 0;
         std::unordered_map<std::string, uint32_t, FNameHash, std::equal_to<>> Names;
     };
-    // Function-local TLS allocates only on threads that actually register a scope.
+    // 함수 지역 TLS는 실제 scope를 등록한 thread에서만 할당된다.
     static thread_local FThreadNameCache threadCache;
     if (threadCache.InstanceId != m_InstanceId)
     {
@@ -1051,8 +1043,7 @@ uint32_t CProfiler::Intern_Name(std::string_view name)
             m_ScopeNameLookup.emplace(m_ScopeNames.back(), id);
         }
     }
-    // Dynamic names cannot grow one thread's cache without bound. Global IDs
-    // survive this eviction and Reset_History, so a later miss remains stable.
+    // 동적 이름의 thread별 cache 크기를 제한한다. 전역 ID는 cache 제거·Reset_History 뒤에도 유지된다.
     if (threadCache.Names.size() >= 512u) threadCache.Names.clear();
     threadCache.Names.emplace(std::string(name), id);
     return id;
@@ -1074,7 +1065,7 @@ bool CProfiler::Create_GpuQueries()
         if (FAILED(m_pDevice->CreateQuery(&desc, &slot.Pipeline)))
             return false;
     }
-    // Pass-query allocation may fail without disabling full-frame GPU timing.
+    // pass query 할당이 실패해도 전체 프레임 GPU 계측은 유지한다.
     desc.Query = D3D11_QUERY_TIMESTAMP;
     m_GpuScopeQueriesAvailable = true;
     for (FGpuQuerySlot& slot : m_GpuSlots)
@@ -1100,7 +1091,7 @@ bool CProfiler::Create_GpuQueries()
                 scope.End.Reset();
             }
     }
-    // Only the selected leaf passes need pipeline counts, not all 128 scopes.
+    // pipeline 통계는 선택한 leaf pass에서만 수집한다.
     desc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
     m_GpuPipelineQueriesAvailable = m_GpuScopeQueriesAvailable;
     for (FGpuQuerySlot& slot : m_GpuSlots)
@@ -1254,8 +1245,7 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
             }
             if (status != EProfilerGpuFrameStatus::Error && !ready)
                 continue;
-            // Samples are ordered by Begin. Immediate-context child intervals
-            // are serial or nested, so subtract only direct children once.
+            // Begin 순서의 immediate-context 구간은 순차 또는 중첩되므로 직계 자식 시간만 한 번 뺀다.
             for (uint32_t parent = 0; parent < sampleCount; ++parent)
             {
                 auto& sample = samples[parent];
@@ -1293,8 +1283,7 @@ void CProfiler::Resolve_GpuFrames(uint64_t currentPollFrame)
 void CProfiler::Commit_CurrentFrame()
 {
     std::lock_guard lock(m_Mutex);
-    // Preserve worker scopes that completed between End_Frame and this lock.
-    // Otherwise recycle the evicted CPU buffer instead of allocating each frame.
+    // End_Frame 뒤 잠금 획득 전 완료된 worker scope를 보존한다. 그 외에는 밀려난 CPU buffer를 재사용한다.
     if (m_History.size() >= MAX_HISTORY_FRAMES && m_PendingScopes.empty())
     {
         m_PendingScopes.swap(m_History.front().CpuScopes);

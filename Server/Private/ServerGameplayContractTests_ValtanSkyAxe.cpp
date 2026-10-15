@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "BossCombatRuntime.h"
 #include "GameplayCatalog.h"
@@ -41,7 +41,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanSkyAxe(TESTS& tes
 	{
 		/* HIGH_JUMP snapshots exactly one axe at each living raider's position.
 		There is no arena-random supplement and no later scheduled wave. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto volleyRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
 		CGameRoom& volleyRoom = *volleyRoomStorage;
 		tests.Require(volleyRoom.Initialize_WorldEntities(),

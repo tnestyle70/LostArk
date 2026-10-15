@@ -1,15 +1,24 @@
-#pragma once
+﻿#pragma once
 
+// 이 헤더는 Workbench 세션의 선택·미적용 입력·표시 cache를 선언한다.
+// BalanceTool의 gameplay draft와 UI의 값 복사본을 구분해야 Reload·Undo·여러 pane의 수명을 설명할 수 있다.
+// Client/Engine 공통 타입과 매크로는 아래 선언의 bool_t·f32_t·NS_BEGIN 등에 필요하다.
 #include "Client_Defines.h"
 #include "Engine_Defines.h"
+// graph는 Boss Pattern 경로를 화면에 투영한 값이며 Server 실행 graph의 소유권을 가져오지 않는다.
+// Animation_Tool의 중첩 COMPOSITION_SEQUENCE_VIEW와 BoneEditor 값 멤버는 완전한 타입 정의가 필요하다.
 #include "ActionCompositionGraphModel.h"
 #include "Animation_Tool.h"
 #include "BoneAnimationWorkbench.h"
+// resource tree는 목록 표시용 분류이고 session은 공용 pane·명령·전달 인터페이스다.
+// Effect 문서·resource key·Undo 이력은 아래 값 멤버와 요청 타입에 사용한다.
 #include "CompositionResourceTree.h"
 #include "CompositionWorkbenchSession.h"
 #include "EffectV2_Document.h"
 #include "EditorUndoHistory.h"
 #include "EffectResourceCatalog.h"
+// 저장 Pattern·Sound·Shake의 읽기 모델과 source 기준본을 값으로 보관한다.
+// ValtanViewAdmission은 표시 가능 여부와 변경 가능 여부를 나누는 세션 상태다.
 #include "EncounterPatternReference.h"
 #include "ValtanCombatObjectSoundCueDocument.h"
 #include "ValtanPatternShakeCueDocument.h"
@@ -18,6 +27,8 @@
 #include "ValtanCinematicEffectLibrary.h"
 #include "ValtanViewAdmission.h"
 
+// array는 lane 개수와 ImGui 입력 버퍼처럼 크기가 정해진 저장소에, vector는 순서가 있는 표시 행에 쓴다.
+// optional은 대기 요청의 유무를 값과 묶고, map은 resource ID에 label 정보를 연결한다. 저장 ID는 이 container의 위치와 별개다.
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -25,21 +36,23 @@
 #include <string>
 #include <vector>
 
+// Client 이름 공간에 편집기 계약을 모은다. 이름 공간은 이름 충돌 범위를 정하며 객체나 상태의 소유자가 아니다.
 NS_BEGIN(Client)
 
+// 아래 도구는 포인터로만 선언하므로 전방 선언이면 된다. 실제 메서드를 호출하는 CPP에서 해당 헤더를 포함한다.
 class CBalanceTool;
 class CValtanBossTool;
 struct CAMERA_TOOL_OPEN_REQUEST;
 struct EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST;
 
-/* One upper-level authoring surface over existing typed domain owners.  It
-   owns no runtime or generated Product document: CValtanPatternTree provides
-   the canonical read model, CBalanceTool owns gameplay drafts, Animation Tool
-   owns model pose preview, and Effect/Camera requests deep-link to their
-   existing owner tools. */
+/* 기존 타입별 소유 도구를 하나의 편집 화면으로 연결한다. 런타임 실행 상태나 게시 Product 문서를 새로 소유하지 않는다.
+   CValtanPatternTree가 읽기 모델을 제공하고 CBalanceTool이 gameplay draft를, Animation Tool이 모델 자세 미리보기를 소유한다.
+   Effect/Camera 편집은 기존 소유 도구를 여는 요청으로 전달한다. 이 클래스에는 화면 선택·입력 대기·표시용 복사본을 둔다. */
 class CValtanActionWorkbench final : public ICompositionWorkbenchSession
 {
 public:
+	// DETAIL_OWNER는 선택 시 열 편집 주체, TIMELINE_LANE은 행의 표시 위치다.
+	// 같은 lane에도 다른 주체의 행이 들어올 수 있어 하나의 enum으로 합치지 않는다.
 	enum class DETAIL_OWNER : uint8_t
 	{
 		PATTERN,
@@ -79,6 +92,9 @@ public:
 		V2_GROUP,
 	};
 
+	// timeline 한 행의 표시용 값이다. Pattern/Stage/occurrence ID를 복사해 vector 재배치와 원본 교체 후에도 대상을 다시 찾는다.
+	// iStartMs/iEndMs는 선택 preview 경로 전체의 ms이고 iSubrow는 겹침을 피하기 위한 표시 행 번호다.
+	// 표시 행을 수정하는 것으로 원본을 바꾸지 않고 해당 소유 도구의 typed setter에 변경을 보낸다.
 	struct TIMELINE_ITEM final
 	{
 		DETAIL_OWNER eOwner = DETAIL_OWNER::GAMEPLAY_STAGE;
@@ -96,19 +112,17 @@ public:
 		bool_t bEffectV2Binding = false;
 		bool_t bEffectV2Group = false;
 		uint32_t iEffectV2BindingStartMs = 0u;
-		/* Typed clip bindings name one exact occurrence. Keep that source-window
-		   identity beside the stable bindingId for detail, drag and playback. */
+		/* 타입이 정해진 clip binding은 occurrence 하나를 정확히 가리킨다.
+		   Details 편집·드래그·재생이 같은 원본 구간을 찾도록 bindingId와 clip occurrence ID를 함께 보관한다. */
 		std::string strEffectV2ClipOccurrenceId;
 		f32_t fEffectV2ClipPlayRate = 1.f;
-		/* A loop slot ends exactly at the Server Stage clock, so its right
-		   edge is the Stage duration and it never moves across Stages. */
+		/* 반복 slot의 끝은 Server Stage의 시각에 맞춘다. 오른쪽 경계는 Stage 길이를 나타내며 다른 Stage로 옮기지 않는다. */
 		bool_t bLoopsToStageEnd = false;
 	};
 
-	/* Cached reverse projection from an exact PRIMARY source Sequence to the
-	   immutable, Complete-Play-eligible Product Patterns that own it.  Pointers
-	   are valid only for m_iCanonicalDisplayGeneration and are discarded before
-	   a newly committed canonical view can be rendered. */
+	/* 정확한 PRIMARY 원본 Sequence에서 이를 연결한 저작 관리 Pattern을 역으로 찾는 표시용 인덱스다.
+	   Server Complete Play 허용 여부는 별도로 확인한다. Owners의 포인터는 m_iCanonicalDisplayGeneration의 view를 차용하며
+	   새 canonical view를 표시하기 전에 폐기한다. */
 	struct SOURCE_SEQUENCE_OWNER_INDEX_ENTRY final
 	{
 		uint32_t iSourceActionId = 0u;
@@ -116,10 +130,8 @@ public:
 		std::vector<const VALTAN_PATTERN_VIEW*> Owners;
 	};
 
-	/* Browser navigation never retains a pointer into the immutable canonical
-	   frame view.  The requested Pattern and optional Stage remain stable IDs
-	   until every Composition window has finished rendering and the pending
-	   Save/Discard decision has completed. */
+	/* Browser의 이동 요청은 canonical frame view 안의 포인터를 보관하지 않는다.
+	   모든 Composition 창의 그리기와 Save/Discard 선택이 끝날 때까지 Pattern·선택적 Stage를 stable ID로 기억한다. */
 	struct PENDING_PATTERN_SELECTION final
 	{
 		std::string strPatternId;
@@ -149,10 +161,8 @@ public:
 		m_SceneProfileResourceIds = std::move(profiles);
 		m_LightResourceIds = std::move(lights);
 	}
-	/* Sibling-view API for the Sequencer: the same canonical load, selection,
-	   draft and timeline cache without requiring the Workbench windows to be
-	   visible. Selection changes are refused while any owner draft is dirty so
-	   the Workbench modal stays the only discard path. */
+	/* Sequencer가 Workbench 창의 표시 여부와 관계없이 같은 canonical 로드·선택·draft·timeline cache를 사용하는 진입점이다.
+	   소유 도구에 미저장 draft가 있으면 선택 변경을 거절해 Workbench의 확인 창을 통한 명시적 폐기 절차를 유지한다. */
 	bool_t Ensure_CanonicalLoaded(std::string& strOutStatus);
 	std::vector<std::string> Get_PatternIds() const;
 	bool_t Select_PatternById(
@@ -163,9 +173,8 @@ public:
 	{
 		return 0u != m_CanonicalView.Get_PatternCount();
 	}
-	/* Monotonic identity of the immutable canonical display snapshot. Sibling
-	   views may use it only to invalidate their own read-only projections; it
-	   is not a source or Product revision. */
+	/* 불변 canonical 표시 복사본이 교체될 때 증가하는 식별값이다.
+	   다른 view는 읽기 전용 파생 결과를 무효화할 때만 사용하며, source나 Product의 저장 revision으로 해석하지 않는다. */
 	[[nodiscard]] std::uint64_t Get_CanonicalDisplayGeneration() const noexcept
 	{
 		return m_iCanonicalDisplayGeneration;
@@ -175,9 +184,8 @@ public:
 		return Can_MutateValtanView(m_eAdmission);
 	}
 	void On_LevelChanged();
-	/* Advances and consumes only this Workbench's exact asynchronous Save
-	   receipt. MainApp calls this every frame so a hidden Composition window
-	   still completes owner reopen, graph refresh, and runtime publication. */
+	/* 이 Workbench가 시작한 비동기 Save 작업의 정확한 완료 결과만 진행·소비한다.
+	   MainApp이 매 프레임 호출하므로 Composition 창이 숨겨져도 소유 도구 재열기·graph 갱신·runtime 게시 후속 처리를 마친다. */
 	void Update_SaveState();
 	void Render();
 	void On_WorkbenchDeactivated() override;
@@ -199,10 +207,8 @@ public:
 		EFFECT_TOOL_VALTAN_PRODUCT_OPEN_REQUEST& OutRequest);
 	bool_t Consume_EffectResourceOpenRequest(EFFECT_RESOURCE_KEY& OutKey);
 	bool_t Consume_EffectResourcePreviewRequest(EFFECT_RESOURCE_KEY& OutKey);
-	/* Set by a completed Publish so All Effects reopens exactly that durable
-	   Product receipt. MainApp consumes this independently of window visibility;
-	   if the Effect owner has not been constructed yet, the request remains
-	   pending here. */
+	/* Publish 완료 시 저장된 Product 결과의 revision을 기록해 All Effects가 같은 결과를 다시 열게 한다.
+	   MainApp이 창 표시와 무관하게 소비하며 Effect 소유 도구가 아직 없으면 이 요청은 대기 상태로 남는다. */
 	bool_t Consume_EffectGraphRefreshRequest(
 		std::string& strOutExpectedSourceRevision)
 	{
@@ -225,8 +231,8 @@ public:
 	{
 		m_bPreviewOwnerActive = bActive;
 	}
-	/* Read-only timeline projection for the Sequencer window: the last
-	   Build_Timeline result for Get_TimelineCachePatternId(). */
+	/* Sequencer에 제공하는 읽기 전용 timeline 투영이다.
+	   Get_TimelineCachePatternId()에 해당하는 마지막 Build_Timeline 결과를 차용한다. */
 	[[nodiscard]] const std::vector<TIMELINE_ITEM>& Get_TimelineItems() const
 	{
 		return m_TimelineItems;
@@ -247,9 +253,8 @@ public:
 	{
 		return m_iTimelineDurationMs;
 	}
-	/* Seeks the shared playhead and the effective preview through the same
-	   path the Workbench ruler uses. Returns false when no admitted preview
-	   could be sought; the playhead value is still updated. */
+	/* Workbench 눈금자와 같은 경로로 공용 playhead와 현재 preview를 탐색한다.
+	   허용된 preview를 탐색하지 못하면 false를 반환하지만 playhead 값 자체는 갱신된다. */
 	bool_t Set_PlayheadMs(uint32_t iPlayheadMs);
 
 private:
@@ -284,10 +289,8 @@ private:
 		const std::string& strStrictFailure);
 	bool_t Save_Reload();
 	void Publish_AfterSave();
-	/* Save receipt. Every committed Save (including the reopen-failure
-	   returns) records SOURCE_COMMITTED so the runtime-set publish can never be
-	   skipped silently; Retry Publish continues from the same committed
-	   revision without writing source again. */
+	/* Save 완료 결과를 추적한다. source 저장에 성공했다면 이후 재열기에 실패해도 SOURCE_COMMITTED를 기록한다.
+	   따라서 runtime-set 게시가 조용히 누락되지 않으며 Retry Publish는 source를 다시 쓰지 않고 같은 저장 revision에서 이어간다. */
 	enum class POST_SAVE_STATE : uint8_t
 	{
 		IDLE,
@@ -353,8 +356,8 @@ private:
 		const std::string& strClipOccurrenceId,
 		uint32_t iSourceMs) const;
 
-	/* True means a canonical reload/save was attempted and any previously
-	   resolved Pattern/Stage pointers must not be reused in this ImGui frame. */
+	/* true이면 canonical 재로드 또는 저장을 시도한 상태다.
+	   현재 ImGui 프레임에서 이미 얻은 Pattern/Stage 포인터를 이후에 재사용하면 안 된다. */
 	bool_t Render_Toolbar(
 		const VALTAN_PATTERN_VIEW* pPattern,
 		bool_t bMutationAdmitted);
@@ -597,7 +600,7 @@ private:
 	static uint32_t Lane_Color(TIMELINE_LANE eLane);
 
 private:
-	// Shared shell panes consume one immutable view until End_WorkbenchFrame.
+	// 공용 shell의 각 pane은 End_WorkbenchFrame까지 같은 불변 view를 차용한다.
 	const VALTAN_PATTERN_VIEW* m_pWorkbenchFramePattern = nullptr;
 	const VALTAN_STAGE_VIEW* m_pWorkbenchFrameStage = nullptr;
 	std::uint64_t m_iWorkbenchFrameDraftGeneration = 0u;
@@ -610,15 +613,19 @@ private:
 	int32_t m_iWorkbenchReportedPatternTab = -1;
 	bool_t m_bWorkbenchReportedTimelineMaximized = false;
 
+	// MainApp이 unique_ptr로 가진 도구들을 차용한다. 생성자가 받은 주소를 보관하며 이 클래스가 delete하지 않는다.
+	// MainApp::Free는 Workbench를 먼저 해제한 뒤 Animation/Balance/Boss Tool을 해제한다.
+	// 프레임·pane 호출과 이 멤버 갱신은 MainApp의 UI 흐름에서 수행하며 worker가 이 포인터로 UI 상태를 직접 바꾸지 않는다.
 	CAnimation_Tool* m_pAnimationTool = nullptr;
 	CBalanceTool* m_pBalanceTool = nullptr;
 	CValtanBossTool* m_pValtanBossTool = nullptr;
 
+	// 로드에 성공한 정본의 읽기 모델을 값으로 소유한다. 원본 파일 자체나 BalanceTool의 편집 draft가 아니다.
+	// 선택·프레임 포인터와 역방향 인덱스는 이 저장소 또는 effective cache를 차용하므로 교체 시 함께 무효화해야 한다.
 	VALTAN_PATTERN_TREE_VIEW m_CanonicalView;
 	CEncounterPatternReference m_ProductFallbackEncounter;
-	/* The Browser is the same admitted Product inventory used by Valtan Boss Tool
-	   Complete Play.  Reference/legacy compatibility rows remain available to
-	   the canonical loader for validation, but never become authoring choices. */
+	/* Valtan Boss Tool의 Complete Play 허용 여부를 조회하는 Product 목록이다.
+	   Browser의 canonical 목록과 역할이 다르다. Find_PatternById는 호환 Pattern도 찾지만 Server 재생은 이 목록으로 별도 판단한다. */
 	VALTAN_TOOL_AUDITION_INVENTORY m_PlayableInventory;
 	std::vector<SOURCE_SEQUENCE_OWNER_INDEX_ENTRY>
 		m_SourceSequenceOwnerIndex;
@@ -631,9 +638,8 @@ private:
 	DETAIL_OWNER m_eDetailOwner = DETAIL_OWNER::PATTERN;
 	bool_t m_bLoadAttempted = false;
 	bool_t m_bProductFallbackReady = false;
-	/* A publisher owns the canonical byte-range lock only briefly.  A load that
-	   lands in that window must not freeze the Browser at zero rows for the
-	   lifetime of the Workbench; Render retries after the writer releases it. */
+	/* publisher가 canonical 바이트 범위 잠금을 가진 동안 읽기 승인이 일시 실패할 수 있다.
+	   이를 영구적인 빈 Browser로 굳히지 않도록 Render가 재시도 시각을 확인하고 다시 로드를 요청한다. */
 	bool_t m_bCanonicalReloadRetryPending = false;
 	double m_dNextCanonicalReloadRetrySeconds = 0.0;
 	bool_t m_bPatternShakesReady = false;
@@ -641,8 +647,8 @@ private:
 	bool_t m_bResetLayoutRequested = false;
 	bool_t m_bApplyResetLayoutThisFrame = false;
 	bool_t m_bPatternsWindowVisible = true;
-	/* One-shot tab routing keeps the sequence-to-pattern authoring flow visible:
-	   0 selects the saved Pattern browser, 1 selects Create New Pattern. */
+	/* Sequence에서 Pattern 편집으로 이어지는 한 번의 탭 이동 요청이다.
+	   0은 저장 Pattern Browser, 1은 Create New Pattern을 선택한다. */
 	int32_t m_iRequestedPatternTab = -1;
 	bool_t m_bPreviewWindowVisible = true;
 	bool_t m_bSequencerWindowVisible = true;
@@ -662,8 +668,8 @@ private:
 	bool_t m_bPreviewOwnerClaimRequested = false;
 	bool_t m_bPreviewOwnerActive = false;
 	std::string m_strCinematicPreviewStatus;
-	/* One explicit Save & Publish request. Source Save consumes and clears it;
-	   the existing publisher and Server revision admission remain separate. */
+	/* 사용자의 Save & Publish 요청 한 번을 기억한다. source Save가 소비·해제하며
+	   실제 publisher 실행과 Server revision 승인은 이후의 별도 절차다. */
 	bool_t m_bPublishWithPendingSave = false;
 	bool_t m_bProductSourceReady = false;
 	std::string m_strProductReadiness;
@@ -689,6 +695,8 @@ private:
 	uint32_t m_iTimelineMoveSourceStartMs = 0u;
 	uint32_t m_iTimelineMoveSourceEndMs = 0u;
 
+	// Undo는 선택과 소유 도구의 값 복사본을 기록한다. shared_ptr<const>는 이력 항목들이 같은 불변 값을 공유하도록 한다.
+	// 디스크 revision을 과거로 돌리는 기능은 아니며 복원할 때 현재 소유 도구의 generation을 먼저 대조한다.
 	struct HISTORY_SCOPE;
 	struct EDIT_HISTORY_VALUES;
 	struct EDIT_HISTORY_STATE;
@@ -716,6 +724,8 @@ private:
 	std::vector<TIMELINE_SELECTION> m_TimelineMarqueeBase;
 	TIMELINE_SELECTION m_TimelineMarqueeFocus;
 	int m_iTimelineGroupMoveMs = 0;
+	// 선택은 포인터나 vector index 대신 stable ID로 남긴다. 목록 정렬·행 추가·canonical 재로드 뒤에는 이 ID로 다시 조회한다.
+	// 종류가 다른 occurrence는 DETAIL_OWNER와 Stage ID까지 함께 사용해 같은 문자열만으로 대상을 혼동하지 않게 한다.
 	std::string m_strSelectedPatternId;
 	std::string m_strSelectedStageId;
 	std::string m_strSelectedStableId;
@@ -773,10 +783,8 @@ private:
 	bool_t m_bSavePatternRequested = false;
 	bool_t m_bPatternSaveResultAvailable = false;
 	bool_t m_bPatternSaveSucceeded = false;
-	/* Immutable caller-side half of one BalanceTool Save job. The child owns
-	   copies under Intermediate; these values are retained only so each local
-	   Sound/Effect owner can accept the exact generation after the durable
-	   receipt arrives. */
+	/* BalanceTool Save 작업 한 건에 대응하는 호출자 측 불변 값이다. 자식 작업은 Intermediate 아래 복사본을 소유한다.
+	   여기서는 저장 완료 결과가 도착했을 때 각 Sound/Effect 소유 도구가 정확한 draft 세대를 수락하도록 당시 세대와 후보 바이트를 유지한다. */
 	std::uint64_t m_iPendingSaveJobId = 0u;
 	std::uint64_t m_iPendingPatternSoundDraftGeneration = 0u;
 	std::uint64_t m_iPendingEffectV2DraftRevision = 0u;
@@ -793,6 +801,8 @@ private:
 	bool_t m_bPendingSavePublishesRuntime = false;
 	bool_t m_bSelectAfterPendingSave = false;
 
+	// timeline은 한 번 결합한 표시 행을 순서대로 그리므로 vector로 보관한다. lane별 겹침 수는 고정 크기 array다.
+	// Pattern·경로·각 소유 도구의 generation/revision이 cache key이며 내용이 바뀌면 Build_Timeline로 다시 계산한다.
 	std::vector<TIMELINE_ITEM> m_TimelineItems;
 	std::array<std::size_t, static_cast<std::size_t>(TIMELINE_LANE::COUNT)> m_TimelineLaneSubrowCounts{};
 	std::string m_strTimelineCachePatternId;
@@ -806,15 +816,16 @@ private:
 	uint32_t m_iPlayheadMs = 0u;
 	f32_t m_fTimelinePixelsPerSecond = 120.f;
 
-	/* Materializing a typed Pattern draft copies string/vector ownership.  Keep
-	   one immutable selected snapshot per draft generation instead of repeating
-	   that work in every rendered frame. */
+	/* 타입이 정해진 Pattern draft를 표시용 값으로 만들면 string/vector도 복사된다.
+	   선택 Pattern·canonical revision·draft generation을 cache key로 사용해 같은 key의 프레임에서는 그 복사본을 재사용한다. */
 	VALTAN_PATTERN_VIEW m_EffectivePatternCache;
 	std::string m_strEffectivePatternCachePatternId;
 	std::string m_strEffectivePatternCacheCanonicalRevision;
 	std::uint64_t m_iEffectivePatternCacheDraftGeneration =
 		~std::uint64_t{ 0u };
 	bool_t m_bEffectivePatternCacheReady = false;
+	// Effect 준비는 다음 프레임까지 이어질 수 있다. Pattern 포인터 대신 ID·revision·재생 위치를 복사해 대기한다.
+	// 재개할 때 generation이 달라졌으면 오래된 요청을 적용하지 않는다. effectIds는 준비 상태를 다시 조회할 대상 목록이다.
 	struct PENDING_LOCAL_PREVIEW final
 	{
 		std::string patternId;
@@ -826,6 +837,8 @@ private:
 	};
 	std::optional<PENDING_LOCAL_PREVIEW> m_PendingLocalPreview;
 
+	// graph snapshot은 현재 선택과 preview 분기 override의 파생 결과다. node/edge index는 이 snapshot 내부에서만 유효하다.
+	// 시도 key도 기록하므로 잘못된 동일 입력을 매 프레임 재투영하지 않고 새 입력에서 다시 시도한다.
 	ACTION_COMPOSITION_GRAPH_SNAPSHOT m_BossPatternGraphSnapshot;
 	ACTION_COMPOSITION_GRAPH_ERROR m_BossPatternGraphError;
 	std::vector<ACTION_COMPOSITION_GRAPH_OUTCOME_OVERRIDE>
@@ -863,6 +876,8 @@ private:
 		std::string assetId;
 	};
 	std::vector<EFFECT_RESOURCE_ITEM> m_EffectResourceRows;
+	// resource ID를 key로 label·검색 정보를 찾는다. 표시는 m_EffectResourceRows의 순서를 사용하고 map을 저장 ID 발급기로 쓰지 않는다.
+	// std::less<>는 string_view 등으로 조회할 때 임시 std::string을 만들지 않는 이종 key 비교를 허용한다.
 	std::map<std::string, EFFECT_RESOURCE_LABEL, std::less<>> m_EffectResourceLabels;
 	VALTAN_CINEMATIC_EFFECT_LIBRARY m_CinematicEffectLibrary;
 	std::string m_strCinematicEffectLibraryStatus;
@@ -889,8 +904,7 @@ private:
 	bool_t m_bEffectAddUsesStageClock = true;
 	std::string m_strEffectAddAssetId;
 	std::string m_strEffectAddClipOccurrenceId;
-	/* Box Detail inputs remain a session draft until Apply validates and stages
-	   the exact binding in the existing V2 owner. */
+	/* Box Details의 입력은 Apply가 검증하고 기존 V2 소유 도구에 정확한 binding을 stage할 때까지 세션 draft로 남는다. */
 	EFFECT_V2_BINDING m_EffectV2BindingEditDraft;
 	std::string m_strEffectV2BindingEditId;
 	uint64_t m_iEffectV2BindingEditRevision = 0u;
@@ -908,4 +922,5 @@ private:
 	std::string m_strCameraCueId;
 };
 
+// Client 이름 공간 끝. 문서 데이터의 정의·게시·Server 실행은 각각 기존 소유 계층에 남는다.
 NS_END

@@ -13,7 +13,7 @@
   "sourceModelPreview": {
     "gateId": "GATE2",
     "actorProfileId": "MN_RPCT_06",
-    "targetBossPlacementId": "boss.kakulsaydon.g2.big-saydon",
+    "targetBossPlacementId": "boss.koukusaydon.g2.big-saydon",
     "animations": [
       {
         "runtimeClip": "mn_rpct_06_sk.ao_att_battle_7_01",

@@ -533,7 +533,7 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
     {
         auto boss = std::make_unique<SERVER_WORLD_ENTITY>();
         boss->iNetEntityId = 600u; boss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-        boss->strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+        boss->strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
         boss->iCurrentHp = boss->iMaximumHp = 100000u;
         boss->strPatternId = "battle.item.stagger.window"; boss->iPatternSequence = 1u;
         BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = boss->strPatternId;
@@ -879,7 +879,7 @@ int CServerGameplayContractRunner::Run_BattleItemsOnly()
     {
         auto boss = std::make_shared<SERVER_WORLD_ENTITY>();
         boss->iNetEntityId = 601u; boss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-        boss->strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+        boss->strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
         boss->iCurrentHp = boss->iMaximumHp = 100000000u;
         boss->strPatternId = "damage.reduction.duration"; boss->iPatternSequence = 1u;
         BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = boss->strPatternId;

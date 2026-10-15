@@ -107,15 +107,15 @@ namespace
 
 	using Client::CValtan;
 	constexpr std::string_view KOUKU_SAYDON_BOSS_ARCHETYPE =
-		"BOSS_KAKULSAYDON_G1_KOUKU";
+		"BOSS_KOUKUSAYDON_G1_KOUKU";
 	constexpr std::string_view KOUKU_SAYDON_ENCOUNTER =
-		"ENCOUNTER_KAKULSAYDON_G1";
+		"ENCOUNTER_KOUKUSAYDON_G1";
 
 	bool Is_KoukuSaydonDependentArchetype(const std::string_view archetypeId)
 	{
-		return archetypeId == "BOSS_KAKULSAYDON_G1_SAYDON" ||
-			archetypeId == "BOSS_KAKULSAYDON_G3_SAYDON" ||
-			archetypeId == "BOSS_KAKULSAYDON_G2_KOUKU";
+		return archetypeId == "BOSS_KOUKUSAYDON_G1_SAYDON" ||
+			archetypeId == "BOSS_KOUKUSAYDON_G3_SAYDON" ||
+			archetypeId == "BOSS_KOUKUSAYDON_G2_KOUKU";
 	}
 
 	/* Arena bosses and their supported same-body clones share the catalog
@@ -545,7 +545,7 @@ bool Client::CClientReplication::Update()
 			break;
 
 		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_RAID_STATE:
-			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) && event.KoukuRaidState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA)
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA) && event.KoukuRaidState.eWorldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA)
 			{
 				// One exact local command owns this mailbox. Later state broadcasts
 				// must not replace its verdict before MainApp can consume the batch.
@@ -559,8 +559,8 @@ bool Client::CClientReplication::Update()
 			}
 			break;
 		case CLIENT_REPLICATION_EVENT_TYPE::KOUKUSAYDON_BUNDLE_STATE:
-			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-                event.KoukuBundleState.eWorldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA &&
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
+                event.KoukuBundleState.eWorldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA &&
                 event.KoukuBundleState.iRunEpoch >= m_KoukuBundleState.iRunEpoch)
             {
                 if (event.KoukuBundleState.iRunEpoch != m_KoukuBundleState.iRunEpoch ||
@@ -1863,7 +1863,7 @@ const LostArk::Shared::PLAYER_SNAPSHOT* Client::CClientReplication::Get_CameraPl
 
 LostArk::Shared::NET_ENTITY_ID Client::CClientReplication::Get_KoukuWorldUISubjectId() const
 {
-	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 		return LostArk::Shared::INVALID_NET_ENTITY_ID;
 	const auto* subject = Get_CameraPlayerSnapshot();
 	return subject && subject->iMarioStage >= 1u && subject->iMarioStage <= 4u ?
@@ -2089,7 +2089,7 @@ void Client::CClientReplication::Collect_KoukuPresentationViews(
 	std::vector<KOUKU_CARD_PRESENTATION_VIEW>& cards) const
 {
 	bosses.clear(); cards.clear();
-	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA)) return;
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KOUKUSAYDON_ARENA)) return;
 	for (const auto& [id, entity] : m_WorldEntities)
 		if (entity.eKind == LostArk::Shared::WORLD_ENTITY_KIND::BOSS &&
 			!entity.pNpc.expired() && !entity.bPresentationIsolated && entity.KoukuSnapshot.iNetEntityId == id)
@@ -2118,7 +2118,7 @@ void Client::CClientReplication::Collect_KoukuPresentationViews(
 void Client::CClientReplication::Collect_KoukuMazeTargets(std::vector<KOUKU_MAZE_TARGET_VIEW>& targets) const
 {
 	targets.clear();
-	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KAKULSAYDON_ARENA)) return;
+	if (m_Desc.iLayerLevelIndex != ETOUI(LEVEL::KOUKUSAYDON_ARENA)) return;
 	for (const auto& [id, entity] : m_WorldEntities)
 		if (entity.eKind == LostArk::Shared::WORLD_ENTITY_KIND::MONSTER &&
 			!entity.pNpc.expired() && !entity.bPresentationIsolated &&
@@ -3642,11 +3642,11 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	if (source == m_WorldEntities.end() ||
 		WORLD_ENTITY_KIND::BOSS != source->second.eKind ||
 		(source->second.pValtan.expired() &&
-		 !(source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired())))
+		 !(source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") && !source->second.pNpc.expired())))
 	{
 		return false;
 	}
-	const bool targetedKouku = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+	const bool targetedKouku = source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
         CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(spawned.strCombatObjectArchetypeId);
     // The typed sink resolves the exact published visual ID. Keeping the logical
     // record lets an owner/resource that is still loading use the existing retry.
@@ -3658,7 +3658,7 @@ bool Client::CClientReplication::Apply_CombatObjectSpawn(
 	{
 		return false;
 	}
-	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+	if (!source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
 		source->second.PinnedDefinitionRevision != spawned.PinnedDefinitionRevision)
 	{
 		m_strPendingPresentationFailure =
@@ -3698,14 +3698,14 @@ bool Client::CClientReplication::Apply_CombatObjectPresentationEvent(
 	}
 	if (source->second.bPresentationIsolated)
 		return true;
-	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+	if (!source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
 		source->second.PinnedDefinitionRevision != event.PinnedDefinitionRevision)
 	{
 		m_strPendingPresentationFailure =
 			"Combat-object presentation event revision does not match its boss occurrence.";
 		return false;
 	}
-	if (source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_"))
+	if (source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_"))
 	{
 		const auto* record = m_CombatObjectProjectionRuntime.Find(event.iCombatObjectId);
         if (event.strCombatObjectArchetypeId == "combatobject.kouku.pursuit")
@@ -3826,14 +3826,14 @@ bool Client::CClientReplication::Spawn_CombatObjectPresentation(
 			"Combat-object visual is isolated with its rejected boss presentation revision.";
 		return true;
 	}
-	if (!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+	if (!source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
 		source->second.PinnedDefinitionRevision != spawned.PinnedDefinitionRevision)
 	{
 		outStatus =
 			"Combat-object visual revision does not match its boss occurrence.";
 		return false;
 	}
-    const bool koukuOwner = source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") && !source->second.pNpc.expired();
+    const bool koukuOwner = source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") && !source->second.pNpc.expired();
     if (koukuOwner && CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(spawned.strCombatObjectArchetypeId))
     {
         if (!m_pTargetedCombatPresentationPlayer)
@@ -3971,7 +3971,7 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
 	if (source->second.bPresentationIsolated)
 		return true;
 	if (record->Snapshot.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision ||
-		(!source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") &&
+		(!source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
 		 source->second.PinnedDefinitionRevision != snapshot.PinnedDefinitionRevision))
 	{
 		return false;
@@ -3979,7 +3979,7 @@ bool Client::CClientReplication::Update_CombatObjectPresentation(
     if (COMBAT_OBJECT_PRESENTATION_KIND::KOUKU_TARGETED_GROUP == handle.eKind)
     {
         if (!m_pTargetedCombatPresentationPlayer || handle.iValue != snapshot.iCombatObjectId ||
-            !source->second.strArchetypeId.starts_with("BOSS_KAKULSAYDON_") ||
+            !source->second.strArchetypeId.starts_with("BOSS_KOUKUSAYDON_") ||
             !CKoukuSaydonPresentationPlayer::Is_TargetedCombatObjectArchetype(record->strCombatObjectArchetypeId))
             return false;
         std::string status;
@@ -4102,7 +4102,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 
 	// Admit the Kouku listener before remote action cues inspect its Mario audience.
 	// Network array order must not leak a remote skill on the Mario-entry snapshot.
-	const auto localFirst = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA) ?
+	const auto localFirst = m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA) ?
 		CNetworkManager::Get().Get_LocalEntityId() : INVALID_NET_ENTITY_ID;
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
 		if (player.iNetEntityId == localFirst)
@@ -4110,7 +4110,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 	for (const PLAYER_SNAPSHOT& player : snapshot.Players)
 		if (player.iNetEntityId != localFirst)
 			allSucceeded = Apply_PlayerSnapshot(player, snapshot.iServerTick, snapshot.Entities) && allSucceeded;
-	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
+	if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) m_KoukuCardSnapshots = snapshot.Players;
 	std::vector<NET_ENTITY_ID> deadBossOwners;
 	for (const WORLD_ENTITY_SNAPSHOT& entity : snapshot.Entities)
 	{
@@ -4120,7 +4120,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 			allSucceeded = false;
 			continue;
 		}
-		if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA)) iter->second.KoukuSnapshot = entity;
+		if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) iter->second.KoukuSnapshot = entity;
 		const bool_t expectsBossCombatState =
 			WORLD_ENTITY_KIND::BOSS == iter->second.eKind;
 		if (expectsBossCombatState != entity.hasBossCombatState)
@@ -4590,7 +4590,7 @@ bool Client::CClientReplication::Apply_WorldSnapshot(
 		{
 			// Owned WORLD bodies are not duplicated as ordinary world entities.
 			// Level resolves this same-frame event after consuming its reliable PLAY/STOP cues.
-			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+			if (m_Desc.iLayerLevelIndex == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 				m_PendingWorldCombatHits.insert(damageEvent.iTargetNetEntityId);
 			continue;
 		}

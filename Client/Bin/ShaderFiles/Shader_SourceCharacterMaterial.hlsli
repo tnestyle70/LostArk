@@ -1,6 +1,7 @@
 #ifndef SOURCE_CHARACTER_MATERIAL_INCLUDED
 #define SOURCE_CHARACTER_MATERIAL_INCLUDED
 
+// mesh 입력을 native register와 marker5 G-buffer로 옮긴다. program별 UV·축·cm 변환은 이 경계에서 맞춘다.
 #include "Shader_SourceCharacterPrograms.hlsli"
 #include "Shader_StaticShadowMap.hlsli"
 #include "Shader_SourceMovieStaticInputs.hlsli"
@@ -32,6 +33,7 @@ float3 SourceCharacterOctDecode(float2 oct)
     return SourceCharacterSafeUnit(value);
 }
 
+// 표면의 TBN·UV·시점·광원을 native program의 varying으로 포장한다. 캐릭터와 정적 맵의 축 부호·투영 배치를 구분한다.
 SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV,
     float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
     float3 cameraPosition, float4 clipPosition, float4x4 viewProjection,
@@ -41,7 +43,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     float3 t = SourceCharacterSafeUnit(tangent);
     float3 n = SourceCharacterSafeUnit(normal);
     t = SourceCharacterSafeUnit(t - n * dot(t, n));
-    // The existing character import's normal-map basis uses negative binormal.
+    // 캐릭터는 -binormal을 사용하고 아래 staticMapBasis에 해당하는 맵 표면은 +binormal을 유지한다.
     const bool staticMapMonster = (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ||
         g_SourceCharacterProgram == 210u || IsSourceStaticMapSL10();
     const bool staticMapBasis = staticMapMonster || g_SourceCharacterProgram == 208u;
@@ -69,7 +71,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     input.values[8] = (g_SourceCharacterProgram == 3u || g_SourceCharacterProgram == 8u ||
         g_SourceCharacterProgram == 9u || g_SourceCharacterProgram == 110u ||
         g_SourceCharacterProgram == 111u) ? clipPosition : sourcePosition;
-    if (g_SourceCharacterProgram == 5u) // Eye's own UV1/UV2 varyings.
+    if (g_SourceCharacterProgram == 5u) // 눈 재질의 UV1/UV2 배치다.
     {
         input.values[2] = float4(uv, extraUV.yx);
         input.values[3] = float4(extraUV.zw, 0.f, 0.f);
@@ -82,8 +84,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         g_SourceCharacterProgram == 1474u || g_SourceCharacterProgram == 1475u ||
         (g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u))
     {
-        // The legacy head direct VS packs UV/light/view/position into 2/3/5/6.
-        // Its base pass uses the common layout above.
+        // 이 program들의 direct 입력은 UV·광원·시점·위치를 2/3/5/6에 배치한다. base pass 배치는 별도다.
         input.values[2] = float4(uv, 0.f, 0.f);
         input.values[3] = float4(tangentLight, 1.f);
         input.values[5] = float4(tangentView, 1.f);
@@ -114,7 +115,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         g_SourceCharacterProgram == 700u || g_SourceCharacterProgram == 701u ||
         g_SourceCharacterProgram == 801u || g_SourceCharacterProgram == 702u)
     {
-        input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // Source fog identity.
+        input.values[5] = float4(0.f, 0.f, 0.f, 1.f); // 원본 fog 입력의 무효과 값이다.
         input.values[6] = g_SourceCharacterProgram == 6u ? 0.f : float4(tangentView, 1.f);
         input.values[7] = float4(up, 0.f);
         input.values[8] = sourcePosition;
@@ -123,7 +124,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
     if (g_SourceCharacterProgram == 19u)
         input.values[8] = frontFace ? 1.f : 0.f;
 #endif
-    // Exact GPU-skin VS packing recovered with each equipment shader map.
+    // 장비 program별로 복원한 GPU-skin VS의 register 배치를 맞춘다.
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
     if (g_SourceCharacterProgram == 208u)
     {
@@ -161,7 +162,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[9] = sourcePosition;
     }
 #endif
-    // Movie MICs retain the source GPU-skin VS register layouts.
+    // Movie MIC의 원본 GPU-skin VS register 배치를 유지한다.
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
     if (g_SourceCharacterProgram == 901u || g_SourceCharacterProgram == 902u ||
         g_SourceCharacterProgram == 903u || g_SourceCharacterProgram == 703u) input.values[8] = clipPosition;
@@ -183,7 +184,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[8] = sourcePosition;
     }
 #endif
-    // Eyelash and transparent movie skin factories use compact light registers.
+    // 속눈썹과 반투명 movie skin은 해당 program의 짧은 light register 배치를 사용한다.
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
     if (g_SourceCharacterProgram == 601u || g_SourceCharacterProgram == 702u)
     {
@@ -199,7 +200,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterInput(float2 uv, float4 extraUV
         input.values[8] = clipPosition;
     }
 #endif
-    // Guardian selection MICs use their recovered GPU-skin varying layouts.
+    // Guardian 선택 MIC의 program별 GPU-skin varying 위치를 맞춘다.
 #ifdef SOURCE_CHARACTER_LIGHT_PASS
     if (g_SourceCharacterProgram == 104u || g_SourceCharacterProgram == 211u ||
         g_SourceCharacterProgram == 235u || g_SourceCharacterProgram == 236u) input.values[8] = clipPosition;
@@ -269,6 +270,7 @@ struct SOURCE_CHARACTER_GBUFFER
     float4 geometricNormal;
 };
 
+// base 결과와 program/재질 row를 marker5 G-buffer에 저장해 Deferred가 같은 native light 입력을 복원하도록 한다.
 SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extraUV,
     float3 worldPosition, float3 tangent, float3 binormal, float3 normal,
     float4 clipPosition, float4 screenPosition, float4x4 view, float4x4 projection, bool frontFace,
@@ -292,13 +294,9 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     nativeInput.sourcePrimitiveBounds = sourcePrimitiveBounds;
     SOURCE_CHARACTER_NATIVE_OUTPUT native = EvaluateSourceCharacterBase(nativeInput);
     if (native.discarded) discard;
-    // Hair programs without a native masked mode: cut the translucent alpha at
-    // the source masked default so the base pass still writes the card core.
+    // native masked 모드가 없는 hair의 보조 base pass는 alpha 0.333 미만을 버려 중심 부분만 depth에 남긴다.
     if (g_SourceCharacterHairMaskedPass == 2u && saturate(native.targets[0].a) < 0.333f) discard;
-    // Opaque native PS alpha is explicitly zero and is not coverage. Hair and
-    // eyelash carry actual opacity. The existing opaque character draw uses
-    // ordered coverage until its source sorted-translucency passes are present.
-    // The hair masked base pass already discarded below its own threshold.
+    // 불투명 native 출력의 alpha0은 구멍이 아니다. 여기 나열된 hair·속눈썹 등의 일반 base 경로만 4×4 순서 마스크로 실제 opacity를 coverage로 바꾼다.
     if (g_SourceCharacterHairMaskedPass == 0u && (
         g_SourceCharacterProgram == 6u || g_SourceCharacterProgram == 7u ||
         g_SourceCharacterProgram == 18u || g_SourceCharacterProgram == 20u ||
@@ -312,9 +310,7 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
         clip(saturate(native.targets[0].a) - threshold[pixel.y * 4u + pixel.x] / 16.f);
     }
     SOURCE_CHARACTER_GBUFFER output;
-    // The recovered direct PS returns radiance, accumulated into Specular.
-    // Native MRT3 is the resolved diffuse colour. Direct radiance goes to
-    // Specular; only the existing scene ambient multiplies this colour.
+    // native MRT3의 diffuse 색을 저장한다. 이후 Deferred의 native 직접광은 이미 색이 포함되어 Specular에 누적되며 이 diffuse에는 scene ambient만 곱한다.
     output.diffuse = float4(native.targets[3].rgb, 1.f);
     float3 sourceMappedNormal = SourceCharacterOctDecode(native.targets[2].xy * 2.f - 1.f);
     const float3 mappedNormal = ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) ||
@@ -323,9 +319,7 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
     output.normal = float4(mappedNormal * .5f + .5f, 0.f);
     output.depth = float4(clipPosition.z / clipPosition.w, clipPosition.w / 1000.f,
         float(g_SourceCharacterRow), 5.f);
-    // Marker-5 keeps legacy program bits 0..7; bit8 belongs to skinned writers.
-    // Bits 9..16 retain the high program byte without changing the exponent or
-    // static-shadow channel. Picking consumes XYZ; old IDs keep identical bits.
+    // marker5의 PickPos.W는 program 하위 byte를 bit0..7, 상위 byte를 bit9..16에 둔다. bit8은 skinned 표식용이며 XYZ는 picking 위치다.
     output.pickPosition = float4(worldPosition,
         asfloat(0x3f800000u | (g_SourceCharacterProgram & 255u) |
             (((g_SourceCharacterProgram >> 8u) & 255u) << 9u)));
@@ -336,12 +330,11 @@ SOURCE_CHARACTER_GBUFFER EvaluateSourceCharacterGeometry(float2 uv, float4 extra
         output.pickPosition.w = EncodeMapStaticShadowChannel(output.pickPosition.w);
     }
     output.extraUV = extraUV;
-    // Static monster light PS consumes only UV0; this unused auxiliary lane
-    // records actual per-pixel RNM use, including mixed lit/unlit instances.
+    // static monster의 남는 보조 채널에 픽셀별 RNM 사용 여부를 저장해 조명이 있는/없는 instance를 구분한다.
     if ((g_SourceCharacterProgram >= 80u && g_SourceCharacterProgram <= 83u) || g_SourceCharacterProgram == 210u)
         output.extraUV.w = nativeInput.hasBakedLighting ? 1.f : 0.f;
     if (IsSourceStaticMapSL10()) output.extraUV.z = nativeInput.hasBakedLighting ? 1.f : 0.f;
-    // Movie light shaders consume vertex RGBA. Retain blue while marking RNM use.
+    // movie light가 읽는 vertex blue를 보존하면서 RNM 여부를 z의 부호와 offset으로 함께 저장한다.
     if (IsSourceMovieStatic(g_SourceCharacterProgram))
         output.extraUV.z = nativeInput.hasBakedLighting ? -1.f-extraUV.z : extraUV.z;
     output.surfaceUVTangent = float4(uv, SourceCharacterOctEncode(SourceCharacterSafeUnit(tangent)));

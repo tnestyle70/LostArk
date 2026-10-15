@@ -82,13 +82,13 @@ pull한 팀원은 `SyncValtanShadow`를 실행하지 않는다. 작성자가 PR�
 | `split authoring Product drift` | Valtan projector | `PublishV2` 결과를 PR에 포함했는지 |
 | `Effect V2 binding header/rows are invalid` | presentation publisher/admission | bindings와 groups가 strict formatVersion 2인지, validator가 아직 v1 row를 기대하지 않는지 |
 | `pattern index order/closure drift` 또는 `composition coverage drift` | Composition SHADOW descriptor | 작성자가 `PublishV2` 뒤 `SyncValtanShadow` 결과를 PR에 포함했는지 |
-| `KakulSaydon ... reference revision/action count drift` | Composition catalog validation | 네 Kakul reference/action/pattern-binding 문서가 같은 reference 세대인지 |
+| `KoukuSaydon ... reference revision/action count drift` | Composition catalog validation | 네 Kouku reference/action/pattern-binding 문서가 같은 reference 세대인지 |
 
 이 오류들은 `git pull`이나 Git merge 자체의 실패가 아니다. pull로 받은 정본과 로컬에서 다시 실행된
 publisher/validator/reader 중 하나가 다른 계약 세대를 소비할 때 clean build가 의도적으로 중단한
 것이다.
 
-Composition publish는 Valtan `SHADOW`, KakulSaydon `REFERENCE_ONLY`, 두 Arena Sequencer `SHADOW`
+Composition publish는 Valtan `SHADOW`, KoukuSaydon `REFERENCE_ONLY`, 두 Arena Sequencer `SHADOW`
 문서를 한 catalog로 검증한다. 현재 생성물은 모두 `runtimeEligible=false`다. Sequencer는 source manifest
 inspection과 기존 Valtan Workbench 진입만 제공하며 generic Composition Save/Play와 arena runtime은
 아직 완료되지 않았다.
@@ -96,4 +96,4 @@ inspection과 기존 Valtan Workbench 진입만 제공하며 generic Composition
 ## 화면 검증
 
 자동화는 publish, parse, build와 구조화된 runtime 계약까지만 판정한다. Effect, 발탄 패턴 및
-Kakul 화면 결과는 사용자가 Client를 직접 실행해 확인한다.
+Kouku 화면 결과는 사용자가 Client를 직접 실행해 확인한다.

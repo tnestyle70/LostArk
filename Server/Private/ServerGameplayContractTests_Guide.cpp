@@ -320,10 +320,10 @@ int CServerGameplayContractRunner::Run_GuideAI()
  control(ownerId,2,GUIDE_CONTROL_ACTION::START);source->Update_Guides(.2f);
  tests.Require(source->m_PersonalGuides.size()==1&&returnedGuide.iNetEntityId==reception.iNetEntityId&&source->m_iGuideEventSequence>firstEventSequence&&source->m_PersonalGuides.at(ownerId).Sequence>=lastSequence,"Restart preserves actor identity, monotonic prompts and admitted internal command sequences");
  // Each authoritative return type selects only its own configured event, using the real Join commit.
- for(const auto world:{WORLD_ID::KAKULSAYDON_ARENA,WORLD_ID::MAHARAKA,WORLD_ID::COLOSSEUM}){
+ for(const auto world:{WORLD_ID::KOUKUSAYDON_ARENA,WORLD_ID::MAHARAKA,WORLD_ID::COLOSSEUM}){
   source->Leave(ownerId,PLAYER_DESPAWN_REASON::LEVEL_CHANGED);drain();source->Handle_Register(sessions[0]);C2S_ENTER_WORLD enter;enter.eWorldId=WORLD_ID::BERN;enter.eCharacterClass=CHARACTER_CLASS_ID::DIMENSIONMASTER;enter.strNickName="GuideReturn";
   const bool admitted=source->Join(ownerId,enter,{}, {},INVALID_HONOR_TITLE_ID,{}, {},world);
-  const char* name=world==WORLD_ID::KAKULSAYDON_ARENA?"KAKULSAYDON_ARENA":world==WORLD_ID::MAHARAKA?"MAHARAKA":"COLOSSEUM";
+  const char* name=world==WORLD_ID::KOUKUSAYDON_ARENA?"KOUKUSAYDON_ARENA":world==WORLD_ID::MAHARAKA?"MAHARAKA":"COLOSSEUM";
   const auto event=std::find_if(source->m_GuideCatalog.Triggers.begin(),source->m_GuideCatalog.Triggers.end(),[&](const auto& t){return t.Enabled&&(t.Type=="RAID_RETURNED"||t.Type=="WORLD_RETURNED")&&t.PatternId==name;});
   const auto& current=source->m_PersonalGuides.at(ownerId);
   tests.Require(admitted&&!current.WaitingForOwner&&event!=source->m_GuideCatalog.Triggers.end()&&std::any_of(current.PromptQueue.begin(),current.PromptQueue.end(),[&](const auto& p){return p.PromptId==event->PromptId;}),"Committed return resolves the matching Kouku, island or Colosseum prompt");
@@ -500,7 +500,7 @@ int CServerGameplayContractRunner::Run_GuideAI()
 
  // Use one real Kouku room for the human-only Mario admission boundaries.
  {
-  auto mario=std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+  auto mario=std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
   tests.Require(mario->Is_Ready(),"Guide Mario policy fixture loads the real product room");
   if(mario->Is_Ready())
   {
@@ -510,7 +510,7 @@ int CServerGameplayContractRunner::Run_GuideAI()
    audition.PinnedGameplayRevision=mario->m_GameplayCatalog.Get_ActiveRevision();
    audition.iPinnedSourceRevision=CKoukuSaydonBrain::Resolve_ProductSourceRevision(*audition.pProductGeneration);
    std::string detail;
-   const auto* phase=CKoukuSaydonBrain::Find_AnimationOnlyPattern(*audition.pProductGeneration,"KAKULSAYDON_G1_PATTERN_33",detail);
+   const auto* phase=CKoukuSaydonBrain::Find_AnimationOnlyPattern(*audition.pProductGeneration,"KOUKUSAYDON_G1_PATTERN_33",detail);
    const BOSS_PATTERN_MECHANIC_TRIGGER* formation=nullptr;
    if(phase)for(const auto& trigger:phase->MechanicTriggers)if(trigger.eKind==BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS)formation=&trigger;
    tests.Require(formation!=nullptr,"Guide Mario fixture resolves the published phase-2 formation trigger");

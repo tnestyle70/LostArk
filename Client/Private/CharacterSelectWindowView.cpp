@@ -1,8 +1,5 @@
 #include "CharacterSelectWindowView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "ActorCatalog.h"
 #include "Character.h"
@@ -17,7 +14,7 @@
 #include "ImGuiLayer.h"
 #include "ItemCatalog.h"
 #include "LevelTransitionService.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "Network/PacketMessages.h"
 #include "PlayableCharacterAssetService.h"
 #include "PlayerSkillCatalog.h"
@@ -349,7 +346,7 @@ void CCharacterSelectWindowView::Update(f32_t fTimeDelta, const bool_t bInputBlo
 			"UI/CharacterSelect/charsel_start_btn_hover.png" : "");
 		if (isHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_eIntent = INTENT::START_CHARACTER;
 		}
 	}
@@ -375,7 +372,7 @@ void CCharacterSelectWindowView::Update(f32_t fTimeDelta, const bool_t bInputBlo
 				"UI/CharacterSelect/charsel_server_back_icon_hover.png" : "");
 			if (isHovered && Router.Is_Clicked(fLX, fLY, fLW, fLH, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_eIntent = INTENT::CLOSE;
 			}
 		}
@@ -424,7 +421,7 @@ void CCharacterSelectWindowView::Update_Cards(const bool_t bAcceptClicks)
 		m_iHoveredCard = i;
 		if (Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (bSeated)
 				m_iSelectedCard = i;
 			else
@@ -474,7 +471,7 @@ void CCharacterSelectWindowView::Update_IconButtons(const bool_t bAcceptClicks)
 		bRenameEnabled ? TINT_NORMAL : START_DISABLED_TINT);
 	if (m_bRenameHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Open_RenameDialog();
 	}
 
@@ -485,7 +482,7 @@ void CCharacterSelectWindowView::Update_IconButtons(const bool_t bAcceptClicks)
 		"UI/CharacterSelect/charsel_icon_option_hover.png" : "");
 	if (m_bOptionHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		m_eIntent = INTENT::OPEN_OPTIONS;
 	}
 }
@@ -535,7 +532,7 @@ void CCharacterSelectWindowView::Update_RenameDialog()
 			"UI/ClassSelect/Common/NormalButtonHover.png" : "");
 		if (bHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			*Button.pOut = true;
 		}
 	}

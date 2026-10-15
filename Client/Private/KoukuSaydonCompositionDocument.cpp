@@ -1,59 +1,81 @@
+// 쿠크 Workbench의 편집 문서를 읽고 검증하고 저장하는 계층이다.
+// 저작 JSON의 정의와 배치를 다루며 Server 게시와 전투 시뮬레이션은 이 파일에서 실행하지 않는다.
+// 이 구현이 읽고 검증할 저작 값 타입과 문서 객체의 저장 상태를 선언한다.
 #include "KoukuSaydonCompositionDocument.h"
 
+// JSON 값의 형식 조회·파싱과 문자열 이스케이프를 사용한다.
 #include "DataJson.h"
+// 보스/시퀀서 원본 문서를 프로젝트 Data 루트 아래에서 찾는다.
 #include "ProjectDataRoot.h"
 
+// 저장 잠금 파일의 HANDLE, 임시 파일 이름용 process/thread 정보와 최종 파일 교체를 사용한다.
 #include <Windows.h>
+// C 파일 스트림의 descriptor를 얻고 _commit으로 저장 버퍼 반영을 요청한다.
 #include <io.h>
 
+// 정의와 참조를 검색하고 시각 순서를 정렬하며 각 원소의 유효 조건을 검사한다.
 #include <algorithm>
+// 고정 프로필 표·XYZ/시간 표본과 병합 중 세 문서의 목록을 배열로 보관한다.
 #include <array>
+// 자동 생성 ID의 접미 순번을 문자열 끝까지 정수로 해석한다.
 #include <charconv>
+// 기존 표준 헤더 포함 관계를 유지한다. 현재 본문에는 cctype 문자 분류 함수의 직접 호출이 없다.
 #include <cctype>
+// 좌표·시간·배율의 유한값, 범위와 수학 연산을 검사한다.
 #include <cmath>
+// 임시 JSON 파일을 C 스트림으로 열고 bytes 쓰기·flush·close 결과를 확인한다.
 #include <cstdio>
+// 크기가 제한된 원본/검증 파일을 binary 입력 스트림으로 읽는다.
 #include <fstream>
+// double 값을 JSON에 쓸 때 max_digits10 정밀도를 지정한다.
 #include <iomanip>
+// 입력 스트림의 bytes를 반복자로 읽어 임시 문자열을 만든다.
 #include <iterator>
+// 정수 상한과 double의 재출력 정밀도에 표준 수치 한계를 사용한다.
 #include <limits>
+// 문서 병합의 키·순서 제약을 정렬된 집합으로 합친다.
 #include <set>
+// JSON 수치와 문서 전체를 메모리 출력 스트림에서 문자열로 조립한다.
 #include <sstream>
+// 정의/배치 ID로 값을 찾고 소유 관계와 참조를 임시 역색인한다.
 #include <unordered_map>
+// 문서 ID 중복과 종류별 참조·소유 집합을 검사한다.
 #include <unordered_set>
 
 namespace
 {
 	using namespace Client;
 
+	// 파일 형식과 편집 상한을 고정한다. ms 구간은 제품 단계로 확장할 때 30 Hz 경계도 별도로 검사한다.
 	constexpr std::string_view COMPOSITION_SCHEMA =
 		"lostark.kouku-saydon-composition";
 	constexpr std::uint32_t FORMAT_VERSION = 3u;
 	constexpr std::uint32_t FIXED_TICK_HZ = 30u;
 	constexpr std::string_view COMPOSITION_ID =
-		"boss.composition.kakulsaydon.gate1";
+		"boss.composition.koukusaydon.gate1";
 	constexpr std::string_view SEQUENCE_COMPOSITION_ID =
-		"boss.composition.kakulsaydon.sequencer";
+		"boss.composition.koukusaydon.sequencer";
 	constexpr std::string_view ENCOUNTER_ID =
-		"ENCOUNTER_KAKULSAYDON_G1";
+		"ENCOUNTER_KOUKUSAYDON_G1";
 	constexpr std::string_view BOSS_ARCHETYPE_ID =
-		"BOSS_KAKULSAYDON_G1_KOUKU";
+		"BOSS_KOUKUSAYDON_G1_KOUKU";
 	constexpr std::string_view BOSS_PLACEMENT_ID =
-		"boss.kakulsaydon.g1.kouku";
+		"boss.koukusaydon.g1.kouku";
 	constexpr std::string_view AREA_ID = "LV_LUT_MIDNIGHTC_ED";
 	constexpr std::string_view GENERATED_PATTERN_PREFIX =
-		"KAKULSAYDON_G1_PATTERN_";
+		"KOUKUSAYDON_G1_PATTERN_";
 	constexpr std::string_view GENERATED_STAGE_PREFIX = "STAGE_";
-	constexpr std::string_view GENERATED_LOGIC_PREFIX = "kakulsaydon.g1.logic.";
+	constexpr std::string_view GENERATED_LOGIC_PREFIX = "koukusaydon.g1.logic.";
 	constexpr std::size_t MAX_LOGICS = 4096u;
 	constexpr std::size_t MAX_LOGIC_OCCURRENCES_PER_PATTERN = 1024u;
-	constexpr std::string_view GENERATED_SUMMON_PREFIX = "kakulsaydon.g1.summon.";
+	constexpr std::string_view GENERATED_SUMMON_PREFIX = "koukusaydon.g1.summon.";
 	constexpr std::size_t MAX_SUMMONS = 4096u;
 	constexpr std::size_t MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024u;
     constexpr std::size_t MAX_SUMMON_PATTERN_SPAWNS = 16u;
-	constexpr std::string_view GENERATED_WORLD_PREFIX = "kakulsaydon.g1.world.";
+	constexpr std::string_view GENERATED_WORLD_PREFIX = "koukusaydon.g1.world.";
 	constexpr std::size_t MAX_WORLDS = 4096u;
 	constexpr std::size_t MAX_WORLD_OCCURRENCES_PER_PATTERN = 128u;
-	constexpr std::string_view GENERATED_SCENE_PROFILE_PREFIX = "kakulsaydon.g1.sceneprofile.";
+	constexpr std::string_view GENERATED_SCENE_PROFILE_PREFIX = "koukusaydon.g1.sceneprofile.";
 	constexpr std::size_t MAX_SCENE_PROFILES = 4096u;
 	constexpr std::size_t MAX_SCENE_PROFILE_OCCURRENCES_PER_PATTERN = 16u;
 	constexpr std::uint32_t MAX_MADNESS_MAXIMUM = 1000000u;
@@ -72,6 +94,7 @@ namespace
 	constexpr std::uintmax_t MAX_COMPOSITION_BYTES = 16u * 1024u * 1024u;
 	constexpr std::uintmax_t MAX_REFERENCE_BYTES = 16u * 1024u * 1024u;
 
+	// 프로필과 실제 모델의 연결은 고정 테이블이 소유한다. 반환하는 포인터와 string_view는 이 정적 수명을 차용한다.
 	struct ACTION_PROFILE_CONTRACT final
 	{
 		const char_t* pProfileId;
@@ -85,11 +108,8 @@ namespace
 		{ "MN_RPCZ_00", "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00" },
 	}};
 
-	/* Physical bodies that a KoukuSaydon arena boss (Data/Actors/BossCatalog.json
-	   BOSS_KAKULSAYDON_* rows) presents on. Only a pattern authored on one of
-	   them can become PRODUCT, because the Server audition plays it on the
-	   live arena boss with that body. The projector re-derives this join from
-	   the catalog; this list is the Workbench pre-check. */
+	// BossCatalog의 아레나 보스가 사용하는 몸체인지 Workbench에서 미리 확인한다.
+	// PRODUCT 후보는 이 몸체에서 재생해야 한다. 게시 도구는 실제 카탈로그 연결을 별도로 검사한다.
 	bool_t Is_ArenaBossBodyProfile(const std::string_view actorProfileId)
 	{
 		return actorProfileId == "MN_RPCZ_00" ||
@@ -97,6 +117,7 @@ namespace
 			actorProfileId == "MN_RPCT_06";
 	}
 
+	// 파서가 필수 키와 JSON 타입을 함께 확인한다. 반환 포인터는 입력 JSON을 차용하며 소유권을 넘기지 않는다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char_t* const pName,
@@ -107,6 +128,7 @@ namespace
 			pValue : nullptr;
 	}
 
+	// 정확한 키 집합을 요구하는 작은 객체에 사용한다. 누락과 알 수 없는 추가 키를 함께 거절한다.
 	bool_t Has_ExactProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> names)
@@ -120,8 +142,8 @@ namespace
 			});
 	}
 
-	/* Optional properties may be absent in an older file but never unknown, so
-	   a document written before the Logic catalog existed still opens. */
+	// 필수 키는 모두 있어야 하고 선택 키는 생략할 수 있지만 알 수 없는 키는 거절한다.
+	// 이전 문서의 필드 생략을 허용하면서 오타로 생긴 새 필드를 저장 계약에 섞지 않는다.
 	bool_t Has_Properties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> required,
@@ -147,6 +169,7 @@ namespace
 		return true;
 	}
 
+	// 저장 참조용 ASCII ID의 문자와 길이를 제한한다. 표시 이름의 검사와 분리한다.
 	bool_t Is_StableId(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 128u || value == "." || value == "..")
@@ -160,6 +183,7 @@ namespace
 		});
 	}
 
+	// 표시 이름의 byte 길이와 제어 문자를 검사한다. 여기서 UTF-8 전체의 유효성까지 확인하지는 않는다.
 	bool_t Is_DisplayName(const std::string_view value)
 	{
 		return !value.empty() && value.size() <= 255u &&
@@ -169,6 +193,7 @@ namespace
 			});
 	}
 
+	// 참조 revision으로 쓰는 SHA-256의 소문자 16진수 형식만 검사한다. 파일 해시를 새로 계산하지 않는다.
 	bool_t Is_LowerSha256(const std::string_view value)
 	{
 		return 64u == value.size() &&
@@ -179,6 +204,7 @@ namespace
 			});
 	}
 
+	// JSON 정수 토큰과 허용 범위를 확인한 뒤에만 outValue를 쓴다. 실수 표기의 정수도 저장 계약상 거절한다.
 	bool_t Try_ParseUnsigned(
 		const DATA_JSON_VALUE& value,
 		const std::uint32_t maximum,
@@ -196,6 +222,7 @@ namespace
 		return true;
 	}
 
+	// 원본 애니메이션 시계에 곱할 양수 재생 배율을 읽는다. 허용 범위는 0.01부터 16까지다.
 	bool_t Try_ParsePlayRate(
 		const DATA_JSON_VALUE& value,
 		f32_t& outValue)
@@ -209,6 +236,7 @@ namespace
 		return std::isfinite(outValue);
 	}
 
+	// 자동 생성 ID이면 접미 번호가 다음 할당 번호보다 작은지 검사한다. 다른 prefix의 ID는 이 검사에서 통과한다.
 	bool_t Try_ParseGeneratedOrdinal(
 		const std::string_view value,
 		const std::string_view prefix,
@@ -227,6 +255,7 @@ namespace
 			ordinal > 0u && ordinal < nextOrdinal;
 	}
 
+	// 아래 문자열 판정은 저작 JSON의 enum 계약이다. UI 이름이나 임의의 새 문자열로 대체하지 않는다.
 	bool_t Is_AuthoringStatus(const std::string_view value)
 	{
 		return value == "DRAFT" || value == "PRODUCT";
@@ -276,6 +305,7 @@ namespace
 			[value](const char_t* const symbol) { return value == symbol; });
 	}
 
+	// NaN과 무한대 및 지정 범위 밖의 수치를 거절한다. 성공할 때만 출력 값을 교체한다.
 	bool_t Try_ParseFinite(
 		const DATA_JSON_VALUE& value,
 		const double minimum,
@@ -291,8 +321,8 @@ namespace
 		return true;
 	}
 
-	/* A list of RESULT Logic IDs on one outcome slot; empty entries are dropped
-	   so a cleared combo never leaves a hole. */
+	// 결과 슬롯의 RESULT Logic ID 목록을 읽는다. 빈 문자열은 제거하여 비운 선택 칸을 남기지 않는다.
+	// 처음에 출력을 비우며 실패 도중 일부 항목이 남을 수 있으므로 호출자는 임시 문서에만 사용한다.
 	bool_t Try_ParseTextList(
 		const DATA_JSON_VALUE* const value,
 		const std::size_t maximum,
@@ -313,48 +343,168 @@ namespace
 		return true;
 	}
 
+	// Parse_Text가 임시 Logic의 공격 목록을 채울 때 호출한다. 필드 생략은 기존 기본값을 유지한다.
+	// 이 helper는 성공한 행을 hits에 추가하므로 실패 시 일부 행이 남을 수 있다. 호출자가 임시 문서를
+	// 폐기하고 전체 Parse_Text 성공 뒤에만 outDocument를 교체하여 기존 편집 문서를 보존한다.
+	// 보충 설명: 이 helper의 hits는 전체 파싱 중인 임시 문서에 속한다.
+	// 앞의 행을 추가한 뒤 실패해도 호출자가 임시 문서를 폐기하므로 기존 편집 문서는 유지된다.
 	bool Parse_AttackHits(const DATA_JSON_VALUE* value, std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
 	{
-		if (!value) return true;
-		if (!value->Is_Array() || value->Get_Array().size() > 32u) return false;
+		if (!value)
+			return true;
+		if (!value->Is_Array())
+			return false;
+		if (value->Get_Array().size() > 32u)
+			return false;
+
 		for (const auto& row : value->Get_Array())
 		{
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
-			if (!Has_Properties(row, { "hitId" }, { "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs", "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM", "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM", "yawOffsetDegrees", "riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection" })) return false;
-			if (const auto* item = row.Find("hitId")) { if (!item->Is_String()) return false; hit.strHitId = item->Get_String(); }
-			if (const auto* item = row.Find("trigger")) { if (!item->Is_String()) return false; hit.strTrigger = item->Get_String(); }
-			if (const auto* item = row.Find("shape")) { if (!item->Is_String()) return false; hit.strShape = item->Get_String(); }
-			if (const auto* item = row.Find("damageKind")) { if (!item->Is_String()) return false; hit.strDamageKind = item->Get_String(); }
-			if (const auto* item = row.Find("damageProfileId")) { if (!item->Is_String()) return false; hit.strDamageProfileId = item->Get_String(); }
-			if (const auto* item = row.Find("atMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iAtMs)) return false;
-			if (const auto* item = row.Find("endMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iEndMs)) return false;
-			if (const auto* item = row.Find("repeatCount")) if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatCount)) return false;
-			if (const auto* item = row.Find("repeatIntervalMs")) if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatIntervalMs)) return false;
-			if (const auto* item = row.Find("damagePercent")) if (!Try_ParseUnsigned(*item, 600000u, hit.iDamagePercent)) return false;
-			if (const auto* item = row.Find("radiusM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fRadiusM)) return false;
-			if (const auto* item = row.Find("innerRadiusM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fInnerRadiusM)) return false;
-			if (const auto* item = row.Find("lengthM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fLengthM)) return false;
-			if (const auto* item = row.Find("halfWidthM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fHalfWidthM)) return false;
-			if (const auto* item = row.Find("angleDegrees")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fAngleDegrees)) return false;
-			if (const auto* item = row.Find("offsetForwardM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetForwardM)) return false;
-			if (const auto* item = row.Find("offsetRightM")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetRightM)) return false;
-			if (const auto* item = row.Find("yawOffsetDegrees")) if (!Try_ParseFinite(*item, -1000., 1000., hit.fYawOffsetDegrees)) return false;
-			if (const auto* item = row.Find("forcePush")) { if (!item->Is_Boolean()) return false; hit.ForcePush = item->Get_Boolean(); }
-			if (const auto* item = row.Find("pushDirection")) { if (!item->Is_String()) return false; hit.strPushDirection = item->Get_String(); }
-			if (const auto* item = row.Find("pushRangeM")) if (!Try_ParseFinite(*item, 0., 100., hit.fPushRangeM)) return false;
-			if (const auto* item = row.Find("riseHeightM")) if (!Try_ParseFinite(*item, 0., 100., hit.fRiseHeightM)) return false;
-			if (const auto* item = row.Find("pushMs")) if (!Try_ParseUnsigned(*item, 5000u, hit.iPushMs)) return false;
+			// JSON의 허용 키와 타입을 먼저 읽고, shape·시간·피해 정책 사이의 관계는 아래 Shared 검증에 맡긴다.
+			if (!Has_Properties(row, { "hitId" },
+				{ "trigger", "shape", "damageKind", "damageProfileId", "atMs", "endMs",
+				  "repeatCount", "repeatIntervalMs", "damagePercent", "radiusM", "innerRadiusM",
+				  "lengthM", "halfWidthM", "angleDegrees", "offsetForwardM", "offsetRightM",
+				  "yawOffsetDegrees", "riseHeightM", "pushMs", "pushRangeM", "forcePush", "pushDirection" }))
+				return false;
+			if (const auto* item = row.Find("hitId"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strHitId = item->Get_String();
+			}
+			if (const auto* item = row.Find("trigger"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strTrigger = item->Get_String();
+			}
+			if (const auto* item = row.Find("shape"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strShape = item->Get_String();
+			}
+			if (const auto* item = row.Find("damageKind"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strDamageKind = item->Get_String();
+			}
+			if (const auto* item = row.Find("damageProfileId"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strDamageProfileId = item->Get_String();
+			}
+			// 시각은 ms, 크기와 이동 거리는 m, 회전은 degree로 읽는다.
+			if (const auto* item = row.Find("atMs"))
+			{
+				if (!Try_ParseUnsigned(*item, 600000u, hit.iAtMs))
+					return false;
+			}
+			if (const auto* item = row.Find("endMs"))
+			{
+				if (!Try_ParseUnsigned(*item, 600000u, hit.iEndMs))
+					return false;
+			}
+			if (const auto* item = row.Find("repeatCount"))
+			{
+				if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatCount))
+					return false;
+			}
+			if (const auto* item = row.Find("repeatIntervalMs"))
+			{
+				if (!Try_ParseUnsigned(*item, 600000u, hit.iRepeatIntervalMs))
+					return false;
+			}
+			if (const auto* item = row.Find("damagePercent"))
+			{
+				if (!Try_ParseUnsigned(*item, 600000u, hit.iDamagePercent))
+					return false;
+			}
+			if (const auto* item = row.Find("radiusM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fRadiusM))
+					return false;
+			}
+			if (const auto* item = row.Find("innerRadiusM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fInnerRadiusM))
+					return false;
+			}
+			if (const auto* item = row.Find("lengthM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fLengthM))
+					return false;
+			}
+			if (const auto* item = row.Find("halfWidthM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fHalfWidthM))
+					return false;
+			}
+			if (const auto* item = row.Find("angleDegrees"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fAngleDegrees))
+					return false;
+			}
+			if (const auto* item = row.Find("offsetForwardM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetForwardM))
+					return false;
+			}
+			if (const auto* item = row.Find("offsetRightM"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fOffsetRightM))
+					return false;
+			}
+			if (const auto* item = row.Find("yawOffsetDegrees"))
+			{
+				if (!Try_ParseFinite(*item, -1000., 1000., hit.fYawOffsetDegrees))
+					return false;
+			}
+			// forcePush의 생략과 false를 구분해 기존 피격 반응 정책을 보존한다.
+			if (const auto* item = row.Find("forcePush"))
+			{
+				if (!item->Is_Boolean())
+					return false;
+				hit.ForcePush = item->Get_Boolean();
+			}
+			if (const auto* item = row.Find("pushDirection"))
+			{
+				if (!item->Is_String())
+					return false;
+				hit.strPushDirection = item->Get_String();
+			}
+			if (const auto* item = row.Find("pushRangeM"))
+			{
+				if (!Try_ParseFinite(*item, 0., 100., hit.fPushRangeM))
+					return false;
+			}
+			if (const auto* item = row.Find("riseHeightM"))
+			{
+				if (!Try_ParseFinite(*item, 0., 100., hit.fRiseHeightM))
+					return false;
+			}
+			if (const auto* item = row.Find("pushMs"))
+			{
+				if (!Try_ParseUnsigned(*item, 5000u, hit.iPushMs))
+					return false;
+			}
 			hits.push_back(std::move(hit));
 		}
+		// 중복 hitId, 반복 간격, 도형 크기와 피해 종류의 조합을 Client/Server 공용 계약으로 확인한다.
 		return LostArk::Shared::Validate_AttackHitTemplates(hits);
 	}
 
+	// Serialize가 이미 구성한 공격 템플릿을 JSON 배열로 쓴다. 기본값인 선택 필드는 생략하며 검증은 호출자가 맡는다.
 	void Write_AttackHits(std::ostringstream& output, const std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>& hits)
 	{
 		output << "[";
 		for (std::size_t index = 0; index < hits.size(); ++index)
 		{
-			const auto& hit = hits[index]; output << (index ? ", {" : "{");
+			const auto& hit = hits[index];
+			output << (index ? ", {" : "{");
 			output << "\"hitId\": \"" << CDataJson::Escape(hit.strHitId) << "\"";
 			output << ", \"trigger\": \"" << CDataJson::Escape(hit.strTrigger) << "\"";
 			output << ", \"shape\": \"" << CDataJson::Escape(hit.strShape) << "\"";
@@ -373,21 +523,26 @@ namespace
 			output << ", \"offsetForwardM\": " << hit.fOffsetForwardM;
 			output << ", \"offsetRightM\": " << hit.fOffsetRightM;
 			output << ", \"yawOffsetDegrees\": " << hit.fYawOffsetDegrees;
-			if (hit.ForcePush.has_value()) output << ", \"forcePush\": " << (*hit.ForcePush ? "true" : "false");
-			if (hit.strPushDirection != "AWAY_FROM_CONTACT") output << ", \"pushDirection\": \"" << hit.strPushDirection << "\"";
-			if (hit.fPushRangeM > 0.0) output << ", \"pushRangeM\": " << hit.fPushRangeM;
-			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u) output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
+			if (hit.ForcePush.has_value())
+				output << ", \"forcePush\": " << (*hit.ForcePush ? "true" : "false");
+			if (hit.strPushDirection != "AWAY_FROM_CONTACT")
+				output << ", \"pushDirection\": \"" << hit.strPushDirection << "\"";
+			if (hit.fPushRangeM > 0.0)
+				output << ", \"pushRangeM\": " << hit.fPushRangeM;
+			if (hit.fRiseHeightM > 0.0 || hit.iPushMs != 0u)
+				output << ", \"riseHeightM\": " << hit.fRiseHeightM << ", \"pushMs\": " << hit.iPushMs;
 			output << "}";
 		}
 		output << "]";
 	}
 
-	/* The typed values a Logic definition may carry, by type and kind. This is
-	   the same table the projector enforces so a Save is never refused later. */
+	// Validate_Shape가 Logic의 종류와 값 조합을 검사한다. 다른 종류의 필드가 섞이면 거절한다.
+	// 이는 Client 편집 계약의 검사이며 게시 도구의 전체 참조 검사나 Server 실행 성공을 보장하지 않는다.
 	bool_t Validate_LogicDefinitionValues(
 		const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic,
 		std::string& outStatus)
 	{
+        // Collider 역할과 공격 템플릿을 먼저 확인한다. 역할 이름만 맞고 다른 종류의 값이 섞인 정의도 거절한다.
         if (!logic.strColliderDamageContactRole.empty())
         {
             KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION plain;
@@ -401,7 +556,10 @@ namespace
             plain.iRepeatIntervalMs = logic.iRepeatIntervalMs;
             if ((logic.strColliderDamageContactRole != "DAMAGE" && logic.strColliderDamageContactRole != "KNOCKBACK") ||
                 logic != plain)
-            { outStatus = "Collider contact role requires a plain ENTER_AREA Trigger and DAMAGE/KNOCKBACK role."; return false; }
+            {
+                outStatus = "Collider contact role requires a plain ENTER_AREA Trigger and DAMAGE/KNOCKBACK role.";
+                return false;
+            }
         }
         const bool bingoBoard = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BINGO_BOARD";
         const bool hasBingoValues = logic.strBingoActiveMode != "ENCOUNTER" || logic.iBingoFirstBombDelayMs != 30000u ||
@@ -418,7 +576,10 @@ namespace
                 4ull * logic.iBingoBombIntervalMs ||
              bingoTicks(logic.iBingoBombMarkMs) + bingoTicks(logic.iBingoBombDropDelayMs) + bingoTicks(logic.iBingoBombFuseMs) >
                 4ull * bingoTicks(logic.iBingoBombIntervalMs))))
-        { outStatus = "BINGO_BOARD requires ENCOUNTER/WINDOW, bounded bomb timing, 0..25 initial cells and at most four simultaneous bombs."; return false; }
+        {
+            outStatus = "BINGO_BOARD requires ENCOUNTER/WINDOW, bounded bomb timing, 0..25 initial cells and at most four simultaneous bombs.";
+            return false;
+        }
 		const bool hitShowtime = logic.strLogicType == "DURATION" && logic.strJudgementKind == "SHOWTIME_PLAYER_TARGETS";
 		const bool hitPursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
             (logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "PURSUIT_PROJECTILES"));
@@ -429,7 +590,10 @@ namespace
             (!hitSelected || !logic.iSelectedFlightMs || logic.iSelectedFlightMs > 600000u ||
              !std::isfinite(logic.fSelectedFlightArcHeightM) || logic.fSelectedFlightArcHeightM < 0.0 || logic.fSelectedFlightArcHeightM > 1000.0 ||
              std::any_of(logic.SelectedFlightSourceOffset.begin(), logic.SelectedFlightSourceOffset.end(), [](double value) { return !std::isfinite(value) || std::abs(value) > 1000.0; })))
-        { outStatus = "Selected flight requires a captured Effect group and finite bounded geometry."; return false; }
+        {
+            outStatus = "Selected flight requires a captured Effect group and finite bounded geometry.";
+            return false;
+        }
 		if ((!hitShowtime && (!logic.TrackingHits.empty() || !logic.RandomVolleyHits.empty())) ||
 			(!hitShowtime && !hitAlbion && !hitSelected && !logic.FixedHits.empty()) ||
 			(!hitPursuit && !logic.ProjectileHits.empty()) ||
@@ -440,12 +604,19 @@ namespace
 			!LostArk::Shared::Validate_AttackHitTemplates(logic.TrackingHits) ||
 			!LostArk::Shared::Validate_AttackHitTemplates(logic.ProjectileHits) ||
 			std::any_of(logic.RandomVolleyHits.begin(), logic.RandomVolleyHits.end(), [](const auto& hits) { return !LostArk::Shared::Validate_AttackHitTemplates(hits); }))
-		{ outStatus = "Attack template shape, timing, damage or dynamic owner is invalid."; return false; }
+		{
+			outStatus = "Attack template shape, timing, damage or dynamic owner is invalid.";
+			return false;
+		}
+		// 종류별로 사용한 필드 묶음을 계산하여 의미 없는 다른 종류의 필드가 남아 있는지 검사한다.
 		const bool airborne = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "ALBION_AIRBORNE";
 		const bool hasAirborneValues = !logic.strAirbornePhase.empty() || logic.fAirborneHeightM != 0.0 || logic.iAirborneDurationMs != 0u ||
 			logic.strAirborneTargetPositionPolicy != "APPEAR" || !logic.strSelectedEffectGroupId.empty();
 		if (hasAirborneValues && !airborne)
-		{ outStatus = "Airborne phase values belong to ALBION_AIRBORNE."; return false; }
+		{
+			outStatus = "Airborne phase values belong to ALBION_AIRBORNE.";
+			return false;
+		}
 		const bool_t hasRandomVolleys = !logic.RandomVolleyOccurrenceSets.empty();
 		const bool_t hasRandomValues = hasRandomVolleys || logic.iRandomSpawnIntervalMs != 0u ||
 			logic.fRandomArenaRadiusM != 0.0 || logic.fRandomArenaHeightToleranceM != 0.0 ||
@@ -460,14 +631,24 @@ namespace
 				logic.iRandomSpawnIntervalMs < 1u || logic.iRandomSpawnIntervalMs > MAX_TIME_MS ||
 				!std::isfinite(logic.fRandomArenaRadiusM) || logic.fRandomArenaRadiusM <= 0.0 || logic.fRandomArenaRadiusM > 1000.0 ||
 				!std::isfinite(logic.fRandomArenaHeightToleranceM) || logic.fRandomArenaHeightToleranceM <= 0.0 || logic.fRandomArenaHeightToleranceM > 10.0)
-			{ outStatus = "SHOWTIME random volleys require 1..32 sets, interval 1..600000 ms, radius (0,1000] and height tolerance (0,10]."; return false; }
+			{
+				outStatus = "SHOWTIME random volleys require 1..32 sets, interval 1..600000 ms, radius (0,1000] and height tolerance (0,10].";
+				return false;
+			}
 			for (const auto& volley : logic.RandomVolleyOccurrenceSets)
 			{
 				std::unordered_set<std::string> ids;
 				if (volley.empty() || volley.size() > 64u)
-				{ outStatus = "SHOWTIME random volley requires 1..64 Effect occurrence IDs."; return false; }
-				for (const auto& id : volley) if (!Is_StableId(id) || !ids.insert(id).second)
-				{ outStatus = "SHOWTIME random volley has an invalid or duplicate occurrence ID."; return false; }
+				{
+					outStatus = "SHOWTIME random volley requires 1..64 Effect occurrence IDs.";
+					return false;
+				}
+				for (const auto& id : volley)
+					if (!Is_StableId(id) || !ids.insert(id).second)
+				{
+					outStatus = "SHOWTIME random volley has an invalid or duplicate occurrence ID.";
+					return false;
+				}
 			}
 		}
         const bool pursuit = ((logic.strLogicType == "DURATION" && logic.strJudgementKind == "PURSUIT_PROJECTILES") ||
@@ -490,13 +671,19 @@ namespace
              !std::isfinite(logic.fPursuitMaxDistanceM) || logic.fPursuitMaxDistanceM < 0.0 || logic.fPursuitMaxDistanceM > 1000.0 ||
              logic.iSpawnIntervalMs > MAX_TIME_MS || logic.iPursuitLifetimeMs > MAX_TIME_MS || logic.iCountPerWave > 16u ||
              (logic.iPursuitLifetimeMs == 0u && (!logic.bPursuitHoming || logic.iSpawnIntervalMs != 0u || logic.fPursuitMaxDistanceM != 0.0)))))
-        { outStatus = "PURSUIT_PROJECTILES requires Effect IDs, finite speed/radii and bounded lifetime; infinite life requires one homing volley."; return false; }
-		/* BOSS_TRACK_TARGET reuses the SHOWTIME player-speed multiplier to translate the
-		   body it already rotates. Zero keeps every saved rotate-only window unchanged. */
+        {
+            outStatus = "PURSUIT_PROJECTILES requires Effect IDs, finite speed/radii and bounded lifetime; infinite life requires one homing volley.";
+            return false;
+        }
+		// BOSS_TRACK_TARGET은 회전할 몸체의 이동에도 플레이어 속도 배율을 사용한다.
+		// 배율 0은 이동 없이 회전만 하는 기존 구간을 유지한다.
 		const bool_t trackTarget = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BOSS_TRACK_TARGET";
 		const bool_t randomTarget = logic.strLogicType == "DURATION" && logic.strJudgementKind == "BOSS_RANDOM_TARGET";
 		if (randomTarget && !Is_StableId(logic.strTrackingPresentationOccurrenceId))
-		{ outStatus = "Random target Duration needs a following Boss Effect occurrence."; return false; }
+		{
+			outStatus = "Random target Duration needs a following Boss Effect occurrence.";
+			return false;
+		}
 		const bool_t hasShowtimeValues = hasRandomValues || !logic.strFixedSelectionGroupId.empty() ||
 			(!randomTarget && !logic.strTrackingPresentationOccurrenceId.empty()) || (!pursuit && logic.iSpawnIntervalMs != 0u) ||
 			(!trackTarget && logic.fFollowSpeedScale != 0.0);
@@ -506,10 +693,16 @@ namespace
 			 (!logic.strTrackingPresentationOccurrenceId.empty() && !Is_StableId(logic.strTrackingPresentationOccurrenceId)) ||
 			 logic.iSpawnIntervalMs < 1u || logic.iSpawnIntervalMs > MAX_TIME_MS ||
 			 !std::isfinite(logic.fFollowSpeedScale) || logic.fFollowSpeedScale < .01 || logic.fFollowSpeedScale > 10.0)))
-		{ outStatus = "SHOWTIME_PLAYER_TARGETS requires stable template references, interval 1..600000 ms and speed scale .01..10."; return false; }
+		{
+			outStatus = "SHOWTIME_PLAYER_TARGETS requires stable template references, interval 1..600000 ms and speed scale .01..10.";
+			return false;
+		}
 		if (trackTarget && logic.fFollowSpeedScale != 0.0 &&
 			(!std::isfinite(logic.fFollowSpeedScale) || logic.fFollowSpeedScale < .01 || logic.fFollowSpeedScale > 10.0))
-		{ outStatus = "BOSS_TRACK_TARGET follow speed is 0 for rotate-only, or .01..10 of the target player's move speed."; return false; }
+		{
+			outStatus = "BOSS_TRACK_TARGET follow speed is 0 for rotate-only, or .01..10 of the target player's move speed.";
+			return false;
+		}
         const bool bomb = !logic.strBombPresentationOccurrenceId.empty() ||
             !logic.strBombExplosionPresentationOccurrenceId.empty() || !logic.strBombSectorPresentationOccurrenceId.empty() ||
             logic.fBombSectorRadiusM != 0.0 || logic.fBombSectorHalfAngleDegrees != 0.0;
@@ -518,14 +711,21 @@ namespace
             !Is_StableId(logic.strBombSectorPresentationOccurrenceId) ||
             !std::isfinite(logic.fBombSectorRadiusM) || logic.fBombSectorRadiusM <= 0.0 || logic.fBombSectorRadiusM > 1000.0 ||
             !std::isfinite(logic.fBombSectorHalfAngleDegrees) || logic.fBombSectorHalfAngleDegrees <= 0.0 || logic.fBombSectorHalfAngleDegrees >= 180.0))
-        { outStatus = "Bomb test requires rotate-only BOSS_TRACK_TARGET, three Effect references, radius (0,1000] and half-angle (0,180)."; return false; }
+        {
+            outStatus = "Bomb test requires rotate-only BOSS_TRACK_TARGET, three Effect references, radius (0,1000] and half-angle (0,180).";
+            return false;
+        }
 		const bool cross = logic.strLogicType == "DURATION" && logic.strJudgementKind == "CROSS_DIRECTION_CLONES";
         std::unordered_set<std::string> directionIds;
         if ((cross && (logic.DirectionPatternIds.size() != 4u || !Is_StableId(logic.strCloneEndStageId) || !Is_StableId(logic.strSummonOccurrenceId) ||
             !std::all_of(logic.DirectionPatternIds.begin(), logic.DirectionPatternIds.end(),
                 [&](const auto& id) { return Is_StableId(id) && directionIds.insert(id).second; }))) ||
             (!cross && (!logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty())))
-        { outStatus = "Cross direction Logic needs four unique Pattern IDs, a clone end Stage ID and its Summon occurrence."; return false; }
+        {
+            outStatus = "Cross direction Logic needs four unique Pattern IDs, a clone end Stage ID and its Summon occurrence.";
+            return false;
+        }
+		// DURATION, RESULT, TRIGGER가 각각 소유하는 값을 구분한다. 기본값과 달라진 값은 해당 종류에서만 허용한다.
 		const bool_t hasDurationValues = (hasPursuitValues && logic.strLogicType != "TRIGGER") || !logic.DirectionPatternIds.empty() || !logic.strCloneEndStageId.empty() || !logic.strSummonOccurrenceId.empty() || hasShowtimeValues || !logic.PatternIds.empty() || logic.iCompletionCount != 0u || !logic.strJudgementKind.empty() ||
 			0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 			0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
@@ -534,10 +734,16 @@ namespace
 			0.0 != logic.fShieldArcDegrees || logic.bEndsPatternOnSuccess || logic.fNormalYawOffsetDegrees != 0.0 || logic.strInsideOutcome != "SUCCESS" || (logic.fTargetRadiusM != 0.0 && logic.strTriggerKind != "OBJECT_CONTACT");
 		if ((logic.strInsideOutcome != "SUCCESS" && logic.strInsideOutcome != "FAIL") ||
 			(logic.strInsideOutcome != "SUCCESS" && (logic.strLogicType != "DURATION" || (logic.strJudgementKind != "AREA_OVERLAP" && logic.strJudgementKind != "OBJECT_OVERLAP" && logic.strJudgementKind != "GAZE_REAL_BOSS"))))
-		{ outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId; return false; }
+		{
+			outStatus = "Only AREA_OVERLAP/OBJECT_OVERLAP/GAZE_REAL_BOSS takes an inside outcome of SUCCESS or FAIL: " + logic.strLogicId;
+			return false;
+		}
         if (logic.bGazeDuringWindow && (logic.strLogicType != "DURATION" ||
             logic.strJudgementKind != "GAZE_REAL_BOSS" || logic.strInsideOutcome != "FAIL"))
-        { outStatus = "Gaze during window requires DURATION GAZE_REAL_BOSS with facing outcome FAIL."; return false; }
+        {
+            outStatus = "Gaze during window requires DURATION GAZE_REAL_BOSS with facing outcome FAIL.";
+            return false;
+        }
 		const bool_t hasResultValues = !logic.strOutcomeKind.empty() ||
 			0u != logic.iDamageAmount || 0u != logic.iPercent || 0u != logic.iDurationMs || logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u || logic.bForcePush || logic.bPushCanLeaveArena || logic.bPushBallistic || logic.fPushYawOffsetDegrees != 0.0 || !logic.strFollowupPatternId.empty() ||
 			(!logic.strTargetWorldInstanceId.empty() && logic.strJudgementKind != "OBJECT_OVERLAP") || !logic.strMotionInstanceId.empty() ||
@@ -546,18 +752,27 @@ namespace
 			!logic.ContactMotions.empty() || !logic.strTargetLogicOccurrenceId.empty() || !logic.strContactTargetWorldOccurrenceId.empty() || logic.iMarioEntryStage != 0u;
 		const bool_t hasContactValues = !logic.TargetWorldOccurrenceIds.empty() || !logic.strContactGroupId.empty() || logic.iContactPriority != 0u;
 		if (hasContactValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "OBJECT_CONTACT"))
-		{ outStatus = "Only OBJECT_CONTACT carries target placements and contact priority."; return false; }
+		{
+			outStatus = "Only OBJECT_CONTACT carries target placements and contact priority.";
+			return false;
+		}
         if (!std::isfinite(logic.fBossChargeDistanceM) || logic.fBossChargeDistanceM < 0.0 || logic.fBossChargeDistanceM > 1000.0 ||
             !std::isfinite(logic.fChargeYawOffsetDegrees) || std::abs(logic.fChargeYawOffsetDegrees) > 360.0 ||
             (logic.fChargeYawOffsetDegrees != 0.0 && logic.fBossChargeDistanceM <= 0.0) ||
             (logic.fBossChargeDistanceM != 0.0 && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")))
-        { outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m and charge yaw of -360..360 degrees; nonzero yaw requires positive distance."; return false; }
+        {
+            outStatus = "Only ENTER_AREA accepts a boss charge distance of 0..1000 m and charge yaw of -360..360 degrees; nonzero yaw requires positive distance.";
+            return false;
+        }
 		const bool areaPulse = logic.strLogicType == "DURATION" && logic.strJudgementKind == "AREA_OVERLAP";
 		if (((logic.bRearmOnExit || logic.bRepeatAfterKnockback) && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) ||
 			(logic.iRepeatIntervalMs && ((!areaPulse && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ENTER_AREA")) || logic.iRepeatIntervalMs < 34u)) ||
 			(logic.bRearmOnExit && logic.bRepeatAfterKnockback) ||
 			(logic.iRepeatIntervalMs && (logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs > MAX_TIME_MS)))
-		{ outStatus = "ENTER_AREA accepts one contact repeat policy; AREA_OVERLAP accepts a 34..600000 ms pulse interval."; return false; }
+		{
+			outStatus = "ENTER_AREA accepts one contact repeat policy; AREA_OVERLAP accepts a 34..600000 ms pulse interval.";
+			return false;
+		}
 		if (!std::isfinite(logic.fPushHeightM) || logic.fPushHeightM < 0.0 || logic.fPushHeightM > 100.0 ||
 			(logic.fPushHeightM > 0.0 && !logic.bPushBallistic) || !std::isfinite(logic.fPushRangeM) || logic.fPushRangeM < 0.0 ||
 			logic.fPushRangeM > (logic.bPushBallistic ? 100.0 : 20.0) ||
@@ -570,15 +785,24 @@ namespace
 			logic.iPushMs > MAX_TIME_MS || ((logic.fPushRangeM == 0.0 && logic.fPushHeightM == 0.0) != (logic.iPushMs == 0u)) ||
 			((logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u) &&
 			 (logic.strLogicType != "RESULT" || (logic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && logic.strOutcomeKind != "FIXED_DAMAGE"))))
-		{ outStatus = "Damage knockback needs paired distance/time: ordinary 0..20 m and 0..600000 ms; ballistic >0..100 m and 100..5000 ms with optional arena exit. Only BOSS_FORWARD accepts yaw."; return false; }
+		{
+			outStatus = "Damage knockback needs paired distance/time: ordinary 0..20 m and 0..600000 ms; ballistic >0..100 m and 100..5000 ms with optional arena exit. Only BOSS_FORWARD accepts yaw.";
+			return false;
+		}
 		const bool_t hasPlayerEffectValues = logic.iCountPerPlayer != 0u || logic.fPlayerEffectRadiusM != 0.0 || logic.iEffectLifetimeMs != 0u ||
 			logic.iArenaRandomCount != 0u || logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 ||
 			logic.fArenaMinimumSpacingM != 0.0 || logic.bRandomPlayerOnly;
 		if (hasPlayerEffectValues && (logic.strLogicType != "TRIGGER" || logic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
-		{ outStatus = "Player effect layout belongs to ALBION_BLUE_CIRCLE."; return false; }
+		{
+			outStatus = "Player effect layout belongs to ALBION_BLUE_CIRCLE.";
+			return false;
+		}
 		const bool stagePlayers = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
 		if (!stagePlayers && !logic.PlayerEntryEffectOccurrenceIds.empty())
-		{ outStatus = "Player entry Effect references belong to CARD_MAZE_STAGE_PLAYERS."; return false; }
+		{
+			outStatus = "Player entry Effect references belong to CARD_MAZE_STAGE_PLAYERS.";
+			return false;
+		}
 		const bool cardSoldiers = logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "CARD_RAIN_SOLDIERS";
 		const auto soldierTotal = std::uint64_t(logic.SoldierCounts[0]) + logic.SoldierCounts[1] + logic.SoldierCounts[2];
 		if (!std::isfinite(logic.fSpawnRadiusMinM) || !std::isfinite(logic.fSpawnRadiusMaxM) ||
@@ -586,18 +810,30 @@ namespace
 			!std::all_of(logic.SoldierCounts.begin(), logic.SoldierCounts.end(), [](auto count) { return count <= 32u; }) ||
 			soldierTotal < 1u || soldierTotal > 64u ||
 			(!cardSoldiers && (logic.SoldierCounts != std::array<std::uint32_t, 3u>{1u, 1u, 1u} || logic.fSpawnRadiusMinM != 3.0 || logic.fSpawnRadiusMaxM != 6.0)))
-		{ outStatus = "Card soldier counts need 0..32 each / 1..64 total and an ordered 0..100 m spawn radius."; return false; }
+		{
+			outStatus = "Card soldier counts need 0..32 each / 1..64 total and an ordered 0..100 m spawn radius.";
+			return false;
+		}
 		if (logic.iSoldierMaxHp > 2000000000u || logic.iSoldierDamage > 2000000000u ||
 			(!cardSoldiers && (logic.iSoldierMaxHp || logic.iSoldierDamage)))
-		{ outStatus = "Card soldier HP/damage overrides require CARD_RAIN_SOLDIERS and 0..2000000000."; return false; }
+		{
+			outStatus = "Card soldier HP/damage overrides require CARD_RAIN_SOLDIERS and 0..2000000000.";
+			return false;
+		}
 		const bool_t hasTriggerValues = !logic.PlayerEntryEffectOccurrenceIds.empty() || hasPlayerEffectValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || (logic.iRepeatIntervalMs != 0u && !areaPulse) || logic.fBossChargeDistanceM != 0.0 || hasContactValues || !logic.strTriggerKind.empty() || !logic.strHudMode.empty() ||
 			!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 			std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; });
 		if (!std::isfinite(logic.fNormalYawOffsetDegrees) || std::abs(logic.fNormalYawOffsetDegrees) > 360.0 ||
 			!std::isfinite(logic.fFaceCenterYawOffsetDegrees) || std::abs(logic.fFaceCenterYawOffsetDegrees) > 360.0)
-		{ outStatus = "Logic yaw offsets must be finite -360..360 degrees."; return false; }
+		{
+			outStatus = "Logic yaw offsets must be finite -360..360 degrees.";
+			return false;
+		}
 		if (logic.strLogicType != "TRIGGER" && hasTriggerValues)
-		{ outStatus = "Non-trigger Logic carries trigger values: " + logic.strLogicId; return false; }
+		{
+			outStatus = "Non-trigger Logic carries trigger values: " + logic.strLogicId;
+			return false;
+		}
 		if ("DURATION" == logic.strLogicType)
 		{
 			if (hasResultValues)
@@ -626,7 +862,10 @@ namespace
 				logic.iCompletionCount > logic.PatternIds.size() || !std::all_of(logic.PatternIds.begin(), logic.PatternIds.end(),
 				[&](const auto& id) { return Is_StableId(id) && chainIds.insert(id).second; }))) ||
 				(!chain && (!logic.PatternIds.empty() || logic.iCompletionCount)))
-			{ outStatus = "Pattern completion count requires 1..16 unique candidate IDs and count within the pool."; return false; }
+			{
+				outStatus = "Pattern completion count requires 1..16 unique candidate IDs and count within the pool.";
+				return false;
+			}
 			const bool_t roulette = "ROULETTE_CARD_MATCH" == kind;
 			const bool_t gaze = "GAZE_REAL_BOSS" == kind;
 			const bool_t pose = "POSE_INPUT" == kind;
@@ -636,7 +875,10 @@ namespace
 			const bool_t objectOverlap = "OBJECT_OVERLAP" == kind;
 			if ((objectOverlap && (!Is_StableId(logic.strTargetWorldInstanceId) || !std::isfinite(logic.fTargetRadiusM) ||
 				logic.fTargetRadiusM < .01 || logic.fTargetRadiusM > 1000.0)) || (!objectOverlap && logic.fTargetRadiusM != 0.0))
-			{ outStatus = "OBJECT_OVERLAP needs a saved target instance and a radius of .01..1000 m."; return false; }
+			{
+				outStatus = "OBJECT_OVERLAP needs a saved target instance and a radius of .01..1000 m.";
+				return false;
+			}
 			const bool_t foreignValues =
 				(!roulette && (0u != logic.iSectorCount || !logic.SectorSymbols.empty() || !logic.RegionIds.empty() ||
 					0.0 != logic.fCenterX || 0.0 != logic.fCenterZ || 0.0 != logic.fOuterRadiusM ||
@@ -667,7 +909,10 @@ namespace
 				std::unordered_set<std::string> ids;
 				if (logic.RegionIds.size() > 8u || !std::all_of(logic.RegionIds.begin(), logic.RegionIds.end(),
 					[&](const auto& id) { return Is_StableId(id) && ids.insert(id).second; }))
-				{ outStatus = "Roulette region references must be up to eight unique stable IDs: " + logic.strLogicId; return false; }
+				{
+					outStatus = "Roulette region references must be up to eight unique stable IDs: " + logic.strLogicId;
+					return false;
+				}
 			}
 			if (gaze && (logic.fHalfAngleDegrees < 1.0 || logic.fHalfAngleDegrees > 180.0 ||
 				logic.fMaxDistanceM < 0.0 || logic.fMaxDistanceM > 1000.0))
@@ -681,9 +926,15 @@ namespace
 				return false;
 			}
             if (invulnerabilityZone && logic.iThreshold > 4u)
-            { outStatus = "Invulnerability zone exact player count must be 0..4 (0: unrestricted)."; return false; }
+            {
+                outStatus = "Invulnerability zone exact player count must be 0..4 (0: unrestricted).";
+                return false;
+            }
             if (bingoLines && (logic.iThreshold < 1u || logic.iThreshold > 10u))
-            { outStatus = "Bingo needs 1..10 completed red rows/columns."; return false; }
+            {
+                outStatus = "Bingo needs 1..10 completed red rows/columns.";
+                return false;
+            }
 			if (stagger && (0u == logic.iThreshold ||
 				logic.fShieldArcDegrees < 0.0 || logic.fShieldArcDegrees > 360.0))
 			{
@@ -719,12 +970,18 @@ namespace
 				!std::all_of(logic.GripLocalOffset.begin(), logic.GripLocalOffset.end(),
 					[](double value) { return std::isfinite(value) && std::abs(value) <= 10.0; }))) ||
 				(!capture && (!logic.strAttachmentSlot.empty() || logic.GripLocalOffset != std::array<double, 3u>{})))
-			{ outStatus = "CAPTURE_PLAYER owns BOSS_LEFT_HAND and finite grip offsets of -10..10 m."; return false; }
+			{
+				outStatus = "CAPTURE_PLAYER owns BOSS_LEFT_HAND and finite grip offsets of -10..10 m.";
+				return false;
+			}
 			const bool_t percentKind = "MAX_HP_PERCENT_DAMAGE" == kind ||
 				"MADNESS_GAUGE_ADD_PERCENT" == kind;
 			if ((kind == "FIXED_DAMAGE" && (logic.iDamageAmount == 0u || logic.iDamageAmount > 1000000000u)) ||
 				(kind != "FIXED_DAMAGE" && logic.iDamageAmount != 0u))
-			{ outStatus = "Only FIXED_DAMAGE takes damageAmount, in 1..1000000000 HP."; return false; }
+			{
+				outStatus = "Only FIXED_DAMAGE takes damageAmount, in 1..1000000000 HP.";
+				return false;
+			}
 			const bool_t followup = "FOLLOWUP_PATTERN" == kind;
 			const bool_t worldMotion = "PLAY_WORLD_OBJECT_MOTION" == kind;
 			if ((worldMotion && (!Is_StableId(logic.strTargetWorldInstanceId) || !Is_StableId(logic.strMotionInstanceId))) ||
@@ -741,11 +998,17 @@ namespace
 					return Is_StableId(row.strTargetWorldOccurrenceId) && Is_StableId(row.strMotionInstanceId) &&
 						contactIds.insert(row.strTargetWorldOccurrenceId).second; }))) ||
 				(!contactMotion && !logic.ContactMotions.empty()))
-			{ outStatus = "Contact motion Result needs 1..64 unique target placement to saved motion mappings."; return false; }
+			{
+				outStatus = "Contact motion Result needs 1..64 unique target placement to saved motion mappings.";
+				return false;
+			}
 			if ((completeWindow && (!Is_StableId(logic.strTargetLogicOccurrenceId) ||
 				(!logic.strContactTargetWorldOccurrenceId.empty() && !Is_StableId(logic.strContactTargetWorldOccurrenceId)))) ||
 				(!completeWindow && (!logic.strTargetLogicOccurrenceId.empty() || !logic.strContactTargetWorldOccurrenceId.empty())))
-			{ outStatus = "Complete window Result needs a target Logic window and an optional contact target placement."; return false; }
+			{
+				outStatus = "Complete window Result needs a target Logic window and an optional contact target placement.";
+				return false;
+			}
 			if (logic.iPercent > 100u || ("MAX_HP_PERCENT_DAMAGE" == kind && 0u == logic.iPercent) ||
 				(!percentKind && 0u != logic.iPercent))
 			{
@@ -759,7 +1022,10 @@ namespace
 				return false;
 			}
             if (kind == "PLAYER_INVULNERABILITY" && logic.iDurationMs == 0u)
-            { outStatus = "Player invulnerability requires durationMs 1..600000."; return false; }
+            {
+                outStatus = "Player invulnerability requires durationMs 1..600000.";
+                return false;
+            }
 			if (logic.iMarioEntryStage > 4u || ("MARIO_ENTER" != kind && logic.iMarioEntryStage != 0u))
 			{
 				outStatus = "Only MARIO_ENTER takes a Mario stage of 0..4: " + logic.strLogicId;
@@ -772,7 +1038,10 @@ namespace
                 (!logic.strSoundResourceId.empty() && !Is_StableId(logic.strSoundResourceId)) ||
                 (logic.strEffectResourceId.empty() && logic.iEffectDelayMs != 0u))) ||
                 (kind != "FEAR" && (!logic.strSceneProfileId.empty() || !logic.strEffectResourceId.empty() || !logic.strLightResourceId.empty() || !logic.strSoundResourceId.empty() || logic.iEffectDelayMs != 0u)))
-            { outStatus = "FEAR requires a duration and valid optional Scene Profile/Effect/Light/Sound references and delay."; return false; }
+            {
+                outStatus = "FEAR requires a duration and valid optional Scene Profile/Effect/Light/Sound references and delay.";
+                return false;
+            }
 			if ((kind != "MARIO_ENTER" && followup != !logic.strFollowupPatternId.empty()) ||
 				(!logic.strFollowupPatternId.empty() && !Is_StableId(logic.strFollowupPatternId)))
 			{
@@ -788,7 +1057,11 @@ namespace
 		}
 		if (logic.strTriggerKind.empty())
 		{
-			if (hasTriggerValues) { outStatus = "Trigger values need a triggerKind."; return false; }
+			if (hasTriggerValues)
+			{
+				outStatus = "Trigger values need a triggerKind.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "PURSUIT_PROJECTILES")
         {
@@ -796,7 +1069,10 @@ namespace
                 logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u || logic.fBossChargeDistanceM != 0.0 ||
                 !logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
                 logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
-            { outStatus = "PURSUIT_PROJECTILES Trigger spawns once and carries only projectile values."; return false; }
+            {
+                outStatus = "PURSUIT_PROJECTILES Trigger spawns once and carries only projectile values.";
+                return false;
+            }
         }
         else if (stagePlayers)
 		{
@@ -808,7 +1084,10 @@ namespace
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				logic.TeleportPosition != std::array<double, 3>{})
-			{ outStatus = "CARD_MAZE_STAGE_PLAYERS needs only 1..4 unique player entry Effect occurrence IDs."; return false; }
+			{
+				outStatus = "CARD_MAZE_STAGE_PLAYERS needs only 1..4 unique player entry Effect occurrence IDs.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "ANIMATION_BLEND" || logic.strTriggerKind == "ROOM_PLAYER_ARRIVAL" || logic.strTriggerKind == "BOSS_TRACK_TARGET" || logic.strTriggerKind == "BOSS_RANDOM_TARGET" || logic.strTriggerKind == "BINGO_DETONATION")
 		{
@@ -816,7 +1095,10 @@ namespace
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				logic.TeleportPosition != std::array<double, 3>{})
-			{ outStatus = "This Trigger carries only its triggerKind; its Logic box owns the values."; return false; }
+			{
+				outStatus = "This Trigger carries only its triggerKind; its Logic box owns the values.";
+				return false;
+			}
 		}
 		else if (airborne)
 		{
@@ -837,7 +1119,10 @@ namespace
 				hasPlayerEffectValues || hasContactValues || logic.bRearmOnExit || logic.bRepeatAfterKnockback || logic.iRepeatIntervalMs != 0u ||
 				logic.fBossChargeDistanceM != 0.0 || !logic.strHudMode.empty() || !logic.strClonePatternId.empty() ||
 				!logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0)
-			{ outStatus = "ALBION_AIRBORNE needs a valid phase, phase-specific height/duration, and CENTER-only finite XYZ."; return false; }
+			{
+				outStatus = "ALBION_AIRBORNE needs a valid phase, phase-specific height/duration, and CENTER-only finite XYZ.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "ALBION_BLUE_CIRCLE")
 		{
@@ -847,7 +1132,10 @@ namespace
 				logic.iEffectLifetimeMs < 1u || logic.iEffectLifetimeMs > MAX_TIME_MS ||
 				!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 || logic.TeleportPosition != std::array<double, 3>{})
-			{ outStatus = "Albion needs 1..8 per player, radius 0 for one or (0,20] for a ring, and effect lifetime 1..600000 ms."; return false; }
+			{
+				outStatus = "Albion needs 1..8 per player, radius 0 for one or (0,20] for a ring, and effect lifetime 1..600000 ms.";
+				return false;
+			}
 			if (logic.iArenaRandomCount > 32u ||
 				!std::isfinite(logic.fArenaRandomRadiusM) || logic.fArenaRandomRadiusM < 0.0 || logic.fArenaRandomRadiusM > 100.0 ||
 				!std::isfinite(logic.fArenaHeightToleranceM) || logic.fArenaHeightToleranceM < 0.0 || logic.fArenaHeightToleranceM > 10.0 ||
@@ -855,7 +1143,10 @@ namespace
 				(logic.iArenaRandomCount == 0u && (logic.fArenaRandomRadiusM != 0.0 || logic.fArenaHeightToleranceM != 0.0 || logic.fArenaMinimumSpacingM != 0.0)) ||
 				(logic.iArenaRandomCount > 0u && (logic.fArenaRandomRadiusM <= 0.0 || logic.fArenaHeightToleranceM <= 0.0 || logic.fArenaMinimumSpacingM <= 0.0)) ||
 				(logic.bRandomPlayerOnly && (logic.iCountPerPlayer != 1u || logic.fPlayerEffectRadiusM != 0.0)))
-			{ outStatus = "Albion accepts 0..32 arena circles; enabled placement needs radius (0,100], height tolerance (0,10] and spacing (0,20] m. Disabled placement uses zeros. One random player requires one circle at that player's position."; return false; }
+			{
+				outStatus = "Albion accepts 0..32 arena circles; enabled placement needs radius (0,100], height tolerance (0,10] and spacing (0,20] m. Disabled placement uses zeros. One random player requires one circle at that player's position.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "OBJECT_CONTACT")
 		{
@@ -868,14 +1159,20 @@ namespace
 				!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
-			{ outStatus = "OBJECT_CONTACT needs 1..64 unique WORLD placements, radius .01..1000 and priority 0..1000."; return false; }
+			{
+				outStatus = "OBJECT_CONTACT needs 1..64 unique WORLD placements, radius .01..1000 and priority 0..1000.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "ENTER_AREA")
 		{
 			if (!logic.strHudMode.empty() || !logic.strClonePatternId.empty() || !logic.ClockHours.empty() ||
 				logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
-			{ outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence."; return false; }
+			{
+				outStatus = "ENTER_AREA geometry belongs to its linked Collider occurrence.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "CARD_RAIN_SOLDIERS" || logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_MAZE_ENTER" || ((logic.strTriggerKind == "BOSS_TELEPORT_XZ" || logic.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || logic.strTriggerKind == "BOSS_TELEPORT_FACE_CENTER" || logic.strTriggerKind == "MARIO_PHASE2_PLAYERS"))
 		{
@@ -884,7 +1181,10 @@ namespace
 				!std::all_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return std::isfinite(x) && std::abs(x) <= 100000.0; }) ||
 				((logic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic.strTriggerKind == "CARD_RAIN_SOLDIERS") &&
 				 std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; })))
-			{ outStatus = "Hide has no values; maze entry and boss XZ teleport accept only finite bounded teleportPosition."; return false; }
+			{
+				outStatus = "Hide has no values; maze entry and boss XZ teleport accept only finite bounded teleportPosition.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "HUD_ENTER")
 		{
@@ -892,22 +1192,32 @@ namespace
 			if ((mode != "NONE" && mode != "POLYMORPH" && mode != "MARIO" && mode != "DANCE" && mode != "MAZE") ||
 				!logic.strClonePatternId.empty() || !logic.ClockHours.empty() || logic.fFaceCenterYawOffsetDegrees != 0.0 ||
 				std::any_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return x != 0.0; }))
-			{ outStatus = "HUD_ENTER has invalid or foreign values."; return false; }
+			{
+				outStatus = "HUD_ENTER has invalid or foreign values.";
+				return false;
+			}
 		}
 		else if (logic.strTriggerKind == "REAL_GAZE_TELEPORT")
 		{
 			std::unordered_set<std::uint32_t> hours;
 			if (!logic.strHudMode.empty() || !Is_StableId(logic.strClonePatternId) || logic.ClockHours.size() != 3u ||
 				!std::all_of(logic.TeleportPosition.begin(), logic.TeleportPosition.end(), [](double x) { return std::isfinite(x) && std::abs(x) <= 100000.0; }))
-			{ outStatus = "Real Saydon teleport needs a position and three clone clock positions."; return false; }
+			{
+				outStatus = "Real Saydon teleport needs a position and three clone clock positions.";
+				return false;
+			}
 			for (auto hour : logic.ClockHours)
 				if (hour < 1u || hour > 12u || hour == 1u || !hours.insert(hour).second)
-				{ outStatus = "Clone clock positions must be unique and exclude 1 o'clock."; return false; }
+				{
+					outStatus = "Clone clock positions must be unique and exclude 1 o'clock.";
+					return false;
+				}
 		}
 		else { outStatus = "Unknown trigger kind: " + logic.strTriggerKind; return false; }
 		return true;
 	}
 
+	// 프로필 조회는 고정 테이블의 원소를 차용한다. 알 수 없는 ID이면 nullptr를 반환한다.
 	const ACTION_PROFILE_CONTRACT* Find_Profile(const std::string_view profileId)
 	{
 		const auto found = std::find_if(ACTION_PROFILES.begin(), ACTION_PROFILES.end(),
@@ -918,6 +1228,7 @@ namespace
 		return found == ACTION_PROFILES.end() ? nullptr : &*found;
 	}
 
+	// Reload와 Save 검증이 제한 크기 안의 파일을 임시 버퍼로 읽는다. 읽기 성공 뒤에만 outText를 교체한다.
 	bool_t Read_Text(
 		const std::filesystem::path& path,
 		const std::uintmax_t maximumBytes,
@@ -952,6 +1263,7 @@ namespace
 		return true;
 	}
 
+	// 허용된 파일 이름과 점 경로 요소를 검사한다. 프로젝트 루트 내부 여부까지 판정하는 함수는 아니다.
 	bool_t Is_ExpectedCompositionPath(const std::filesystem::path& path)
 	{
 		if (path.empty() || (path.filename() != L"KoukuSaydonComposition.json" &&
@@ -965,6 +1277,7 @@ namespace
 		return true;
 	}
 
+	// 일반 Composition과 Sequence Composition의 파일 이름이 문서 identity와 맞는지 확인한다.
 	bool_t Matches_CompositionPath(const std::filesystem::path& path,
 		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, std::string& outStatus)
 	{
@@ -978,6 +1291,7 @@ namespace
 		return true;
 	}
 
+	// 저장 가능한 연출 리소스 종류를 JSON 이름으로 바꾼다. 이 경로가 지원하지 않는 종류는 빈 문자열이다.
 	const char* Presentation_KindName(const KOUKU_SAYDON_PRESENTATION_KIND kind)
 	{
 		switch (kind)
@@ -992,12 +1306,15 @@ namespace
 		}
 	}
 
+	// 선택 연출 필드의 생략은 구조체 기본값을 유지한다. 존재하는 값만 타입과 범위를 검사한다.
 	bool_t Read_PresentationText(const DATA_JSON_VALUE& object, const char* key,
 		std::string& value, const bool_t required = false)
 	{
 		const auto* field = object.Find(key);
-		if (nullptr == field) return !required;
-		if (!field->Is_String()) return false;
+		if (nullptr == field)
+			return !required;
+		if (!field->Is_String())
+			return false;
 		value = field->Get_String();
 		return true;
 	}
@@ -1023,17 +1340,22 @@ namespace
 		return nullptr == field || Try_ParseFinite(*field, minimum, maximum, value);
 	}
 
+	// 벡터는 XYZ 순서로 읽는다. 뒤 좌표에서 실패하면 앞 좌표는 남을 수 있으므로 임시 행에만 적용한다.
 	bool_t Read_PresentationVector(const DATA_JSON_VALUE& object, const char* key,
 		std::array<double, 3u>& value, const double minimum, const double maximum)
 	{
 		const auto* field = object.Find(key);
-		if (nullptr == field) return true;
-		if (!field->Is_Array() || field->Get_Array().size() != 3u) return false;
+		if (nullptr == field)
+			return true;
+		if (!field->Is_Array() || field->Get_Array().size() != 3u)
+			return false;
 		for (std::size_t i = 0u; i < 3u; ++i)
-			if (!Try_ParseFinite(field->Get_Array()[i], minimum, maximum, value[i])) return false;
+			if (!Try_ParseFinite(field->Get_Array()[i], minimum, maximum, value[i]))
+				return false;
 		return true;
 	}
 
+	// Parse_Text가 공유 연출 정의를 임시 행에 채운다. 파일 접근이나 실제 GPU 리소스 생성은 하지 않는다.
 	bool_t Read_PresentationResource(const DATA_JSON_VALUE& value,
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE& row)
 	{
@@ -1062,10 +1384,15 @@ namespace
 			KOUKU_SAYDON_PRESENTATION_KIND::SOUND, KOUKU_SAYDON_PRESENTATION_KIND::CAMERA,
 			KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER, KOUKU_SAYDON_PRESENTATION_KIND::LIGHT,
 			KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE })
-			if (kind == Presentation_KindName(candidate)) { row.eKind = candidate; return true; }
+			if (kind == Presentation_KindName(candidate))
+			{
+				row.eKind = candidate;
+				return true;
+			}
 		return false;
 	}
 
+	// 연출 배치의 시간, 좌표, 부착과 시간 키를 읽는다. 의미 연결과 다른 배치와의 관계는 Validate_Shape가 검사한다.
 	bool_t Read_PresentationOccurrence(const DATA_JSON_VALUE& value,
 		KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE& row)
 	{
@@ -1079,18 +1406,21 @@ namespace
             (!value.Find("colliderEndPositionOffset") || !value.Find("colliderEndScale"))) return false;
 		if (const auto* fit = value.Find("fitEffectToDuration"))
 		{
-			if (!fit->Is_Boolean()) return false;
+			if (!fit->Is_Boolean())
+				return false;
 			row.bFitEffectToDuration = fit->Get_Boolean();
 		}
 		if (const auto* loop = value.Find("loopEffectToDuration"))
 		{
-			if (!loop->Is_Boolean()) return false;
+			if (!loop->Is_Boolean())
+				return false;
 			row.bLoopEffectToDuration = loop->Get_Boolean();
 		}
         if (const auto* clock = value.Find("effectSourceTimeKeys"))
         {
-            // Absent and normalized empty clocks both use the ordinary Effect timeline.
-            if (!clock->Is_Array() || clock->Get_Array().size() == 1u || clock->Get_Array().size() > 4096u) return false;
+            // 시간 키 생략과 빈 배열은 모두 일반 Effect 시계를 사용한다.
+            if (!clock->Is_Array() || clock->Get_Array().size() == 1u || clock->Get_Array().size() > 4096u)
+                return false;
             for (const auto& key : clock->Get_Array())
             {
                 std::array<double, 2u> sample{};
@@ -1104,13 +1434,15 @@ namespace
 		const auto* debugRender = value.Find("debugRender");
 		if (nullptr != debugRender)
 		{
-			if (!debugRender->Is_Boolean()) return false;
+			if (!debugRender->Is_Boolean())
+				return false;
 			row.bDebugRender = debugRender->Get_Boolean();
 		}
 		const auto* follow = value.Find("followBoss");
 		if (nullptr != follow)
 		{
-			if (!follow->Is_Boolean()) return false;
+			if (!follow->Is_Boolean())
+				return false;
 			row.bFollowBoss = follow->Get_Boolean();
 		}
 		return Read_PresentationText(value, "occurrenceId", row.strOccurrenceId, true) &&
@@ -1147,16 +1479,24 @@ namespace
 			Read_PresentationNumber(value, "brightnessMultiplier", row.fBrightnessMultiplier, 0.0, 16.0);
 	}
 
+	// 각 축이 유한하고 주어진 절댓값 한계 안에 있는지 확인한다.
+	// 보충 설명(현재 코드): 절댓값을 취하지 않고 각 축의 유한 여부와
+	// minimum 이상·maximum 이하를 검사한다. 호출자가 양수 하한을 줄 수도 있다.
 	bool_t Valid_PresentationVector(const std::array<double, 3u>& value,
 		const double minimum, const double maximum)
 	{
-		return std::all_of(value.begin(), value.end(), [=](const double number) {
-			return std::isfinite(number) && number >= minimum && number <= maximum; });
+		return std::all_of(value.begin(), value.end(),
+			[=](const double number)
+			{
+				return std::isfinite(number) && number >= minimum && number <= maximum;
+			});
 	}
 
+	// 키가 없으면 양 끝점 보간을 허용한다. 키가 있으면 개수, 시각 순서와 이동 구간의 양 끝 일치를 검사한다.
 	bool Valid_BossMotionKeys(const KOUKU_SAYDON_BOSS_MOTION& motion)
 	{
-		if (motion.Keys.empty()) return true;
+		if (motion.Keys.empty())
+			return true;
 		if (motion.Keys.size() < 2u || motion.Keys.size() > 512u ||
 			motion.Keys.front().iTimeMs != motion.iStartMs || motion.Keys.back().iTimeMs != motion.iEndMs ||
 			motion.Keys.front().Position != motion.StartPosition || motion.Keys.back().Position != motion.EndPosition) return false;
@@ -1166,12 +1506,14 @@ namespace
 		return true;
 	}
 
+	// XYZ 좌표를 같은 순서의 JSON 배열로 출력하여 파서의 벡터 계약을 유지한다.
 	void Write_PresentationVector(std::ostringstream& out, const std::array<double, 3u>& value)
 	{
 		out << '[' << value[0] << ", " << value[1] << ", " << value[2] << ']';
 	}
 
 
+    // 폴더 identity와 관문, 선택 timeline 패턴 연결을 검사한다. 이미 격리된 오류 행은 보존을 위해 통과시킨다.
     bool_t Validate_Folder(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_FOLDER& folder, std::string& status)
     {
@@ -1182,24 +1524,32 @@ namespace
                 CDataJson::Parse(folder.strPreservedJson, preserved, status);
         }
         if (!Is_StableId(folder.strFolderId) || !Try_ParseGeneratedOrdinal(folder.strFolderId,
-            "kakulsaydon.folder.", document.iNextFolderOrdinal) ||
+            "koukusaydon.folder.", document.iNextFolderOrdinal) ||
             !CKoukuSaydonCompositionDocument::Is_KnownGate(folder.strGateId) || !Is_DisplayName(folder.strDisplayName))
-        { status = "Invalid folder identity, Gate or display name: " + folder.strFolderId; return false; }
+        {
+            status = "Invalid folder identity, Gate or display name: " + folder.strFolderId;
+            return false;
+        }
         if (!folder.strTimelinePatternId.empty())
         {
             const auto target = std::find_if(document.Patterns.begin(), document.Patterns.end(),
                 [&](const auto& row) { return row.strPatternId == folder.strTimelinePatternId; });
             if (!Is_StableId(folder.strTimelinePatternId) || target == document.Patterns.end() ||
                 target->strGateId != folder.strGateId || target->strFolderId != folder.strFolderId)
-            { status = "Parent timeline requires a same-folder, same-Gate Pattern: " + folder.strFolderId; return false; }
+            {
+                status = "Parent timeline requires a same-folder, same-Gate Pattern: " + folder.strFolderId;
+                return false;
+            }
         }
         return true;
     }
 
+    // 정상 패턴의 선택 폴더가 존재하며 같은 관문인지 검사한다. 오류 행과 폴더 미지정은 보존한다.
     bool_t Validate_PatternFolder(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
     {
-        if (!pattern.strLoadError.empty() || pattern.strFolderId.empty()) return true;
+        if (!pattern.strLoadError.empty() || pattern.strFolderId.empty())
+            return true;
         const auto folder = std::find_if(document.Folders.begin(), document.Folders.end(),
             [&](const auto& row) { return row.strFolderId == pattern.strFolderId; });
         if (!Is_StableId(pattern.strFolderId) || folder == document.Folders.end() ||
@@ -1211,14 +1561,18 @@ namespace
         return true;
     }
 
+    // 명시한 패턴 길이를 우선하고 없으면 단계 길이를 합한다. 중간 합은 uint64_t로 계산한다.
     std::uint64_t Pattern_Lifetime(const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
     {
-        if (pattern.iDurationMs) return pattern.iDurationMs;
+        if (pattern.iDurationMs)
+            return pattern.iDurationMs;
         std::uint64_t duration = 0u;
-        for (const auto& stage : pattern.Stages) duration += stage.iDurationMs;
+        for (const auto& stage : pattern.Stages)
+            duration += stage.iDurationMs;
         return duration;
     }
 
+    // 재사용 소환 정책만 검사한다. 생성 시각과 수명 및 개별 자식 연결은 occurrence 검증에서 확인한다.
     bool_t Validate_SummonPolicy(const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon,
         std::string& status)
     {
@@ -1238,6 +1592,7 @@ namespace
         return true;
     }
 
+    // typed Summon 또는 이전 Logic 연결에서 방향별 자식 실행 구간을 만든다. 성공한 임시 목록만 출력에 교체한다.
     bool_t Resolve_CrossDirectionWindows(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
         std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW>& windows, std::string& status)
@@ -1247,53 +1602,84 @@ namespace
             return std::find_if(document.Summons.begin(), document.Summons.end(),
                 [&](const auto& row) { return row.strSummonId == id; });
         };
+
+        // typed Summon 정의가 방향 분할 종류이면 배치의 시각과 방향 ID를 지역 목록에 옮긴다.
+        // 같은 Summon이 독립 PatternSpawns까지 가지는 조합은 거절한다.
         for (const auto& box : pattern.SummonOccurrences)
         {
             const auto summon = findSummon(box.strSummonId);
             if (summon == document.Summons.end())
-            { status = "Summon definition is missing: " + box.strSummonId; return false; }
-            if (!Validate_SummonPolicy(*summon, status)) return false;
-            if (summon->strSummonKind != "CROSS_DIRECTION_CLONES") continue;
+            {
+                status = "Summon definition is missing: " + box.strSummonId;
+                return false;
+            }
+            if (!Validate_SummonPolicy(*summon, status))
+                return false;
+            if (summon->strSummonKind != "CROSS_DIRECTION_CLONES")
+                continue;
             if (!box.PatternSpawns.empty())
-            { status = "A cross direction Summon cannot also own independent Pattern spawns: " + box.strOccurrenceId; return false; }
+            {
+                status = "A cross direction Summon cannot also own independent Pattern spawns: " + box.strOccurrenceId;
+                return false;
+            }
             staged.push_back({ box.strOccurrenceId, box.iStartMs, box.iDurationMs,
                 summon->DirectionPatternIds, summon->strCloneEndStageId, summon->strRealPatternId });
         }
+
+        // 이전 Logic 경로는 활성 box만 받는다. 연결한 이름의 Summon이 같은 시각에 시작하고
+        // Logic 수명을 덮어야 하며 typed Summon과 제어가 겹치는 조합은 거절한다.
         for (const auto& box : pattern.LogicOccurrences)
         {
-            if (!box.bEnabled) continue;
+            if (!box.bEnabled)
+                continue;
             const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
                 [&](const auto& row) { return row.strLogicId == box.strLogicId; });
-            if (logic == document.Logics.end() || logic->strJudgementKind != "CROSS_DIRECTION_CLONES") continue;
-            if (!Validate_LogicDefinitionValues(*logic, status)) return false;
+            if (logic == document.Logics.end() || logic->strJudgementKind != "CROSS_DIRECTION_CLONES")
+                continue;
+            if (!Validate_LogicDefinitionValues(*logic, status))
+                return false;
             const auto summon = std::find_if(pattern.SummonOccurrences.begin(), pattern.SummonOccurrences.end(),
                 [&](const auto& row) { return row.strOccurrenceId == logic->strSummonOccurrenceId; });
             if (summon == pattern.SummonOccurrences.end() || !summon->PatternSpawns.empty() ||
                 summon->iStartMs != box.iStartMs ||
                 std::uint64_t(summon->iStartMs) + summon->iDurationMs < std::uint64_t(box.iStartMs) + box.iDurationMs)
-            { status = "Cross direction Logic needs a matching named Summon covering its duration."; return false; }
+            {
+                status = "Cross direction Logic needs a matching named Summon covering its duration.";
+                return false;
+            }
             const auto definition = findSummon(summon->strSummonId);
             if (definition == document.Summons.end() || !definition->strSummonKind.empty())
-            { status = "Cross direction Logic cannot also control a typed Summon."; return false; }
+            {
+                status = "Cross direction Logic cannot also control a typed Summon.";
+                return false;
+            }
             staged.push_back({ box.strOccurrenceId, box.iStartMs, box.iDurationMs,
                 logic->DirectionPatternIds, logic->strCloneEndStageId });
         }
+
+        // typed 목록 다음 Logic 목록의 수집 순서를 유지한다. 전체 해석이 성공한 뒤만 출력 목록을 교체한다.
         windows = std::move(staged);
         return true;
     }
 
+    // 방향별 소환이 사용할 자식, 종료 단계와 보스 소유 구간을 검사한다. 부모와 다른 이동 소유자의 충돌도 거절한다.
     bool_t Validate_CrossDirectionWindows(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
     {
         const auto fail = [&](const std::string& reason) {
-            status = "Cross direction Summon/Logic in " + pattern.strPatternId + ": " + reason; return false; };
+            status = "Cross direction Summon/Logic in " + pattern.strPatternId + ": " + reason;
+            return false;
+        };
         const auto findLogic = [&](const std::string& id) -> const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* {
             const auto row = std::find_if(document.Logics.begin(), document.Logics.end(),
                 [&](const auto& value) { return value.strLogicId == id; });
             return row == document.Logics.end() ? nullptr : &*row;
         };
         std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW> resolved;
-        if (!Resolve_CrossDirectionWindows(document, pattern, resolved, status)) return false;
+        if (!Resolve_CrossDirectionWindows(document, pattern, resolved, status))
+            return false;
+
+        // 해석된 각 구간과 자식을 검증한다. 절대 BossMotion이 있으면 시간상 비겹침 여부와 무관하게 거절한다.
         std::vector<std::pair<std::uint64_t, std::uint64_t>> windows;
         for (const auto& box : resolved)
         {
@@ -1316,12 +1702,16 @@ namespace
                     return fail("each direction must be a leaf animation/effect Pattern for the same actor, Gate and boss: " + id);
                 if (!child->iDurationMs || Pattern_Lifetime(*child) > box.iDurationMs)
                     return fail("each direction needs an explicit Duration within the Summon/Logic window: " + id);
+
+                // clone 종료 stage는 마지막보다 앞에 있고 애니메이션을 가져야 한다. 자식의 retarget은
+                // 모든 stage에서 금지하며 허용 Logic과 표현 종류는 별도 검사한다.
                 const auto cutoff = std::find_if(child->Stages.begin(), child->Stages.end(),
                     [&](const auto& stage) { return stage.strStageId == box.strCloneEndStageId; });
                 if (cutoff == child->Stages.end() || std::next(cutoff) == child->Stages.end() || cutoff->AnimationOccurrences.empty() ||
                     std::any_of(child->Stages.begin(), child->Stages.end(), [](const auto& stage) { return stage.bRetargetOnEnter; }))
                     return fail("each direction needs the clone end Stage and cannot retarget: " + id);
-                if (!CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogic(document, *child, status)) return false;
+                if (!CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogic(document, *child, status))
+                    return false;
                 for (const auto& occurrence : child->PresentationOccurrences)
                 {
                     const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
@@ -1335,6 +1725,9 @@ namespace
                         return fail("direction child Sound must use its actor clock and anchor: " + id);
                 }
             }
+
+            // 부모 자식 배치·애니메이션·retarget 및 다른 활성 이동/포즈 Logic과의 구간 충돌을 검사한다.
+            // 부모의 모든 Logic을 무조건 금지하는 것은 아니며 아래 열거된 제어 종류만 거절한다.
             for (const auto& row : pattern.PatternOccurrences)
                 if (row.iStartMs < end && box.iStartMs < std::uint64_t(row.iStartMs) + row.iDurationMs)
                     return fail("a Pattern row overlaps the selected body's action window.");
@@ -1351,10 +1744,12 @@ namespace
             }
             for (const auto& other : pattern.LogicOccurrences)
             {
-                if (!other.bEnabled || other.strOccurrenceId == box.strOccurrenceId) continue;
+                if (!other.bEnabled || other.strOccurrenceId == box.strOccurrenceId)
+                    continue;
                 const auto* otherLogic = findLogic(other.strLogicId);
                 if (!otherLogic || other.iStartMs >= end ||
-                    std::uint64_t(other.iStartMs) + (std::max)(1u, other.iDurationMs) <= box.iStartMs) continue;
+                    std::uint64_t(other.iStartMs) + (std::max)(1u, other.iDurationMs) <= box.iStartMs)
+                    continue;
                 if (otherLogic->strJudgementKind == "BOSS_TRACK_TARGET" || otherLogic->strJudgementKind == "PATTERN_COMPLETION_COUNT" ||
                     otherLogic->strTriggerKind == "REAL_GAZE_TELEPORT" || (otherLogic->strTriggerKind == "BOSS_TELEPORT_XZ" || otherLogic->strTriggerKind == "BOSS_TELEPORT_GROUNDED") ||
                     otherLogic->strTriggerKind == "ALBION_AIRBORNE" || otherLogic->strTriggerKind == "ANIMATION_BLEND" || otherLogic->fBossChargeDistanceM > 0.0)
@@ -1362,6 +1757,8 @@ namespace
             }
             windows.emplace_back(box.iStartMs, end);
         }
+
+        // 방향 실행 구간끼리도 정렬 후 겹침을 거절한다. 끝점만 맞닿는 구간은 허용한다.
         std::sort(windows.begin(), windows.end());
         for (std::size_t index = 1u; index < windows.size(); ++index)
             if (windows[index].first < windows[index - 1u].second)
@@ -1369,36 +1766,43 @@ namespace
         return true;
     }
 
+    // 모든 단계가 이동을 사용하는 BOSS_TRACK_TARGET 구간으로 덮이는지 검사한다. 회전 전용 배율 0은 이동 소유자가 아니다.
     bool Tracking_OwnsAllStages(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern)
     {
-        if (pattern.Stages.empty()) return false;
+        if (pattern.Stages.empty())
+            return false;
         std::uint64_t origin = 0u;
         for (const auto& stage : pattern.Stages)
         {
             const auto end = origin + stage.iDurationMs;
             const bool covered = std::any_of(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
-                if (!box.bEnabled || box.iStartMs > origin || std::uint64_t(box.iStartMs) + box.iDurationMs < end) return false;
+                if (!box.bEnabled || box.iStartMs > origin || std::uint64_t(box.iStartMs) + box.iDurationMs < end)
+                    return false;
                 return std::any_of(document.Logics.begin(), document.Logics.end(), [&](const auto& logic) {
                     return logic.strLogicId == box.strLogicId && logic.strJudgementKind == "BOSS_TRACK_TARGET" && logic.fFollowSpeedScale > 0.0;
                 });
             });
-            if (!covered) return false;
+            if (!covered)
+                return false;
             origin = end;
         }
         return true;
     }
 
+    // 부모가 참조하는 자식의 관문, actor와 수명을 검사한다. 순차 반복과 시간 배치의 서로 다른 제약을 나누어 적용한다.
     bool_t Validate_PatternChildren(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
     {
-        if (!pattern.strLoadError.empty()) return true;
-        if (!Validate_CrossDirectionWindows(document, pattern, status)) return false;
+        if (!pattern.strLoadError.empty())
+            return true;
+        if (!Validate_CrossDirectionWindows(document, pattern, status))
+            return false;
         if (!pattern.strLoopStartPatternOccurrenceId.empty() || pattern.bPlayChildrenSequentially)
         {
             const bool loop = !pattern.strLoopStartPatternOccurrenceId.empty();
             const auto reject = [&](const std::string& reason) { status = "Parent " + pattern.strPatternId + ": " + reason; return false; };
-            if (loop && (pattern.strGateId != "BINGO" || pattern.strTargetBossPlacementId != "boss.kakulsaydon.bingo.saydon" ||
+            if (loop && (pattern.strGateId != "BINGO" || pattern.strTargetBossPlacementId != "boss.koukusaydon.bingo.saydon" ||
                 pattern.PatternOccurrences.empty() || pattern.BossMotion || pattern.bResetBossToSpawn || pattern.bEnterCombatOnFinish ||
                 !pattern.SummonOccurrences.empty() || !pattern.WorldOccurrences.empty() ||
                 !pattern.PresentationOccurrences.empty() || !pattern.SceneProfileOccurrences.empty()))
@@ -1411,12 +1815,16 @@ namespace
                 return reject("Looping Parent needs one continuous Bingo board Logic.");
             const auto board = std::find_if(document.Logics.begin(), document.Logics.end(), [&](const auto& logic) {
                 return !pattern.LogicOccurrences.empty() && logic.strLogicId == pattern.LogicOccurrences.front().strLogicId && logic.strJudgementKind == "BINGO_BOARD"; });
-            if (loop && board == document.Logics.end()) return reject("Looping Parent board Logic is missing.");
+            if (loop && board == document.Logics.end())
+                return reject("Looping Parent board Logic is missing.");
             auto rows = pattern.PatternOccurrences;
             std::sort(rows.begin(), rows.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
             bool foundLoop = !loop; std::uint64_t end = 0u;
-            if (!loop) for (const auto& stage : pattern.Stages) end += stage.iDurationMs;
-            if (rows.empty()) return reject("Sequential Parent requires children.");
+            if (!loop)
+                for (const auto& stage : pattern.Stages)
+                    end += stage.iDurationMs;
+            if (rows.empty())
+                return reject("Sequential Parent requires children.");
             for (const auto& row : rows)
             {
                 foundLoop = foundLoop || row.strOccurrenceId == pattern.strLoopStartPatternOccurrenceId;
@@ -1431,7 +1839,8 @@ namespace
                     return reject("Child " + row.strOccurrenceId + " references " + child->strPatternId +
                         " for " + std::to_string(row.iDurationMs) + " ms, but its complete lifetime is " +
                         std::to_string(Pattern_Lifetime(*child)) + " ms.");
-                for (const auto& box : child->LogicOccurrences) if (box.bEnabled)
+                for (const auto& box : child->LogicOccurrences)
+                    if (box.bEnabled)
                 {
                     for (const auto& definition : document.Logics)
                     {
@@ -1445,16 +1854,19 @@ namespace
                 }
                 end = std::uint64_t(row.iStartMs) + row.iDurationMs;
             }
-            if (!foundLoop || end != pattern.iDurationMs) return reject("Parent loop start or first-pass duration is invalid.");
+            if (!foundLoop || end != pattern.iDurationMs)
+                return reject("Parent loop start or first-pass duration is invalid.");
             return true;
         }
-        if (pattern.PatternOccurrences.empty()) return true;
+        if (pattern.PatternOccurrences.empty())
+            return true;
         const auto fail = [&](const std::string& reason) { status = "Parent " + pattern.strPatternId + ": " + reason; return false; };
         if (std::none_of(document.Folders.begin(), document.Folders.end(), [&](const auto& folder) {
             return folder.strTimelinePatternId == pattern.strPatternId; }))
             return fail("Pattern row requires an executable Parent timeline.");
         const auto lifetime = Pattern_Lifetime(pattern);
-        if (pattern.BossMotion) return fail("Parent Boss Motion cannot share a child actor.");
+        if (pattern.BossMotion)
+            return fail("Parent Boss Motion cannot share a child actor.");
         std::vector<std::pair<std::uint64_t, std::uint64_t>> windows;
         for (const auto& row : pattern.PatternOccurrences)
         {
@@ -1465,8 +1877,8 @@ namespace
             if (child->strPatternId == pattern.strPatternId || !child->PatternOccurrences.empty() ||
                 !child->strLoopStartPatternOccurrenceId.empty())
                 return fail("Nested Parent or cyclic Pattern reference: " + row.strPatternId);
-            const bool encore = pattern.strGateId == "BINGO" && pattern.strTargetBossPlacementId == "boss.kakulsaydon.bingo.saydon" &&
-                child->strGateId == "GATE3" && child->strTargetBossPlacementId == "boss.kakulsaydon.g3.saydon" &&
+            const bool encore = pattern.strGateId == "BINGO" && pattern.strTargetBossPlacementId == "boss.koukusaydon.bingo.saydon" &&
+                child->strGateId == "GATE3" && child->strTargetBossPlacementId == "boss.koukusaydon.g3.saydon" &&
                 child->strActorProfileId == "MN_RPCT_05" && pattern.strActorProfileId == "MN_RPCT_05";
             if (!encore && (child->strGateId != pattern.strGateId || child->strActorProfileId != pattern.strActorProfileId ||
                 child->strTargetBossPlacementId != pattern.strTargetBossPlacementId))
@@ -1483,7 +1895,8 @@ namespace
                     return fail("Moving child needs one complete non-repeated Pattern and no Parent animation, retarget or spawn reset.");
                 for (const auto& box : pattern.LogicOccurrences)
                 {
-                    if (!box.bEnabled) continue;
+                    if (!box.bEnabled)
+                        continue;
                     const auto definition = std::find_if(document.Logics.begin(), document.Logics.end(),
                         [&](const auto& logic) { return logic.strLogicId == box.strLogicId; });
                     if (definition != document.Logics.end() && (definition->strTriggerKind == "REAL_GAZE_TELEPORT" || (definition->strTriggerKind == "BOSS_TELEPORT_XZ" || definition->strTriggerKind == "BOSS_TELEPORT_GROUNDED") ||
@@ -1510,6 +1923,7 @@ namespace
         return true;
     }
 
+    // 번들의 멤버와 공유 상태 소유권을 검사한다. 조건부 후속 패턴은 시작 시각을 확정할 수 없어 더 엄격히 제한한다.
     bool_t Validate_Bundle(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
         const KOUKU_SAYDON_COMPOSITION_BUNDLE& bundle, std::string& status)
     {
@@ -1523,7 +1937,7 @@ namespace
         const auto folder = std::find_if(document.Folders.begin(), document.Folders.end(),
             [&](const auto& value) { return value.strFolderId == bundle.strFolderId; });
         if (!Is_StableId(bundle.strBundleId) || !Try_ParseGeneratedOrdinal(bundle.strBundleId,
-            "kakulsaydon.bundle.", document.iNextBundleOrdinal) || !Is_DisplayName(bundle.strDisplayName) ||
+            "koukusaydon.bundle.", document.iNextBundleOrdinal) || !Is_DisplayName(bundle.strDisplayName) ||
             !CKoukuSaydonCompositionDocument::Is_KnownGate(bundle.strGateId) ||
             !Is_AuthoringStatus(bundle.strAuthoringStatus) || folder == document.Folders.end() ||
             !folder->strLoadError.empty() || folder->strGateId != bundle.strGateId)
@@ -1534,7 +1948,8 @@ namespace
             bundle.Members.size() > 8u || bundle.SceneProfileOccurrences.size() > 16u || bundle.PresentationOccurrences.size() > 16u)
             return fail("invalid bounded counters or rows");
         const bool product = bundle.strAuthoringStatus == "PRODUCT";
-        if (product && bundle.Members.empty()) return fail("PRODUCT needs at least one member");
+        if (product && bundle.Members.empty())
+            return fail("PRODUCT needs at least one member");
         std::unordered_set<std::string> memberIds, patternIds, placements, occurrenceIds;
         std::unordered_set<std::string> statefulMembers;
         std::unordered_map<std::string, std::string> worldOwners;
@@ -1544,21 +1959,24 @@ namespace
         const auto addGlobalOwners = [&](const auto& scenes, const auto& presentation, const std::string& owner, bool followup)
         {
             const auto add = [&](const std::string& kind) { globalOwners[kind].insert(owner); if (followup) followupGlobalOwners[kind].insert(owner); };
-            if (!scenes.empty()) add("SCENE_PROFILE");
+            if (!scenes.empty())
+                add("SCENE_PROFILE");
             for (const auto& row : presentation)
             {
                 const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
                     [&](const auto& value) { return value.strResourceId == row.strResourceId; });
-                if (resource != document.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA) add("CAMERA");
+                if (resource != document.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA)
+                    add("CAMERA");
             }
         };
         uint64_t span = 0;
         const auto addWindows = [&](const auto& scenes, const auto& presentation, uint64_t offset, const std::string& owner)
         {
-            // Offset alone uses the Server's ceil-to-30-Hz start; presentation rows retain authored milliseconds.
-            // Compare in ms * 30 units to preserve exact half-open boundaries without floating-point rounding.
+            // 멤버 시작 오프셋만 Server와 같이 30 Hz로 올림하고 연출 행의 저작 ms는 유지한다.
+            // ms * 30 단위 정수로 비교하여 반열린 구간의 경계가 부동소수점 반올림에 흔들리지 않게 한다.
             const uint64_t offsetUnits = ((offset * 30u + 999u) / 1000u) * 1000u;
-            for (const auto& row : scenes) windows.push_back({"SCENE_PROFILE", owner, offsetUnits + uint64_t(row.iStartMs) * 30u, offsetUnits + (uint64_t(row.iStartMs) + row.iDurationMs) * 30u});
+            for (const auto& row : scenes)
+                windows.push_back({"SCENE_PROFILE", owner, offsetUnits + uint64_t(row.iStartMs) * 30u, offsetUnits + (uint64_t(row.iStartMs) + row.iDurationMs) * 30u});
             for (const auto& row : presentation)
             {
                 const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
@@ -1579,7 +1997,8 @@ namespace
                 !placements.insert(pattern->strTargetBossPlacementId).second || (product && pattern->strAuthoringStatus != "PRODUCT"))
                 return fail("member is missing, duplicated, cross-Gate, corrupt, or not PRODUCT: " + member.strMemberId);
             uint64_t duration = 0; for (const auto& stage : pattern->Stages) duration += stage.iDurationMs;
-            if (pattern->iDurationMs) duration = pattern->iDurationMs;
+            if (pattern->iDurationMs)
+                duration = pattern->iDurationMs;
             span = (std::max)(span, duration + member.iStartOffsetMs);
             addWindows(pattern->SceneProfileOccurrences, pattern->PresentationOccurrences, member.iStartOffsetMs, member.strMemberId);
             addGlobalOwners(pattern->SceneProfileOccurrences, pattern->PresentationOccurrences, member.strMemberId, false);
@@ -1592,29 +2011,36 @@ namespace
             };
             while (!pending.empty())
             {
+                // 도달 가능한 후속 패턴을 스택으로 순회한다. visited가 순환 참조의 중복 방문을 막는다.
                 const auto* current = pending.back(); pending.pop_back();
-                if (!visited.insert(current->strPatternId).second) continue;
+                if (!visited.insert(current->strPatternId).second)
+                    continue;
                 if (!current->strLoadError.empty() || current->strGateId != bundle.strGateId ||
                     current->strTargetBossPlacementId != pattern->strTargetBossPlacementId ||
                     (product && current->strAuthoringStatus != "PRODUCT")) return fail("follow-up must retain Gate, target and Product status");
                 for (const auto& box : current->LogicOccurrences)
                 {
-                    if (!box.bEnabled) continue;
+                    if (!box.bEnabled)
+                        continue;
                     const auto* logic = findLogic(box.strLogicId);
-                    if (!logic) return fail("member Logic reference is missing");
+                    if (!logic)
+                        return fail("member Logic reference is missing");
                     if (logic->strJudgementKind == "POSE_INPUT" || logic->strJudgementKind == "ROULETTE_CARD_MATCH" ||
                         (logic->strTriggerKind == "HUD_ENTER" || logic->strTriggerKind == "CARD_MAZE_HIDE_NEXT" || logic->strTriggerKind == "CARD_MAZE_ENTER" || logic->strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")) statefulMembers.insert(member.strMemberId);
                     for (const auto* outcomes : {&box.OnSuccessLogicIds, &box.OnFailLogicIds, &box.OnTimeoutLogicIds})
                         for (const auto& id : *outcomes)
                         {
                             const auto* outcome = findLogic(id);
-                            if (!outcome) return fail("member outcome reference is missing");
-                            if (outcome->strOutcomeKind == "CLOWN_TRANSFORM") statefulMembers.insert(member.strMemberId);
+                            if (!outcome)
+                                return fail("member outcome reference is missing");
+                            if (outcome->strOutcomeKind == "CLOWN_TRANSFORM")
+                                statefulMembers.insert(member.strMemberId);
                             if (!outcome->strFollowupPatternId.empty())
                             {
                                 const auto followup = std::find_if(document.Patterns.begin(), document.Patterns.end(),
                                     [&](const auto& row) { return row.strPatternId == outcome->strFollowupPatternId; });
-                                if (followup == document.Patterns.end()) return fail("member follow-up Pattern is missing");
+                                if (followup == document.Patterns.end())
+                                    return fail("member follow-up Pattern is missing");
                                 addGlobalOwners(followup->SceneProfileOccurrences, followup->PresentationOccurrences, member.strMemberId, true);
                                 pending.push_back(&*followup);
                             }
@@ -1624,7 +2050,8 @@ namespace
                 {
                     const auto world = std::find_if(document.Worlds.begin(), document.Worlds.end(),
                         [&](const auto& row) { return row.strWorldId == box.strWorldId; });
-                    if (world == document.Worlds.end()) return fail("member WORLD reference is missing");
+                    if (world == document.Worlds.end())
+                        return fail("member WORLD reference is missing");
                     const auto owner = worldOwners.find(world->strSequenceInstanceId);
                     if (owner != worldOwners.end() && owner->second != member.strMemberId)
                         return fail("members share a live WORLD sequence instance");
@@ -1633,7 +2060,8 @@ namespace
             }
 
         }
-        if (statefulMembers.size() > 1u) return fail("multiple owners of shared player mode (POSE/ROULETTE/HUD/CLOWN)");
+        if (statefulMembers.size() > 1u)
+            return fail("multiple owners of shared player mode (POSE/ROULETTE/HUD/CLOWN)");
         for (const auto& row : bundle.SceneProfileOccurrences)
         {
             const auto profile = std::find_if(document.SceneProfiles.begin(), document.SceneProfiles.end(),
@@ -1669,19 +2097,25 @@ namespace
                 return fail("common presentation supports unbound Camera only: " + row.strOccurrenceId);
             span = (std::max)(span, end);
         }
-        if (span > MAX_TIME_MS) return fail("offset or common track exceeds 600 seconds");
+        if (span > MAX_TIME_MS)
+            return fail("offset or common track exceeds 600 seconds");
         addWindows(bundle.SceneProfileOccurrences, bundle.PresentationOccurrences, 0, bundle.strBundleId);
         addGlobalOwners(bundle.SceneProfileOccurrences, bundle.PresentationOccurrences, bundle.strBundleId, false);
         for (const auto& [kind, owners] : followupGlobalOwners)
             if (!owners.empty() && globalOwners[kind].size() > 1u)
                 return fail("conditional follow-up global " + kind + " conflicts with another owner; its start time is not fixed");
-        for (size_t a = 0; a < windows.size(); ++a) for (size_t b = a + 1; b < windows.size(); ++b)
+        for (size_t a = 0; a < windows.size(); ++a)
+            for (size_t b = a + 1; b < windows.size(); ++b)
             if (windows[a].kind == windows[b].kind && windows[a].owner != windows[b].owner &&
                 windows[a].start < windows[b].end && windows[b].start < windows[a].end)
                 return fail("overlapping global " + windows[a].kind + " owners: " + windows[a].owner + " / " + windows[b].owner);
         return true;
     }
 
+	// Parse_Text, Validate와 패턴 확장이 문서 전체의 ID, 범위 및 참조 관계를 검사할 때 사용하는 공통 경계다.
+	// 입력 문서는 바꾸지 않으며 조회 표의 포인터는 이 호출 동안 문서의 원소를 차용한다.
+	// 패턴 한 개를 읽는 중에는 validatePatternLinks를 꺼서 일부 문서 간 참조 검사를 미룬다.
+	// expandedIds는 부모 확장으로 만든 ID의 일부 생성 접두사/순번 검사를 생략하며 나머지 형식 검증은 유지한다.
 	bool_t Validate_Shape(
 		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 		std::string& outStatus,
@@ -1724,6 +2158,7 @@ namespace
 			return false;
 		}
 
+		// stable ID 집합은 중복을 거절하고 조회 표는 occurrence가 참조하는 정의를 찾는 데 사용한다.
 		std::unordered_set<std::string> logicIds;
 		std::unordered_map<std::string, const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION*> logicById;
 		for (const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& logic : document.Logics)
@@ -1744,9 +2179,8 @@ namespace
 				return false;
 			logicById.emplace(logic.strLogicId, &logic);
 		}
-		/* An outcome slot lists RESULT Logics only, and only a DURATION box may
-		   own outcomes: a judgement window is the only thing that ends in
-		   success, failure or timeout. */
+		// 결과 슬롯에는 RESULT 정의만 연결한다. 결과를 소유할 수 있는 종류는 아래 공용 판정 함수를 따른다.
+		// DURATION뿐 아니라 허용된 ENTER_AREA와 OBJECT_CONTACT도 연결을 가질 수 있다.
 		const auto findLogic = [&logicById](const std::string& logicId)
 			-> const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION*
 		{
@@ -1759,6 +2193,8 @@ namespace
 			return nullptr != logic && "RESULT" == logic->strLogicType;
 		};
 
+		// 소환 정의는 ID·이름을 등록한 뒤 자체 소환 정책을 검사한다.
+		// 패턴의 실제 소환 배치와 자식 패턴 참조는 뒤에서 이 정의 집합에 연결한다.
 		std::unordered_set<std::string> summonIds;
 		for (const KOUKU_SAYDON_COMPOSITION_SUMMON_DEFINITION& summon : document.Summons)
 		{
@@ -1773,15 +2209,16 @@ namespace
 					summon.strSummonId;
 				return false;
 			}
-            if (!Validate_SummonPolicy(summon, outStatus)) return false;
+            if (!Validate_SummonPolicy(summon, outStatus))
+                return false;
 		}
 
 		std::unordered_set<std::string> worldIds;
 		std::unordered_map<std::string, std::string> worldInstanceIds;
 		for (const KOUKU_SAYDON_COMPOSITION_WORLD_DEFINITION& world : document.Worlds)
 		{
-			// The Gate 2 source importer keeps the actor's semantic identity;
-			// its World resource and installed instance must share the exact suffix.
+			// Gate 2 원본 importer의 actor 의미 ID를 유지한다.
+			// 해당 World 리소스와 설치 인스턴스는 같은 접미사를 가져야 한다.
 			constexpr std::string_view sourceWorldPrefix = "world.kouku.gate2.intro.";
 			const bool sourceWorld = world.strWorldId.starts_with(sourceWorldPrefix) &&
 				world.strWorldId.size() > sourceWorldPrefix.size() &&
@@ -1806,6 +2243,9 @@ namespace
 			}
 			worldInstanceIds.emplace(world.strWorldId, world.strSequenceInstanceId);
 		}
+
+		// Scene Profile 정의에서는 문서 ID와 렌더링 profile ID의 형식을 확인한다.
+		// 렌더링 문서를 여기서 로드하거나 적용하지는 않는다.
 		std::unordered_set<std::string> sceneProfileIds;
 		for (const KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_DEFINITION& profile : document.SceneProfiles)
 		{
@@ -1823,21 +2263,32 @@ namespace
 			}
 		}
 
+		// 표현 리소스 카탈로그를 종류별로 검사한 뒤 ID로 차용한다.
+		// asset 문자열/형상/수치의 구조 검증이며 외부 이펙트·카메라 파일의 로드 성공을 확인하지 않는다.
 		std::unordered_map<std::string, const KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE*> presentationResources;
 		if (document.iNextPresentationResourceOrdinal == 0u ||
 			document.iNextPresentationResourceOrdinal > MAX_NEXT_ORDINAL || document.PresentationResources.size() > 4096u)
-		{ outStatus = "Invalid presentation resource count."; return false; }
+		{
+			outStatus = "Invalid presentation resource count.";
+			return false;
+		}
 		for (const auto& row : document.PresentationResources)
 		{
 			if (!row.strSoundEvent.empty() &&
 				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND || !Is_StableId(row.strSoundEvent)))
-			{ outStatus = "Sound event requires a SOUND resource and a stable catalog identity."; return false; }
+			{
+				outStatus = "Sound event requires a SOUND resource and a stable catalog identity.";
+				return false;
+			}
 			if ((row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE &&
 				!CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(row.strSubtitleText)) ||
 				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && !row.strSubtitleText.empty()) ||
 				(row.strSubtitlePosition != "NORMAL" && row.strSubtitlePosition != "UPPER") ||
 				(row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && row.strSubtitlePosition != "NORMAL"))
-			{ outStatus = "Subtitle text/position requires a valid SUBTITLE resource."; return false; }
+			{
+				outStatus = "Subtitle text/position requires a valid SUBTITLE resource.";
+				return false;
+			}
 			bool_t validAsset = false;
 			switch (row.eKind)
 			{
@@ -1867,7 +2318,7 @@ namespace
 			default: break;
 			}
 			if (!Is_StableId(row.strResourceId) || (!expandedIds && !Try_ParseGeneratedOrdinal(row.strResourceId,
-				"kakulsaydon.g1.presentation.", document.iNextPresentationResourceOrdinal)) ||
+				"koukusaydon.g1.presentation.", document.iNextPresentationResourceOrdinal)) ||
 				!presentationResources.emplace(row.strResourceId, &row).second ||
 				!Is_DisplayName(row.strDisplayName) || !validAsset ||
 				(row.strColliderKind != "GEOMETRY" && row.strColliderKind != "ROULETTE_CARD_REGION") ||
@@ -1878,20 +2329,31 @@ namespace
 				!std::isfinite(row.fInnerRadiusM) || row.fInnerRadiusM < 0.0 || row.fInnerRadiusM >= row.fRadiusM ||
 				(row.fInnerRadiusM > 0.0 && (row.eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || (row.strShape != "CIRCLE" && row.strShape != "SECTOR"))) ||
 				!std::isfinite(row.fHalfAngleDegrees) || (row.strShape == "REVERSE_SECTOR" ? row.fHalfAngleDegrees < 0.0 : row.fHalfAngleDegrees <= 0.0) || row.fHalfAngleDegrees > 180.0)
-			{ outStatus = "Invalid presentation resource: " + row.strResourceId; return false; }
+			{
+				outStatus = "Invalid presentation resource: " + row.strResourceId;
+				return false;
+			}
 		}
 
+		// World에 동반 이펙트가 지정됐으면 위 카탈로그의 EFFECT 정의여야 한다.
+		// 패턴별 World 배치와 이펙트 배치의 실제 짝은 다음 순회에서 검사한다.
 		for (const auto& world : document.Worlds)
 			if (!world.strCompanionEffectResourceId.empty())
 			{
 				const auto effect = presentationResources.find(world.strCompanionEffectResourceId);
 				if (effect == presentationResources.end() || effect->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)
-				{ outStatus = "World companion must name an EFFECT resource: " + world.strWorldId; return false; }
+				{
+					outStatus = "World companion must name an EFFECT resource: " + world.strWorldId;
+					return false;
+				}
 			}
 		std::unordered_set<std::string> patternIds;
 		std::unordered_set<std::string> actionIds;
 		std::unordered_set<std::string> occurrenceIds;
 		std::size_t totalOccurrences = 0u;
+
+        // 추적 투사체와 FEAR의 부가 리소스는 카탈로그 종류까지 연결한다.
+        // 이 검사는 Logic 정의 참조를 읽을 뿐 대상 선택이나 공포 효과를 실행하지 않는다.
         for (const auto& logic : document.Logics)
         {
             if (logic.strJudgementKind == "PURSUIT_PROJECTILES" || logic.strTriggerKind == "PURSUIT_PROJECTILES")
@@ -1903,26 +2365,41 @@ namespace
                     const auto resource = presentationResources.find(id);
                     if (resource == presentationResources.end() || resource->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                         resource->second->strResourceKind != "V1_EFFECT")
-                    { outStatus = "PURSUIT_PROJECTILES references a missing Effect resource: " + id; return false; }
+                    {
+                        outStatus = "PURSUIT_PROJECTILES references a missing Effect resource: " + id;
+                        return false;
+                    }
                 }
             }
-            if (logic.strOutcomeKind != "FEAR") continue;
+            if (logic.strOutcomeKind != "FEAR")
+                continue;
             const auto effect = presentationResources.find(logic.strEffectResourceId);
             const auto light = presentationResources.find(logic.strLightResourceId);
             const auto sound = presentationResources.find(logic.strSoundResourceId);
             if ((!logic.strSceneProfileId.empty() && !sceneProfileIds.contains(logic.strSceneProfileId)) ||
                 (!logic.strEffectResourceId.empty() && (effect == presentationResources.end() ||
                  effect->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT)))
-            { outStatus = "FEAR references a missing Scene Profile or Effect resource: " + logic.strLogicId; return false; }
+            {
+                outStatus = "FEAR references a missing Scene Profile or Effect resource: " + logic.strLogicId;
+                return false;
+            }
             if (!logic.strLightResourceId.empty() && (light == presentationResources.end() ||
                 light->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT || light->second->strDefaultAnchorKind != "PLAYER"))
-            { outStatus = "FEAR requires a PLAYER Light resource: " + logic.strLogicId; return false; }
+            {
+                outStatus = "FEAR requires a PLAYER Light resource: " + logic.strLogicId;
+                return false;
+            }
             if (!logic.strSoundResourceId.empty() && (sound == presentationResources.end() ||
                 sound->second->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
-            { outStatus = "FEAR references a missing Sound resource: " + logic.strLogicId; return false; }
+            {
+                outStatus = "FEAR references a missing Sound resource: " + logic.strLogicId;
+                return false;
+            }
         }
 		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
 		{
+			// 이미 격리한 오류 패턴은 ID 형식·중복과 보존 JSON의 파싱 가능성만 검사하고 건너뛴다.
+			// 격리 행을 실행 가능한 정상 패턴으로 승인하는 경로는 아니다.
 			if (!pattern.strLoadError.empty())
 			{
 				DATA_JSON_VALUE preserved;
@@ -1984,20 +2461,32 @@ namespace
 
 			if (pattern.bEnterCombatOnFinish && pattern.strGateId != "GATE1" &&
 				pattern.strGateId != "GATE2" && pattern.strGateId != "GATE3" && pattern.strGateId != "BINGO")
-			{ outStatus = "Combat entry sequences require GATE1, GATE2, GATE3, or BINGO."; return false; }
+			{
+				outStatus = "Combat entry sequences require GATE1, GATE2, GATE3, or BINGO.";
+				return false;
+			}
 
 			if (!std::isfinite(pattern.fAnimationRootVerticalScale) ||
 				pattern.fAnimationRootVerticalScale < 0.0 || pattern.fAnimationRootVerticalScale > 1.0)
-			{ outStatus = "Animation root vertical scale must be finite 0..1."; return false; }
+			{
+				outStatus = "Animation root vertical scale must be finite 0..1.";
+				return false;
+			}
 			if (!std::isfinite(pattern.fAnimationRootHorizontalScale) ||
 				pattern.fAnimationRootHorizontalScale < 0.0 || pattern.fAnimationRootHorizontalScale > 1.0)
-			{ outStatus = "Animation root horizontal scale must be finite 0..1."; return false; }
+			{
+				outStatus = "Animation root horizontal scale must be finite 0..1.";
+				return false;
+			}
 			if (pattern.ResetBossYawDegrees && (!pattern.bResetBossToSpawn ||
 				!std::isfinite(*pattern.ResetBossYawDegrees) || std::abs(*pattern.ResetBossYawDegrees) > 360.0))
 			{
 				outStatus = "Pattern reset yaw needs spawn reset and finite -360..360 degrees.";
 				return false;
 			}
+
+			// 단계 길이를 uint64 ms로 합산하고 stage ID는 패턴 안에서, action ID는 문서 전체에서 중복을 막는다.
+			// 애니메이션 occurrence는 단계 시작 기준 offset과 재생 길이로 끝 시각을 검사한다.
 			std::uint64_t patternDurationMs = 0u;
 			std::unordered_set<std::string> stageIds;
 			const std::string occurrencePrefix = pattern.strPatternId + ".animation.";
@@ -2005,9 +2494,16 @@ namespace
 			{
                 if (stage.RetargetTarget && (!stage.bRetargetOnEnter ||
                     (*stage.RetargetTarget != "RANDOM_ALIVE" && *stage.RetargetTarget != "NEAREST_ALIVE")))
-                { outStatus = "Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE."; return false; }
+                {
+                    outStatus = "Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE.";
+                    return false;
+                }
 				patternDurationMs += stage.iDurationMs;
-				if (patternDurationMs > MAX_TIME_MS) { outStatus = "Pattern exceeds 600 seconds."; return false; }
+				if (patternDurationMs > MAX_TIME_MS)
+				{
+					outStatus = "Pattern exceeds 600 seconds.";
+					return false;
+				}
 				if (!Is_StableId(stage.strStageId) ||
 					!stageIds.insert(stage.strStageId).second ||
 					(!expandedIds && !Try_ParseGeneratedOrdinal(stage.strStageId,
@@ -2059,7 +2555,13 @@ namespace
 				}
 			}
             if (pattern.iDurationMs && patternDurationMs > pattern.iDurationMs)
-            { outStatus = "Explicit Pattern duration is shorter than its Stages: " + pattern.strPatternId; return false; }
+            {
+                outStatus = "Explicit Pattern duration is shorter than its Stages: " + pattern.strPatternId;
+                return false;
+            }
+
+            // 명시한 패턴 길이가 있으면 그것을 사용하고, 없으면 단계 길이 합을 사용한다.
+            // 자식 패턴 배치는 여기서 ID/시간 형식만 보고 참조 대상의 존재는 후속 연결 검사에 맡긴다.
             const auto lifetime = pattern.iDurationMs ? pattern.iDurationMs : patternDurationMs;
             for (const auto& row : pattern.PatternOccurrences)
             {
@@ -2067,8 +2569,14 @@ namespace
                     pattern.strPatternId + ".pattern.", pattern.iNextPatternOccurrenceOrdinal)) ||
                     !occurrenceIds.insert(row.strOccurrenceId).second || !Is_StableId(row.strPatternId) ||
                     !row.iDurationMs || std::uint64_t(row.iStartMs) + row.iDurationMs > lifetime)
-                { outStatus = "Invalid Pattern occurrence identity or window: " + row.strOccurrenceId; return false; }
+                {
+                    outStatus = "Invalid Pattern occurrence identity or window: " + row.strOccurrenceId;
+                    return false;
+                }
             }
+
+            // 애니메이션 시작 시각을 패턴 시계로 모아 정렬한다. blend-in이 있는 행은
+            // 정렬상 바로 앞 행의 종료와 시작이 같아야 하며, 이 표는 입력 배열 순서를 바꾸지 않는다.
             std::vector<std::pair<std::uint64_t, const KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE*>> animationOrder;
             std::uint64_t stageOrigin = 0u;
             for (const auto& stage : pattern.Stages)
@@ -2080,16 +2588,19 @@ namespace
             std::sort(animationOrder.begin(), animationOrder.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
             for (size_t i = 0; i < animationOrder.size(); ++i)
             {
-                if (!animationOrder[i].second->iBlendInMs) continue;
+                if (!animationOrder[i].second->iBlendInMs)
+                    continue;
                 if (i == 0 ||
                     animationOrder[i-1].first + animationOrder[i-1].second->iPlayMs != animationOrder[i].first)
-                { outStatus = "Animation blend requires an adjacent previous occurrence: " + animationOrder[i].second->strOccurrenceId; return false; }
+                {
+                    outStatus = "Animation blend requires an adjacent previous occurrence: " + animationOrder[i].second->strOccurrenceId;
+                    return false;
+                }
             }
 		}
 
-		/* Logic boxes are pattern-relative, so their window is checked against the
-		   whole Stage clock sum. A PRODUCT Pattern may own typed judgement boxes;
-		   a box whose Logic is still only a name keeps the Pattern in DRAFT. */
+		// Logic 구간은 패턴 시작 기준이다. 명시한 패턴 길이가 있으면 그 길이, 없으면 단계 길이의 합으로 검사한다.
+		// PRODUCT의 실행 정의와 이름만 만든 DRAFT 정의를 구분하여 미완성 판정을 제품 패턴에 넣지 않는다.
 		std::vector<std::pair<std::string, std::string>> followupTargets;
 		for (const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern : document.Patterns)
 		{
@@ -2099,27 +2610,41 @@ namespace
 			std::uint64_t lifetimeMs = 0u;
 			for (const KOUKU_SAYDON_COMPOSITION_STAGE& stage : pattern.Stages)
 				lifetimeMs += stage.iDurationMs;
-			if (pattern.iDurationMs) lifetimeMs = pattern.iDurationMs;
+			if (pattern.iDurationMs)
+				lifetimeMs = pattern.iDurationMs;
+
+			// 절대 Boss Motion은 시작/끝·키·고정 yaw를 사용하므로 단계 진입 재선택과 spawn reset을 함께 허용하지 않는다.
+			// 키가 없는 직선 경로는 양 끝 Y가 같아야 한다.
 			if (pattern.BossMotion)
 			{
 				const auto& motion = *pattern.BossMotion;
 				if (std::any_of(pattern.Stages.begin(), pattern.Stages.end(),
 					[](const auto& stage) { return stage.bRetargetOnEnter; }))
-				{ outStatus = "Stage retargetOnEnter cannot share a Pattern with fixed-yaw Boss Motion."; return false; }
+				{
+					outStatus = "Stage retargetOnEnter cannot share a Pattern with fixed-yaw Boss Motion.";
+					return false;
+				}
 				if (pattern.bResetBossToSpawn || pattern.ResetBossYawDegrees ||
 					motion.iStartMs >= motion.iEndMs || motion.iEndMs > lifetimeMs ||
 					!Valid_PresentationVector(motion.StartPosition, -100000.0, 100000.0) ||
 					!Valid_PresentationVector(motion.EndPosition, -100000.0, 100000.0) ||
 					(motion.Keys.empty() && motion.StartPosition[1] != motion.EndPosition[1]) || !Valid_BossMotionKeys(motion) ||
 					!std::isfinite(motion.fYawDegrees) || std::abs(motion.fYawDegrees) > 360.0)
-				{ outStatus = "Boss Motion needs a valid interval, matching ordered key endpoints (or equal linear base Y), and no spawn reset."; return false; }
+				{
+					outStatus = "Boss Motion needs a valid interval, matching ordered key endpoints (or equal linear base Y), and no spawn reset.";
+					return false;
+				}
 			}
 			if (pattern.PatternOccurrences.empty())
 			{
 				std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> blendWindows;
 				if (!CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
-					document, pattern, blendWindows, outStatus)) return false;
+					document, pattern, blendWindows, outStatus))
+					return false;
 			}
+
+			// 표현 배치를 먼저 검사해 region과 선택 그룹을 모은 뒤 Logic에서 참조한다.
+			// 고정 SHOWTIME 그룹 이름은 비활성 Logic 배치도 포함해 수집한다.
 			std::unordered_set<std::string> regionIds;
 			std::unordered_set<std::string> companionWorldBoxes;
 			std::unordered_map<std::string, std::pair<
@@ -2129,14 +2654,21 @@ namespace
             {
                 const auto* owner = findLogic(box.strLogicId);
                 if (owner && owner->strLogicType == "DURATION" && owner->strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
-                    !owner->strFixedSelectionGroupId.empty()) fixedSoundGroups.insert(owner->strFixedSelectionGroupId);
+                    !owner->strFixedSelectionGroupId.empty())
+                    fixedSoundGroups.insert(owner->strFixedSelectionGroupId);
             }
+
+			// 표현 배치의 공통 시간·TRS·fade·리소스 참조를 먼저 검사한다.
+			// 이후 종류별 부착 규칙은 여기서 찾은 리소스와 같은 패턴의 배치들을 차용한다.
 			for (const auto& row : pattern.PresentationOccurrences)
 			{
 				const std::uint64_t endMs = static_cast<std::uint64_t>(row.iStartMs) + row.iDurationMs;
 				if (row.iSoundSourceStartMs && (row.iSoundSourceStartMs > MAX_TIME_MS ||
 					!presentationResources.contains(row.strResourceId) || presentationResources.at(row.strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
-				{ outStatus = "Sound Source In belongs only to SOUND occurrences."; return false; }
+				{
+					outStatus = "Sound Source In belongs only to SOUND occurrences.";
+					return false;
+				}
 				if (!Is_StableId(row.strOccurrenceId) || (!expandedIds && !Try_ParseGeneratedOrdinal(row.strOccurrenceId,
 					pattern.strPatternId + ".presentation.", pattern.iNextPresentationOccurrenceOrdinal)) ||
 					!occurrenceIds.insert(row.strOccurrenceId).second ||
@@ -2152,7 +2684,10 @@ namespace
 					!std::isfinite(row.fBrightnessMultiplier) || row.fBrightnessMultiplier < 0.0 || row.fBrightnessMultiplier > 16.0 ||
 					(row.strBoneTarget != "BODY" && row.strBoneTarget != "WEAPON") ||
 					(!row.strBone.empty() && !Is_StableId(row.strBone)))
-				{ outStatus = "Invalid presentation occurrence or window: " + row.strOccurrenceId; return false; }
+				{
+					outStatus = "Invalid presentation occurrence or window: " + row.strOccurrenceId;
+					return false;
+				}
 				const bool_t knownSymbol = row.strCardSymbol == "NONE" ||
 					std::any_of(KOUKU_SAYDON_CARD_SYMBOLS.begin(), KOUKU_SAYDON_CARD_SYMBOLS.end(),
 						[&](const char* symbol) { return row.strCardSymbol == symbol; });
@@ -2162,17 +2697,29 @@ namespace
 						row.strAnchorKind != "PLAYER" && row.strAnchorKind != "MAP") ||
 					(!row.strWorldId.empty() && !worldIds.contains(row.strWorldId)) ||
 					(row.strAnchorKind != "WORLD" && !row.strWorldId.empty()))
-				{ outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId; return false; }
+				{
+					outStatus = "Invalid region identity, card or anchor: " + row.strOccurrenceId;
+					return false;
+				}
                 const auto* resource = presentationResources.at(row.strResourceId);
                 if (row.iEffectSourceStartMs && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                     row.iEffectSourceStartMs >= resource->iDurationMs || row.iEffectSourceStartMs > MAX_TIME_MS))
-                { outStatus = "Effect Source In must be inside an Effect resource lifetime."; return false; }
+                {
+                    outStatus = "Effect Source In must be inside an Effect resource lifetime.";
+                    return false;
+                }
                 if (!row.EffectSourceTimeKeys.empty() &&
                     (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                     (resource->strResourceKind != "GROUP" && resource->strResourceKind != "LEAF" &&
                      resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT") ||
                     !row.Has_ValidEffectSourceTimeKeys(resource->iDurationMs)))
-                { outStatus = "Effect source clock requires monotonic keys covering a fixed MAP occurrence."; return false; }
+                {
+                    outStatus = "Effect source clock requires monotonic keys covering a fixed MAP occurrence.";
+                    return false;
+                }
+
+                // 출생 위치를 다른 표현 배치에서 빌리면 같은 패턴의 독립 고정 BOSS Effect를 요구한다.
+                // 원본 시작은 현재 시작보다 늦을 수 없고, 원본이 다시 다른 출생 anchor를 참조할 수는 없다.
                 if (!row.strAnchorPresentationOccurrenceId.empty())
                 {
                     const auto source = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2185,8 +2732,14 @@ namespace
                         presentationResources.at(source->strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                         source->strAnchorKind != "BOSS" || source->bFollowBoss || !source->strBone.empty() || source->strBoneTarget != "BODY" ||
                         source->iStartMs > row.iStartMs || !source->strAnchorPresentationOccurrenceId.empty())
-                    { outStatus = "Birth anchor source requires an earlier independent fixed BOSS Effect in the same Pattern: " + row.strOccurrenceId; return false; }
+                    {
+                        outStatus = "Birth anchor source requires an earlier independent fixed BOSS Effect in the same Pattern: " + row.strOccurrenceId;
+                        return false;
+                    }
                 }
+
+                // 선형 Collider에는 종료 위치/크기를 요구한다. LINEAR CIRCLE/CYLINDER는 시작·끝 X/Z 배율을 맞춘다.
+                // 속이 빈 형상은 시작 X/Z를 맞추고 LINEAR일 때 끝 X/Z도 검사한다. 여기서 충돌을 계산하지 않는다.
                 if ((row.strColliderMotion != "STATIC" && row.strColliderMotion != "LINEAR") ||
                     (row.strColliderMotion == "LINEAR" && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
                     !Valid_PresentationVector(row.ColliderEndPositionOffset, -100000.0, 100000.0) ||
@@ -2194,75 +2747,139 @@ namespace
                     ((resource->strShape == "CIRCLE" || resource->strShape == "CYLINDER") &&
                      (std::abs(row.Scale[0] - row.Scale[2]) > .0001 || std::abs(row.ColliderEndScale[0] - row.ColliderEndScale[2]) > .0001)) ||
                     (resource->fInnerRadiusM > 0.0 && std::abs(row.ColliderEndScale[0] - row.ColliderEndScale[2]) > .0001))))
-                { outStatus = "Collider motion requires valid end position and positive end size."; return false; }
+                {
+                    outStatus = "Collider motion requires valid end position and positive end size.";
+                    return false;
+                }
                 if (resource->fInnerRadiusM > 0.0 && std::abs(row.Scale[0] - row.Scale[2]) > .0001)
-                { outStatus = "Hollow Collider requires equal X/Z scale: " + row.strOccurrenceId; return false; }
-                // Camera shots own their world coordinates; Sound does not bind an Object.
+                {
+                    outStatus = "Hollow Collider requires equal X/Z scale: " + row.strOccurrenceId;
+                    return false;
+                }
+                // Camera shot은 월드 좌표를 소유하고 Sound는 Object에 부착하지 않는다.
+				// V1 이펙트의 길이 맞춤과 반복 옵션은 서로 배타적이다.
+				// 이 검사 뒤에서 표현 종류마다 실제로 허용하는 anchor와 부착 필드를 좁힌다.
 				if ((row.bFitEffectToDuration || row.bLoopEffectToDuration) && (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
 					(resource->strResourceKind != "V1_EFFECT" && resource->strResourceKind != "V1_ELEMENT")))
-				{ outStatus = "Effect lifetime controls require a V1 Effect resource."; return false; }
+				{
+					outStatus = "Effect lifetime controls require a V1 Effect resource.";
+					return false;
+				}
 				if (row.bFitEffectToDuration && row.bLoopEffectToDuration)
-				{ outStatus = "Effect lifetime cannot stretch and loop simultaneously."; return false; }
+				{
+					outStatus = "Effect lifetime cannot stretch and loop simultaneously.";
+					return false;
+				}
                 const bool objectAnchored = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                     resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER;
                 if (objectAnchored && row.strAnchorKind == "WORLD" && row.strWorldId.empty())
-                { outStatus = "World Object anchor requires a worldId; fixed world coordinates use MAP: " + row.strOccurrenceId; return false; }
+                {
+                    outStatus = "World Object anchor requires a worldId; fixed world coordinates use MAP: " + row.strOccurrenceId;
+                    return false;
+                }
+
+				// 선택 그룹은 첫 배치와 개수를 보관한다. 고정 SHOWTIME의 Effect/Sound 혼합만 예외로 두며
+				// Collider끼리는 같은 anchor 기준과 필요한 시작 시각을 공유해야 한다.
 				if (!row.strSelectionGroupId.empty())
 				{
                     const bool fixedSound = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND &&
                         fixedSoundGroups.contains(row.strSelectionGroupId) && row.strAnchorKind == "MAP" && !row.bFollowBoss;
 					if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
 						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND) || !Is_StableId(row.strSelectionGroupId))
-					{ outStatus = "Selection Group requires Effect, Collider or Sound: " + row.strOccurrenceId; return false; }
-                    if (fixedSound) groupsWithSound.insert(row.strSelectionGroupId);
+					{
+						outStatus = "Selection Group requires Effect, Collider or Sound: " + row.strOccurrenceId;
+						return false;
+					}
+                    if (fixedSound)
+                        groupsWithSound.insert(row.strSelectionGroupId);
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && row.strAnchorKind != "BOSS")
-					{ outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported."; return false; }
+					{
+						outStatus = "Selection Group requires BOSS anchors; WORLD, MAP and PLAYER are unsupported.";
+						return false;
+					}
 					auto& group = selectionGroups[row.strSelectionGroupId];
-					if (nullptr == group.first) group.first = &row;
+					if (nullptr == group.first)
+						group.first = &row;
 					const auto& first = *group.first;
 					const auto* firstResource = presentationResources.at(first.strResourceId);
                     const bool fixedVisualMix = firstResource && fixedSoundGroups.contains(row.strSelectionGroupId) &&
                         (firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || firstResource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) &&
                         (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND);
 					if (!firstResource || (firstResource->eKind != resource->eKind && !fixedVisualMix))
-					{ outStatus = "Selection Group cannot mix resource kinds outside fixed SHOWTIME groups: " + row.strSelectionGroupId; return false; }
+					{
+						outStatus = "Selection Group cannot mix resource kinds outside fixed SHOWTIME groups: " + row.strSelectionGroupId;
+						return false;
+					}
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && (row.strAnchorKind != first.strAnchorKind || row.bFollowBoss != first.bFollowBoss ||
 						row.strBone != first.strBone || row.strBoneTarget != first.strBoneTarget ||
 						row.strWorldId != first.strWorldId || row.strWorldOccurrenceId != first.strWorldOccurrenceId ||
 						row.iWorldEmissionIndex != first.iWorldEmissionIndex || row.strWorldEffectTrackId != first.strWorldEffectTrackId || row.strAnchorPresentationOccurrenceId != first.strAnchorPresentationOccurrenceId ||
 						(!row.bFollowBoss && row.iStartMs != first.iStartMs)))
-					{ outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId; return false; }
+					{
+						outStatus = "Selection Group Colliders must share an anchor frame: " + row.strSelectionGroupId;
+						return false;
+					}
 					++group.second;
 				}
+
+				// 무기 본·World 본·본 회전 정책을 따로 검사한다. World 본은 추종 BODY Collider여야 하며
+				// World 이펙트 track을 지정하면 정확한 World 배치 ID와 BONE 회전도 필요하다.
 				if (row.strBoneTarget != "BODY" && ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) ||
 					row.strAnchorKind != "BOSS" || row.strBone.empty()))
-				{ outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone."; return false; }
+				{
+					outStatus = "WEAPON Bone anchors require a boss Collider and an explicit weapon bone.";
+					return false;
+				}
                 const bool worldBoneCollider = resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
                     row.strAnchorKind == "WORLD" && row.bFollowBoss && row.strBoneTarget == "BODY" && !row.strBone.empty();
                 if (!row.strWorldEffectTrackId.empty() && (!Is_StableId(row.strWorldEffectTrackId) ||
                     !worldBoneCollider || row.strBoneRotation != "BONE" || row.strWorldOccurrenceId.empty()))
-                { outStatus = "World Effect track requires an exact World occurrence and following WORLD BODY bone Collider with BONE rotation: " + row.strOccurrenceId; return false; }
+                {
+                    outStatus = "World Effect track requires an exact World occurrence and following WORLD BODY bone Collider with BONE rotation: " + row.strOccurrenceId;
+                    return false;
+                }
                 if (row.strAnchorKind == "WORLD" && !row.strBone.empty() && !worldBoneCollider)
-                { outStatus = "WORLD bones require a following BODY Collider."; return false; }
+                {
+                    outStatus = "WORLD bones require a following BODY Collider.";
+                    return false;
+                }
 				if (row.strBoneRotation != "TARGET_YAW" && (row.strBoneRotation != "BONE" ||
 					(resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER) ||
 					(row.strAnchorKind != "BOSS" && !worldBoneCollider) || row.strBone.empty() ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && !row.bFollowBoss)))
-				{ outStatus = "Bone rotation requires a boss Effect or following Collider with an explicit bone: " + row.strOccurrenceId; return false; }
+				{
+					outStatus = "Bone rotation requires a boss Effect or following Collider with an explicit bone: " + row.strOccurrenceId;
+					return false;
+				}
+
+				// Light의 밝기/배율/PLAYER 추종 조건, Subtitle의 고정 MAP 조건과
+				// MAP Effect/Collider/Sound의 비부착 조건을 각 종류에 맞춰 검사한다.
 				if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.strAnchorKind == "PLAYER" || (row.strAnchorKind == "MAP" && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::SOUND) || row.fBrightnessMultiplier != 1.0)) ||
 					(resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT &&
 					(row.Scale != std::array<double, 3u>{1.0, 1.0, 1.0} ||
 					 (row.strAnchorKind != "BOSS" && !row.strBone.empty()) ||
 					 (row.strAnchorKind == "PLAYER" && !row.bFollowBoss))))
-				{ outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId; return false; }
+				{
+					outStatus = "Invalid Light anchor, scale, bone or brightness: " + row.strOccurrenceId;
+					return false;
+				}
 				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE &&
 					(row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() ||
 					 !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex != 0u))
-				{ outStatus = "Subtitle requires a fixed MAP anchor without a bone or World occurrence."; return false; }
+				{
+					outStatus = "Subtitle requires a fixed MAP anchor without a bone or World occurrence.";
+					return false;
+				}
 				if ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) && row.strAnchorKind == "MAP" &&
 					(row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" || !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || ((resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND) && row.iWorldEmissionIndex != 0u)))
-				{ outStatus = "MAP Effect/Collider/Sound requires a fixed position without a bone or World occurrence."; return false; }
+				{
+					outStatus = "MAP Effect/Collider/Sound requires a fixed position without a bone or World occurrence.";
+					return false;
+				}
+
+				// World 배치를 지정한 표현은 같은 패턴에서 해당 배치와 World 정의를 찾는다.
+				// 비 WORLD Effect는 World 배치마다 같은 동반 리소스로 한 번만 연결하고, WORLD 부착은 정의와 anchor를 맞춘다.
 				if (!row.strWorldOccurrenceId.empty())
 				{
 					const auto owner = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
@@ -2270,25 +2887,42 @@ namespace
 					const auto world = owner == pattern.WorldOccurrences.end() ? document.Worlds.end() :
 						std::find_if(document.Worlds.begin(), document.Worlds.end(), [&](const auto& value) { return value.strWorldId == owner->strWorldId; });
 					if (!Is_StableId(row.strWorldOccurrenceId) || world == document.Worlds.end())
-					{ outStatus = "Presentation needs an existing World occurrence in the same Pattern: " + row.strOccurrenceId; return false; }
+					{
+						outStatus = "Presentation needs an existing World occurrence in the same Pattern: " + row.strOccurrenceId;
+						return false;
+					}
 					if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT && row.strAnchorKind != "WORLD")
 					{
 						if (world->strCompanionEffectResourceId != row.strResourceId || !companionWorldBoxes.insert(row.strWorldOccurrenceId).second)
-						{ outStatus = "Effect companion needs one matching World box/resource in the same Pattern: " + row.strOccurrenceId; return false; }
+						{
+							outStatus = "Effect companion needs one matching World box/resource in the same Pattern: " + row.strOccurrenceId;
+							return false;
+						}
 					}
 					else if ((resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER &&
 						resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT) ||
 						row.strAnchorKind != "WORLD" || row.strWorldId != owner->strWorldId)
-					{ outStatus = "WORLD presentation occurrence must match its World definition and anchor."; return false; }
+					{
+						outStatus = "WORLD presentation occurrence must match its World definition and anchor.";
+						return false;
+					}
 				}
+
+				// WORLD Light는 지정한 World ID와 선택 배치 ID로 정확히 하나의 배치를 찾을 수 있어야 한다.
 				if (resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::LIGHT && row.strAnchorKind == "WORLD")
 				{
 					const auto matches = std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
 						[&](const auto& worldBox) { return worldBox.strWorldId == row.strWorldId &&
 							(row.strWorldOccurrenceId.empty() || worldBox.strOccurrenceId == row.strWorldOccurrenceId); });
 					if (row.strWorldId.empty() || matches != 1)
-					{ outStatus = "WORLD Light needs one exact World occurrence in this Pattern."; return false; }
+					{
+						outStatus = "WORLD Light needs one exact World occurrence in this Pattern.";
+						return false;
+					}
 				}
+
+				// Logic에 연결한 Collider는 허용된 판정 종류와 시작/기간이 정확히 같아야 한다.
+				// 무적 영역과 접촉 trigger는 이 공통 연결 조건에 고정 MAP 또는 추종/World 조건을 추가한다.
 				if (!row.strLogicOccurrenceId.empty())
 				{
 					const auto linked = std::find_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
@@ -2297,31 +2931,55 @@ namespace
 					if (resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER || nullptr == owner ||
 						!Kouku_LogicAcceptsColliders(*owner) ||
 						linked->iStartMs != row.iStartMs || linked->iDurationMs != row.iDurationMs)
-					{ outStatus = "Collider link needs an existing Duration/Trigger window with identical timing: " + row.strOccurrenceId; return false; }
+					{
+						outStatus = "Collider link needs an existing Duration/Trigger window with identical timing: " + row.strOccurrenceId;
+						return false;
+					}
 					if (owner->strJudgementKind == "INVULNERABILITY_ZONE" &&
 						(row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY"))
-					{ outStatus = "INVULNERABILITY_ZONE requires fixed MAP Colliders."; return false; }
+					{
+						outStatus = "INVULNERABILITY_ZONE requires fixed MAP Colliders.";
+						return false;
+					}
 					if (owner->strTriggerKind == "OBJECT_CONTACT" &&
 						((row.strAnchorKind == "WORLD" && (!row.strBone.empty() || row.strBoneTarget != "BODY")) || (row.strAnchorKind == "BOSS" && !row.bFollowBoss)))
-					{ outStatus = "OBJECT_CONTACT Collider must follow its boss Bone/pivot or use a WORLD track without a Bone."; return false; }
+					{
+						outStatus = "OBJECT_CONTACT Collider must follow its boss Bone/pivot or use a WORLD track without a Bone.";
+						return false;
+					}
 				}
 				const bool_t rouletteRegion = resource->strColliderKind == "ROULETTE_CARD_REGION";
 				if (product && ((objectAnchored && row.strAnchorKind == "WORLD" && row.strWorldId.empty()) ||
 					(rouletteRegion && (row.strRegionId.empty() || row.strCardSymbol == "NONE" ||
 						row.strCardColor == "NONE" || row.strAnchorKind != "WORLD" || row.strWorldId.empty()))))
-				{ outStatus = "PRODUCT roulette region needs an explicit World, region ID, symbol and color: " + row.strOccurrenceId; return false; }
+				{
+					outStatus = "PRODUCT roulette region needs an explicit World, region ID, symbol and color: " + row.strOccurrenceId;
+					return false;
+				}
 			}
+
+			// 그룹의 첫 리소스가 Collider/Sound이면 두 배치 이상을 요구한다.
+			// 고정 SHOWTIME Sound가 있던 그룹에는 고정 MAP Effect도 하나 이상 있어야 한다.
 			for (const auto& [groupId, group] : selectionGroups)
             {
 				const auto groupKind = presentationResources.at(group.first->strResourceId)->eKind;
 				if (group.second < 2u && (groupKind == KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER ||
 					groupKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND))
-				{ outStatus = "Collider/Sound Selection Group requires at least two boxes in one Pattern: " + groupId; return false; }
+				{
+					outStatus = "Collider/Sound Selection Group requires at least two boxes in one Pattern: " + groupId;
+					return false;
+				}
                 if (groupsWithSound.contains(groupId) && std::none_of(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
                     [&](const auto& member) { return member.strSelectionGroupId == groupId && member.strAnchorKind == "MAP" && !member.bFollowBoss &&
                         presentationResources.at(member.strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT; }))
-                { outStatus = "Fixed SHOWTIME Sound group requires at least one MAP Effect."; return false; }
+                {
+                    outStatus = "Fixed SHOWTIME Sound group requires at least one MAP Effect.";
+                    return false;
+                }
             }
+
+			// 다음 순회는 Logic 배치의 ID·수명과 참조 정의를 확인하고 종류별 소유 관계를 검사한다.
+			// 잡기 offset·돌진 구간·룰렛 World 목록은 현재 패턴 안에서만 누적한다.
 			std::unordered_set<std::string> logicBoxIds;
 			std::optional<std::array<double, 3u>> captureGrip;
 			std::vector<std::string> rouletteInstances;
@@ -2345,6 +3003,8 @@ namespace
 					return false;
 				}
 				const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& owner = *findLogic(box.strLogicId);
+
+				// 입장 이펙트 ID는 같은 패턴의 고정 MAP Effect여야 하며 해당 trigger보다 먼저 시작할 수 없다.
 				for (const auto& id : owner.PlayerEntryEffectOccurrenceIds)
 				{
 					const auto row = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2354,8 +3014,14 @@ namespace
 						row->strAnchorKind != "MAP" || row->bFollowBoss || !row->strBone.empty() || row->strBoneTarget != "BODY" ||
 						!row->strWorldId.empty() || !row->strWorldOccurrenceId.empty() || row->iWorldEmissionIndex != 0u ||
 						!row->strLogicOccurrenceId.empty() || row->iStartMs < box.iStartMs)
-					{ outStatus = "Card maze entry requires same-pattern fixed MAP Effects starting at or after the staging Trigger: " + id; return false; }
+					{
+						outStatus = "Card maze entry requires same-pattern fixed MAP Effects starting at or after the staging Trigger: " + id;
+						return false;
+					}
 				}
+
+                // 폭탄 시험은 서로 다른 body/explosion/sector 템플릿을 같은 패턴에서 찾는다.
+                // body와 explosion은 같은 고정 MAP 위치, sector는 본 없는 BOSS 추종 Effect여야 한다.
                 if (!owner.strBombPresentationOccurrenceId.empty())
                 {
                     const auto findRow = [&](const std::string& id) -> const KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE* {
@@ -2367,7 +3033,8 @@ namespace
                     const auto* explosion = findRow(owner.strBombExplosionPresentationOccurrenceId);
                     const auto* sector = findRow(owner.strBombSectorPresentationOccurrenceId);
                     const auto eligible = [&](const auto* row, const bool following) {
-                        if (!row || !presentationResources.contains(row->strResourceId)) return false;
+                        if (!row || !presentationResources.contains(row->strResourceId))
+                            return false;
                         const auto* resource = presentationResources.at(row->strResourceId);
                         return resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT &&
                             (resource->strResourceKind == "V1_EFFECT" || resource->strResourceKind == "V1_ELEMENT") &&
@@ -2378,19 +3045,34 @@ namespace
                     };
                     if (!eligible(body, false) || !eligible(explosion, false) || !eligible(sector, true) ||
                         body == explosion || body == sector || explosion == sector || body->PositionOffset != explosion->PositionOffset)
-                    { outStatus = "Bomb test needs distinct same-pattern V1 body/explosion at one fixed MAP position and a following BOSS sector."; return false; }
+                    {
+                        outStatus = "Bomb test needs distinct same-pattern V1 body/explosion at one fixed MAP position and a following BOSS sector.";
+                        return false;
+                    }
+
+                    // 폭탄 구간은 34ms보다 길고 끝 취소가 없어야 한다. sector는 전체 Logic 구간을 덮고
+                    // 수평 방향을 유지하며 정의 반경×축 배율과 위치 offset을 1000m 안으로 제한한다.
                     if (box.iDurationMs <= 34u || box.bCancelAtEnd || body->iStartMs >= boxEndMs ||
                         sector->iStartMs > box.iStartMs || std::uint64_t(sector->iStartMs) + sector->iDurationMs < boxEndMs ||
                         sector->RotationDegrees[0] != 0.0 || sector->RotationDegrees[2] != 0.0 ||
                         owner.fBombSectorRadiusM * sector->Scale[0] > 1000.0 || owner.fBombSectorRadiusM * sector->Scale[2] > 1000.0 ||
                         std::any_of(sector->PositionOffset.begin(), sector->PositionOffset.end(), [](double v) { return std::abs(v) > 1000.0; }))
-                    { outStatus = "Bomb sector requires an unclipped Duration >34 ms, an existing bomb, full-window upright sector, axes and local position within 1000 m."; return false; }
+                    {
+                        outStatus = "Bomb sector requires an unclipped Duration >34 ms, an existing bomb, full-window upright sector, axes and local position within 1000 m.";
+                        return false;
+                    }
+
+                    // 폭탄 body/explosion의 다른 선택 소유자와 SHOWTIME 중복을 검사하고 세 템플릿의 폭탄 소유도 독점시킨다.
+                    // 활성 조건은 검사마다 다르다. 일반 선택 소유와 다른 폭탄 참조는 상대 배치의 비활성만으로 제외하지 않는다.
                     for (const auto& other : pattern.LogicOccurrences)
                     {
-                        if (&other == &box) continue;
+                        if (&other == &box)
+                            continue;
                         const auto* definition = findLogic(other.strLogicId);
-                        if (!definition) continue;
-                        if (box.bEnabled) for (const auto* visual : {body, explosion})
+                        if (!definition)
+                            continue;
+                        if (box.bEnabled)
+                            for (const auto* visual : {body, explosion})
                         {
                             const bool selected = !visual->strSelectionGroupId.empty() &&
                                 definition->strSelectedEffectGroupId == visual->strSelectionGroupId;
@@ -2400,14 +3082,23 @@ namespace
                                  std::any_of(definition->RandomVolleyOccurrenceSets.begin(), definition->RandomVolleyOccurrenceSets.end(),
                                      [&](const auto& volley) { return std::find(volley.begin(), volley.end(), visual->strOccurrenceId) != volley.end(); }));
                             if (selected || showtime)
-                            { outStatus = "Bomb Effect cannot also belong to another targeted visual owner."; return false; }
+                            {
+                                outStatus = "Bomb Effect cannot also belong to another targeted visual owner.";
+                                return false;
+                            }
                         }
                         for (const auto* id : { &definition->strBombPresentationOccurrenceId,
                             &definition->strBombExplosionPresentationOccurrenceId, &definition->strBombSectorPresentationOccurrenceId })
                             if (!id->empty() && (*id == body->strOccurrenceId || *id == explosion->strOccurrenceId || *id == sector->strOccurrenceId))
-                            { outStatus = "Bomb Effect references require one exclusive Logic window owner."; return false; }
+                            {
+                                outStatus = "Bomb Effect references require one exclusive Logic window owner.";
+                                return false;
+                            }
                     }
                 }
+
+                // 무작위 대상 판정은 전체 구간을 덮는 BOSS 추종 Effect를 요구한다.
+                // 양쪽 배치가 활성화된 무작위 대상 구간끼리만 시간 겹침을 거부한다.
                 if (owner.strJudgementKind == "BOSS_RANDOM_TARGET")
                 {
                     const auto tracking = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
@@ -2417,47 +3108,75 @@ namespace
                         tracking->strAnchorKind != "BOSS" || !tracking->bFollowBoss || !tracking->strBone.empty() ||
                         !tracking->strAnchorPresentationOccurrenceId.empty() || tracking->iStartMs > box.iStartMs ||
                         std::uint64_t(tracking->iStartMs) + tracking->iDurationMs < std::uint64_t(box.iStartMs) + box.iDurationMs)
-                    { outStatus = "Random target Duration requires a following, bone-free Boss Effect covering its window."; return false; }
-                    if (box.bEnabled) for (const auto& other : pattern.LogicOccurrences)
+                    {
+                        outStatus = "Random target Duration requires a following, bone-free Boss Effect covering its window.";
+                        return false;
+                    }
+                    if (box.bEnabled)
+                        for (const auto& other : pattern.LogicOccurrences)
                     {
                         const auto* otherLogic = findLogic(other.strLogicId);
                         if (&other != &box && other.bEnabled && otherLogic && otherLogic->strJudgementKind == "BOSS_RANDOM_TARGET" &&
                             box.iStartMs < std::uint64_t(other.iStartMs) + other.iDurationMs &&
                             other.iStartMs < std::uint64_t(box.iStartMs) + box.iDurationMs)
-                        { outStatus = "Random target Duration windows cannot overlap."; return false; }
+                        {
+                            outStatus = "Random target Duration windows cannot overlap.";
+                            return false;
+                        }
                     }
                 }
+
+                // 추적 SHOWTIME의 참조가 Sound이면 거부한다. 아래 선택 Effect 그룹은
+                // 고정 MAP 구성원과 시작 시각을 검사하고 다른 위치 소유자가 같은 그룹을 쓰지 못하게 한다.
                 if (!owner.strTrackingPresentationOccurrenceId.empty())
                 {
                     const auto tracking = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
                         [&](const auto& row) { return row.strOccurrenceId == owner.strTrackingPresentationOccurrenceId; });
                     if (tracking != pattern.PresentationOccurrences.end() &&
                         presentationResources.at(tracking->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::SOUND)
-                    { outStatus = "Tracking SHOWTIME cannot loop a Sound occurrence."; return false; }
+                    {
+                        outStatus = "Tracking SHOWTIME cannot loop a Sound occurrence.";
+                        return false;
+                    }
                 }
                 if (!owner.strSelectedEffectGroupId.empty())
                 {
                     size_t members = 0u;
                     for (const auto& row : pattern.PresentationOccurrences)
                     {
-                        if (row.strSelectionGroupId != owner.strSelectedEffectGroupId) continue;
+                        if (row.strSelectionGroupId != owner.strSelectedEffectGroupId)
+                            continue;
                         ++members;
                         if (presentationResources.at(row.strResourceId)->eKind != KOUKU_SAYDON_PRESENTATION_KIND::EFFECT ||
                             row.strAnchorKind != "MAP" || row.bFollowBoss || !row.strBone.empty() || row.strBoneTarget != "BODY" ||
                             !row.strWorldId.empty() || !row.strWorldOccurrenceId.empty() || row.iWorldEmissionIndex ||
                             !row.strLogicOccurrenceId.empty() || row.iStartMs < box.iStartMs)
-                        { outStatus = "Selected Effect group requires fixed MAP Effects after the SELECT capture."; return false; }
+                        {
+                            outStatus = "Selected Effect group requires fixed MAP Effects after the SELECT capture.";
+                            return false;
+                        }
                     }
-                    if (members < 1u) { outStatus = "Selected Effect group is missing or has no members."; return false; }
+                    if (members < 1u)
+                    {
+                        outStatus = "Selected Effect group is missing or has no members.";
+                        return false;
+                    }
                     for (const auto& other : pattern.LogicOccurrences)
                     {
-                        if (&other == &box) continue;
+                        if (&other == &box)
+                            continue;
                         const auto* definition = findLogic(other.strLogicId);
                         if (definition && (definition->strSelectedEffectGroupId == owner.strSelectedEffectGroupId ||
                             (other.bEnabled && definition->strFixedSelectionGroupId == owner.strSelectedEffectGroupId)))
-                        { outStatus = "Selected Effect group requires one exclusive position owner."; return false; }
+                        {
+                            outStatus = "Selected Effect group requires one exclusive position owner.";
+                            return false;
+                        }
                     }
                 }
+
+				// 무작위 volley마다 참조된 표현 종류와 부착 방식을 확인한다.
+				// 고정 MAP Sound를 섞을 수 있지만 위치 기준이 될 MAP Effect는 하나 이상 있어야 한다.
 				for (const auto& volley : owner.RandomVolleyOccurrenceSets)
 				{
 					bool hasMap = false;
@@ -2472,19 +3191,32 @@ namespace
 							!row->strBone.empty() || row->strBoneTarget != "BODY" || !row->strWorldId.empty() ||
 							!row->strWorldOccurrenceId.empty() || row->iWorldEmissionIndex != 0u || !row->strLogicOccurrenceId.empty() ||
 							!((row->strAnchorKind == "MAP" && !row->bFollowBoss) || (row->strAnchorKind == "BOSS" && row->bFollowBoss)))
-						{ outStatus = "SHOWTIME random volley requires Effect rows with MAP/following BOSS anchors or fixed MAP Sound cues: " + id; return false; }
+						{
+							outStatus = "SHOWTIME random volley requires Effect rows with MAP/following BOSS anchors or fixed MAP Sound cues: " + id;
+							return false;
+						}
 						hasMap |= row->strAnchorKind == "MAP" &&
                             presentationResources.at(row->strResourceId)->eKind == KOUKU_SAYDON_PRESENTATION_KIND::EFFECT;
 					}
-					if (!hasMap) { outStatus = "SHOWTIME random volley needs a MAP anchor marker."; return false; }
+					if (!hasMap)
+					{
+						outStatus = "SHOWTIME random volley needs a MAP anchor marker.";
+						return false;
+					}
 				}
+
+				// 방 플레이어 도착 정보는 해당 trigger에만 붙고 시퀀서 문서의 슬롯 0~3을 사용한다.
+				// ENTER_AREA의 hold 참조는 ATTACHMENT_HOLD를 가리키며 활성 PRODUCT에서는 전체 구간을 덮어야 한다.
 				const bool roomArrival = owner.strTriggerKind == "ROOM_PLAYER_ARRIVAL";
 				if (roomArrival != box.RoomPlayerArrival.has_value() ||
 					(roomArrival && (document.strCompositionId != SEQUENCE_COMPOSITION_ID ||
 					 box.RoomPlayerArrival->iPlayerSlot > 3u ||
 					 !std::all_of(box.RoomPlayerArrival->Position.begin(), box.RoomPlayerArrival->Position.end(),
 						 [](double v) { return std::isfinite(v) && std::abs(v) <= 100000.0; }))))
-				{ outStatus = "ROOM_PLAYER_ARRIVAL requires a Sequence box with slot 0..3 and finite XYZ."; return false; }
+				{
+					outStatus = "ROOM_PLAYER_ARRIVAL requires a Sequence box with slot 0..3 and finite XYZ.";
+					return false;
+				}
 				if (!box.strHoldLogicOccurrenceId.empty())
 				{
 					const auto hold = std::find_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
@@ -2492,65 +3224,114 @@ namespace
 					const auto* holdLogic = hold == pattern.LogicOccurrences.end() ? nullptr : findLogic(hold->strLogicId);
 					if (owner.strTriggerKind != "ENTER_AREA" || !holdLogic || holdLogic->strLogicType != "DURATION" ||
 						holdLogic->strJudgementKind != "ATTACHMENT_HOLD")
-					{ outStatus = "ENTER_AREA Hold must reference an ATTACHMENT_HOLD window in this Pattern."; return false; }
+					{
+						outStatus = "ENTER_AREA Hold must reference an ATTACHMENT_HOLD window in this Pattern.";
+						return false;
+					}
 					if (product && box.bEnabled && (!hold->bEnabled || hold->iStartMs > box.iStartMs ||
 						std::uint64_t(hold->iStartMs) + hold->iDurationMs < boxEndMs))
-					{ outStatus = "Capture Hold must be enabled and cover the complete Trigger window."; return false; }
+					{
+						outStatus = "Capture Hold must be enabled and cover the complete Trigger window.";
+						return false;
+					}
 				}
 				if (std::count_if(box.OnSuccessLogicIds.begin(), box.OnSuccessLogicIds.end(), [&](const auto& id) {
 					const auto* result = findLogic(id); return result && result->strOutcomeKind == "CAPTURE_PLAYER"; }) > 1)
-				{ outStatus = "One Trigger may apply at most one CAPTURE_PLAYER Result."; return false; }
+				{
+					outStatus = "One Trigger may apply at most one CAPTURE_PLAYER Result.";
+					return false;
+				}
+
+				// 절대 Boss Motion은 활성 순간이동·활성 돌진과 시각이 달라도 함께 사용할 수 없다.
+				// 활성 돌진끼리는 시간 겹침을 막고 자신의 반열린 구간 안에서 단계 진입 재선택이 일어나면 거부한다.
 				if (pattern.BossMotion && box.bEnabled && (owner.strTriggerKind == "REAL_GAZE_TELEPORT" || (owner.strTriggerKind == "BOSS_TELEPORT_XZ" || owner.strTriggerKind == "BOSS_TELEPORT_GROUNDED") || owner.strTriggerKind == "ALBION_AIRBORNE"))
-				{ outStatus = "Boss Motion cannot also teleport the boss."; return false; }
+				{
+					outStatus = "Boss Motion cannot also teleport the boss.";
+					return false;
+				}
                 if (box.bEnabled && owner.fBossChargeDistanceM > 0.0)
                 {
                     if (pattern.BossMotion || std::any_of(chargeWindows.begin(), chargeWindows.end(), [&](const auto& interval) {
                         return interval.first < boxEndMs && box.iStartMs < interval.second; }))
-                    { outStatus = "Boss charge windows cannot overlap or share absolute Boss Motion."; return false; }
+                    {
+                        outStatus = "Boss charge windows cannot overlap or share absolute Boss Motion.";
+                        return false;
+                    }
                     std::uint64_t stageStartMs = 0u;
                     for (const auto& stage : pattern.Stages)
                     {
                         if (stage.bRetargetOnEnter && box.iStartMs <= stageStartMs && stageStartMs < boxEndMs)
-                        { outStatus = "Boss charge direction cannot retarget during its window."; return false; }
+                        {
+                            outStatus = "Boss charge direction cannot retarget during its window.";
+                            return false;
+                        }
                         stageStartMs += stage.iDurationMs;
                     }
                     chargeWindows.emplace_back(box.iStartMs, boxEndMs);
                 }
+
+				// OBJECT_OVERLAP은 동일 World 인스턴스의 배치를 둘 이상 허용하지 않고 PRODUCT에서는 하나를 요구한다.
+				// 여러 배치를 구별하는 OBJECT_CONTACT는 아래에서 배치 ID와 전체 수명으로 따로 검사한다.
 				if (owner.strJudgementKind == "OBJECT_OVERLAP")
 				{
 					const auto count = std::count_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(), [&](const auto& worldBox) {
 						const auto found = worldInstanceIds.find(worldBox.strWorldId);
 						return found != worldInstanceIds.end() && found->second == owner.strTargetWorldInstanceId; });
 					if (count > 1 || (product && count != 1))
-					{ outStatus = "OBJECT_OVERLAP uses one target WORLD box; use OBJECT_CONTACT to distinguish multiple placements."; return false; }
+					{
+						outStatus = "OBJECT_OVERLAP uses one target WORLD box; use OBJECT_CONTACT to distinguish multiple placements.";
+						return false;
+					}
 				}
+
+				// 접촉 trigger는 Success만 소유하고 contact motion 결과는 최대 하나다.
+				// 접촉 대상 World 배치는 모두 같은 패턴에 존재하며 trigger 전체 구간을 덮어야 한다.
 				if (owner.strTriggerKind == "OBJECT_CONTACT")
 				{
 					if (!box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
-					{ outStatus = "OBJECT_CONTACT owns only contact Success outcomes; its expiry does not fail the search."; return false; }
+					{
+						outStatus = "OBJECT_CONTACT owns only contact Success outcomes; its expiry does not fail the search.";
+						return false;
+					}
 					if (std::count_if(box.OnSuccessLogicIds.begin(), box.OnSuccessLogicIds.end(), [&](const auto& id) {
 						const auto* result = findLogic(id); return result && result->strOutcomeKind == "PLAY_CONTACT_WORLD_OBJECT_MOTION"; }) > 1)
-					{ outStatus = "One contact Trigger may apply at most one card Motion Result."; return false; }
+					{
+						outStatus = "One contact Trigger may apply at most one card Motion Result.";
+						return false;
+					}
 					for (const auto& id : owner.TargetWorldOccurrenceIds)
 					{
 						const auto target = std::find_if(pattern.WorldOccurrences.begin(), pattern.WorldOccurrences.end(),
 							[&](const auto& item) { return item.strOccurrenceId == id; });
 						if (target == pattern.WorldOccurrences.end() || target->iStartMs > box.iStartMs ||
 							static_cast<std::uint64_t>(target->iStartMs) + target->iDurationMs < boxEndMs)
-						{ outStatus = "Contact target WORLD placement must exist in this Pattern and cover its whole Trigger window: " + id; return false; }
+						{
+							outStatus = "Contact target WORLD placement must exist in this Pattern and cover its whole Trigger window: " + id;
+							return false;
+						}
 					}
+
+					// 같은 접촉 그룹의 활성 구간은 ceil(startMs × 30 / 1000)으로 Server 시작 tick을 비교한다.
+					// 같은 tick이면 원본 시작/기간은 같고 우선순위는 달라야 한다.
 					if (!owner.strContactGroupId.empty())
 						for (const auto& other : pattern.LogicOccurrences)
 						{
-							if (other.strOccurrenceId == box.strOccurrenceId || !other.bEnabled || !box.bEnabled) continue;
+							if (other.strOccurrenceId == box.strOccurrenceId || !other.bEnabled || !box.bEnabled)
+								continue;
 							const auto* otherLogic = findLogic(other.strLogicId);
 							if (otherLogic && otherLogic->strTriggerKind == "OBJECT_CONTACT" &&
 								otherLogic->strContactGroupId == owner.strContactGroupId &&
 								(static_cast<std::uint64_t>(other.iStartMs) * 30u + 999u) / 1000u == (static_cast<std::uint64_t>(box.iStartMs) * 30u + 999u) / 1000u &&
 								(other.iStartMs != box.iStartMs || other.iDurationMs != box.iDurationMs || otherLogic->iContactPriority == owner.iContactPriority))
-							{ outStatus = "Contact windows with the same strike group and Server start tick need identical source times and distinct priorities."; return false; }
+							{
+								outStatus = "Contact windows with the same strike group and Server start tick need identical source times and distinct priorities.";
+								return false;
+							}
 						}
 				}
+
+				// 결과 소유 가능 여부와 슬롯별 허용 여부는 공통 helper를 따른다.
+				// 각 슬롯은 최대 네 RESULT 정의를 참조하며, 이어 결과 종류별 대상 연결을 더 검사한다.
 				const bool_t hasOutcome = !box.OnSuccessLogicIds.empty() ||
 					!box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty();
 				if (hasOutcome && !Kouku_LogicOwnsOutcomes(owner))
@@ -2588,35 +3369,71 @@ namespace
 						const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION& result = *findLogic(target);
 						if (result.strOutcomeKind == "GRAB_TO_WORLD_OBJECT" &&
 							(owner.strTriggerKind != "ENTER_AREA" || slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS))
-						{ outStatus = "GRAB_TO_WORLD_OBJECT belongs to ENTER_AREA Success only."; return false; }
+						{
+							outStatus = "GRAB_TO_WORLD_OBJECT belongs to ENTER_AREA Success only.";
+							return false;
+						}
+
+						// CAPTURE_PLAYER는 ENTER_AREA의 유일한 Success 결과여야 한다.
+						// 활성 PRODUCT에서는 hold 참조를 요구하고 패턴 내 잡기 결과의 local grip offset도 같게 제한한다.
 						if (result.strOutcomeKind == "CAPTURE_PLAYER")
 						{
 							if (owner.strTriggerKind != "ENTER_AREA" || slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS)
-							{ outStatus = "CAPTURE_PLAYER belongs to ENTER_AREA Success only."; return false; }
+							{
+								outStatus = "CAPTURE_PLAYER belongs to ENTER_AREA Success only.";
+								return false;
+							}
 							if (box.OnSuccessLogicIds.size() != 1u)
-							{ outStatus = "CAPTURE_PLAYER must be the only Success Result so capture can commit atomically."; return false; }
+							{
+								outStatus = "CAPTURE_PLAYER must be the only Success Result so capture can commit atomically.";
+								return false;
+							}
 							if (product && box.bEnabled)
 							{
 								if (box.strHoldLogicOccurrenceId.empty())
-								{ outStatus = "Capture Trigger requires an ATTACHMENT_HOLD window."; return false; }
+								{
+									outStatus = "Capture Trigger requires an ATTACHMENT_HOLD window.";
+									return false;
+								}
 								if (captureGrip && *captureGrip != result.GripLocalOffset)
-								{ outStatus = "A Pattern must use one consistent capture grip offset."; return false; }
+								{
+									outStatus = "A Pattern must use one consistent capture grip offset.";
+									return false;
+								}
 								captureGrip = result.GripLocalOffset;
 							}
 						}
+
+						// 겹침 결과는 같은 World 인스턴스의 motion을 요구한다. 종류를 지정한 접촉 결과는 contact motion/완료 신호만 허용한다.
+						// contact motion은 해당 trigger의 모든 대상 배치와 정확히 대응해야 한다.
 						if (owner.strJudgementKind == "OBJECT_OVERLAP" &&
 							(result.strOutcomeKind != "PLAY_WORLD_OBJECT_MOTION" || result.strTargetWorldInstanceId != owner.strTargetWorldInstanceId))
-						{ outStatus = "OBJECT_OVERLAP Result must apply a motion to the same target World Object."; return false; }
+						{
+							outStatus = "OBJECT_OVERLAP Result must apply a motion to the same target World Object.";
+							return false;
+						}
 						const bool contactMotion = result.strOutcomeKind == "PLAY_CONTACT_WORLD_OBJECT_MOTION";
 						const bool signal = result.strOutcomeKind == "COMPLETE_LOGIC_WINDOW";
 						if ((contactMotion || signal) && (owner.strTriggerKind != "OBJECT_CONTACT" || slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS))
-						{ outStatus = "Contact motion and completion Results belong to OBJECT_CONTACT Success only."; return false; }
+						{
+							outStatus = "Contact motion and completion Results belong to OBJECT_CONTACT Success only.";
+							return false;
+						}
 						if (owner.strTriggerKind == "OBJECT_CONTACT" && !result.strOutcomeKind.empty() && !contactMotion && !signal)
-						{ outStatus = "OBJECT_CONTACT Success accepts card motion or completion Results only."; return false; }
+						{
+							outStatus = "OBJECT_CONTACT Success accepts card motion or completion Results only.";
+							return false;
+						}
 						if (contactMotion && (result.ContactMotions.size() != owner.TargetWorldOccurrenceIds.size() ||
 							!std::all_of(owner.TargetWorldOccurrenceIds.begin(), owner.TargetWorldOccurrenceIds.end(), [&](const auto& id) {
 								return std::any_of(result.ContactMotions.begin(), result.ContactMotions.end(), [&](const auto& row) { return row.strTargetWorldOccurrenceId == id; }); })))
-						{ outStatus = "Contact motion mappings must cover exactly this Trigger's target WORLD placements."; return false; }
+						{
+							outStatus = "Contact motion mappings must cover exactly this Trigger's target WORLD placements.";
+							return false;
+						}
+
+						// 완료 신호는 같은 패턴의 활성 EXTERNAL_SIGNAL 구간을 찾는다.
+						// 수신 구간이 trigger 전체를 덮어야 하고 선택적인 접촉 대상도 trigger의 대상 집합 안에 있어야 한다.
 						if (signal)
 						{
 							const auto receiver = std::find_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(),
@@ -2627,8 +3444,14 @@ namespace
 								static_cast<std::uint64_t>(receiver->iStartMs) + receiver->iDurationMs < boxEndMs ||
 								(!result.strContactTargetWorldOccurrenceId.empty() &&
 									std::find(owner.TargetWorldOccurrenceIds.begin(), owner.TargetWorldOccurrenceIds.end(), result.strContactTargetWorldOccurrenceId) == owner.TargetWorldOccurrenceIds.end()))
-							{ outStatus = "Complete window Result needs an enabled EXTERNAL_SIGNAL window covering the Trigger and an optional selected contact target."; return false; }
+							{
+								outStatus = "Complete window Result needs an enabled EXTERNAL_SIGNAL window covering the Trigger and an optional selected contact target.";
+								return false;
+							}
 						}
+
+						// 후속 패턴 결과는 허용된 판정 종류에서만 모은다. 대상 패턴 존재 여부는
+						// 모든 패턴 ID를 확보한 뒤 validatePatternLinks가 켜진 경우에 확인한다.
 						if ("FOLLOWUP_PATTERN" == result.strOutcomeKind)
 						{
 							if ("STAGGER_WINDOW" != owner.strJudgementKind && "COUNTER_WINDOW" != owner.strJudgementKind && "EXTERNAL_SIGNAL" != owner.strJudgementKind && "PATTERN_COMPLETION_COUNT" != owner.strJudgementKind)
@@ -2649,6 +3472,9 @@ namespace
 						}
 					}
 				}
+
+				// PRODUCT에서는 이름만 있고 종류가 비어 있는 판정을 거부한다.
+				// 활성 무적 영역과 룰렛은 각각 연결 Collider 개수와 여덟 World region 참조를 추가로 요구한다.
 				if (product && "DURATION" == owner.strLogicType && owner.strJudgementKind.empty())
 				{
 					outStatus = "KoukuSaydon PRODUCT Pattern owns a DURATION box without a judgement kind: " +
@@ -2660,25 +3486,34 @@ namespace
 					const auto count = std::count_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
 						[&](const auto& row) { return row.strLogicOccurrenceId == box.strOccurrenceId; });
 					if (count == 0 || count > 64)
-					{ outStatus = "INVULNERABILITY_ZONE needs 1..64 linked Colliders."; return false; }
+					{
+						outStatus = "INVULNERABILITY_ZONE needs 1..64 linked Colliders.";
+						return false;
+					}
 				}
 				if (product && box.bEnabled && "ROULETTE_CARD_MATCH" == owner.strJudgementKind)
 				{
 					if (owner.RegionIds.size() != 8u)
-					{ outStatus = "PRODUCT roulette needs eight explicitly mapped region IDs: " + box.strOccurrenceId; return false; }
+					{
+						outStatus = "PRODUCT roulette needs eight explicitly mapped region IDs: " + box.strOccurrenceId;
+						return false;
+					}
 					for (const auto& regionId : owner.RegionIds)
 					{
 						const auto region = std::find_if(pattern.PresentationOccurrences.begin(), pattern.PresentationOccurrences.end(),
 							[&](const auto& occurrence) { return occurrence.strRegionId == regionId; });
 						if (region == pattern.PresentationOccurrences.end() || region->strAnchorKind != "WORLD" ||
 							region->strWorldId.empty() || presentationResources.at(region->strResourceId)->strColliderKind != "ROULETTE_CARD_REGION")
-						{ outStatus = "PRODUCT roulette region is missing or not bound to a World: " + regionId; return false; }
+						{
+							outStatus = "PRODUCT roulette region is missing or not bound to a World: " + regionId;
+							return false;
+						}
 						rouletteInstances.push_back(worldInstanceIds.at(region->strWorldId));
 					}
 				}
 			}
 
-            // An occurrence owns its optional actor plays; the reusable name remains shared.
+            // 선택적인 actor 재생 목록은 배치마다 소유하고 재사용할 이름 정의는 공유한다.
 			std::unordered_set<std::string> summonBoxIds;
 			const std::string summonPrefix = pattern.strPatternId + ".summon.";
 			for (const KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE& box : pattern.SummonOccurrences)
@@ -2699,7 +3534,10 @@ namespace
                     return false;
                 }
                 if (box.PatternSpawns.size() > MAX_SUMMON_PATTERN_SPAWNS)
-                { outStatus = "A Summon box supports at most sixteen Pattern spawns: " + box.strOccurrenceId; return false; }
+                {
+                    outStatus = "A Summon box supports at most sixteen Pattern spawns: " + box.strOccurrenceId;
+                    return false;
+                }
                 std::unordered_set<std::string> spawnIds;
                 for (const auto& spawn : box.PatternSpawns)
                     if (!Is_StableId(spawn.strSpawnId) || !spawnIds.insert(spawn.strSpawnId).second ||
@@ -2708,11 +3546,14 @@ namespace
                             spawn.strAnchorKind == "MAP" ? -100000.0 : -1000.0,
                             spawn.strAnchorKind == "MAP" ? 100000.0 : 1000.0) ||
                         !std::isfinite(spawn.fYawOffsetDegrees) || spawn.fYawOffsetDegrees < -360.0 || spawn.fYawOffsetDegrees > 360.0)
-                    { outStatus = "Invalid Summon Pattern spawn identity or transform: " + box.strOccurrenceId; return false; }
+                    {
+                        outStatus = "Invalid Summon Pattern spawn identity or transform: " + box.strOccurrenceId;
+                        return false;
+                    }
             }
 
-            /* A World box starts its sequence on the pattern clock; the sequence
-			   runs to its own end, so only the start must sit inside the Pattern. */
+            // World 시퀀스는 패턴 시계에서 시작한 뒤 자신의 수명으로 실행한다.
+            // 따라서 시작점은 패턴 안에 있어야 하지만 종료점까지 패턴 끝으로 제한하지 않는다.
 			std::unordered_set<std::string> worldBoxIds;
 			const std::string worldPrefix = pattern.strPatternId + ".world.";
 			std::unordered_set<std::string> playedInstances;
@@ -2741,7 +3582,10 @@ namespace
 					(!Valid_PresentationVector(box.Placement->Position, -100000.0, 100000.0) ||
 					 !Valid_PresentationVector(box.Placement->RotationDegrees, -36000.0, 36000.0) ||
 					 !Valid_PresentationVector(box.Placement->Scale, 0.001, 1000.0)))
-				{ outStatus = "World occurrence placement must contain finite position, rotation and positive scale: " + box.strOccurrenceId; return false; }
+				{
+					outStatus = "World occurrence placement must contain finite position, rotation and positive scale: " + box.strOccurrenceId;
+					return false;
+				}
 				playedInstances.insert(worldInstanceIds.at(box.strWorldId));
 			}
 			for (const std::string& instanceId : rouletteInstances)
@@ -2754,6 +3598,8 @@ namespace
 				}
 			}
 
+			// Scene Profile 배치는 정의 참조와 패턴 안의 전체 구간을 검사한다.
+			// blendMs는 공통 최대 시간과 비교하며 여기서 배치 기간 이하까지 강제하지는 않는다.
 			std::unordered_set<std::string> sceneBoxIds;
 			const std::string scenePrefix = pattern.strPatternId + ".sceneprofile.";
 			for (const KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE& box : pattern.SceneProfileOccurrences)
@@ -2776,6 +3622,9 @@ namespace
 				}
 			}
 		}
+
+		// 모아 둔 후속 패턴 ID를 전체 패턴 집합에 연결한다. 한 패턴만 읽는 중에는
+		// 이 확인과 아래 폴더·자식·번들 연결 검사를 미루지만 개별 배치 형식 검사는 이미 수행했다.
 		for (const auto& [boxId, target] : followupTargets)
 		{
 			if (validatePatternLinks && !patternIds.contains(target))
@@ -2785,51 +3634,76 @@ namespace
 			}
 		}
 
+        // 전체 연결 검사에서는 폴더·완료 개수 chain·Mario 진입·자식·소환 대상·번들을 대조한다.
+        // 실제 재생이나 게시를 수행하는 것이 아니라 저작 문서 사이의 참조 계약을 검사한다.
         if (validatePatternLinks)
         {
             std::unordered_set<std::string> folders, bundles;
             for (const auto& folder : document.Folders)
-                if (!folders.insert(folder.strFolderId).second || !Validate_Folder(document, folder, outStatus)) return false;
+                if (!folders.insert(folder.strFolderId).second || !Validate_Folder(document, folder, outStatus))
+                    return false;
             for (const auto& pattern : document.Patterns)
             {
                 const auto chainCount = std::count_if(pattern.LogicOccurrences.begin(), pattern.LogicOccurrences.end(), [&](const auto& box) {
                     const auto* logic = findLogic(box.strLogicId);
                     return box.bEnabled && logic && logic->strJudgementKind == "PATTERN_COMPLETION_COUNT";
                 });
-                if (chainCount > 1) { outStatus = "One Pattern may own only one completion chain."; return false; }
+                if (chainCount > 1)
+                {
+                    outStatus = "One Pattern may own only one completion chain.";
+                    return false;
+                }
                 for (const auto& box : pattern.LogicOccurrences)
                 {
-                    if (!box.bEnabled) continue;
+                    if (!box.bEnabled)
+                        continue;
                     const auto* owner = findLogic(box.strLogicId);
-                    if (!owner) continue;
+                    if (!owner)
+                        continue;
                     if (owner->strJudgementKind == "PATTERN_COMPLETION_COUNT")
                     {
                         const auto* result = box.OnSuccessLogicIds.size() == 1u ? findLogic(box.OnSuccessLogicIds.front()) : nullptr;
                         if (box.OnSuccessLogicIds.size() > 1u || (!box.OnSuccessLogicIds.empty() &&
                             (!result || result->strOutcomeKind != "FOLLOWUP_PATTERN")) ||
                             !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
-                        { outStatus = "Completion count accepts at most one Success followup and no Fail/Timeout."; return false; }
+                        {
+                            outStatus = "Completion count accepts at most one Success followup and no Fail/Timeout.";
+                            return false;
+                        }
                         for (const auto& id : owner->PatternIds)
                         {
                             const auto child = std::find_if(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) { return row.strPatternId == id; });
                             if (child != document.Patterns.end() && !child->strLoadError.empty())
-                            { outStatus = "Completion candidate " + id + " is unavailable: " + child->strLoadError; return false; }
-                            // Timed Parents are expanded into runtime idle stages by the publisher.
+                            {
+                                outStatus = "Completion candidate " + id + " is unavailable: " + child->strLoadError;
+                                return false;
+                            }
+                            // 게시 도구가 시간이 있는 부모를 실행용 idle 단계로 확장한다.
                             if (child == document.Patterns.end() || id == pattern.strPatternId || (child->Stages.empty() && !child->iDurationMs) ||
                                 child->strGateId != pattern.strGateId || child->strTargetBossPlacementId != pattern.strTargetBossPlacementId || child->strActorProfileId != pattern.strActorProfileId)
-                            { outStatus = "Completion candidate must be a distinct playable Pattern for the same Gate and boss."; return false; }
+                            {
+                                outStatus = "Completion candidate must be a distinct playable Pattern for the same Gate and boss.";
+                                return false;
+                            }
                             for (const auto& childBox : child->LogicOccurrences)
                             {
-                                if (!childBox.bEnabled) continue;
+                                if (!childBox.bEnabled)
+                                    continue;
                                 const auto* childLogic = findLogic(childBox.strLogicId);
                                 if (childLogic && childLogic->strJudgementKind == "PATTERN_COMPLETION_COUNT")
-                                { outStatus = "Completion candidates cannot contain another chain."; return false; }
+                                {
+                                    outStatus = "Completion candidates cannot contain another chain.";
+                                    return false;
+                                }
                                 for (const auto slot : {KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS, KOUKU_SAYDON_OUTCOME_SLOT::FAIL, KOUKU_SAYDON_OUTCOME_SLOT::TIMEOUT})
                                     for (const auto& outcomeId : childBox.Outcomes(slot))
                                     {
                                         const auto* outcome = findLogic(outcomeId);
                                         if (outcome && (outcome->strOutcomeKind == "FOLLOWUP_PATTERN" || outcome->strOutcomeKind == "MARIO_ENTER"))
-                                        { outStatus = "Completion candidates cannot insert another Pattern or Mario entry."; return false; }
+                                        {
+                                            outStatus = "Completion candidates cannot insert another Pattern or Mario entry.";
+                                            return false;
+                                        }
                                     }
                             }
                         }
@@ -2838,11 +3712,14 @@ namespace
                         for (const auto& id : box.Outcomes(slot))
                         {
                             const auto* result = findLogic(id);
-                            // A completion chain is optional: a plain Gate 3 Pattern enters through its own window.
+                            // 완료 후 연결은 선택 사항이다. 일반 Gate 3 패턴도 자체 구간으로 진입할 수 있다.
                             if (result && result->strOutcomeKind == "MARIO_ENTER" &&
                                 (pattern.strGateId != "GATE3" || owner->strTriggerKind != "ENTER_AREA" ||
                                  slot != KOUKU_SAYDON_OUTCOME_SLOT::SUCCESS || box.OnSuccessLogicIds.size() != 1u))
-                            { outStatus = "Mario entry is the sole ENTER_AREA Success of a Gate 3 Pattern."; return false; }
+                            {
+                                outStatus = "Mario entry is the sole ENTER_AREA Success of a Gate 3 Pattern.";
+                                return false;
+                            }
                         }
                 }
             }
@@ -2851,15 +3728,20 @@ namespace
                     !Validate_PatternChildren(document, pattern, outStatus)) return false;
             for (const auto& pattern : document.Patterns)
             {
-                if (!pattern.strLoadError.empty()) continue;
+                if (!pattern.strLoadError.empty())
+                    continue;
                 for (const auto& box : pattern.SummonOccurrences)
                     for (const auto& spawn : box.PatternSpawns)
                         if (!CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(document, pattern,
                             spawn.strPatternId, outStatus)) return false;
             }
             for (const auto& bundle : document.Bundles)
-                if (!bundles.insert(bundle.strBundleId).second || !Validate_Bundle(document, bundle, outStatus)) return false;
+                if (!bundles.insert(bundle.strBundleId).second || !Validate_Bundle(document, bundle, outStatus))
+                    return false;
         }
+
+        // 관문별 Flow의 identity·엔트리·루프·그룹 형식은 validatePatternLinks와 관계없이 검사한다.
+        // 대상 패턴/번들의 존재와 관문 연결만 플래그가 켜졌을 때 추가 확인한다.
         std::unordered_set<std::string> flowIds, flowGates;
         for (const auto& flow : document.PatternFlows)
         {
@@ -2867,15 +3749,24 @@ namespace
                 !flowGates.insert(flow.strGateId).second || !Is_DisplayName(flow.strDisplayName) ||
                 (flow.strGateId != "GATE1" && flow.strGateId != "GATE2" && flow.strGateId != "GATE3" && flow.strGateId != "BINGO") ||
                 flow.Entries.size() > 256u)
-            { outStatus = "Pattern Flow requires one bounded, named stable flow per Gate."; return false; }
+            {
+                outStatus = "Pattern Flow requires one bounded, named stable flow per Gate.";
+                return false;
+            }
             if (!flow.strBingoSpecialPatternId.empty())
             {
                 if (flow.strGateId != "BINGO" || !Is_StableId(flow.strBingoSpecialPatternId))
-                { outStatus = "Bingo special Pattern is a stable reference owned only by BINGO."; return false; }
+                {
+                    outStatus = "Bingo special Pattern is a stable reference owned only by BINGO.";
+                    return false;
+                }
                 if (validatePatternLinks && std::none_of(document.Patterns.begin(), document.Patterns.end(), [&](const auto& row) {
                     return row.strPatternId == flow.strBingoSpecialPatternId && row.strGateId == "BINGO" &&
-                        row.strTargetBossPlacementId == "boss.kakulsaydon.bingo.saydon"; }))
-                { outStatus = "Bingo special Pattern is missing or belongs to another boss."; return false; }
+                        row.strTargetBossPlacementId == "boss.koukusaydon.bingo.saydon"; }))
+                {
+                    outStatus = "Bingo special Pattern is missing or belongs to another boss.";
+                    return false;
+                }
             }
             std::unordered_set<std::string> entries;
             for (const auto& entry : flow.Entries)
@@ -2883,8 +3774,11 @@ namespace
                 if (!Is_StableId(entry.strEntryId) || !entries.insert(entry.strEntryId).second ||
                     !Is_StableId(entry.strTargetId) || entry.iWaitAfterMs > MAX_TIME_MS ||
                     (entry.strKind != "PATTERN" && entry.strKind != "BUNDLE"))
-                { outStatus = "Pattern Flow entry identity, kind, target or wait is invalid: " + entry.strEntryId; return false; }
-                // Incomplete referenced rows remain editable; playback validates published availability.
+                {
+                    outStatus = "Pattern Flow entry identity, kind, target or wait is invalid: " + entry.strEntryId;
+                    return false;
+                }
+                // 미완성 참조 행은 편집 가능한 채로 둔다. 실제 재생 가능 여부는 게시 데이터 기준으로 별도 검사한다.
                 if (validatePatternLinks)
                 {
                     const bool exists = entry.strKind == "PATTERN" ?
@@ -2892,16 +3786,29 @@ namespace
                             return row.strPatternId == entry.strTargetId && row.strGateId == flow.strGateId; }) :
                         std::any_of(document.Bundles.begin(), document.Bundles.end(), [&](const auto& row) {
                             return row.strBundleId == entry.strTargetId && row.strGateId == flow.strGateId; });
-                    if (!exists) { outStatus = "Pattern Flow target is missing or belongs to another Gate: " + entry.strTargetId; return false; }
+                    if (!exists)
+                    {
+                        outStatus = "Pattern Flow target is missing or belongs to another Gate: " + entry.strTargetId;
+                        return false;
+                    }
                 }
             }
             if (!flow.strLoopStartEntryId.empty() &&
                 (!Is_StableId(flow.strLoopStartEntryId) || !entries.contains(flow.strLoopStartEntryId)))
-            { outStatus = "Pattern Flow loop start must reference an entry in this flow."; return false; }
+            {
+                outStatus = "Pattern Flow loop start must reference an entry in this flow.";
+                return false;
+            }
+
+            // Flow 그룹은 저장된 엔트리 배열 순서에서 겹치지 않는 정방향 구간이어야 한다.
+            // 체력 반복 조건은 전체 loop 시작과 함께 쓰지 못하고, 그룹 종료 전환에는 체력 반복 조건이 필요하다.
             std::unordered_set<std::string> groupIds;
             std::size_t nextGroupStart = 0u;
             if (flow.EntryGroups.size() > 64u)
-            { outStatus = "Pattern Flow supports at most 64 entry groups."; return false; }
+            {
+                outStatus = "Pattern Flow supports at most 64 entry groups.";
+                return false;
+            }
             for (const auto& group : flow.EntryGroups)
             {
                 const auto first = std::find_if(flow.Entries.begin(), flow.Entries.end(), [&](const auto& row) { return row.strEntryId == group.strStartEntryId; });
@@ -2911,7 +3818,10 @@ namespace
                     static_cast<std::size_t>(first - flow.Entries.begin()) < nextGroupStart ||
                     (group.RepeatUntilHealthBars && (*group.RepeatUntilHealthBars > 1000u || !flow.strLoopStartEntryId.empty())) ||
                     (!group.RepeatUntilHealthBars && group.bTransitionAtGroupEnd))
-                { outStatus = "Pattern Flow groups require ordered, disjoint saved entry ranges and a valid HP repeat condition."; return false; }
+                {
+                    outStatus = "Pattern Flow groups require ordered, disjoint saved entry ranges and a valid HP repeat condition.";
+                    return false;
+                }
                 nextGroupStart = static_cast<std::size_t>(last - flow.Entries.begin()) + 1u;
             }
         }
@@ -2919,11 +3829,15 @@ namespace
 		return true;
 	}
 
+	// 격리할 오류 행과 병합 비교를 위해 JSON 값을 다시 직렬화한다. 배열 순서와 타입은 유지하되 원본 공백과 숫자 철자는 정규화한다.
 	std::string Preserve_Json(const DATA_JSON_VALUE& value)
 	{
-		if (value.Is_Null()) return "null";
-		if (value.Is_Boolean()) return value.Get_Boolean() ? "true" : "false";
-		if (value.Is_String()) return "\"" + CDataJson::Escape(value.Get_String()) + "\"";
+		if (value.Is_Null())
+			return "null";
+		if (value.Is_Boolean())
+			return value.Get_Boolean() ? "true" : "false";
+		if (value.Is_String())
+			return "\"" + CDataJson::Escape(value.Get_String()) + "\"";
 		if (value.Is_Number())
 		{
 			std::ostringstream out;
@@ -2939,7 +3853,8 @@ namespace
 		{
 			for (const auto& item : value.Get_Array())
 			{
-				if (!first) result += ",";
+				if (!first)
+					result += ",";
 				first = false;
 				result += Preserve_Json(item);
 			}
@@ -2948,7 +3863,8 @@ namespace
 		{
 			for (const auto& [key, item] : value.Get_Object())
 			{
-				if (!first) result += ",";
+				if (!first)
+					result += ",";
 				first = false;
 				result += "\"" + CDataJson::Escape(key) + "\":" + Preserve_Json(item);
 			}
@@ -2956,35 +3872,50 @@ namespace
 		return result + (value.Is_Array() ? "]" : "}");
 	}
 
-	// Compare the canonical typed projection, including opaque JSON number tokens.
+	// 정규화한 JSON 표현을 비교한다. 수치의 부동소수점 토큰 여부도 구분하지만 원본 공백과 표기 전체를 보존하지는 않는다.
 	bool Same_CompositionValue(const DATA_JSON_VALUE* left, const DATA_JSON_VALUE* right)
 	{
 		return (!left || !right) ? left == right : Preserve_Json(*left) == Preserve_Json(*right);
 	}
 
+	// 행별로 병합할 수 있는 배열만 stable ID 키를 지정한다. 나머지 배열은 순서와 값 전체를 하나의 변경으로 비교한다.
 	std::string_view Composition_ArrayIdentity(const std::string_view field)
 	{
-		if (field == "patterns") return "patternId";
-		if (field == "stages") return "stageId";
-		if (field == "logics") return "logicId";
-		if (field == "summons") return "summonId";
-		if (field == "worlds") return "worldId";
-		if (field == "sceneProfiles") return "sceneProfileId";
-		if (field == "presentationResources") return "resourceId";
-		if (field == "folders") return "folderId";
-		if (field == "bundles") return "bundleId";
-		if (field == "members") return "memberId";
-		if (field == "patternFlows") return "flowId";
-		if (field == "entries") return "entryId";
-		if (field == "patternSpawns") return "spawnId";
+		if (field == "patterns")
+			return "patternId";
+		if (field == "stages")
+			return "stageId";
+		if (field == "logics")
+			return "logicId";
+		if (field == "summons")
+			return "summonId";
+		if (field == "worlds")
+			return "worldId";
+		if (field == "sceneProfiles")
+			return "sceneProfileId";
+		if (field == "presentationResources")
+			return "resourceId";
+		if (field == "folders")
+			return "folderId";
+		if (field == "bundles")
+			return "bundleId";
+		if (field == "members")
+			return "memberId";
+		if (field == "patternFlows")
+			return "flowId";
+		if (field == "entries")
+			return "entryId";
+		if (field == "patternSpawns")
+			return "spawnId";
 		if (field == "animationOccurrences" || field == "logicOccurrences" ||
 			field == "presentationOccurrences" || field == "summonOccurrences" ||
 			field == "worldOccurrences" || field == "sceneProfileOccurrences" ||
 			field == "patternOccurrences") return "occurrenceId";
-		// Coordinates, ordered string references and opaque payload arrays are atomic.
+		// 좌표, 순서 있는 문자열 참조 목록과 알 수 없는 payload 배열은 원소별 병합 없이 하나의 값으로 취급한다.
 		return {};
 	}
 
+	// 다음 ID 번호를 담는 알려진 위치만 할당 메타데이터로 인정한다. 이름만 비슷한 임의 필드에는 최댓값 병합을 적용하지 않는다.
 	bool Is_CompositionAllocationWatermark(const std::string& path, const std::string_view field)
 	{
 		const auto listed = [field](std::initializer_list<std::string_view> names) {
@@ -2994,7 +3925,8 @@ namespace
 			return listed({ "nextPatternOrdinal", "nextFolderOrdinal", "nextBundleOrdinal", "nextLogicOrdinal",
 				"nextSummonOrdinal", "nextWorldOrdinal", "nextSceneProfileOrdinal", "nextPresentationResourceOrdinal" });
 		const auto rowEnd = path.find("].");
-		if (rowEnd == std::string::npos || path.substr(rowEnd + 2u) != field) return false;
+		if (rowEnd == std::string::npos || path.substr(rowEnd + 2u) != field)
+			return false;
 		if (path.starts_with("$.patterns[patternId="))
 			return listed({ "nextStageOrdinal", "nextAnimationOrdinal", "nextLogicOccurrenceOrdinal",
 				"nextSummonOccurrenceOrdinal", "nextWorldOccurrenceOrdinal", "nextSceneProfileOccurrenceOrdinal",
@@ -3003,6 +3935,8 @@ namespace
 			listed({ "nextMemberOrdinal", "nextSceneProfileOccurrenceOrdinal", "nextPresentationOccurrenceOrdinal" });
 	}
 
+	// Save_Atomic의 기준본, 편집 초안과 최신 디스크 값을 재귀적으로 비교한다. 입력 JSON은 모두 읽기 전용으로 차용한다.
+	// 같은 필드의 서로 다른 수정, 삭제와 수정 또는 양립할 수 없는 순서는 충돌로 보고한다.
 	bool Merge_CompositionValue(const DATA_JSON_VALUE* base, const DATA_JSON_VALUE* draft,
 		const DATA_JSON_VALUE* current, const std::string& path, const std::string_view field,
 		std::optional<DATA_JSON_VALUE>& result, std::string& status)
@@ -3011,17 +3945,20 @@ namespace
 			result = value ? std::optional<DATA_JSON_VALUE>(*value) : std::nullopt;
 			return true;
 		};
-		if (Same_CompositionValue(draft, current)) return take(draft);
-		if (Same_CompositionValue(draft, base)) return take(current);
-		if (Same_CompositionValue(current, base)) return take(draft);
+		if (Same_CompositionValue(draft, current))
+			return take(draft);
+		if (Same_CompositionValue(draft, base))
+			return take(current);
+		if (Same_CompositionValue(current, base))
+			return take(draft);
 		const auto conflict = [&](const std::string_view reason) {
 			status = std::string(reason) + " at " + path;
 			return false;
 		};
 		if (!base || !draft || !current)
 			return conflict("Conflicting addition or deletion versus edit");
-		// Allocation watermarks are metadata, not authored values. Their maximum
-		// reserves both sets of IDs; row collisions still pass through the merge below.
+		// 다음 ID 번호는 저작 값이 아니라 할당 메타데이터다. 두 편집의 최댓값으로 이미 사용한 번호를 예약한다.
+		// 같은 stable ID 행의 내용 충돌은 이 처리로 숨기지 않고 아래 병합에서 계속 검사한다.
 		if (Is_CompositionAllocationWatermark(path, field) &&
 			base->Is_Number() && draft->Is_Number() && current->Is_Number() &&
 			draft->Get_Number() >= base->Get_Number() && current->Get_Number() >= base->Get_Number())
@@ -3033,14 +3970,16 @@ namespace
 		{
 			std::set<std::string> keys;
 			for (const auto* object : { base, draft, current })
-				for (const auto& [key, value] : object->Get_Object()) keys.insert(key);
+				for (const auto& [key, value] : object->Get_Object())
+					keys.insert(key);
 			DATA_JSON_VALUE::OBJECT merged;
 			for (const auto& key : keys)
 			{
 				std::optional<DATA_JSON_VALUE> value;
 				if (!Merge_CompositionValue(base->Find(key), draft->Find(key), current->Find(key),
 					path + "." + key, key, value, status)) return false;
-				if (value) merged.emplace(key, std::move(*value));
+				if (value)
+					merged.emplace(key, std::move(*value));
 			}
 			result = DATA_JSON_VALUE::Object(std::move(merged));
 			return true;
@@ -3063,7 +4002,9 @@ namespace
 				orders[side].push_back(id->Get_String());
 			}
 		std::set<std::string> ids;
-		for (const auto& side : rows) for (const auto& [id, value] : side) ids.insert(id);
+		for (const auto& side : rows)
+			for (const auto& [id, value] : side)
+				ids.insert(id);
 		DATA_JSON_VALUE::OBJECT mergedRows;
 		for (const auto& id : ids)
 		{
@@ -3074,40 +4015,50 @@ namespace
 			std::optional<DATA_JSON_VALUE> value;
 			if (!Merge_CompositionValue(find(0), find(1), find(2),
 				path + "[" + std::string(identity) + "=" + id + "]", {}, value, status)) return false;
-			if (value) mergedRows.emplace(id, std::move(*value));
+			if (value)
+				mergedRows.emplace(id, std::move(*value));
 		}
 		std::array<std::vector<std::string>, 3> retainedOrder;
 		for (std::size_t side = 0; side < rows.size(); ++side)
 			for (const auto& id : orders[side])
-				if (rows[0].contains(id) && mergedRows.contains(id)) retainedOrder[side].push_back(id);
+				if (rows[0].contains(id) && mergedRows.contains(id))
+					retainedOrder[side].push_back(id);
 		const bool draftReordered = retainedOrder[1] != retainedOrder[0];
 		const bool currentReordered = retainedOrder[2] != retainedOrder[0];
 		if (draftReordered && currentReordered && retainedOrder[1] != retainedOrder[2])
 			return conflict("Conflicting stable-ID order changes");
 		const auto& retained = draftReordered ? retainedOrder[1] : retainedOrder[2];
 
-		// Keep the chosen existing-row order and both sides' insertion anchors.
-		// A cycle is a real ordering conflict, never permission to discard a row.
+		// 기존 행의 선택된 순서와 양쪽에서 새 행을 삽입한 위치 관계를 모두 간선으로 보존한다.
+		// 순환이 생기면 실제 순서 충돌로 거절하며 어느 행도 임의로 버리지 않는다.
 		std::map<std::string, std::set<std::string>, std::less<>> edges;
 		std::map<std::string, std::size_t, std::less<>> incoming, rank;
-		for (const auto& [id, value] : mergedRows) incoming.emplace(id, 0u);
+		for (const auto& [id, value] : mergedRows)
+			incoming.emplace(id, 0u);
 		const auto edge = [&](const std::string& from, const std::string& to) {
-			if (edges[from].insert(to).second) ++incoming.at(to);
+			if (edges[from].insert(to).second)
+				++incoming.at(to);
 		};
-		for (std::size_t index = 1; index < retained.size(); ++index) edge(retained[index - 1], retained[index]);
+		for (std::size_t index = 1; index < retained.size(); ++index)
+			edge(retained[index - 1], retained[index]);
 		for (const auto side : { 1u, 2u })
 		{
 			std::string previous;
 			for (const auto& id : orders[side])
 			{
-				if (!mergedRows.contains(id)) continue;
-				if (!rank.contains(id)) rank.emplace(id, rank.size());
-				if (!previous.empty() && (!rows[0].contains(previous) || !rows[0].contains(id))) edge(previous, id);
+				if (!mergedRows.contains(id))
+					continue;
+				if (!rank.contains(id))
+					rank.emplace(id, rank.size());
+				if (!previous.empty() && (!rows[0].contains(previous) || !rows[0].contains(id)))
+					edge(previous, id);
 				previous = id;
 			}
 		}
 		std::set<std::pair<std::size_t, std::string>> ready;
-		for (const auto& [id, count] : incoming) if (!count) ready.emplace(rank.at(id), id);
+		for (const auto& [id, count] : incoming)
+			if (!count)
+				ready.emplace(rank.at(id), id);
 		DATA_JSON_VALUE::ARRAY merged;
 		while (!ready.empty())
 		{
@@ -3115,13 +4066,17 @@ namespace
 			ready.erase(ready.begin());
 			merged.push_back(std::move(mergedRows.at(id)));
 			for (const auto& successor : edges[id])
-				if (--incoming.at(successor) == 0u) ready.emplace(rank.at(successor), successor);
+				if (--incoming.at(successor) == 0u)
+					ready.emplace(rank.at(successor), successor);
 		}
-		if (merged.size() != mergedRows.size()) return conflict("Conflicting insertion anchors or row order");
+		if (merged.size() != mergedRows.size())
+			return conflict("Conflicting insertion anchors or row order");
 		result = DATA_JSON_VALUE::Array(std::move(merged));
 		return true;
 	}
 
+	// 저장 직전의 세 문서를 JSON 필드별로 병합한 뒤 다시 파싱한다. 새 오류 행이 생기면 병합을 거절한다.
+	// 실패 전에 merged에 파싱 결과가 들어갈 수 있으므로 Save_Atomic은 별도 임시 문서를 전달한다.
 	bool Merge_CompositionDraft(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& baseline,
 		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& draft,
 		const KOUKU_SAYDON_COMPOSITION_DOCUMENT& current,
@@ -3129,7 +4084,7 @@ namespace
 	{
 		auto baseProjection = baseline;
 		auto draftProjection = draft;
-		// Revision belongs to the guarded writer. Authoring fields merge independently.
+		// revision은 잠금을 얻은 저장자가 정한다. 저작 필드의 변경은 revision과 분리해 병합한다.
 		baseProjection.iRevision = draftProjection.iRevision = current.iRevision;
 		DATA_JSON_VALUE baseJson, draftJson, currentJson;
 		if (!CDataJson::Parse(CKoukuSaydonCompositionDocument::Serialize(baseProjection), baseJson, status) ||
@@ -3144,14 +4099,15 @@ namespace
 		{
 			for (const auto& row : mergedRows)
 			{
-				if (row.strLoadError.empty()) continue;
+				if (row.strLoadError.empty())
+					continue;
 				const auto alreadyIsolated = [&](const auto& rows) {
 					return std::any_of(rows.begin(), rows.end(), [&](const auto& previous) {
 						return !previous.strLoadError.empty() && previous.strPreservedJson == row.strPreservedJson;
 					});
 				};
-				// Parse preserves invalid/orphan hierarchy rows for repair. Combining
-				// two valid edits must never silently create a newly isolated row.
+				// 파서는 잘못된 계층 행도 수정할 수 있도록 격리하여 보존한다.
+				// 정상이던 두 편집을 병합한 결과가 새 오류 행이 되면 저장을 거절한다.
 				if (!alreadyIsolated(baselineRows) && !alreadyIsolated(draftRows) && !alreadyIsolated(currentRows))
 				{
 					status = "Merged validation failed at $." + std::string(collection) + "[" +
@@ -3170,12 +4126,15 @@ namespace
 	}
 
 
+	// 저장에 실패한 임시 파일만 제거한다. 정리 실패는 별도 예외를 던지지 않고 원래 실패 결과를 유지한다.
 	void Remove_Temporary(const std::filesystem::path& path)
 	{
 		std::error_code ignored;
 		std::filesystem::remove(path, ignored);
 	}
 
+	// Save_Atomic 호출 동안 잠금 파일 핸들을 단독 소유한다. 소멸 시 닫혀 파일도 삭제되는 프로세스 간 저장 잠금이다.
+	// 문서 객체의 메모리에 대한 스레드 동기화를 대신하지 않는다.
 	class COMPOSITION_WRITER_LOCK final
 	{
 	public:
@@ -3185,6 +4144,7 @@ namespace
 				CloseHandle(m_hFile);
 		}
 
+		// 동일 경로의 다른 저장자가 있으면 기다리지 않고 실패한다. 삭제 가능한 고아 잠금만 한 번 정리하여 다시 시도한다.
 		bool_t Acquire(
 			const std::filesystem::path& destination,
 			std::string& outStatus)
@@ -3207,8 +4167,8 @@ namespace
 				 firstError == ERROR_ALREADY_EXISTS) &&
 				DeleteFileW(m_Path.c_str()))
 			{
-				// A live writer denies delete sharing. Successful deletion therefore
-				// recovers only an orphan left by an older, non-delete-on-close build.
+				// 살아 있는 저장자는 삭제 공유를 허용하지 않는다. 삭제 성공은 이전 구현이 남긴 고아 잠금 파일 복구에만 해당한다.
+				// 현재 저장 중인 다른 핸들을 강제로 해제하지 않는다.
 				m_hFile = createLock();
 			}
 			if (INVALID_HANDLE_VALUE == m_hFile)
@@ -3227,6 +4187,7 @@ namespace
 	};
 }
 
+// 자막 입력에만 엄격한 UTF-8과 제어 문자 검사를 적용한다. 개행은 허용하지만 꺾쇠와 다른 제어 문자는 거절한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(const std::string_view text)
 {
     return !text.empty() && text.size() <= 4096u &&
@@ -3236,30 +4197,35 @@ bool_t Client::CKoukuSaydonCompositionDocument::Is_ValidSubtitleText(const std::
             static_cast<int>(text.size()), nullptr, 0) > 0;
 }
 
+// 문서 객체가 경로를 소유한다. 생성만으로 디스크를 읽거나 편집 상태를 초기 문서로 확정하지 않는다.
 Client::CKoukuSaydonCompositionDocument::CKoukuSaydonCompositionDocument(
 	std::filesystem::path path)
 	: m_Path(std::move(path))
 {
 }
 
+// Workbench의 기본 보스 편집 문서를 프로젝트 Data 루트에서 찾는다. Bin 게시 데이터 경로와 구분한다.
 std::filesystem::path Client::CKoukuSaydonCompositionDocument::Resolve_Path()
 {
 	return CProjectDataRoot::Resolve(
 		std::filesystem::path(L"KoukuSaydon/Gate1/KoukuSaydonComposition.json"));
 }
 
+// 시퀀서용 저작 문서를 같은 프로젝트 Data 루트에서 찾는다.
 std::filesystem::path Client::CKoukuSaydonCompositionDocument::Resolve_SequencePath()
 {
 	return CProjectDataRoot::Resolve(
 		std::filesystem::path(L"Compositions/Sequences/KoukuSaydonSequenceComposition.json"));
 }
 
+// 고정 프로필 목록에 존재하는지 확인한다. 실제 파일의 로드 성공 여부를 반환하지는 않는다.
 bool_t Client::CKoukuSaydonCompositionDocument::Is_KnownProfile(
 	const std::string_view profileId)
 {
 	return nullptr != Find_Profile(profileId);
 }
 
+// 원본 프로필 07은 실제 actor 몸체 05에 대응시킨다. 반환 view는 정적 문자열을 차용하며 모르는 ID는 비어 있다.
 std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(
 	const std::string_view sourceProfileId)
 {
@@ -3272,40 +4238,57 @@ std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_ActorProfileId
 
 namespace
 {
+    // 관문, actor와 Server의 stable placement 및 archetype 연결이다. 아래 조회의 view는 이 정적 테이블을 차용한다.
     struct BOSS_PLACEMENT_CONTRACT { std::string_view gate, actor, placement, archetype; };
+
     constexpr std::array<BOSS_PLACEMENT_CONTRACT, 6u> BOSS_PLACEMENTS = {{
-        {"GATE1", "MN_RPCZ_00", "boss.kakulsaydon.g1.kouku", "BOSS_KAKULSAYDON_G1_KOUKU"},
-        {"GATE1", "MN_RPCT_05", "boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON"},
-        {"GATE2", "MN_RPCZ_00", "boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU"},
-        {"GATE2", "MN_RPCT_06", "boss.kakulsaydon.g2.big-saydon", "BOSS_KAKULSAYDON_G2_BIG_SAYDON"},
-        {"GATE3", "MN_RPCT_05", "boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON"},
-        {"BINGO", "MN_RPCT_05", "boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON"},
+        {"GATE1", "MN_RPCZ_00", "boss.koukusaydon.g1.kouku", "BOSS_KOUKUSAYDON_G1_KOUKU"},
+        {"GATE1", "MN_RPCT_05", "boss.koukusaydon.g1.saydon", "BOSS_KOUKUSAYDON_G1_SAYDON"},
+        {"GATE2", "MN_RPCZ_00", "boss.koukusaydon.g2.kouku", "BOSS_KOUKUSAYDON_G2_KOUKU"},
+        {"GATE2", "MN_RPCT_06", "boss.koukusaydon.g2.big-saydon", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON"},
+        {"GATE3", "MN_RPCT_05", "boss.koukusaydon.g3.saydon", "BOSS_KOUKUSAYDON_G3_SAYDON"},
+        {"BINGO", "MN_RPCT_05", "boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON"},
     }};
 }
 
+// 저작 문서가 지원하는 관문 문자열만 허용한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Is_KnownGate(const std::string_view gateId)
-{ return gateId == "GATE1" || gateId == "GATE2" || gateId == "GATE3" || gateId == "BINGO"; }
+{
+    return gateId == "GATE1" || gateId == "GATE2" || gateId == "GATE3" || gateId == "BINGO";
+}
 
+// 관문과 actor에 맞는 기본 배치를 찾는다. 대응이 없으면 빈 view로 실패를 알린다. <- string_view 매개변수의 의미는 뭘까? 왜 string_view를 사용할까? 
+//string과 string_view의 차이점이 뭘까?
 std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(
     const std::string_view gateId, const std::string_view actorProfileId)
 {
     for (const auto& value : BOSS_PLACEMENTS)
-        if (value.gate == gateId && value.actor == actorProfileId) return value.placement;
+        if (value.gate == gateId && value.actor == actorProfileId)
+            return value.placement;
     return {};
 }
 
+// 배치 ID에서 생성 정의의 archetype ID를 찾는다. 객체를 생성하거나 Server 상태를 바꾸지 않는다.
 std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_BossArchetypeId(const std::string_view placementId)
 {
-    for (const auto& value : BOSS_PLACEMENTS) if (value.placement == placementId) return value.archetype;
+    for (const auto& value : BOSS_PLACEMENTS)
+        if (value.placement == placementId)
+            return value.archetype;
     return {};
 }
 
+// 배치 ID에서 저작할 actor 프로필을 찾는다. 등록되지 않은 배치는 빈 view를 반환한다.
 std::string_view Client::CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(const std::string_view placementId)
 {
-    for (const auto& value : BOSS_PLACEMENTS) if (value.placement == placementId) return value.actor;
+    for (const auto& value : BOSS_PLACEMENTS)
+        if (value.placement == placementId)
+            return value.actor;
     return {};
 }
 
+// Reload와 저장 검증이 저작 JSON을 임시 문서로 읽는다. 문서 전체의 실패는 기존 outDocument를 보존한다.
+// 개별 패턴, 폴더 또는 번들의 복구 가능한 오류는 원본 JSON과 진단을 남겨 편집 목록에서 유지한다.
+// 모든 문서 검증이 끝난 성공 경로에서만 임시 문서를 outDocument로 이동한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	const std::string_view text,
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument,
@@ -3317,6 +4300,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		return false;
 	}
 
+	// 최상위 JSON의 필수/선택 키를 먼저 제한한다. 이후 포인터는 지역 root가 소유한 값을 차용하며
+	// 완성 문서에는 문자열과 값을 복사하므로 root의 수명을 넘겨 포인터를 보관하지 않는다.
 	DATA_JSON_VALUE root;
 	std::string parseError;
 	if (!CDataJson::Parse(text, root, parseError) ||
@@ -3347,6 +4332,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	const DATA_JSON_VALUE* const playAllPatternIds = Required(root, "playAllPatternIds", DATA_JSON_TYPE::ARRAY);
 	const DATA_JSON_VALUE* const patterns = Required(root, "patterns", DATA_JSON_TYPE::ARRAY);
 
+	// 모든 출력은 지역 staged에 모은다. 버전·revision·30Hz 시계·패턴 개수 검사 실패는
+	// outDocument를 건드리지 않고 진단만 바꾼다. C++ 할당 예외를 false로 바꾸는 catch는 없다.
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT staged;
 	if (nullptr == schema || schema->Get_String() != COMPOSITION_SCHEMA ||
 		nullptr == version ||
@@ -3369,6 +4356,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		outStatus = "KoukuSaydon composition root value or type is invalid.";
 		return false;
 	}
+
+	// 파일에서 읽은 버전으로 이전 actor/계층 형식 여부를 기억한 뒤 메모리 버전을 현재 값으로 맞춘다.
+	// 이전 계층 문서에 없는 카운터는 구조체 기본값을 사용하며 현재 형식은 두 카운터를 요구한다.
 	const bool_t legacyFormat = 1u == staged.iFormatVersion;
 	const bool_t legacyHierarchy = staged.iFormatVersion < 3u;
 	staged.iFormatVersion = FORMAT_VERSION;
@@ -3383,7 +4373,10 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
     {
         const auto* value = root.Find(name);
         if ((!value && !legacyHierarchy) || (value && (!Try_ParseUnsigned(*value, MAX_NEXT_ORDINAL, *destination) || !*destination)))
-        { outStatus = "Invalid hierarchy counter: " + std::string(name); return false; }
+        {
+            outStatus = "Invalid hierarchy counter: " + std::string(name);
+            return false;
+        }
     }
 
 	for (const DATA_JSON_VALUE& value : playAllPatternIds->Get_Array())
@@ -3396,8 +4389,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		staged.PlayAllPatternIds.push_back(value.Get_String());
 	}
 
-	/* The Logic catalog is parsed before any Pattern so a per-Pattern candidate
-	   can resolve the logicId a box references. */
+	// 패턴보다 Logic 카탈로그를 먼저 읽어 각 패턴의 임시 검증 문서에서 logicId를 해석할 수 있게 한다.
 	const DATA_JSON_VALUE* const nextLogicOrdinal = root.Find("nextLogicOrdinal");
 	const DATA_JSON_VALUE* const logics = root.Find("logics");
 	if ((nullptr != nextLogicOrdinal &&
@@ -3439,17 +4431,23 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition value or type is invalid.";
 				return false;
 			}
-            const std::array bombKeys{ "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId",
+
+            // 폭탄 템플릿의 다섯 선택 키는 전부 생략하거나 전부 제공해야 한다.
+            // 아래 공통 값 읽기 뒤 빈 ID와 실제 종류별 조합을 추가 검사한다.
+            const std::array<const char*, 5> bombKeys{ "bombPresentationOccurrenceId", "bombExplosionPresentationOccurrenceId",
                 "bombSectorPresentationOccurrenceId", "bombSectorRadiusM", "bombSectorHalfAngleDegrees" };
             const auto bombKeyCount = std::count_if(bombKeys.begin(), bombKeys.end(),
                 [&](const char* key) { return logicValue.Find(key) != nullptr; });
             if (bombKeyCount != 0u && bombKeyCount != bombKeys.size())
-            { outStatus = "Tracking bomb requires all five optional fields together."; return false; }
+            {
+                outStatus = "Tracking bomb requires all five optional fields together.";
+                return false;
+            }
 			KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION stagedLogic;
 			stagedLogic.strLogicId = logicId->Get_String();
 			stagedLogic.strDisplayName = logicName->Get_String();
 			stagedLogic.strLogicType = logicType->Get_String();
-			/* Typed values are optional; each present key must parse in range. */
+			// 종류별 값은 생략할 수 있다. 존재하는 키는 타입과 범위를 만족해야 한다.
 			const auto optionalText = [&logicValue](const char_t* const name, std::string& out)
 			{
 				const DATA_JSON_VALUE* const value = logicValue.Find(name);
@@ -3472,19 +4470,36 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				const DATA_JSON_VALUE* const value = logicValue.Find(name);
 				return nullptr == value || Try_ParseFinite(*value, minimum, maximum, out);
 			};
+
+			// 공격 템플릿은 판정 수치 배열로, 무작위 volley는 순서를 보존하는 템플릿 묶음으로 읽는다.
+			// 이곳의 파싱은 런타임 공격이나 난수 선택을 실행하지 않는다.
 			if (!Parse_AttackHits(logicValue.Find("fixedHits"), stagedLogic.FixedHits) ||
 				!Parse_AttackHits(logicValue.Find("trackingHits"), stagedLogic.TrackingHits) ||
 				!Parse_AttackHits(logicValue.Find("projectileHits"), stagedLogic.ProjectileHits))
-			{ outStatus = "Dynamic attack template is malformed."; return false; }
+			{
+				outStatus = "Dynamic attack template is malformed.";
+				return false;
+			}
 			if (const auto* sets = logicValue.Find("randomVolleyHits"))
 			{
-				if (!sets->Is_Array() || sets->Get_Array().size() > 32u) { outStatus = "Random hit sets are not bounded."; return false; }
+				if (!sets->Is_Array() || sets->Get_Array().size() > 32u)
+				{
+					outStatus = "Random hit sets are not bounded.";
+					return false;
+				}
 				for (const auto& set : sets->Get_Array())
 				{
 					stagedLogic.RandomVolleyHits.emplace_back();
-					if (!Parse_AttackHits(&set, stagedLogic.RandomVolleyHits.back())) { outStatus = "Random hit template is malformed."; return false; }
+					if (!Parse_AttackHits(&set, stagedLogic.RandomVolleyHits.back()))
+					{
+						outStatus = "Random hit template is malformed.";
+						return false;
+					}
 				}
 			}
+
+			// SHOWTIME 무작위 배치 키가 하나라도 있으면 배치 집합·간격·반경·높이 허용치를 함께 요구한다.
+			// 각 집합의 문자열 ID를 읽고 실제 표현 종류와 소유 관계는 Validate_Shape에서 연결한다.
 			const auto* randomSets = logicValue.Find("randomVolleyOccurrenceSets");
 			const bool hasRandomFields = randomSets || logicValue.Find("randomSpawnIntervalMs") ||
 				logicValue.Find("randomArenaRadiusM") || logicValue.Find("randomArenaHeightToleranceM") ||
@@ -3493,15 +4508,25 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			{
 				if (!randomSets || !randomSets->Is_Array() || randomSets->Get_Array().empty() || randomSets->Get_Array().size() > 32u ||
 					!logicValue.Find("randomSpawnIntervalMs") || !logicValue.Find("randomArenaRadiusM") || !logicValue.Find("randomArenaHeightToleranceM"))
-				{ outStatus = "SHOWTIME random volley fields must be supplied together with 1..32 ordered sets."; return false; }
+				{
+					outStatus = "SHOWTIME random volley fields must be supplied together with 1..32 ordered sets.";
+					return false;
+				}
 				for (const auto& set : randomSets->Get_Array())
 				{
 					if (!set.Is_Array() || set.Get_Array().empty() || set.Get_Array().size() > 64u)
-					{ outStatus = "SHOWTIME random volley requires 1..64 occurrence IDs."; return false; }
+					{
+						outStatus = "SHOWTIME random volley requires 1..64 occurrence IDs.";
+						return false;
+					}
 					std::vector<std::string> ids;
 					for (const auto& id : set.Get_Array())
 					{
-						if (!id.Is_String()) { outStatus = "SHOWTIME random occurrence ID must be text."; return false; }
+						if (!id.Is_String())
+						{
+							outStatus = "SHOWTIME random occurrence ID must be text.";
+							return false;
+						}
 						ids.push_back(id.Get_String());
 					}
 					stagedLogic.RandomVolleyOccurrenceSets.push_back(std::move(ids));
@@ -3515,6 +4540,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			const DATA_JSON_VALUE* const rearmOnExit = logicValue.Find("rearmOnExit");
 			const DATA_JSON_VALUE* const repeatAfterKnockback = logicValue.Find("repeatAfterKnockback");
 			const DATA_JSON_VALUE* const randomPlayerOnly = logicValue.Find("randomPlayerOnly");
+
+			// 생략한 키는 stagedLogic의 기본값을 유지한다. 공통 타입과 수치 상한을 먼저 읽고
+			// 판정 종류별 필수 키 조합은 아래에서 추가 검사한다.
 			if (!optionalText("judgementKind", stagedLogic.strJudgementKind) ||
                 !optionalText("bingoActiveMode", stagedLogic.strBingoActiveMode) ||
                 !optionalUnsigned("bingoFirstBombDelayMs", MAX_TIME_MS, stagedLogic.iBingoFirstBombDelayMs) ||
@@ -3523,6 +4551,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                 !optionalUnsigned("bingoBombDropDelayMs", MAX_TIME_MS, stagedLogic.iBingoBombDropDelayMs) ||
                 !optionalUnsigned("bingoBombFuseMs", 80000u, stagedLogic.iBingoBombFuseMs) ||
                 !optionalUnsigned("bingoInitialMarkedCells", 25u, stagedLogic.iBingoInitialMarkedCells) ||
+
+                // trigger 종류와 고정/추적 표현·폭탄 템플릿의 ID 및 수치를 읽는다.
                 !optionalText("triggerKind", stagedLogic.strTriggerKind) ||
                 !optionalText("colliderDamageContactRole", stagedLogic.strColliderDamageContactRole) ||
 				!optionalText("fixedSelectionGroupId", stagedLogic.strFixedSelectionGroupId) ||
@@ -3534,6 +4564,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                 !optionalFinite("bombSectorHalfAngleDegrees", 0.0, 180.0, stagedLogic.fBombSectorHalfAngleDegrees) ||
 				!optionalUnsigned("spawnIntervalMs", MAX_TIME_MS, stagedLogic.iSpawnIntervalMs) ||
 				!optionalFinite("followSpeedScale", .01, 10.0, stagedLogic.fFollowSpeedScale) ||
+
+                // 추적 투사체의 표현·속도·반경·수명과 무작위 volley 공간/배율 값을 읽는다.
                 !Try_ParseTextList(logicValue.Find("visualIds"), 4u, stagedLogic.PursuitVisualIds) ||
                 !Try_ParseTextList(logicValue.Find("cardSymbols"), 4u, stagedLogic.PursuitCardSymbols) ||
                 !optionalText("contactVisualId", stagedLogic.strContactVisualId) ||
@@ -3549,6 +4581,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("randomAnchorKind", stagedLogic.strRandomAnchorKind) ||
 				!optionalFinite("randomScaleMin", .01, 10.0, stagedLogic.fRandomScaleMin) ||
 				!optionalFinite("randomScaleMax", .01, 10.0, stagedLogic.fRandomScaleMax) ||
+
+				// 구역/시선 판정과 방향 분신을 읽는다. maxDistanceM은 추적 투사체 종류일 때 별도 필드로 간다.
 				!optionalText("insideOutcome", stagedLogic.strInsideOutcome) ||
 				!optionalUnsigned("sectorCount", 64u, stagedLogic.iSectorCount) ||
 				!Try_ParseTextList(logicValue.Find("sectorSymbols"), 64u, stagedLogic.SectorSymbols) ||
@@ -3571,6 +4605,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalFinite("normalYawOffsetDegrees", -360.0, 360.0, stagedLogic.fNormalYawOffsetDegrees) ||
 				!optionalFinite("faceCenterYawOffsetDegrees", -360.0, 360.0, stagedLogic.fFaceCenterYawOffsetDegrees) ||
 				(nullptr != endsPattern && !endsPattern->Is_Boolean()) ||
+
+				// 결과의 대상·피해·밀치기와 후속 표현 참조다. 단위가 있는 키는 ms/m/degree별 경계를 사용한다.
 				!optionalText("outcomeKind", stagedLogic.strOutcomeKind) ||
 				!optionalFinite("targetRadiusM", .01, 1000.0, stagedLogic.fTargetRadiusM) ||
 				!optionalText("targetWorldInstanceId", stagedLogic.strTargetWorldInstanceId) ||
@@ -3601,6 +4637,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!optionalText("soundResourceId", stagedLogic.strSoundResourceId) ||
 				!optionalText("attachmentSlot", stagedLogic.strAttachmentSlot) ||
 				!optionalUnsigned("effectDelayMs", MAX_TIME_MS, stagedLogic.iEffectDelayMs) ||
+
+				// 플레이어 입장·공중 이동·원형 배치·돌진과 접촉 대상 매핑의 값을 읽는다.
 				!optionalText("triggerKind", stagedLogic.strTriggerKind) ||
 				!Try_ParseTextList(logicValue.Find("playerEntryEffectOccurrenceIds"), 4u, stagedLogic.PlayerEntryEffectOccurrenceIds) ||
 				!optionalText("airbornePhase", stagedLogic.strAirbornePhase) ||
@@ -3631,153 +4669,278 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				outStatus = "KoukuSaydon Logic definition typed value is invalid: " + stagedLogic.strLogicId;
 				return false;
 			}
-            const std::array bingoKeys{ "bingoActiveMode", "bingoFirstBombDelayMs", "bingoBombIntervalMs", "bingoBombMarkMs",
+
+            // 형식이 맞는 선택 키라도 허용된 종류에만 붙을 수 있다.
+            // 빙고와 병사 소환, 카드 미로 입장, FEAR 사운드의 키 소유를 순서대로 제한한다.
+            const std::array<const char*, 7> bingoKeys{ "bingoActiveMode", "bingoFirstBombDelayMs", "bingoBombIntervalMs", "bingoBombMarkMs",
                 "bingoBombDropDelayMs", "bingoBombFuseMs", "bingoInitialMarkedCells" };
             if (std::any_of(bingoKeys.begin(), bingoKeys.end(), [&](const char* key) { return logicValue.Find(key) != nullptr; }) &&
                 (stagedLogic.strLogicType != "DURATION" || stagedLogic.strJudgementKind != "BINGO_BOARD"))
-            { outStatus = "Bingo settings belong only to DURATION BINGO_BOARD."; return false; }
+            {
+                outStatus = "Bingo settings belong only to DURATION BINGO_BOARD.";
+                return false;
+            }
             const bool soldierFields = logicValue.Find("soldierMaxHp") || logicValue.Find("soldierDamage") || logicValue.Find("soldierCounts") || logicValue.Find("spawnRadiusMinM") || logicValue.Find("spawnRadiusMaxM");
             if (soldierFields && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "CARD_RAIN_SOLDIERS"))
-            { outStatus = "Card soldier fields belong only to CARD_RAIN_SOLDIERS."; return false; }
+            {
+                outStatus = "Card soldier fields belong only to CARD_RAIN_SOLDIERS.";
+                return false;
+            }
             if (const auto* counts = logicValue.Find("soldierCounts"))
             {
                 if (!counts->Is_Array() || counts->Get_Array().size() != 3u)
-                { outStatus = "soldierCounts needs club, heart and diamond counts."; return false; }
+                {
+                    outStatus = "soldierCounts needs club, heart and diamond counts.";
+                    return false;
+                }
                 for (std::size_t i = 0u; i < 3u; ++i)
                     if (!Try_ParseUnsigned(counts->Get_Array()[i], 32u, stagedLogic.SoldierCounts[i]))
-                    { outStatus = "Card soldier count must be 0..32."; return false; }
+                    {
+                        outStatus = "Card soldier count must be 0..32.";
+                        return false;
+                    }
             }
             if (stagedLogic.strTriggerKind == "CARD_RAIN_SOLDIERS" && !Has_Properties(logicValue,
                 { "logicId", "displayName", "logicType", "triggerKind" }, { "soldierCounts", "soldierMaxHp", "soldierDamage", "spawnRadiusMinM", "spawnRadiusMaxM" }))
-            { outStatus = "CARD_RAIN_SOLDIERS only accepts soldier counts, HP/damage overrides and spawn radius."; return false; }
+            {
+                outStatus = "CARD_RAIN_SOLDIERS only accepts soldier counts, HP/damage overrides and spawn radius.";
+                return false;
+            }
             const bool stagePlayers = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS";
             if (const auto* ids = logicValue.Find("playerEntryEffectOccurrenceIds"); ids &&
                 ids->Get_Array().size() != stagedLogic.PlayerEntryEffectOccurrenceIds.size())
-            { outStatus = "Player entry Effect occurrence IDs must not be empty."; return false; }
+            {
+                outStatus = "Player entry Effect occurrence IDs must not be empty.";
+                return false;
+            }
             if (stagePlayers && !Has_ExactProperties(logicValue,
                 { "logicId", "displayName", "logicType", "triggerKind", "playerEntryEffectOccurrenceIds" }))
-            { outStatus = "CARD_MAZE_STAGE_PLAYERS carries only ordered Effect references."; return false; }
+            {
+                outStatus = "CARD_MAZE_STAGE_PLAYERS carries only ordered Effect references.";
+                return false;
+            }
             if (stagePlayers != (logicValue.Find("playerEntryEffectOccurrenceIds") != nullptr))
-            { outStatus = "CARD_MAZE_STAGE_PLAYERS requires playerEntryEffectOccurrenceIds, and no other kind accepts it."; return false; }
+            {
+                outStatus = "CARD_MAZE_STAGE_PLAYERS requires playerEntryEffectOccurrenceIds, and no other kind accepts it.";
+                return false;
+            }
             if (logicValue.Find("soundResourceId") &&
                 (stagedLogic.strLogicType != "RESULT" || stagedLogic.strOutcomeKind != "FEAR"))
-            { outStatus = "Only FEAR owns soundResourceId."; return false; }
+            {
+                outStatus = "Only FEAR owns soundResourceId.";
+                return false;
+            }
+
+            // 추적 투사체는 공통 필수 키를 함께 요구한다. 선택 카드 기호와 회당 개수는 별도로 검사하며
+            // 시선·방향 분신·공중 이동의 전용 키도 해당 판정 종류와 맞춘다.
             const bool pursuit = ((stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "PURSUIT_PROJECTILES") ||
                 (stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "PURSUIT_PROJECTILES"));
             if (logicValue.Find("cardSymbols") && (!pursuit || stagedLogic.PursuitCardSymbols.empty() ||
                 logicValue.Find("cardSymbols")->Get_Array().size() != stagedLogic.PursuitCardSymbols.size()))
-            { outStatus = "cardSymbols requires one symbol per PURSUIT_PROJECTILES visual."; return false; }
+            {
+                outStatus = "cardSymbols requires one symbol per PURSUIT_PROJECTILES visual.";
+                return false;
+            }
             for (const char* key : { "visualIds", "contactVisualId", "speedMps", "contactRadiusM", "spawnRadiusM", "lifetimeMs", "homing" })
                 if (pursuit != (logicValue.Find(key) != nullptr))
-                { outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind."; return false; }
+                {
+                    outStatus = "PURSUIT_PROJECTILES fields must be supplied together on that judgement kind.";
+                    return false;
+                }
             if (logicValue.Find("countPerWave") && (!pursuit || stagedLogic.iCountPerWave == 0u))
-            { outStatus = "countPerWave requires PURSUIT_PROJECTILES and a count of 1..16."; return false; }
+            {
+                outStatus = "countPerWave requires PURSUIT_PROJECTILES and a count of 1..16.";
+                return false;
+            }
             if (const auto* gaze = logicValue.Find("gazeDuringWindow"))
             {
                 if (!gaze->Is_Boolean() || stagedLogic.strLogicType != "DURATION" || stagedLogic.strJudgementKind != "GAZE_REAL_BOSS")
-                { outStatus = "gazeDuringWindow is Boolean and belongs only to GAZE_REAL_BOSS."; return false; }
+                {
+                    outStatus = "gazeDuringWindow is Boolean and belongs only to GAZE_REAL_BOSS.";
+                    return false;
+                }
                 stagedLogic.bGazeDuringWindow = gaze->Get_Boolean();
             }
-            if (homing) stagedLogic.bPursuitHoming = homing->Get_Boolean();
+            if (homing)
+                stagedLogic.bPursuitHoming = homing->Get_Boolean();
             const bool cross = stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "CROSS_DIRECTION_CLONES";
             if ((cross != (logicValue.Find("directionPatternIds") != nullptr)) ||
                 (cross != (logicValue.Find("cloneEndStageId") != nullptr)) ||
                 (cross != (logicValue.Find("summonOccurrenceId") != nullptr)))
-            { outStatus = "CROSS_DIRECTION_CLONES requires directionPatternIds, cloneEndStageId and summonOccurrenceId together."; return false; }
+            {
+                outStatus = "CROSS_DIRECTION_CLONES requires directionPatternIds, cloneEndStageId and summonOccurrenceId together.";
+                return false;
+            }
 			const bool airborne = stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "ALBION_AIRBORNE";
 			if ((airborne && (!logicValue.Find("airbornePhase") || !logicValue.Find("airborneHeightM") ||
 				!logicValue.Find("airborneDurationMs") || !logicValue.Find("teleportPosition"))) ||
 				(!airborne && (logicValue.Find("airbornePhase") || logicValue.Find("airborneHeightM") || logicValue.Find("airborneDurationMs") ||
 				 logicValue.Find("airborneTargetPositionPolicy") || logicValue.Find("selectedEffectGroupId"))))
-			{ outStatus = "ALBION_AIRBORNE requires phase, height, duration and teleportPosition together."; return false; }
-			if (forcePush) stagedLogic.bForcePush = forcePush->Get_Boolean();
-			if (pushCanLeaveArena) stagedLogic.bPushCanLeaveArena = pushCanLeaveArena->Get_Boolean();
-			if (pushBallistic) stagedLogic.bPushBallistic = pushBallistic->Get_Boolean();
-			if (rearmOnExit) stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
-			if (repeatAfterKnockback) stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
-			if (randomPlayerOnly) stagedLogic.bRandomPlayerOnly = randomPlayerOnly->Get_Boolean();
+			{
+				outStatus = "ALBION_AIRBORNE requires phase, height, duration and teleportPosition together.";
+				return false;
+			}
+			if (forcePush)
+				stagedLogic.bForcePush = forcePush->Get_Boolean();
+			if (pushCanLeaveArena)
+				stagedLogic.bPushCanLeaveArena = pushCanLeaveArena->Get_Boolean();
+			if (pushBallistic)
+				stagedLogic.bPushBallistic = pushBallistic->Get_Boolean();
+			if (rearmOnExit)
+				stagedLogic.bRearmOnExit = rearmOnExit->Get_Boolean();
+			if (repeatAfterKnockback)
+				stagedLogic.bRepeatAfterKnockback = repeatAfterKnockback->Get_Boolean();
+			if (randomPlayerOnly)
+				stagedLogic.bRandomPlayerOnly = randomPlayerOnly->Get_Boolean();
+
+			// 선택 불리언을 대입한 뒤 청색 원 배치와 피해/재진입 옵션의 조합을 제한한다.
+			// 밀치기 거리와 시간은 함께 있어야 하며 종류별 의미 검사는 뒤의 구조 검증으로 이어진다.
 			if ((logicValue.Find("arenaRandomCount") || logicValue.Find("arenaRandomRadiusM") ||
 				logicValue.Find("arenaHeightToleranceM") || logicValue.Find("arenaMinimumSpacingM") || randomPlayerOnly) &&
 				(stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ALBION_BLUE_CIRCLE"))
-			{ outStatus = "Arena circle placement and randomPlayerOnly belong to ALBION_BLUE_CIRCLE."; return false; }
+			{
+				outStatus = "Arena circle placement and randomPlayerOnly belong to ALBION_BLUE_CIRCLE.";
+				return false;
+			}
 			if (((logicValue.Find("pushDirection") || forcePush || pushCanLeaveArena || pushBallistic || logicValue.Find("pushHeightM") || logicValue.Find("pushYawOffsetDegrees")) && (stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && stagedLogic.strOutcomeKind != "FIXED_DAMAGE")) ||
 				(logicValue.Find("pushRangeM") != nullptr) != (logicValue.Find("pushMs") != nullptr) ||
 				((logicValue.Find("pushRangeM") || logicValue.Find("pushMs")) && (stagedLogic.strOutcomeKind != "MAX_HP_PERCENT_DAMAGE" && stagedLogic.strOutcomeKind != "FIXED_DAMAGE")) ||
 				((rearmOnExit || repeatAfterKnockback) && (stagedLogic.strLogicType != "TRIGGER" || stagedLogic.strTriggerKind != "ENTER_AREA")) ||
 				(logicValue.Find("repeatIntervalMs") && !((stagedLogic.strLogicType == "TRIGGER" && stagedLogic.strTriggerKind == "ENTER_AREA") ||
 					(stagedLogic.strLogicType == "DURATION" && stagedLogic.strJudgementKind == "AREA_OVERLAP"))))
-			{ outStatus = "Knockback fields belong together on a damage Result; rearmOnExit belongs to ENTER_AREA."; return false; }
+			{
+				outStatus = "Knockback fields belong together on a damage Result; rearmOnExit belongs to ENTER_AREA.";
+				return false;
+			}
+
+			// 잡기 결과만 부착 슬롯과 gripLocalOffset을 함께 가진다. offset은 forward/up/right 순서의 m 값이며
+			// 여기서는 각 성분 범위만 읽고 실제 손 본 transform은 계산하지 않는다.
 			const auto* grip = logicValue.Find("gripLocalOffset");
 			if ((stagedLogic.strOutcomeKind == "CAPTURE_PLAYER") != (grip != nullptr) ||
 				(stagedLogic.strOutcomeKind == "CAPTURE_PLAYER") != (logicValue.Find("attachmentSlot") != nullptr))
-			{ outStatus = "CAPTURE_PLAYER requires attachmentSlot and gripLocalOffset together."; return false; }
+			{
+				outStatus = "CAPTURE_PLAYER requires attachmentSlot and gripLocalOffset together.";
+				return false;
+			}
 			if (grip)
 			{
 				if (!Has_Properties(*grip, {"forwardM", "upM", "rightM"}, {}))
-				{ outStatus = "Capture gripLocalOffset requires forwardM/upM/rightM."; return false; }
+				{
+					outStatus = "Capture gripLocalOffset requires forwardM/upM/rightM.";
+					return false;
+				}
 				std::size_t axis = 0u;
 				for (const auto* field : {"forwardM", "upM", "rightM"})
 				{
 					const auto* value = grip->Find(field);
 					if (!value || !Try_ParseFinite(*value, -10.0, 10.0, stagedLogic.GripLocalOffset[axis++]))
-					{ outStatus = "Capture grip offset must be finite -10..10 m."; return false; }
+					{
+						outStatus = "Capture grip offset must be finite -10..10 m.";
+						return false;
+					}
 				}
 			}
+
+			// 접촉 대상 목록과 대상별 motion ID 매핑을 읽는다. 빈 원소 누락 여부와 행 형식을 확인하고
+			// 실제 World 배치·motion 연결은 모든 정의를 읽은 뒤 검사한다.
 			if (const auto* targets = logicValue.Find("targetWorldOccurrenceIds"); targets &&
 				targets->Get_Array().size() != stagedLogic.TargetWorldOccurrenceIds.size())
-			{ outStatus = "Contact target placement IDs must not be empty."; return false; }
+			{
+				outStatus = "Contact target placement IDs must not be empty.";
+				return false;
+			}
 			if (const auto* mappings = logicValue.Find("contactMotions"))
 			{
 				if (!mappings->Is_Array() || mappings->Get_Array().size() > 64u)
-				{ outStatus = "contactMotions must contain up to 64 target/motion mappings."; return false; }
+				{
+					outStatus = "contactMotions must contain up to 64 target/motion mappings.";
+					return false;
+				}
 				for (const auto& row : mappings->Get_Array())
 				{
 					if (!Has_Properties(row, { "targetWorldOccurrenceId", "motionInstanceId" }, {}))
-					{ outStatus = "Contact motion mapping has unexpected properties."; return false; }
+					{
+						outStatus = "Contact motion mapping has unexpected properties.";
+						return false;
+					}
 					const auto* target = Required(row, "targetWorldOccurrenceId", DATA_JSON_TYPE::STRING);
 					const auto* motion = Required(row, "motionInstanceId", DATA_JSON_TYPE::STRING);
-					if (!target || !motion) { outStatus = "Contact motion mapping must contain stable IDs."; return false; }
+					if (!target || !motion)
+					{
+						outStatus = "Contact motion mapping must contain stable IDs.";
+						return false;
+					}
 					stagedLogic.ContactMotions.push_back({target->Get_String(), motion->Get_String()});
 				}
 			}
+
+            // 선택 비행 offset·순간이동 XYZ·시계 방향은 각 배열의 길이와 수치 범위로 읽는다.
+            // 순간이동이나 비행을 이 함수에서 적용하지 않는다.
             if (const auto* pos = logicValue.Find("selectedFlightSourceOffset"))
             {
                 if (!pos->Is_Array() || pos->Get_Array().size() != 3u)
-                { outStatus = "selectedFlightSourceOffset must contain XYZ."; return false; }
+                {
+                    outStatus = "selectedFlightSourceOffset must contain XYZ.";
+                    return false;
+                }
                 for (std::size_t i = 0; i < 3u; ++i)
                     if (!Try_ParseFinite(pos->Get_Array()[i], -1000.0, 1000.0, stagedLogic.SelectedFlightSourceOffset[i]))
-                    { outStatus = "selectedFlightSourceOffset must be finite."; return false; }
+                    {
+                        outStatus = "selectedFlightSourceOffset must be finite.";
+                        return false;
+                    }
             }
 			if (const auto* pos = logicValue.Find("teleportPosition"))
 			{
 				if (!pos->Is_Array() || pos->Get_Array().size() != 3u)
-				{ outStatus = "teleportPosition must contain XYZ."; return false; }
+				{
+					outStatus = "teleportPosition must contain XYZ.";
+					return false;
+				}
 				for (std::size_t i = 0; i < 3u; ++i)
 					if (!Try_ParseFinite(pos->Get_Array()[i], -100000.0, 100000.0, stagedLogic.TeleportPosition[i]))
-					{ outStatus = "teleportPosition must be finite."; return false; }
+					{
+						outStatus = "teleportPosition must be finite.";
+						return false;
+					}
 			}
 			if (const auto* hours = logicValue.Find("clockHours"))
 			{
 				if (!hours->Is_Array() || hours->Get_Array().size() != 3u)
-				{ outStatus = "clockHours must contain three hours."; return false; }
+				{
+					outStatus = "clockHours must contain three hours.";
+					return false;
+				}
 				for (const auto& value : hours->Get_Array())
 				{
 					std::uint32_t hour = 0u;
 					if (!Try_ParseUnsigned(value, 12u, hour) || hour == 0u)
-					{ outStatus = "clockHours must be 1..12."; return false; }
+					{
+						outStatus = "clockHours must be 1..12.";
+						return false;
+					}
 					stagedLogic.ClockHours.push_back(hour);
 				}
 			}
+
+			// 종류별 누락 기본값을 마무리한다. 빙고 완료 줄 수는 threshold 키가 없을 때만 3으로 보충하고
+			// 폭탄 키 묶음에 빈 참조가 없으면 Logic 정의를 지역 카탈로그에 추가한다.
 			if (nullptr != endsPattern)
 				stagedLogic.bEndsPatternOnSuccess = endsPattern->Get_Boolean();
-            if (stagedLogic.strJudgementKind == "BINGO_COMPLETED_LINES" && !logicValue.Find("threshold")) stagedLogic.iThreshold = 3u;
+            if (stagedLogic.strJudgementKind == "BINGO_COMPLETED_LINES" && !logicValue.Find("threshold"))
+                stagedLogic.iThreshold = 3u;
             if (bombKeyCount && (stagedLogic.strBombPresentationOccurrenceId.empty() ||
                 stagedLogic.strBombExplosionPresentationOccurrenceId.empty() || stagedLogic.strBombSectorPresentationOccurrenceId.empty()))
-            { outStatus = "Tracking bomb references cannot be empty."; return false; }
+            {
+                outStatus = "Tracking bomb references cannot be empty.";
+                return false;
+            }
 			staged.Logics.push_back(std::move(stagedLogic));
 		}
 	}
 
+	// Summon은 자체 정의를 먼저 읽고 정책을 검증한다. 방향 분신의 추가 필드가 하나라도 있으면
+	// 종류·네 방향 참조 목록·종료 단계를 함께 요구하며 realPatternId는 선택값이다.
 	const DATA_JSON_VALUE* const nextSummonOrdinal = root.Find("nextSummonOrdinal");
 	const DATA_JSON_VALUE* const summons = root.Find("summons");
 	if ((nullptr != nextSummonOrdinal &&
@@ -3815,22 +4978,32 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
             const auto* cutoff = summonValue.Find("cloneEndStageId");
             const auto* real = summonValue.Find("realPatternId");
             if (real && (!real->Is_String() || !Is_StableId(real->Get_String())))
-            { outStatus = "Cross direction realPatternId must name one of its four Patterns."; return false; }
-            if (real) stagedSummon.strRealPatternId = real->Get_String();
+            {
+                outStatus = "Cross direction realPatternId must name one of its four Patterns.";
+                return false;
+            }
+            if (real)
+                stagedSummon.strRealPatternId = real->Get_String();
             if (kind || directions || cutoff || real)
             {
                 if (!kind || !kind->Is_String() || kind->Get_String() != "CROSS_DIRECTION_CLONES" ||
                     !directions || !cutoff || !cutoff->Is_String() ||
                     !Try_ParseTextList(directions, 4u, stagedSummon.DirectionPatternIds))
-                { outStatus = "Cross direction Summon requires summonKind, directionPatternIds and cloneEndStageId together."; return false; }
+                {
+                    outStatus = "Cross direction Summon requires summonKind, directionPatternIds and cloneEndStageId together.";
+                    return false;
+                }
                 stagedSummon.strSummonKind = kind->Get_String();
                 stagedSummon.strCloneEndStageId = cutoff->Get_String();
             }
-            if (!Validate_SummonPolicy(stagedSummon, outStatus)) return false;
+            if (!Validate_SummonPolicy(stagedSummon, outStatus))
+                return false;
 			staged.Summons.push_back(std::move(stagedSummon));
 		}
 	}
 
+	// World는 시퀀스 인스턴스와 위치 보정·anchor·선택 리소스 ID를 읽는다.
+	// 시퀀스 파일이나 모델을 여기서 로드하지 않으며 objectResourceId는 제공됐으면 비어 있을 수 없다.
 	const DATA_JSON_VALUE* const nextWorldOrdinal = root.Find("nextWorldOrdinal");
 	const DATA_JSON_VALUE* const worlds = root.Find("worlds");
 	if ((nullptr != nextWorldOrdinal &&
@@ -3882,13 +5055,21 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 				!Read_PresentationText(worldValue, "anchorKind", stagedWorld.strAnchorKind) ||
 				!Read_PresentationText(worldValue, "companionEffectResourceId", stagedWorld.strCompanionEffectResourceId) ||
 				!Read_PresentationVector(worldValue, "anchorPosition", stagedWorld.AnchorPosition, -100000.0, 100000.0))
-			{ outStatus = "Invalid World anchor."; return false; }
+			{
+				outStatus = "Invalid World anchor.";
+				return false;
+			}
 			if (worldValue.Find("objectResourceId") && stagedWorld.strObjectResourceId.empty())
-			{ outStatus = "World objectResourceId must be a nonempty Object ID when present."; return false; }
+			{
+				outStatus = "World objectResourceId must be a nonempty Object ID when present.";
+				return false;
+			}
 			staged.Worlds.push_back(std::move(stagedWorld));
 		}
 	}
 
+	// Scene Profile은 저작 ID·표시 이름·렌더링 profile ID만 보관한다.
+	// 실제 렌더링 옵션을 이 파싱 단계에서 바꾸지 않는다.
 	const DATA_JSON_VALUE* const nextSceneProfileOrdinal = root.Find("nextSceneProfileOrdinal");
 	const DATA_JSON_VALUE* const sceneProfiles = root.Find("sceneProfiles");
 	if ((nullptr != nextSceneProfileOrdinal &&
@@ -3926,21 +5107,35 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		}
 	}
 
+	// 표현 리소스의 다음 순번과 최대 4096개 정의를 읽는다. 종류별 필드는 전용 reader가 검사하고
+	// 문서 안의 ID 연결과 배치 조건은 후속 구조 검증에서 확인한다.
 	if (const auto* ordinal = root.Find("nextPresentationResourceOrdinal"); nullptr != ordinal)
 		if (!Try_ParseUnsigned(*ordinal, MAX_NEXT_ORDINAL, staged.iNextPresentationResourceOrdinal) ||
-			staged.iNextPresentationResourceOrdinal == 0u) { outStatus = "Invalid presentation resource counter."; return false; }
+			staged.iNextPresentationResourceOrdinal == 0u)
+		{
+			outStatus = "Invalid presentation resource counter.";
+			return false;
+		}
 	if (const auto* rows = root.Find("presentationResources"); nullptr != rows)
 	{
 		if (!rows->Is_Array() || rows->Get_Array().size() > 4096u)
-		{ outStatus = "Invalid presentation resource list."; return false; }
+		{
+			outStatus = "Invalid presentation resource list.";
+			return false;
+		}
 		for (const auto& value : rows->Get_Array())
 		{
 			KOUKU_SAYDON_COMPOSITION_PRESENTATION_RESOURCE row;
 			if (!Read_PresentationResource(value, row))
-			{ outStatus = "Invalid presentation resource value or property."; return false; }
+			{
+				outStatus = "Invalid presentation resource value or property.";
+				return false;
+			}
 			staged.PresentationResources.push_back(std::move(row));
 		}
 	}
+
+	// 선택 광기 정책은 maximum과 clownHoldMs를 함께 받는다. 생략하면 구조체 기본 정책을 유지한다.
 	if (const DATA_JSON_VALUE* const madnessPolicy = root.Find("madnessPolicy"); nullptr != madnessPolicy)
 	{
 		const DATA_JSON_VALUE* const maximum = Required(*madnessPolicy, "maximum", DATA_JSON_TYPE::NUMBER);
@@ -3956,6 +5151,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 		}
 	}
 
+	// 패턴을 읽기 전 카탈로그와 문서 헤더를 복사해 한 패턴 검증에 재사용한다.
+	// 이미 수락한 패턴의 action/배치 ID 집합과 애니메이션 배치 총수는 문서 전체 중복·상한에 사용한다.
 	staged.Patterns.reserve(patterns->Get_Array().size());
 	std::size_t parsedOccurrences = 0u;
 	const auto validationHeader = staged;
@@ -3965,604 +5162,764 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	{
 		const auto previousOccurrences = parsedOccurrences;
 		KOUKU_SAYDON_COMPOSITION_PATTERN stagedPattern;
+		// 패턴 한 행의 실패를 문서 전체 실패와 분리한다. 이 lambda가 거절하면 아래 격리 경로가 원본 JSON을 보존한다.
 		const auto parsePattern = [&]() -> bool_t
 		{
-		const bool_t validProperties = legacyFormat ?
-			Has_Properties(patternValue,
-				{ "patternId", "displayName", "authoringStatus", "category",
-				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
-				{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
-				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
-				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
-				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" }) :
-			Has_Properties(patternValue,
-				{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
-				  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
-				{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
-				  "nextSummonOccurrenceOrdinal", "summonOccurrences",
-				  "nextWorldOccurrenceOrdinal", "worldOccurrences",
-				  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
-				  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" });
-		if (!validProperties)
-		{
-			outStatus = "KoukuSaydon Pattern has unexpected properties.";
-			return false;
-		}
-		const DATA_JSON_VALUE* const patternId = Required(patternValue, "patternId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* const actorProfileId = Required(patternValue, "actorProfileId", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* const displayName = Required(patternValue, "displayName", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* const authoringStatus = Required(patternValue, "authoringStatus", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* const category = Required(patternValue, "category", DATA_JSON_TYPE::STRING);
-		const DATA_JSON_VALUE* const nextStageOrdinal = Required(patternValue, "nextStageOrdinal", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* const nextAnimationOrdinal = Required(patternValue, "nextAnimationOrdinal", DATA_JSON_TYPE::NUMBER);
-		const DATA_JSON_VALUE* const stages = Required(patternValue, "stages", DATA_JSON_TYPE::ARRAY);
-		if (nullptr == patternId || (!legacyFormat && nullptr == actorProfileId) || nullptr == displayName ||
-			nullptr == authoringStatus || nullptr == category ||
-			nullptr == nextStageOrdinal ||
-			!Try_ParseUnsigned(*nextStageOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextStageOrdinal) || 0u == stagedPattern.iNextStageOrdinal ||
-			nullptr == nextAnimationOrdinal ||
-			!Try_ParseUnsigned(*nextAnimationOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextAnimationOrdinal) ||
-			0u == stagedPattern.iNextAnimationOrdinal ||
-			nullptr == stages || stages->Get_Array().size() > MAX_STAGES_PER_PATTERN)
-		{
-			outStatus = "KoukuSaydon Pattern value or type is invalid.";
-			return false;
-		}
-		stagedPattern.strPatternId = patternId->Get_String();
-		if (!legacyFormat)
-			stagedPattern.strActorProfileId = actorProfileId->Get_String();
-		stagedPattern.strDisplayName = displayName->Get_String();
-		stagedPattern.strAuthoringStatus = authoringStatus->Get_String();
-		stagedPattern.strCategory = category->Get_String();
-		stagedPattern.Stages.reserve(stages->Get_Array().size());
-
-		for (const DATA_JSON_VALUE& stageValue : stages->Get_Array())
-		{
-			if (!Has_Properties(stageValue,
-					{ "stageId", "actionId", "stageKind", "durationMs",
-					  "animationOccurrences" }, { "retargetOnEnter", "retargetTarget" }))
+			const bool_t validProperties = legacyFormat ?
+				Has_Properties(patternValue,
+					{ "patternId", "displayName", "authoringStatus", "category",
+					  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
+					{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
+					  "nextSummonOccurrenceOrdinal", "summonOccurrences",
+					  "nextWorldOccurrenceOrdinal", "worldOccurrences",
+					  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
+					  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" }) :
+				Has_Properties(patternValue,
+					{ "patternId", "actorProfileId", "displayName", "authoringStatus", "category",
+					  "nextStageOrdinal", "nextAnimationOrdinal", "stages" },
+					{ "nextLogicOccurrenceOrdinal", "logicOccurrences",
+					  "nextSummonOccurrenceOrdinal", "summonOccurrences",
+					  "nextWorldOccurrenceOrdinal", "worldOccurrences",
+					  "nextSceneProfileOccurrenceOrdinal", "sceneProfileOccurrences",
+					  "nextPresentationOccurrenceOrdinal", "presentationOccurrences", "enterCombatOnFinish", "resetBossToSpawn", "resetBossYawDegrees", "bossMotion", "animationRootVerticalScale", "animationRootHorizontalScale", "gateId", "targetBossPlacementId", "folderId", "durationMs", "nextPatternOccurrenceOrdinal", "patternOccurrences", "loopStartPatternOccurrenceId", "playChildrenSequentially" });
+			if (!validProperties)
 			{
-				outStatus = "KoukuSaydon Stage has unexpected properties.";
+				outStatus = "KoukuSaydon Pattern has unexpected properties.";
 				return false;
 			}
-			const DATA_JSON_VALUE* const stageId = Required(stageValue, "stageId", DATA_JSON_TYPE::STRING);
-			const DATA_JSON_VALUE* const actionId = Required(stageValue, "actionId", DATA_JSON_TYPE::STRING);
-			const DATA_JSON_VALUE* const stageKind = Required(stageValue, "stageKind", DATA_JSON_TYPE::STRING);
-			const DATA_JSON_VALUE* const durationMs = Required(stageValue, "durationMs", DATA_JSON_TYPE::NUMBER);
-			const DATA_JSON_VALUE* const occurrences = Required(stageValue, "animationOccurrences", DATA_JSON_TYPE::ARRAY);
-			KOUKU_SAYDON_COMPOSITION_STAGE stagedStage;
-			if (nullptr == stageId || nullptr == actionId || nullptr == stageKind ||
-				nullptr == durationMs ||
-				!Try_ParseUnsigned(*durationMs, MAX_TIME_MS, stagedStage.iDurationMs) ||
-				0u == stagedStage.iDurationMs || nullptr == occurrences ||
-				occurrences->Get_Array().size() > MAX_OCCURRENCES_PER_STAGE ||
-				occurrences->Get_Array().size() >
-					MAX_DOCUMENT_OCCURRENCES - parsedOccurrences)
+			const DATA_JSON_VALUE* const patternId = Required(patternValue, "patternId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const actorProfileId = Required(patternValue, "actorProfileId", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const displayName = Required(patternValue, "displayName", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const authoringStatus = Required(patternValue, "authoringStatus", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const category = Required(patternValue, "category", DATA_JSON_TYPE::STRING);
+			const DATA_JSON_VALUE* const nextStageOrdinal = Required(patternValue, "nextStageOrdinal", DATA_JSON_TYPE::NUMBER);
+			const DATA_JSON_VALUE* const nextAnimationOrdinal = Required(patternValue, "nextAnimationOrdinal", DATA_JSON_TYPE::NUMBER);
+			const DATA_JSON_VALUE* const stages = Required(patternValue, "stages", DATA_JSON_TYPE::ARRAY);
+			if (nullptr == patternId || (!legacyFormat && nullptr == actorProfileId) || nullptr == displayName ||
+				nullptr == authoringStatus || nullptr == category ||
+				nullptr == nextStageOrdinal ||
+				!Try_ParseUnsigned(*nextStageOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextStageOrdinal) || 0u == stagedPattern.iNextStageOrdinal ||
+				nullptr == nextAnimationOrdinal ||
+				!Try_ParseUnsigned(*nextAnimationOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextAnimationOrdinal) ||
+				0u == stagedPattern.iNextAnimationOrdinal ||
+				nullptr == stages || stages->Get_Array().size() > MAX_STAGES_PER_PATTERN)
 			{
-				outStatus = "KoukuSaydon Stage value or type is invalid.";
+				outStatus = "KoukuSaydon Pattern value or type is invalid.";
 				return false;
 			}
-			stagedStage.strStageId = stageId->Get_String();
-			stagedStage.strActionId = actionId->Get_String();
-			stagedStage.strStageKind = stageKind->Get_String();
-			if (const DATA_JSON_VALUE* retarget = stageValue.Find("retargetOnEnter"))
-			{
-				if (!retarget->Is_Boolean())
-				{ outStatus = "KoukuSaydon Stage retargetOnEnter must be boolean."; return false; }
-				stagedStage.bRetargetOnEnter = retarget->Get_Boolean();
-			}
-            if (const auto* target = stageValue.Find("retargetTarget"))
-            {
-                if (!stagedStage.bRetargetOnEnter || !target->Is_String() ||
-                    (target->Get_String() != "RANDOM_ALIVE" && target->Get_String() != "NEAREST_ALIVE"))
-                { outStatus = "KoukuSaydon Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE."; return false; }
-                stagedStage.RetargetTarget = target->Get_String();
-            }
-			parsedOccurrences += occurrences->Get_Array().size();
-			stagedStage.AnimationOccurrences.reserve(occurrences->Get_Array().size());
+			stagedPattern.strPatternId = patternId->Get_String();
+			if (!legacyFormat)
+				stagedPattern.strActorProfileId = actorProfileId->Get_String();
+			stagedPattern.strDisplayName = displayName->Get_String();
+			stagedPattern.strAuthoringStatus = authoringStatus->Get_String();
+			stagedPattern.strCategory = category->Get_String();
+			stagedPattern.Stages.reserve(stages->Get_Array().size());
 
-			for (const DATA_JSON_VALUE& occurrenceValue : occurrences->Get_Array())
+			// 각 stage는 양수 ms 길이와 재선택 옵션을 읽고 애니메이션 배치 수를 문서 상한에 합산한다.
+			// 이 내부 파싱이 실패하면 아래 격리 처리에서 총수를 이전 값으로 되돌린다.
+			for (const DATA_JSON_VALUE& stageValue : stages->Get_Array())
 			{
-				if (!Has_Properties(occurrenceValue,
-						{ "occurrenceId", "profileId", "sourceActionId",
-						  "sourceStageId", "sourceSlotId", "referenceRevision",
-						  "runtimeClip", "startOffsetMs", "sourceStartMs",
-						  "playMs", "playRate", "endPolicy" }, { "blendInMs", "sourceEndMs" }))
+				if (!Has_Properties(stageValue,
+						{ "stageId", "actionId", "stageKind", "durationMs",
+						  "animationOccurrences" }, { "retargetOnEnter", "retargetTarget" }))
 				{
-					outStatus = "KoukuSaydon animation occurrence has unexpected properties.";
+					outStatus = "KoukuSaydon Stage has unexpected properties.";
 					return false;
 				}
-				const DATA_JSON_VALUE* const occurrenceId = Required(occurrenceValue, "occurrenceId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const profileId = Required(occurrenceValue, "profileId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const sourceActionId = Required(occurrenceValue, "sourceActionId", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const sourceStageId = Required(occurrenceValue, "sourceStageId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const sourceSlotId = Required(occurrenceValue, "sourceSlotId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const referenceRevision = Required(occurrenceValue, "referenceRevision", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const runtimeClip = Required(occurrenceValue, "runtimeClip", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const startOffsetMs = Required(occurrenceValue, "startOffsetMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const sourceStartMs = Required(occurrenceValue, "sourceStartMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const playMs = Required(occurrenceValue, "playMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const playRate = Required(occurrenceValue, "playRate", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const endPolicy = Required(occurrenceValue, "endPolicy", DATA_JSON_TYPE::STRING);
-				const auto* blendInMs = occurrenceValue.Find("blendInMs");
-                const auto* sourceEndMs = occurrenceValue.Find("sourceEndMs");
-				KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE stagedOccurrence;
-				if (nullptr == occurrenceId || nullptr == profileId ||
-					nullptr == sourceActionId ||
-					!Try_ParseUnsigned(*sourceActionId,
-						(std::numeric_limits<std::uint32_t>::max)(),
-						stagedOccurrence.iSourceActionId) ||
-					nullptr == sourceStageId || nullptr == sourceSlotId ||
-					nullptr == referenceRevision || nullptr == runtimeClip ||
-					nullptr == startOffsetMs ||
-					!Try_ParseUnsigned(*startOffsetMs, MAX_TIME_MS,
-						stagedOccurrence.iStartOffsetMs) ||
-					nullptr == sourceStartMs ||
-					!Try_ParseUnsigned(*sourceStartMs, MAX_TIME_MS,
-						stagedOccurrence.iSourceStartMs) ||
-                    (sourceEndMs && !Try_ParseUnsigned(*sourceEndMs, MAX_TIME_MS, stagedOccurrence.iSourceEndMs)) ||
-					nullptr == playMs ||
-					!Try_ParseUnsigned(*playMs, MAX_TIME_MS,
-						stagedOccurrence.iPlayMs) || 0u == stagedOccurrence.iPlayMs ||
-					nullptr == playRate ||
-					!Try_ParsePlayRate(*playRate, stagedOccurrence.fPlayRate) ||
-					nullptr == endPolicy || (blendInMs &&
-					!Try_ParseUnsigned(*blendInMs, 1000u, stagedOccurrence.iBlendInMs)))
+				const DATA_JSON_VALUE* const stageId = Required(stageValue, "stageId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const actionId = Required(stageValue, "actionId", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const stageKind = Required(stageValue, "stageKind", DATA_JSON_TYPE::STRING);
+				const DATA_JSON_VALUE* const durationMs = Required(stageValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+				const DATA_JSON_VALUE* const occurrences = Required(stageValue, "animationOccurrences", DATA_JSON_TYPE::ARRAY);
+				KOUKU_SAYDON_COMPOSITION_STAGE stagedStage;
+				if (nullptr == stageId || nullptr == actionId || nullptr == stageKind ||
+					nullptr == durationMs ||
+					!Try_ParseUnsigned(*durationMs, MAX_TIME_MS, stagedStage.iDurationMs) ||
+					0u == stagedStage.iDurationMs || nullptr == occurrences ||
+					occurrences->Get_Array().size() > MAX_OCCURRENCES_PER_STAGE ||
+					occurrences->Get_Array().size() >
+						MAX_DOCUMENT_OCCURRENCES - parsedOccurrences)
 				{
-					outStatus = "KoukuSaydon animation occurrence value or type is invalid.";
+					outStatus = "KoukuSaydon Stage value or type is invalid.";
 					return false;
 				}
-				stagedOccurrence.strOccurrenceId = occurrenceId->Get_String();
-				stagedOccurrence.strProfileId = profileId->Get_String();
-				stagedOccurrence.strSourceStageId = sourceStageId->Get_String();
-				stagedOccurrence.strSourceSlotId = sourceSlotId->Get_String();
-				stagedOccurrence.strReferenceRevision = referenceRevision->Get_String();
-				stagedOccurrence.strRuntimeClip = runtimeClip->Get_String();
-				stagedOccurrence.strEndPolicy = endPolicy->Get_String();
-				stagedStage.AnimationOccurrences.push_back(std::move(stagedOccurrence));
-			}
-			stagedPattern.Stages.push_back(std::move(stagedStage));
-		}
-		const DATA_JSON_VALUE* const nextLogicOccurrenceOrdinal =
-			patternValue.Find("nextLogicOccurrenceOrdinal");
-		const DATA_JSON_VALUE* const logicOccurrences = patternValue.Find("logicOccurrences");
-		if ((nullptr != nextLogicOccurrenceOrdinal &&
-			 (!Try_ParseUnsigned(*nextLogicOccurrenceOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextLogicOccurrenceOrdinal) ||
-			  0u == stagedPattern.iNextLogicOccurrenceOrdinal)) ||
-			(nullptr != logicOccurrences &&
-			 (!logicOccurrences->Is_Array() ||
-			  logicOccurrences->Get_Array().size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN)))
-		{
-			outStatus = "KoukuSaydon Pattern Logic counter or box list is invalid.";
-			return false;
-		}
-		if (nullptr != logicOccurrences)
-		{
-			stagedPattern.LogicOccurrences.reserve(logicOccurrences->Get_Array().size());
-			for (const DATA_JSON_VALUE& boxValue : logicOccurrences->Get_Array())
-			{
-				if (!Has_Properties(boxValue,
-						{ "occurrenceId", "logicId", "startMs", "durationMs" },
-						{ "onSuccessLogicId", "onTimeoutLogicId",
-						  "onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds", "enabled", "holdLogicOccurrenceId", "roomPlayerArrival" }))
+				stagedStage.strStageId = stageId->Get_String();
+				stagedStage.strActionId = actionId->Get_String();
+				stagedStage.strStageKind = stageKind->Get_String();
+				if (const DATA_JSON_VALUE* retarget = stageValue.Find("retargetOnEnter"))
 				{
-					outStatus = "KoukuSaydon Logic box has unexpected properties.";
-					return false;
-				}
-				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxLogicId = Required(boxValue, "logicId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
-				/* The singular keys are the pre-list form and read as a one-entry
-				   list; the list keys win when both are present. */
-				const DATA_JSON_VALUE* const onSuccess = boxValue.Find("onSuccessLogicId");
-				const DATA_JSON_VALUE* const onTimeout = boxValue.Find("onTimeoutLogicId");
-				KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE stagedBox;
-				if (nullptr == boxId || nullptr == boxLogicId ||
-					nullptr == boxStart ||
-					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
-					nullptr == boxDuration ||
-					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
-					0u == stagedBox.iDurationMs ||
-					(nullptr != onSuccess && !onSuccess->Is_String()) ||
-					(nullptr != onTimeout && !onTimeout->Is_String()) ||
-					!Try_ParseTextList(boxValue.Find("onSuccessLogicIds"),
-						KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnSuccessLogicIds) ||
-					!Try_ParseTextList(boxValue.Find("onFailLogicIds"),
-						KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnFailLogicIds) ||
-					!Try_ParseTextList(boxValue.Find("onTimeoutLogicIds"),
-						KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnTimeoutLogicIds))
-				{
-					outStatus = "KoukuSaydon Logic box value or type is invalid.";
-					return false;
-				}
-				stagedBox.strOccurrenceId = boxId->Get_String();
-				stagedBox.strLogicId = boxLogicId->Get_String();
-				if (const auto* arrival = boxValue.Find("roomPlayerArrival"))
-				{
-					KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL value;
-					const auto* slot = Required(*arrival, "playerSlot", DATA_JSON_TYPE::NUMBER);
-					const auto* position = Required(*arrival, "position", DATA_JSON_TYPE::ARRAY);
-					if (!Has_Properties(*arrival, { "playerSlot", "position" }, {}) || !slot || !position ||
-						!Try_ParseUnsigned(*slot, 3u, value.iPlayerSlot) || position->Get_Array().size() != 3u)
-					{ outStatus = "Room player arrival needs slot 0..3 and XYZ."; return false; }
-					for (std::size_t axis = 0u; axis < 3u; ++axis)
-						if (!Try_ParseFinite(position->Get_Array()[axis], -100000.0, 100000.0, value.Position[axis]))
-						{ outStatus = "Room player arrival position must be finite."; return false; }
-					stagedBox.RoomPlayerArrival = value;
-				}
-				if (const auto* hold = boxValue.Find("holdLogicOccurrenceId"))
-				{
-					if (!hold->Is_String()) { outStatus = "Hold Logic occurrence ID must be text."; return false; }
-					stagedBox.strHoldLogicOccurrenceId = hold->Get_String();
-				}
-				if (const auto* enabled = boxValue.Find("enabled"))
-				{
-					if (!enabled->Is_Boolean()) { outStatus = "Logic enabled must be boolean."; return false; }
-					stagedBox.bEnabled = enabled->Get_Boolean();
-				}
-				if (nullptr != onSuccess && nullptr == boxValue.Find("onSuccessLogicIds") &&
-					!onSuccess->Get_String().empty())
-					stagedBox.OnSuccessLogicIds.push_back(onSuccess->Get_String());
-				if (nullptr != onTimeout && nullptr == boxValue.Find("onTimeoutLogicIds") &&
-					!onTimeout->Get_String().empty())
-					stagedBox.OnTimeoutLogicIds.push_back(onTimeout->Get_String());
-				stagedPattern.LogicOccurrences.push_back(std::move(stagedBox));
-			}
-		}
-		const DATA_JSON_VALUE* const nextSummonOccurrenceOrdinal =
-			patternValue.Find("nextSummonOccurrenceOrdinal");
-		const DATA_JSON_VALUE* const summonOccurrences = patternValue.Find("summonOccurrences");
-		if ((nullptr != nextSummonOccurrenceOrdinal &&
-			 (!Try_ParseUnsigned(*nextSummonOccurrenceOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextSummonOccurrenceOrdinal) ||
-			  0u == stagedPattern.iNextSummonOccurrenceOrdinal)) ||
-			(nullptr != summonOccurrences &&
-			 (!summonOccurrences->Is_Array() ||
-			  summonOccurrences->Get_Array().size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN)))
-		{
-			outStatus = "KoukuSaydon Pattern Summon counter or box list is invalid.";
-			return false;
-		}
-		if (nullptr != summonOccurrences)
-		{
-			stagedPattern.SummonOccurrences.reserve(summonOccurrences->Get_Array().size());
-			for (const DATA_JSON_VALUE& boxValue : summonOccurrences->Get_Array())
-			{
-				if (!Has_Properties(boxValue,
-						{ "occurrenceId", "summonId", "startMs", "durationMs" }, { "patternSpawns" }))
-				{
-					outStatus = "KoukuSaydon Summon box has unexpected properties.";
-					return false;
-				}
-				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxSummonId = Required(boxValue, "summonId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
-				KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE stagedBox;
-				if (nullptr == boxId || nullptr == boxSummonId ||
-					nullptr == boxStart ||
-					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
-					nullptr == boxDuration ||
-					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
-					0u == stagedBox.iDurationMs)
-				{
-					outStatus = "KoukuSaydon Summon box value or type is invalid.";
-					return false;
-				}
-				stagedBox.strOccurrenceId = boxId->Get_String();
-				stagedBox.strSummonId = boxSummonId->Get_String();
-                if (const auto* spawns = boxValue.Find("patternSpawns"))
-                {
-                    if (!spawns->Is_Array() || spawns->Get_Array().size() > MAX_SUMMON_PATTERN_SPAWNS)
-                    { outStatus = "Summon patternSpawns requires at most sixteen rows."; return false; }
-                    for (const auto& value : spawns->Get_Array())
-                    {
-                        KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN spawn;
-                        const auto* id = Required(value, "spawnId", DATA_JSON_TYPE::STRING);
-                        const auto* target = Required(value, "patternId", DATA_JSON_TYPE::STRING);
-                        const auto* yaw = Required(value, "yawOffsetDegrees", DATA_JSON_TYPE::NUMBER);
-                        const auto* anchor = value.Find("anchorKind");
-                        if (anchor && anchor->Is_String()) spawn.strAnchorKind = anchor->Get_String();
-                        const double positionLimit = spawn.strAnchorKind == "MAP" ? 100000.0 : 1000.0;
-                        if (!Has_Properties(value, { "spawnId", "patternId", "positionOffset", "yawOffsetDegrees" }, { "anchorKind" }) ||
-                            (anchor && !anchor->Is_String()) || (spawn.strAnchorKind != "BOSS" && spawn.strAnchorKind != "MAP") ||
-                            !id || !target || !yaw || !value.Find("positionOffset") ||
-                            !Read_PresentationVector(value, "positionOffset", spawn.PositionOffset, -positionLimit, positionLimit) ||
-                            !Try_ParseFinite(*yaw, -360.0, 360.0, spawn.fYawOffsetDegrees))
-                        { outStatus = "Summon Pattern spawn fields or transform are invalid."; return false; }
-                        spawn.strSpawnId = id->Get_String(); spawn.strPatternId = target->Get_String();
-                        stagedBox.PatternSpawns.push_back(std::move(spawn));
-                    }
-                }
-				stagedPattern.SummonOccurrences.push_back(std::move(stagedBox));
-			}
-		}
-		const DATA_JSON_VALUE* const nextWorldOccurrenceOrdinal =
-			patternValue.Find("nextWorldOccurrenceOrdinal");
-		const DATA_JSON_VALUE* const worldOccurrences = patternValue.Find("worldOccurrences");
-		if ((nullptr != nextWorldOccurrenceOrdinal &&
-			 (!Try_ParseUnsigned(*nextWorldOccurrenceOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextWorldOccurrenceOrdinal) ||
-			  0u == stagedPattern.iNextWorldOccurrenceOrdinal)) ||
-			(nullptr != worldOccurrences &&
-			 (!worldOccurrences->Is_Array() ||
-			  worldOccurrences->Get_Array().size() > MAX_WORLD_OCCURRENCES_PER_PATTERN)))
-		{
-			outStatus = "KoukuSaydon Pattern World counter or box list is invalid.";
-			return false;
-		}
-		if (nullptr != worldOccurrences)
-		{
-			for (const DATA_JSON_VALUE& boxValue : worldOccurrences->Get_Array())
-			{
-				if (!Has_Properties(boxValue,
-						{ "occurrenceId", "worldId", "startMs", "durationMs", "playbackSpeed" }, { "placement" }))
-				{
-					outStatus = "KoukuSaydon World box has unexpected properties.";
-					return false;
-				}
-				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxWorldId = Required(boxValue, "worldId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxSpeed = Required(boxValue, "playbackSpeed", DATA_JSON_TYPE::NUMBER);
-				KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE stagedBox;
-				double speed = 1.0;
-				if (nullptr == boxId || nullptr == boxWorldId ||
-					nullptr == boxStart ||
-					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
-					nullptr == boxDuration ||
-					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
-					0u == stagedBox.iDurationMs || nullptr == boxSpeed ||
-					!Try_ParseFinite(*boxSpeed, MIN_WORLD_PLAYBACK_SPEED, MAX_WORLD_PLAYBACK_SPEED, speed))
-				{
-					outStatus = "KoukuSaydon World box value or type is invalid.";
-					return false;
-				}
-				stagedBox.strOccurrenceId = boxId->Get_String();
-				stagedBox.strWorldId = boxWorldId->Get_String();
-				stagedBox.fPlaybackSpeed = static_cast<f32_t>(speed);
-				if (const auto* placementValue = boxValue.Find("placement"))
-				{
-					KOUKU_SAYDON_WORLD_PLACEMENT placement;
-					if (!Has_ExactProperties(*placementValue, { "position", "rotationDegrees", "scale" }) ||
-						!Read_PresentationVector(*placementValue, "position", placement.Position, -100000.0, 100000.0) ||
-						!Read_PresentationVector(*placementValue, "rotationDegrees", placement.RotationDegrees, -36000.0, 36000.0) ||
-						!Read_PresentationVector(*placementValue, "scale", placement.Scale, 0.001, 1000.0))
-					{ outStatus = "World occurrence placement requires position, rotationDegrees and positive scale vectors."; return false; }
-					stagedBox.Placement = placement;
-				}
-				stagedPattern.WorldOccurrences.push_back(std::move(stagedBox));
-			}
-		}
-		const DATA_JSON_VALUE* const nextSceneProfileOccurrenceOrdinal =
-			patternValue.Find("nextSceneProfileOccurrenceOrdinal");
-		const DATA_JSON_VALUE* const sceneProfileOccurrences = patternValue.Find("sceneProfileOccurrences");
-		if ((nullptr != nextSceneProfileOccurrenceOrdinal &&
-			 (!Try_ParseUnsigned(*nextSceneProfileOccurrenceOrdinal, MAX_NEXT_ORDINAL,
-				stagedPattern.iNextSceneProfileOccurrenceOrdinal) ||
-			  0u == stagedPattern.iNextSceneProfileOccurrenceOrdinal)) ||
-			(nullptr != sceneProfileOccurrences &&
-			 (!sceneProfileOccurrences->Is_Array() ||
-			  sceneProfileOccurrences->Get_Array().size() > MAX_SCENE_PROFILE_OCCURRENCES_PER_PATTERN)))
-		{
-			outStatus = "KoukuSaydon Pattern Scene Profile counter or box list is invalid.";
-			return false;
-		}
-		if (nullptr != sceneProfileOccurrences)
-		{
-			for (const DATA_JSON_VALUE& boxValue : sceneProfileOccurrences->Get_Array())
-			{
-				if (!Has_ExactProperties(boxValue,
-						{ "occurrenceId", "sceneProfileId", "startMs", "durationMs", "blendMs" }))
-				{
-					outStatus = "KoukuSaydon Scene Profile box has unexpected properties.";
-					return false;
-				}
-				const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxProfileId = Required(boxValue, "sceneProfileId", DATA_JSON_TYPE::STRING);
-				const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
-				const DATA_JSON_VALUE* const boxBlend = Required(boxValue, "blendMs", DATA_JSON_TYPE::NUMBER);
-				KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE stagedBox;
-				if (nullptr == boxId || nullptr == boxProfileId ||
-					nullptr == boxStart ||
-					!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
-					nullptr == boxDuration ||
-					!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
-					0u == stagedBox.iDurationMs || nullptr == boxBlend ||
-					!Try_ParseUnsigned(*boxBlend, MAX_TIME_MS, stagedBox.iBlendMs))
-				{
-					outStatus = "KoukuSaydon Scene Profile box value or type is invalid.";
-					return false;
-				}
-				stagedBox.strOccurrenceId = boxId->Get_String();
-				stagedBox.strSceneProfileId = boxProfileId->Get_String();
-				stagedPattern.SceneProfileOccurrences.push_back(std::move(stagedBox));
-			}
-		}
-		if (const auto* completion = patternValue.Find("enterCombatOnFinish"); nullptr != completion)
-		{
-			if (!completion->Is_Boolean()) { outStatus = "Invalid enterCombatOnFinish."; return false; }
-			stagedPattern.bEnterCombatOnFinish = completion->Get_Boolean();
-		}
-		if (const auto* reset = patternValue.Find("resetBossToSpawn"); nullptr != reset)
-		{
-			if (!reset->Is_Boolean()) { outStatus = "Invalid resetBossToSpawn."; return false; }
-			stagedPattern.bResetBossToSpawn = reset->Get_Boolean();
-		}
-		if (const auto* yaw = patternValue.Find("resetBossYawDegrees"); nullptr != yaw)
-		{
-			double degrees = 0.0;
-			if (!stagedPattern.bResetBossToSpawn || !Try_ParseFinite(*yaw, -360.0, 360.0, degrees))
-			{ outStatus = "Invalid resetBossYawDegrees: enable spawn reset and use -360..360 degrees."; return false; }
-			stagedPattern.ResetBossYawDegrees = degrees;
-		}
-		if (const auto* scale = patternValue.Find("animationRootVerticalScale"); nullptr != scale)
-			if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootVerticalScale))
-			{ outStatus = "Invalid animationRootVerticalScale: use 0..1."; return false; }
-		if (const auto* scale = patternValue.Find("animationRootHorizontalScale"); nullptr != scale)
-			if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootHorizontalScale))
-			{ outStatus = "Invalid animationRootHorizontalScale: use 0..1."; return false; }
-		if (const auto* value = patternValue.Find("bossMotion"); nullptr != value)
-		{
-			KOUKU_SAYDON_BOSS_MOTION motion;
-			if (!Has_Properties(*value, { "startMs", "endMs", "startPosition", "endPosition", "yawDegrees" }, { "keys" }) ||
-				!Try_ParseUnsigned(*value->Find("startMs"), MAX_TIME_MS, motion.iStartMs) ||
-				!Try_ParseUnsigned(*value->Find("endMs"), MAX_TIME_MS, motion.iEndMs) ||
-				!Read_PresentationVector(*value, "startPosition", motion.StartPosition, -100000.0, 100000.0) ||
-				!Read_PresentationVector(*value, "endPosition", motion.EndPosition, -100000.0, 100000.0) ||
-				!Try_ParseFinite(*value->Find("yawDegrees"), -360.0, 360.0, motion.fYawDegrees))
-			{ outStatus = "Invalid Boss Motion fields."; return false; }
-			if (const auto* keys = value->Find("keys"))
-			{
-				if (!keys->Is_Array() || keys->Get_Array().size() < 2u || keys->Get_Array().size() > 512u)
-				{ outStatus = "Boss Motion keys require 2..512 samples."; return false; }
-				for (const auto& row : keys->Get_Array())
-				{
-					KOUKU_SAYDON_BOSS_MOTION_KEY key;
-					if (!Has_ExactProperties(row, { "timeMs", "position" }) ||
-						!Try_ParseUnsigned(*row.Find("timeMs"), MAX_TIME_MS, key.iTimeMs) ||
-						!Read_PresentationVector(row, "position", key.Position, -100000.0, 100000.0))
-					{ outStatus = "Invalid Boss Motion key fields."; return false; }
-					motion.Keys.push_back(key);
-				}
-				if (!Valid_BossMotionKeys(motion))
-				{ outStatus = "Boss Motion keys must increase strictly and match the interval/endpoints."; return false; }
-			}
-			stagedPattern.BossMotion = motion;
-		}
-		if (const auto* ordinal = patternValue.Find("nextPresentationOccurrenceOrdinal"); nullptr != ordinal)
-			if (!Try_ParseUnsigned(*ordinal, MAX_NEXT_ORDINAL, stagedPattern.iNextPresentationOccurrenceOrdinal) ||
-				stagedPattern.iNextPresentationOccurrenceOrdinal == 0u)
-			{ outStatus = "Invalid presentation occurrence counter."; return false; }
-		if (const auto* rows = patternValue.Find("presentationOccurrences"); nullptr != rows)
-		{
-			if (!rows->Is_Array() || rows->Get_Array().size() > 1024u)
-			{ outStatus = "Invalid presentation occurrence list."; return false; }
-			for (const auto& value : rows->Get_Array())
-			{
-				KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE row;
-				if (!Read_PresentationOccurrence(value, row))
-				{ outStatus = "Invalid presentation occurrence value or property."; return false; }
-				stagedPattern.PresentationOccurrences.push_back(std::move(row));
-			}
-		}
-		if (legacyFormat)
-		{
-			for (const auto& stage : stagedPattern.Stages)
-				for (const auto& row : stage.AnimationOccurrences)
-				{
-					const auto actor = Resolve_ActorProfileId(row.strProfileId);
-					if (actor.empty() || (!stagedPattern.strActorProfileId.empty() &&
-						stagedPattern.strActorProfileId != actor))
+					if (!retarget->Is_Boolean())
 					{
-						outStatus = "Legacy KoukuSaydon Pattern has unknown or mixed actor profiles.";
+						outStatus = "KoukuSaydon Stage retargetOnEnter must be boolean.";
 						return false;
 					}
-					stagedPattern.strActorProfileId = actor;
+					stagedStage.bRetargetOnEnter = retarget->Get_Boolean();
 				}
-			if (stagedPattern.strActorProfileId.empty())
-				stagedPattern.strActorProfileId = "MN_RPCZ_00";
-		}
-		if (legacyHierarchy)
-        {
-            stagedPattern.strGateId = (stagedPattern.strPatternId == "KAKULSAYDON_G1_PATTERN_8" ||
-                stagedPattern.strPatternId == "KAKULSAYDON_G1_PATTERN_9") ? "GATE2" : "GATE1";
-            stagedPattern.strTargetBossPlacementId = Resolve_DefaultPlacementId(stagedPattern.strGateId, stagedPattern.strActorProfileId);
-        }
-        else
-        {
-            const auto* gate = Required(patternValue, "gateId", DATA_JSON_TYPE::STRING);
-            const auto* target = Required(patternValue, "targetBossPlacementId", DATA_JSON_TYPE::STRING);
-            if (!gate || !target) { outStatus = "Pattern Gate and target boss are required."; return false; }
-            stagedPattern.strGateId = gate->Get_String();
-            stagedPattern.strTargetBossPlacementId = target->Get_String();
-        }
-        if (const auto* folder = patternValue.Find("folderId"))
-        {
-            if (!folder->Is_String() || !Is_StableId(folder->Get_String()))
-            { outStatus = "Pattern folderId must be a nonempty stable Parent ID."; return false; }
-            stagedPattern.strFolderId = folder->Get_String();
-        }
-        if (const auto* value = patternValue.Find("durationMs"))
-            if (!Try_ParseUnsigned(*value, MAX_TIME_MS, stagedPattern.iDurationMs))
-            { outStatus = "Invalid Pattern durationMs."; return false; }
-        if (const auto* sequential = patternValue.Find("playChildrenSequentially"))
-        {
-            if (!sequential->Is_Boolean()) { outStatus = "Parent sequential playback must be boolean."; return false; }
-            stagedPattern.bPlayChildrenSequentially = sequential->Get_Boolean();
-        }
-        if (const auto* loop = patternValue.Find("loopStartPatternOccurrenceId"))
-        {
-            if (!loop->Is_String() || loop->Get_String().empty())
-            { outStatus = "Parent loop start must be a nonempty child occurrence ID."; return false; }
-            stagedPattern.strLoopStartPatternOccurrenceId = loop->Get_String();
-        }
-        if (const auto* value = patternValue.Find("nextPatternOccurrenceOrdinal"))
-            if (!Try_ParseUnsigned(*value, MAX_NEXT_ORDINAL, stagedPattern.iNextPatternOccurrenceOrdinal) ||
-                !stagedPattern.iNextPatternOccurrenceOrdinal)
-            { outStatus = "Invalid nextPatternOccurrenceOrdinal."; return false; }
-        if (const auto* rows = patternValue.Find("patternOccurrences"))
-        {
-            if (!rows->Is_Array() || rows->Get_Array().size() > MAX_PATTERN_OCCURRENCES)
-            { outStatus = "Invalid Pattern occurrence collection."; return false; }
-            for (const auto& value : rows->Get_Array())
-            {
-                KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE row;
-                const auto* id = Required(value, "occurrenceId", DATA_JSON_TYPE::STRING);
-                const auto* child = Required(value, "patternId", DATA_JSON_TYPE::STRING);
-                const auto* start = value.Find("startMs");
-                const auto* duration = value.Find("durationMs");
-                const auto* repeat = value.Find("repeat");
-                if (!Has_Properties(value, {"occurrenceId", "patternId", "startMs", "durationMs"}, {"repeat"}) ||
-                    !id || !child || !start || !duration ||
-                    !Try_ParseUnsigned(*start, MAX_TIME_MS, row.iStartMs) ||
-                    !Try_ParseUnsigned(*duration, MAX_TIME_MS, row.iDurationMs) || !row.iDurationMs ||
-                    (repeat && !repeat->Is_Boolean()))
-                { outStatus = "Invalid Pattern occurrence fields."; return false; }
-                row.strOccurrenceId = id->Get_String(); row.strPatternId = child->Get_String();
-                row.bRepeat = repeat && repeat->Get_Boolean();
-                stagedPattern.PatternOccurrences.push_back(std::move(row));
-            }
-        }
-        KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = validationHeader;
-		candidate.Patterns.push_back(stagedPattern);
-		// The candidate contains one row. Cross-pattern links are checked once
-		// all rows have been parsed, including forward references.
-		if (!Validate_Shape(candidate, outStatus, false)) return false;
-		if (parsedPatternIds.contains(stagedPattern.strPatternId))
-		{ outStatus = "Duplicate pattern ID."; return false; }
-		for (const auto& stage : stagedPattern.Stages)
-		{
-			if (parsedActionIds.contains(stage.strActionId))
-			{ outStatus = "Duplicate action ID: " + stage.strActionId; return false; }
-			for (const auto& row : stage.AnimationOccurrences)
-				if (parsedOccurrenceIds.contains(row.strOccurrenceId))
-				{ outStatus = "Duplicate animation ID: " + row.strOccurrenceId; return false; }
-		}
-		for (const auto& box : stagedPattern.LogicOccurrences)
-			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
-			{ outStatus = "Duplicate Logic box ID: " + box.strOccurrenceId; return false; }
-		for (const auto& box : stagedPattern.SummonOccurrences)
-			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
-			{ outStatus = "Duplicate Summon box ID: " + box.strOccurrenceId; return false; }
-		for (const auto& box : stagedPattern.WorldOccurrences)
-			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
-			{ outStatus = "Duplicate World box ID: " + box.strOccurrenceId; return false; }
-		for (const auto& box : stagedPattern.SceneProfileOccurrences)
-			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
-			{ outStatus = "Duplicate Scene Profile box ID: " + box.strOccurrenceId; return false; }
-		for (const auto& box : stagedPattern.PresentationOccurrences)
-			if (parsedOccurrenceIds.contains(box.strOccurrenceId))
-			{ outStatus = "Duplicate presentation box ID: " + box.strOccurrenceId; return false; }
-		return true;
+	            if (const auto* target = stageValue.Find("retargetTarget"))
+	            {
+	                if (!stagedStage.bRetargetOnEnter || !target->Is_String() ||
+	                    (target->Get_String() != "RANDOM_ALIVE" && target->Get_String() != "NEAREST_ALIVE"))
+	                {
+	                    outStatus = "KoukuSaydon Stage retargetTarget requires retargetOnEnter and RANDOM_ALIVE or NEAREST_ALIVE.";
+	                    return false;
+	                }
+	                stagedStage.RetargetTarget = target->Get_String();
+	            }
+				parsedOccurrences += occurrences->Get_Array().size();
+				stagedStage.AnimationOccurrences.reserve(occurrences->Get_Array().size());
+
+				// 애니메이션 배치는 원본 profile/action/stage/slot/revision과 런타임 clip을 값으로 보관한다.
+				// 원본 시각·단계 offset·재생 길이/속도·blend의 숫자를 읽고 실제 참조 대조는 별도 검증에 맡긴다.
+				for (const DATA_JSON_VALUE& occurrenceValue : occurrences->Get_Array())
+				{
+					if (!Has_Properties(occurrenceValue,
+							{ "occurrenceId", "profileId", "sourceActionId",
+							  "sourceStageId", "sourceSlotId", "referenceRevision",
+							  "runtimeClip", "startOffsetMs", "sourceStartMs",
+							  "playMs", "playRate", "endPolicy" }, { "blendInMs", "sourceEndMs" }))
+					{
+						outStatus = "KoukuSaydon animation occurrence has unexpected properties.";
+						return false;
+					}
+					const DATA_JSON_VALUE* const occurrenceId = Required(occurrenceValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const profileId = Required(occurrenceValue, "profileId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const sourceActionId = Required(occurrenceValue, "sourceActionId", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const sourceStageId = Required(occurrenceValue, "sourceStageId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const sourceSlotId = Required(occurrenceValue, "sourceSlotId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const referenceRevision = Required(occurrenceValue, "referenceRevision", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const runtimeClip = Required(occurrenceValue, "runtimeClip", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const startOffsetMs = Required(occurrenceValue, "startOffsetMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const sourceStartMs = Required(occurrenceValue, "sourceStartMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const playMs = Required(occurrenceValue, "playMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const playRate = Required(occurrenceValue, "playRate", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const endPolicy = Required(occurrenceValue, "endPolicy", DATA_JSON_TYPE::STRING);
+					const auto* blendInMs = occurrenceValue.Find("blendInMs");
+	                const auto* sourceEndMs = occurrenceValue.Find("sourceEndMs");
+					KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE stagedOccurrence;
+					if (nullptr == occurrenceId || nullptr == profileId ||
+						nullptr == sourceActionId ||
+						!Try_ParseUnsigned(*sourceActionId,
+							(std::numeric_limits<std::uint32_t>::max)(),
+							stagedOccurrence.iSourceActionId) ||
+						nullptr == sourceStageId || nullptr == sourceSlotId ||
+						nullptr == referenceRevision || nullptr == runtimeClip ||
+						nullptr == startOffsetMs ||
+						!Try_ParseUnsigned(*startOffsetMs, MAX_TIME_MS,
+							stagedOccurrence.iStartOffsetMs) ||
+						nullptr == sourceStartMs ||
+						!Try_ParseUnsigned(*sourceStartMs, MAX_TIME_MS,
+							stagedOccurrence.iSourceStartMs) ||
+	                    (sourceEndMs && !Try_ParseUnsigned(*sourceEndMs, MAX_TIME_MS, stagedOccurrence.iSourceEndMs)) ||
+						nullptr == playMs ||
+						!Try_ParseUnsigned(*playMs, MAX_TIME_MS,
+							stagedOccurrence.iPlayMs) || 0u == stagedOccurrence.iPlayMs ||
+						nullptr == playRate ||
+						!Try_ParsePlayRate(*playRate, stagedOccurrence.fPlayRate) ||
+						nullptr == endPolicy || (blendInMs &&
+						!Try_ParseUnsigned(*blendInMs, 1000u, stagedOccurrence.iBlendInMs)))
+					{
+						outStatus = "KoukuSaydon animation occurrence value or type is invalid.";
+						return false;
+					}
+					stagedOccurrence.strOccurrenceId = occurrenceId->Get_String();
+					stagedOccurrence.strProfileId = profileId->Get_String();
+					stagedOccurrence.strSourceStageId = sourceStageId->Get_String();
+					stagedOccurrence.strSourceSlotId = sourceSlotId->Get_String();
+					stagedOccurrence.strReferenceRevision = referenceRevision->Get_String();
+					stagedOccurrence.strRuntimeClip = runtimeClip->Get_String();
+					stagedOccurrence.strEndPolicy = endPolicy->Get_String();
+					stagedStage.AnimationOccurrences.push_back(std::move(stagedOccurrence));
+				}
+				stagedPattern.Stages.push_back(std::move(stagedStage));
+			}
+
+			// Logic 배치는 패턴 시계의 startMs/durationMs와 결과 슬롯 목록을 읽는다.
+			// roomPlayerArrival의 슬롯/XYZ, hold 참조, enabled는 선택값이며 키가 없으면 기본값을 유지한다.
+			const DATA_JSON_VALUE* const nextLogicOccurrenceOrdinal =
+				patternValue.Find("nextLogicOccurrenceOrdinal");
+			const DATA_JSON_VALUE* const logicOccurrences = patternValue.Find("logicOccurrences");
+			if ((nullptr != nextLogicOccurrenceOrdinal &&
+				 (!Try_ParseUnsigned(*nextLogicOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextLogicOccurrenceOrdinal) ||
+				  0u == stagedPattern.iNextLogicOccurrenceOrdinal)) ||
+				(nullptr != logicOccurrences &&
+				 (!logicOccurrences->Is_Array() ||
+				  logicOccurrences->Get_Array().size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN)))
+			{
+				outStatus = "KoukuSaydon Pattern Logic counter or box list is invalid.";
+				return false;
+			}
+			if (nullptr != logicOccurrences)
+			{
+				stagedPattern.LogicOccurrences.reserve(logicOccurrences->Get_Array().size());
+				for (const DATA_JSON_VALUE& boxValue : logicOccurrences->Get_Array())
+				{
+					if (!Has_Properties(boxValue,
+							{ "occurrenceId", "logicId", "startMs", "durationMs" },
+							{ "onSuccessLogicId", "onTimeoutLogicId",
+							  "onSuccessLogicIds", "onFailLogicIds", "onTimeoutLogicIds", "enabled", "holdLogicOccurrenceId", "roomPlayerArrival" }))
+					{
+						outStatus = "KoukuSaydon Logic box has unexpected properties.";
+						return false;
+					}
+					const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxLogicId = Required(boxValue, "logicId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+					// 이전 단일 결과 키는 항목 하나의 목록으로 읽는다.
+					// 단일 키와 목록 키가 함께 있으면 목록 키가 우선한다.
+					const DATA_JSON_VALUE* const onSuccess = boxValue.Find("onSuccessLogicId");
+					const DATA_JSON_VALUE* const onTimeout = boxValue.Find("onTimeoutLogicId");
+					KOUKU_SAYDON_COMPOSITION_LOGIC_OCCURRENCE stagedBox;
+					if (nullptr == boxId || nullptr == boxLogicId ||
+						nullptr == boxStart ||
+						!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+						nullptr == boxDuration ||
+						!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+						0u == stagedBox.iDurationMs ||
+						(nullptr != onSuccess && !onSuccess->Is_String()) ||
+						(nullptr != onTimeout && !onTimeout->Is_String()) ||
+						!Try_ParseTextList(boxValue.Find("onSuccessLogicIds"),
+							KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnSuccessLogicIds) ||
+						!Try_ParseTextList(boxValue.Find("onFailLogicIds"),
+							KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnFailLogicIds) ||
+						!Try_ParseTextList(boxValue.Find("onTimeoutLogicIds"),
+							KOUKU_SAYDON_MAX_OUTCOMES_PER_SLOT, stagedBox.OnTimeoutLogicIds))
+					{
+						outStatus = "KoukuSaydon Logic box value or type is invalid.";
+						return false;
+					}
+					stagedBox.strOccurrenceId = boxId->Get_String();
+					stagedBox.strLogicId = boxLogicId->Get_String();
+					if (const auto* arrival = boxValue.Find("roomPlayerArrival"))
+					{
+						KOUKU_SAYDON_ROOM_PLAYER_ARRIVAL value;
+						const auto* slot = Required(*arrival, "playerSlot", DATA_JSON_TYPE::NUMBER);
+						const auto* position = Required(*arrival, "position", DATA_JSON_TYPE::ARRAY);
+						if (!Has_Properties(*arrival, { "playerSlot", "position" }, {}) || !slot || !position ||
+							!Try_ParseUnsigned(*slot, 3u, value.iPlayerSlot) || position->Get_Array().size() != 3u)
+						{
+							outStatus = "Room player arrival needs slot 0..3 and XYZ.";
+							return false;
+						}
+						for (std::size_t axis = 0u; axis < 3u; ++axis)
+							if (!Try_ParseFinite(position->Get_Array()[axis], -100000.0, 100000.0, value.Position[axis]))
+							{
+								outStatus = "Room player arrival position must be finite.";
+								return false;
+							}
+						stagedBox.RoomPlayerArrival = value;
+					}
+					if (const auto* hold = boxValue.Find("holdLogicOccurrenceId"))
+					{
+						if (!hold->Is_String())
+						{
+							outStatus = "Hold Logic occurrence ID must be text.";
+							return false;
+						}
+						stagedBox.strHoldLogicOccurrenceId = hold->Get_String();
+					}
+					if (const auto* enabled = boxValue.Find("enabled"))
+					{
+						if (!enabled->Is_Boolean())
+						{
+							outStatus = "Logic enabled must be boolean.";
+							return false;
+						}
+						stagedBox.bEnabled = enabled->Get_Boolean();
+					}
+					if (nullptr != onSuccess && nullptr == boxValue.Find("onSuccessLogicIds") &&
+						!onSuccess->Get_String().empty())
+						stagedBox.OnSuccessLogicIds.push_back(onSuccess->Get_String());
+					if (nullptr != onTimeout && nullptr == boxValue.Find("onTimeoutLogicIds") &&
+						!onTimeout->Get_String().empty())
+						stagedBox.OnTimeoutLogicIds.push_back(onTimeout->Get_String());
+					stagedPattern.LogicOccurrences.push_back(std::move(stagedBox));
+				}
+			}
+
+			// Summon 배치는 정의 ID와 시간 구간을 읽고 선택 patternSpawns를 연결한다.
+			// 자식 spawn은 MAP이면 절대 위치 범위, BOSS이면 상대 offset 범위를 사용해 위치와 yaw 입력을 제한한다.
+			const DATA_JSON_VALUE* const nextSummonOccurrenceOrdinal =
+				patternValue.Find("nextSummonOccurrenceOrdinal");
+			const DATA_JSON_VALUE* const summonOccurrences = patternValue.Find("summonOccurrences");
+			if ((nullptr != nextSummonOccurrenceOrdinal &&
+				 (!Try_ParseUnsigned(*nextSummonOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextSummonOccurrenceOrdinal) ||
+				  0u == stagedPattern.iNextSummonOccurrenceOrdinal)) ||
+				(nullptr != summonOccurrences &&
+				 (!summonOccurrences->Is_Array() ||
+				  summonOccurrences->Get_Array().size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN)))
+			{
+				outStatus = "KoukuSaydon Pattern Summon counter or box list is invalid.";
+				return false;
+			}
+			if (nullptr != summonOccurrences)
+			{
+				stagedPattern.SummonOccurrences.reserve(summonOccurrences->Get_Array().size());
+				for (const DATA_JSON_VALUE& boxValue : summonOccurrences->Get_Array())
+				{
+					if (!Has_Properties(boxValue,
+							{ "occurrenceId", "summonId", "startMs", "durationMs" }, { "patternSpawns" }))
+					{
+						outStatus = "KoukuSaydon Summon box has unexpected properties.";
+						return false;
+					}
+					const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxSummonId = Required(boxValue, "summonId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+					KOUKU_SAYDON_COMPOSITION_SUMMON_OCCURRENCE stagedBox;
+					if (nullptr == boxId || nullptr == boxSummonId ||
+						nullptr == boxStart ||
+						!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+						nullptr == boxDuration ||
+						!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+						0u == stagedBox.iDurationMs)
+					{
+						outStatus = "KoukuSaydon Summon box value or type is invalid.";
+						return false;
+					}
+					stagedBox.strOccurrenceId = boxId->Get_String();
+					stagedBox.strSummonId = boxSummonId->Get_String();
+	                if (const auto* spawns = boxValue.Find("patternSpawns"))
+	                {
+	                    if (!spawns->Is_Array() || spawns->Get_Array().size() > MAX_SUMMON_PATTERN_SPAWNS)
+	                    {
+	                        outStatus = "Summon patternSpawns requires at most sixteen rows.";
+	                        return false;
+	                    }
+	                    for (const auto& value : spawns->Get_Array())
+	                    {
+	                        KOUKU_SAYDON_COMPOSITION_SUMMON_PATTERN_SPAWN spawn;
+	                        const auto* id = Required(value, "spawnId", DATA_JSON_TYPE::STRING);
+	                        const auto* target = Required(value, "patternId", DATA_JSON_TYPE::STRING);
+	                        const auto* yaw = Required(value, "yawOffsetDegrees", DATA_JSON_TYPE::NUMBER);
+	                        const auto* anchor = value.Find("anchorKind");
+	                        if (anchor && anchor->Is_String())
+	                            spawn.strAnchorKind = anchor->Get_String();
+	                        const double positionLimit = spawn.strAnchorKind == "MAP" ? 100000.0 : 1000.0;
+	                        if (!Has_Properties(value, { "spawnId", "patternId", "positionOffset", "yawOffsetDegrees" }, { "anchorKind" }) ||
+	                            (anchor && !anchor->Is_String()) || (spawn.strAnchorKind != "BOSS" && spawn.strAnchorKind != "MAP") ||
+	                            !id || !target || !yaw || !value.Find("positionOffset") ||
+	                            !Read_PresentationVector(value, "positionOffset", spawn.PositionOffset, -positionLimit, positionLimit) ||
+	                            !Try_ParseFinite(*yaw, -360.0, 360.0, spawn.fYawOffsetDegrees))
+	                        {
+	                            outStatus = "Summon Pattern spawn fields or transform are invalid.";
+	                            return false;
+	                        }
+	                        spawn.strSpawnId = id->Get_String();
+	                        spawn.strPatternId = target->Get_String();
+	                        stagedBox.PatternSpawns.push_back(std::move(spawn));
+	                    }
+	                }
+					stagedPattern.SummonOccurrences.push_back(std::move(stagedBox));
+				}
+			}
+
+			// World 배치는 정의 ID·패턴 시각·재생 속도를 읽는다. 선택 placement가 있으면 위치 m,
+			// 회전 degree, 양수 배율의 세 벡터를 모두 요구하며 기존 시퀀스 자산을 변경하지 않는다.
+			const DATA_JSON_VALUE* const nextWorldOccurrenceOrdinal =
+				patternValue.Find("nextWorldOccurrenceOrdinal");
+			const DATA_JSON_VALUE* const worldOccurrences = patternValue.Find("worldOccurrences");
+			if ((nullptr != nextWorldOccurrenceOrdinal &&
+				 (!Try_ParseUnsigned(*nextWorldOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextWorldOccurrenceOrdinal) ||
+				  0u == stagedPattern.iNextWorldOccurrenceOrdinal)) ||
+				(nullptr != worldOccurrences &&
+				 (!worldOccurrences->Is_Array() ||
+				  worldOccurrences->Get_Array().size() > MAX_WORLD_OCCURRENCES_PER_PATTERN)))
+			{
+				outStatus = "KoukuSaydon Pattern World counter or box list is invalid.";
+				return false;
+			}
+			if (nullptr != worldOccurrences)
+			{
+				for (const DATA_JSON_VALUE& boxValue : worldOccurrences->Get_Array())
+				{
+					if (!Has_Properties(boxValue,
+							{ "occurrenceId", "worldId", "startMs", "durationMs", "playbackSpeed" }, { "placement" }))
+					{
+						outStatus = "KoukuSaydon World box has unexpected properties.";
+						return false;
+					}
+					const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxWorldId = Required(boxValue, "worldId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxSpeed = Required(boxValue, "playbackSpeed", DATA_JSON_TYPE::NUMBER);
+					KOUKU_SAYDON_COMPOSITION_WORLD_OCCURRENCE stagedBox;
+					double speed = 1.0;
+					if (nullptr == boxId || nullptr == boxWorldId ||
+						nullptr == boxStart ||
+						!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+						nullptr == boxDuration ||
+						!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+						0u == stagedBox.iDurationMs || nullptr == boxSpeed ||
+						!Try_ParseFinite(*boxSpeed, MIN_WORLD_PLAYBACK_SPEED, MAX_WORLD_PLAYBACK_SPEED, speed))
+					{
+						outStatus = "KoukuSaydon World box value or type is invalid.";
+						return false;
+					}
+					stagedBox.strOccurrenceId = boxId->Get_String();
+					stagedBox.strWorldId = boxWorldId->Get_String();
+					stagedBox.fPlaybackSpeed = static_cast<f32_t>(speed);
+					if (const auto* placementValue = boxValue.Find("placement"))
+					{
+						KOUKU_SAYDON_WORLD_PLACEMENT placement;
+						if (!Has_ExactProperties(*placementValue, { "position", "rotationDegrees", "scale" }) ||
+							!Read_PresentationVector(*placementValue, "position", placement.Position, -100000.0, 100000.0) ||
+							!Read_PresentationVector(*placementValue, "rotationDegrees", placement.RotationDegrees, -36000.0, 36000.0) ||
+							!Read_PresentationVector(*placementValue, "scale", placement.Scale, 0.001, 1000.0))
+						{
+							outStatus = "World occurrence placement requires position, rotationDegrees and positive scale vectors.";
+							return false;
+						}
+						stagedBox.Placement = placement;
+					}
+					stagedPattern.WorldOccurrences.push_back(std::move(stagedBox));
+				}
+			}
+
+			// Scene Profile 배치는 시간 구간과 blendMs를 읽는다. profile 존재와 전체 패턴 구간은
+			// 아래 Validate_Shape가 검사하며 이 순회는 렌더링 상태를 적용하지 않는다.
+			const DATA_JSON_VALUE* const nextSceneProfileOccurrenceOrdinal =
+				patternValue.Find("nextSceneProfileOccurrenceOrdinal");
+			const DATA_JSON_VALUE* const sceneProfileOccurrences = patternValue.Find("sceneProfileOccurrences");
+			if ((nullptr != nextSceneProfileOccurrenceOrdinal &&
+				 (!Try_ParseUnsigned(*nextSceneProfileOccurrenceOrdinal, MAX_NEXT_ORDINAL,
+					stagedPattern.iNextSceneProfileOccurrenceOrdinal) ||
+				  0u == stagedPattern.iNextSceneProfileOccurrenceOrdinal)) ||
+				(nullptr != sceneProfileOccurrences &&
+				 (!sceneProfileOccurrences->Is_Array() ||
+				  sceneProfileOccurrences->Get_Array().size() > MAX_SCENE_PROFILE_OCCURRENCES_PER_PATTERN)))
+			{
+				outStatus = "KoukuSaydon Pattern Scene Profile counter or box list is invalid.";
+				return false;
+			}
+			if (nullptr != sceneProfileOccurrences)
+			{
+				for (const DATA_JSON_VALUE& boxValue : sceneProfileOccurrences->Get_Array())
+				{
+					if (!Has_ExactProperties(boxValue,
+							{ "occurrenceId", "sceneProfileId", "startMs", "durationMs", "blendMs" }))
+					{
+						outStatus = "KoukuSaydon Scene Profile box has unexpected properties.";
+						return false;
+					}
+					const DATA_JSON_VALUE* const boxId = Required(boxValue, "occurrenceId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxProfileId = Required(boxValue, "sceneProfileId", DATA_JSON_TYPE::STRING);
+					const DATA_JSON_VALUE* const boxStart = Required(boxValue, "startMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxDuration = Required(boxValue, "durationMs", DATA_JSON_TYPE::NUMBER);
+					const DATA_JSON_VALUE* const boxBlend = Required(boxValue, "blendMs", DATA_JSON_TYPE::NUMBER);
+					KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE stagedBox;
+					if (nullptr == boxId || nullptr == boxProfileId ||
+						nullptr == boxStart ||
+						!Try_ParseUnsigned(*boxStart, MAX_TIME_MS, stagedBox.iStartMs) ||
+						nullptr == boxDuration ||
+						!Try_ParseUnsigned(*boxDuration, MAX_TIME_MS, stagedBox.iDurationMs) ||
+						0u == stagedBox.iDurationMs || nullptr == boxBlend ||
+						!Try_ParseUnsigned(*boxBlend, MAX_TIME_MS, stagedBox.iBlendMs))
+					{
+						outStatus = "KoukuSaydon Scene Profile box value or type is invalid.";
+						return false;
+					}
+					stagedBox.strOccurrenceId = boxId->Get_String();
+					stagedBox.strSceneProfileId = boxProfileId->Get_String();
+					stagedPattern.SceneProfileOccurrences.push_back(std::move(stagedBox));
+				}
+			}
+
+			// 패턴 종료 후 전투 진입·spawn reset·root scale 옵션을 읽는다.
+			// 명시 yaw는 spawn reset이 켜져 있어야 하며 두 root scale은 각각 0~1이다.
+			if (const auto* completion = patternValue.Find("enterCombatOnFinish"); nullptr != completion)
+			{
+				if (!completion->Is_Boolean())
+				{
+					outStatus = "Invalid enterCombatOnFinish.";
+					return false;
+				}
+				stagedPattern.bEnterCombatOnFinish = completion->Get_Boolean();
+			}
+			if (const auto* reset = patternValue.Find("resetBossToSpawn"); nullptr != reset)
+			{
+				if (!reset->Is_Boolean())
+				{
+					outStatus = "Invalid resetBossToSpawn.";
+					return false;
+				}
+				stagedPattern.bResetBossToSpawn = reset->Get_Boolean();
+			}
+			if (const auto* yaw = patternValue.Find("resetBossYawDegrees"); nullptr != yaw)
+			{
+				double degrees = 0.0;
+				if (!stagedPattern.bResetBossToSpawn || !Try_ParseFinite(*yaw, -360.0, 360.0, degrees))
+				{
+					outStatus = "Invalid resetBossYawDegrees: enable spawn reset and use -360..360 degrees.";
+					return false;
+				}
+				stagedPattern.ResetBossYawDegrees = degrees;
+			}
+			if (const auto* scale = patternValue.Find("animationRootVerticalScale"); nullptr != scale)
+				if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootVerticalScale))
+				{
+					outStatus = "Invalid animationRootVerticalScale: use 0..1.";
+					return false;
+				}
+			if (const auto* scale = patternValue.Find("animationRootHorizontalScale"); nullptr != scale)
+				if (!Try_ParseFinite(*scale, 0.0, 1.0, stagedPattern.fAnimationRootHorizontalScale))
+				{
+					outStatus = "Invalid animationRootHorizontalScale: use 0..1.";
+					return false;
+				}
+
+			// 절대 Boss Motion은 시작/끝 시각·월드 위치·yaw를 읽는다. keys가 있으면 2~512개이며
+			// 키 시각의 엄격 증가와 끝점 일치도 확인한다. 실제 boss 이동은 여기서 일어나지 않는다.
+			if (const auto* value = patternValue.Find("bossMotion"); nullptr != value)
+			{
+				KOUKU_SAYDON_BOSS_MOTION motion;
+				if (!Has_Properties(*value, { "startMs", "endMs", "startPosition", "endPosition", "yawDegrees" }, { "keys" }) ||
+					!Try_ParseUnsigned(*value->Find("startMs"), MAX_TIME_MS, motion.iStartMs) ||
+					!Try_ParseUnsigned(*value->Find("endMs"), MAX_TIME_MS, motion.iEndMs) ||
+					!Read_PresentationVector(*value, "startPosition", motion.StartPosition, -100000.0, 100000.0) ||
+					!Read_PresentationVector(*value, "endPosition", motion.EndPosition, -100000.0, 100000.0) ||
+					!Try_ParseFinite(*value->Find("yawDegrees"), -360.0, 360.0, motion.fYawDegrees))
+				{
+					outStatus = "Invalid Boss Motion fields.";
+					return false;
+				}
+				if (const auto* keys = value->Find("keys"))
+				{
+					if (!keys->Is_Array() || keys->Get_Array().size() < 2u || keys->Get_Array().size() > 512u)
+					{
+						outStatus = "Boss Motion keys require 2..512 samples.";
+						return false;
+					}
+					for (const auto& row : keys->Get_Array())
+					{
+						KOUKU_SAYDON_BOSS_MOTION_KEY key;
+						if (!Has_ExactProperties(row, { "timeMs", "position" }) ||
+							!Try_ParseUnsigned(*row.Find("timeMs"), MAX_TIME_MS, key.iTimeMs) ||
+							!Read_PresentationVector(row, "position", key.Position, -100000.0, 100000.0))
+						{
+							outStatus = "Invalid Boss Motion key fields.";
+							return false;
+						}
+						motion.Keys.push_back(key);
+					}
+					if (!Valid_BossMotionKeys(motion))
+					{
+						outStatus = "Boss Motion keys must increase strictly and match the interval/endpoints.";
+						return false;
+					}
+				}
+				stagedPattern.BossMotion = motion;
+			}
+
+			// 표현 배치의 순번과 최대 1024개 행은 전용 reader로 읽어 현재 패턴에만 모은다.
+			if (const auto* ordinal = patternValue.Find("nextPresentationOccurrenceOrdinal"); nullptr != ordinal)
+				if (!Try_ParseUnsigned(*ordinal, MAX_NEXT_ORDINAL, stagedPattern.iNextPresentationOccurrenceOrdinal) ||
+					stagedPattern.iNextPresentationOccurrenceOrdinal == 0u)
+				{
+					outStatus = "Invalid presentation occurrence counter.";
+					return false;
+				}
+			if (const auto* rows = patternValue.Find("presentationOccurrences"); nullptr != rows)
+			{
+				if (!rows->Is_Array() || rows->Get_Array().size() > 1024u)
+				{
+					outStatus = "Invalid presentation occurrence list.";
+					return false;
+				}
+				for (const auto& value : rows->Get_Array())
+				{
+					KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE row;
+					if (!Read_PresentationOccurrence(value, row))
+					{
+						outStatus = "Invalid presentation occurrence value or property.";
+						return false;
+					}
+					stagedPattern.PresentationOccurrences.push_back(std::move(row));
+				}
+			}
+
+			// 이전 형식의 actor는 애니메이션 profile에서 추론한다. 알 수 없거나 섞인 actor는 패턴 오류이며
+			// 배치가 없어 추론값이 비어 있으면 기존 기본 actor를 사용한다.
+			if (legacyFormat)
+			{
+				for (const auto& stage : stagedPattern.Stages)
+					for (const auto& row : stage.AnimationOccurrences)
+					{
+						const auto actor = Resolve_ActorProfileId(row.strProfileId);
+						if (actor.empty() || (!stagedPattern.strActorProfileId.empty() &&
+							stagedPattern.strActorProfileId != actor))
+						{
+							outStatus = "Legacy KoukuSaydon Pattern has unknown or mixed actor profiles.";
+							return false;
+						}
+						stagedPattern.strActorProfileId = actor;
+					}
+				if (stagedPattern.strActorProfileId.empty())
+					stagedPattern.strActorProfileId = "MN_RPCZ_00";
+			}
+
+			// 이전 계층 형식은 특정 두 패턴만 GATE2로 보정하고 나머지는 GATE1을 사용한다.
+			// 현재 형식은 gateId와 targetBossPlacementId를 반드시 직접 제공해야 한다.
+			if (legacyHierarchy)
+	        {
+	            stagedPattern.strGateId = (stagedPattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_8" ||
+	                stagedPattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_9") ? "GATE2" : "GATE1";
+	            stagedPattern.strTargetBossPlacementId = Resolve_DefaultPlacementId(stagedPattern.strGateId, stagedPattern.strActorProfileId);
+	        }
+	        else
+	        {
+	            const auto* gate = Required(patternValue, "gateId", DATA_JSON_TYPE::STRING);
+	            const auto* target = Required(patternValue, "targetBossPlacementId", DATA_JSON_TYPE::STRING);
+	            if (!gate || !target)
+	            {
+	                outStatus = "Pattern Gate and target boss are required.";
+	                return false;
+	            }
+	            stagedPattern.strGateId = gate->Get_String();
+	            stagedPattern.strTargetBossPlacementId = target->Get_String();
+	        }
+
+	        // 부모 폴더·명시 길이·자식 순차/반복·배치 목록을 읽는다. 여기서는 형식과 ms 범위를 확인하고
+	        // 자식 패턴 존재와 부모/자식 연결 검증은 전체 패턴을 확보한 뒤 수행한다.
+	        if (const auto* folder = patternValue.Find("folderId"))
+	        {
+	            if (!folder->Is_String() || !Is_StableId(folder->Get_String()))
+	            {
+	                outStatus = "Pattern folderId must be a nonempty stable Parent ID.";
+	                return false;
+	            }
+	            stagedPattern.strFolderId = folder->Get_String();
+	        }
+	        if (const auto* value = patternValue.Find("durationMs"))
+	            if (!Try_ParseUnsigned(*value, MAX_TIME_MS, stagedPattern.iDurationMs))
+	            {
+	                outStatus = "Invalid Pattern durationMs.";
+	                return false;
+	            }
+	        if (const auto* sequential = patternValue.Find("playChildrenSequentially"))
+	        {
+	            if (!sequential->Is_Boolean())
+	            {
+	                outStatus = "Parent sequential playback must be boolean.";
+	                return false;
+	            }
+	            stagedPattern.bPlayChildrenSequentially = sequential->Get_Boolean();
+	        }
+	        if (const auto* loop = patternValue.Find("loopStartPatternOccurrenceId"))
+	        {
+	            if (!loop->Is_String() || loop->Get_String().empty())
+	            {
+	                outStatus = "Parent loop start must be a nonempty child occurrence ID.";
+	                return false;
+	            }
+	            stagedPattern.strLoopStartPatternOccurrenceId = loop->Get_String();
+	        }
+	        if (const auto* value = patternValue.Find("nextPatternOccurrenceOrdinal"))
+	            if (!Try_ParseUnsigned(*value, MAX_NEXT_ORDINAL, stagedPattern.iNextPatternOccurrenceOrdinal) ||
+	                !stagedPattern.iNextPatternOccurrenceOrdinal)
+	            {
+	                outStatus = "Invalid nextPatternOccurrenceOrdinal.";
+	                return false;
+	            }
+	        if (const auto* rows = patternValue.Find("patternOccurrences"))
+	        {
+	            if (!rows->Is_Array() || rows->Get_Array().size() > MAX_PATTERN_OCCURRENCES)
+	            {
+	                outStatus = "Invalid Pattern occurrence collection.";
+	                return false;
+	            }
+	            for (const auto& value : rows->Get_Array())
+	            {
+	                KOUKU_SAYDON_COMPOSITION_PATTERN_OCCURRENCE row;
+	                const auto* id = Required(value, "occurrenceId", DATA_JSON_TYPE::STRING);
+	                const auto* child = Required(value, "patternId", DATA_JSON_TYPE::STRING);
+	                const auto* start = value.Find("startMs");
+	                const auto* duration = value.Find("durationMs");
+	                const auto* repeat = value.Find("repeat");
+	                if (!Has_Properties(value, {"occurrenceId", "patternId", "startMs", "durationMs"}, {"repeat"}) ||
+	                    !id || !child || !start || !duration ||
+	                    !Try_ParseUnsigned(*start, MAX_TIME_MS, row.iStartMs) ||
+	                    !Try_ParseUnsigned(*duration, MAX_TIME_MS, row.iDurationMs) || !row.iDurationMs ||
+	                    (repeat && !repeat->Is_Boolean()))
+	                {
+	                    outStatus = "Invalid Pattern occurrence fields.";
+	                    return false;
+	                }
+	                row.strOccurrenceId = id->Get_String();
+	                row.strPatternId = child->Get_String();
+	                row.bRepeat = repeat && repeat->Get_Boolean();
+	                stagedPattern.PatternOccurrences.push_back(std::move(row));
+	            }
+	        }
+
+	        // 현재 패턴 하나와 카탈로그만 임시 문서로 묶는다. 교차 패턴 연결은 미룬 채 내부 구조를 검증하고
+	        // 이미 수락한 다른 패턴과의 action/배치 ID 충돌을 이어 확인한다.
+	        KOUKU_SAYDON_COMPOSITION_DOCUMENT candidate = validationHeader;
+			candidate.Patterns.push_back(stagedPattern);
+			// 이 후보에는 현재 패턴 하나만 들어 있다. 뒤에 선언된 패턴도 참조할 수 있도록 교차 연결은 전체 파싱 뒤 검사한다.
+			if (!Validate_Shape(candidate, outStatus, false))
+				return false;
+			if (parsedPatternIds.contains(stagedPattern.strPatternId))
+			{
+				outStatus = "Duplicate pattern ID.";
+				return false;
+			}
+			for (const auto& stage : stagedPattern.Stages)
+			{
+				if (parsedActionIds.contains(stage.strActionId))
+				{
+					outStatus = "Duplicate action ID: " + stage.strActionId;
+					return false;
+				}
+				for (const auto& row : stage.AnimationOccurrences)
+					if (parsedOccurrenceIds.contains(row.strOccurrenceId))
+					{
+						outStatus = "Duplicate animation ID: " + row.strOccurrenceId;
+						return false;
+					}
+			}
+			for (const auto& box : stagedPattern.LogicOccurrences)
+				if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+				{
+					outStatus = "Duplicate Logic box ID: " + box.strOccurrenceId;
+					return false;
+				}
+			for (const auto& box : stagedPattern.SummonOccurrences)
+				if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+				{
+					outStatus = "Duplicate Summon box ID: " + box.strOccurrenceId;
+					return false;
+				}
+			for (const auto& box : stagedPattern.WorldOccurrences)
+				if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+				{
+					outStatus = "Duplicate World box ID: " + box.strOccurrenceId;
+					return false;
+				}
+			for (const auto& box : stagedPattern.SceneProfileOccurrences)
+				if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+				{
+					outStatus = "Duplicate Scene Profile box ID: " + box.strOccurrenceId;
+					return false;
+				}
+			for (const auto& box : stagedPattern.PresentationOccurrences)
+				if (parsedOccurrenceIds.contains(box.strOccurrenceId))
+				{
+					outStatus = "Duplicate presentation box ID: " + box.strOccurrenceId;
+					return false;
+				}
+			return true;
 		};
+
+		// 패턴 내부 실패는 부분 값을 비우고 원본 JSON·진단을 가진 DRAFT 행으로 대체한다.
+		// 문서 파싱 자체를 즉시 실패시키지는 않으며 이후 전체 연결 검증은 별도로 남아 있다.
 		if (!parsePattern())
 		{
 			parsedOccurrences = previousOccurrences;
@@ -4578,26 +5935,34 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			};
 			if (!Is_StableId(stagedPattern.strPatternId) || used(stagedPattern.strPatternId))
 			{
-				// Diagnostic identity only; Serialize retains the original JSON identity.
+				// 화면 진단용 ID만 만든다. Serialize는 보존한 JSON의 원래 ID를 사용한다.
 				std::uint64_t hash = 14695981039346656037ull;
-				for (unsigned char c : stagedPattern.strPreservedJson) hash = (hash ^ c) * 1099511628211ull;
+				for (unsigned char c : stagedPattern.strPreservedJson)
+					hash = (hash ^ c) * 1099511628211ull;
 				stagedPattern.strPatternId = "invalid." + std::to_string(hash);
-				while (used(stagedPattern.strPatternId)) stagedPattern.strPatternId += ".duplicate";
+				while (used(stagedPattern.strPatternId))
+					stagedPattern.strPatternId += ".duplicate";
 			}
 			stagedPattern.strDisplayName = nullptr != name && !name->Get_String().empty() ?
 				name->Get_String() : stagedPattern.strPatternId;
 			const auto* gate = Required(patternValue, "gateId", DATA_JSON_TYPE::STRING);
-            if (gate) stagedPattern.strGateId = gate->Get_String();
+            if (gate)
+                stagedPattern.strGateId = gate->Get_String();
             const auto* folder = Required(patternValue, "folderId", DATA_JSON_TYPE::STRING);
-            if (folder) stagedPattern.strFolderId = folder->Get_String();
+            if (folder)
+                stagedPattern.strFolderId = folder->Get_String();
             stagedPattern.strAuthoringStatus = "DRAFT";
             stagedPattern.strCategory = "MECHANIC";
 		}
+
+		// 정상 행 또는 격리 행의 최종 ID를 등록한 뒤 staged에 추가한다.
+		// 격리 과정에서 비운 action/배치 목록은 중복 집합에 추가되지 않는다.
 		parsedPatternIds.insert(stagedPattern.strPatternId);
 		for (const auto& stage : stagedPattern.Stages)
 		{
 			parsedActionIds.insert(stage.strActionId);
-			for (const auto& row : stage.AnimationOccurrences) parsedOccurrenceIds.insert(row.strOccurrenceId);
+			for (const auto& row : stage.AnimationOccurrences)
+				parsedOccurrenceIds.insert(row.strOccurrenceId);
 		}
 		for (const auto& box : stagedPattern.LogicOccurrences)
 			parsedOccurrenceIds.insert(box.strOccurrenceId);
@@ -4613,10 +5978,23 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	}
 
 
+    // 계층 행도 작은 임시 값으로 읽는다. 오류 행의 진단 ID와 저장할 원본 JSON identity는 구분한다.
     const auto readText = [](const DATA_JSON_VALUE& source, const char* name, std::string& value)
-    { const auto* field = Required(source, name, DATA_JSON_TYPE::STRING); if (!field) return false; value = field->Get_String(); return true; };
+    {
+        const auto* field = Required(source, name, DATA_JSON_TYPE::STRING);
+        if (!field)
+            return false;
+        value = field->Get_String();
+        return true;
+    };
     const auto readOrdinal = [](const DATA_JSON_VALUE& source, const char* name, uint32_t& value)
-    { const auto* field = source.Find(name); return field && Try_ParseUnsigned(*field, MAX_NEXT_ORDINAL, value) && value > 0; };
+    {
+        const auto* field = source.Find(name);
+        return field && Try_ParseUnsigned(*field, MAX_NEXT_ORDINAL, value) && value > 0;
+    };
+
+    // 폴더/번들은 진단과 원본 JSON을 보존하고 가능한 표시 이름·관문·ID를 읽는다.
+    // 잘못되거나 중복된 ID만 화면용 hash ID로 바꾸며 같은 hash에는 duplicate 접미사를 붙인다.
     const auto preserve = [&](const auto& source, auto& item, std::string& identity, const char* key, const auto& previous)
     {
         item.strLoadError = outStatus.empty() ? "Invalid hierarchy entry" : outStatus;
@@ -4624,26 +6002,42 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
         readText(source, "displayName", item.strDisplayName);
         readText(source, "gateId", item.strGateId);
         readText(source, key, identity);
-        const auto used = [&](const std::string& id) { return std::any_of(previous.begin(), previous.end(), [&](const auto& row) {
-            if constexpr (requires { row.strFolderId; row.strBundleId; }) return row.strBundleId == id;
-            else return row.strFolderId == id;
-        }); };
+        const auto used = [&](const std::string& id)
+        {
+            return std::any_of(previous.begin(), previous.end(), [&](const auto& row)
+            {
+                if constexpr (requires { row.strFolderId; row.strBundleId; })
+                    return row.strBundleId == id;
+                else
+                    return row.strFolderId == id;
+            });
+        };
         if (!Is_StableId(identity) || used(identity))
         {
             uint64_t hash = 14695981039346656037ull;
-            for (unsigned char c : item.strPreservedJson) hash = (hash ^ c) * 1099511628211ull;
+            for (unsigned char c : item.strPreservedJson)
+                hash = (hash ^ c) * 1099511628211ull;
             identity = "invalid." + std::to_string(hash);
-            while (used(identity)) identity += ".duplicate";
+            while (used(identity))
+                identity += ".duplicate";
         }
-        if (item.strDisplayName.empty()) item.strDisplayName = identity;
+        if (item.strDisplayName.empty())
+            item.strDisplayName = identity;
     };
+
+    // 현재 계층 형식은 folders와 bundles 배열이 필수이고 각각 4096개로 제한한다.
+    // 배열 형식 오류는 문서 실패지만 개별 행 오류는 아래에서 격리한다.
     const auto* folders = root.Find("folders");
     const auto* bundles = root.Find("bundles");
     if ((!legacyHierarchy && (!folders || !bundles)) ||
         (folders && (!folders->Is_Array() || folders->Get_Array().size() > 4096u)) ||
         (bundles && (!bundles->Is_Array() || bundles->Get_Array().size() > 4096u)))
-    { outStatus = "Invalid folder/bundle collections."; return false; }
-    if (folders) for (const auto& value : folders->Get_Array())
+    {
+        outStatus = "Invalid folder/bundle collections.";
+        return false;
+    }
+    if (folders)
+        for (const auto& value : folders->Get_Array())
     {
         KOUKU_SAYDON_COMPOSITION_FOLDER folder;
         outStatus.clear();
@@ -4655,25 +6049,34 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
             preserve(value, folder, folder.strFolderId, "folderId", staged.Folders);
         staged.Folders.push_back(std::move(folder));
     }
-    // Parents are parsed after Patterns. Quarantine a broken folder reference
-    // only after the complete Parent inventory is available.
+    // 폴더는 패턴 뒤에 읽는다. 전체 폴더 목록을 확보한 뒤 잘못된 부모 참조를 오류 행으로 격리한다.
     for (size_t index = 0; index < staged.Patterns.size(); ++index)
     {
         auto& pattern = staged.Patterns[index];
-        if (Validate_PatternFolder(staged, pattern, outStatus)) continue;
+        if (Validate_PatternFolder(staged, pattern, outStatus))
+            continue;
         pattern.strLoadError = outStatus;
         pattern.strPreservedJson = Preserve_Json(patterns->Get_Array()[index]);
         pattern.strAuthoringStatus = "DRAFT";
     }
+
+    // 전체 패턴이 모인 뒤 소환 대상과 자식 연결을 차례로 검사한다.
+    // 연결 실패도 해당 패턴의 원본 JSON과 진단을 보존해 DRAFT로 표시한다.
     for (size_t index = 0; index < staged.Patterns.size(); ++index)
     {
         auto& pattern = staged.Patterns[index];
-        if (!pattern.strLoadError.empty()) continue;
+        if (!pattern.strLoadError.empty())
+            continue;
         bool valid = true;
         for (const auto& box : pattern.SummonOccurrences)
             for (const auto& spawn : box.PatternSpawns)
-                if (!Validate_SummonPatternTarget(staged, pattern, spawn.strPatternId, outStatus)) { valid = false; break; }
-        if (valid) continue;
+                if (!Validate_SummonPatternTarget(staged, pattern, spawn.strPatternId, outStatus))
+                {
+                    valid = false;
+                    break;
+                }
+        if (valid)
+            continue;
         pattern.strLoadError = outStatus;
         pattern.strPreservedJson = Preserve_Json(patterns->Get_Array()[index]);
         pattern.strAuthoringStatus = "DRAFT";
@@ -4681,12 +6084,17 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
     for (size_t index = 0; index < staged.Patterns.size(); ++index)
     {
         auto& pattern = staged.Patterns[index];
-        if (Validate_PatternChildren(staged, pattern, outStatus)) continue;
+        if (Validate_PatternChildren(staged, pattern, outStatus))
+            continue;
         pattern.strLoadError = outStatus;
         pattern.strPreservedJson = Preserve_Json(patterns->Get_Array()[index]);
         pattern.strAuthoringStatus = "DRAFT";
     }
-    if (bundles) for (const auto& value : bundles->Get_Array())
+
+    // Bundle은 최대 여덟 member와 각각 열여섯 Scene Profile/표현 배치를 파싱한다.
+    // 전체 staged의 참조·중복 검증을 통과하지 못한 행은 원본 JSON을 보존한다.
+    if (bundles)
+        for (const auto& value : bundles->Get_Array())
     {
         KOUKU_SAYDON_COMPOSITION_BUNDLE bundle;
         outStatus.clear();
@@ -4700,48 +6108,66 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
                 !readText(value, "authoringStatus", bundle.strAuthoringStatus) ||
                 !readOrdinal(value, "nextMemberOrdinal", bundle.iNextMemberOrdinal) ||
                 !readOrdinal(value, "nextSceneProfileOccurrenceOrdinal", bundle.iNextSceneProfileOccurrenceOrdinal) ||
-                !readOrdinal(value, "nextPresentationOccurrenceOrdinal", bundle.iNextPresentationOccurrenceOrdinal)) return false;
+                !readOrdinal(value, "nextPresentationOccurrenceOrdinal", bundle.iNextPresentationOccurrenceOrdinal))
+                    return false;
             const auto* members = Required(value, "members", DATA_JSON_TYPE::ARRAY);
             const auto* scenes = Required(value, "sceneProfileOccurrences", DATA_JSON_TYPE::ARRAY);
             const auto* presentation = Required(value, "presentationOccurrences", DATA_JSON_TYPE::ARRAY);
             if (!members || members->Get_Array().size() > 8u || !scenes || scenes->Get_Array().size() > 16u ||
-                !presentation || presentation->Get_Array().size() > 16u) return false;
+                !presentation || presentation->Get_Array().size() > 16u)
+                    return false;
             for (const auto& row : members->Get_Array())
             {
                 KOUKU_SAYDON_COMPOSITION_BUNDLE_MEMBER member;
                 const auto* offset = row.Find("startOffsetMs");
                 if (!Has_ExactProperties(row, {"memberId", "patternId", "startOffsetMs"}) ||
                     !readText(row, "memberId", member.strMemberId) || !readText(row, "patternId", member.strPatternId) ||
-                    !offset || !Try_ParseUnsigned(*offset, MAX_TIME_MS, member.iStartOffsetMs)) return false;
+                    !offset || !Try_ParseUnsigned(*offset, MAX_TIME_MS, member.iStartOffsetMs))
+                        return false;
                 bundle.Members.push_back(std::move(member));
             }
             for (const auto& row : scenes->Get_Array())
             {
                 KOUKU_SAYDON_COMPOSITION_SCENE_PROFILE_OCCURRENCE scene;
                 if (!Has_ExactProperties(row, {"occurrenceId", "sceneProfileId", "startMs", "durationMs", "blendMs"}) ||
-                    !readText(row, "occurrenceId", scene.strOccurrenceId) || !readText(row, "sceneProfileId", scene.strSceneProfileId)) return false;
+                    !readText(row, "occurrenceId", scene.strOccurrenceId) || !readText(row, "sceneProfileId", scene.strSceneProfileId))
+                        return false;
                 for (const auto& [name, destination] : {
                     std::pair<const char*, uint32_t*>{"startMs", &scene.iStartMs}, {"durationMs", &scene.iDurationMs}, {"blendMs", &scene.iBlendMs}})
-                { const auto* field = row.Find(name); if (!field || !Try_ParseUnsigned(*field, MAX_TIME_MS, *destination)) return false; }
+                {
+                    const auto* field = row.Find(name);
+                    if (!field || !Try_ParseUnsigned(*field, MAX_TIME_MS, *destination))
+                        return false;
+                }
                 bundle.SceneProfileOccurrences.push_back(std::move(scene));
             }
             for (const auto& row : presentation->Get_Array())
             {
                 KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE occurrence;
-                if (!Read_PresentationOccurrence(row, occurrence)) return false;
+                if (!Read_PresentationOccurrence(row, occurrence))
+                    return false;
                 bundle.PresentationOccurrences.push_back(std::move(occurrence));
             }
             return Validate_Bundle(staged, bundle, outStatus) &&
                 std::none_of(staged.Bundles.begin(), staged.Bundles.end(), [&](const auto& row) { return row.strBundleId == bundle.strBundleId; });
         };
-        if (!parse()) { preserve(value, bundle, bundle.strBundleId, "bundleId", staged.Bundles); bundle.strAuthoringStatus = "DRAFT"; }
+        if (!parse())
+        {
+            preserve(value, bundle, bundle.strBundleId, "bundleId", staged.Bundles);
+            bundle.strAuthoringStatus = "DRAFT";
+        }
         staged.Bundles.push_back(std::move(bundle));
     }
 
+	// Flow는 최대 네 관문 흐름과 각 256개 entry·64개 그룹을 읽는다.
+	// 이 순회의 오류는 패턴/계층 행처럼 격리하지 않고 문서 전체 실패로 반환한다.
 	if (const auto* flows = root.Find("patternFlows"))
 	{
 		if (!flows->Is_Array() || flows->Get_Array().size() > 4u)
-		{ outStatus = "Pattern Flows must be a bounded array."; return false; }
+		{
+			outStatus = "Pattern Flows must be a bounded array.";
+			return false;
+		}
 		for (const auto& value : flows->Get_Array())
 		{
 			KOUKU_SAYDON_COMPOSITION_PATTERN_FLOW flow;
@@ -4749,11 +6175,20 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 			if (!Has_Properties(value, {"flowId", "gateId", "displayName", "entries"}, {"loopStartEntryId", "entryGroups", "bingoSpecialPatternId"}) ||
 				!readText(value, "flowId", flow.strFlowId) || !readText(value, "gateId", flow.strGateId) ||
 				!readText(value, "displayName", flow.strDisplayName) || !entries || entries->Get_Array().size() > 256u)
-			{ outStatus = "Pattern Flow properties are invalid."; return false; }
+			{
+				outStatus = "Pattern Flow properties are invalid.";
+				return false;
+			}
 			if (value.Find("loopStartEntryId") && !readText(value, "loopStartEntryId", flow.strLoopStartEntryId))
-			{ outStatus = "Pattern Flow loop start must be a string."; return false; }
+			{
+				outStatus = "Pattern Flow loop start must be a string.";
+				return false;
+			}
 			if (value.Find("bingoSpecialPatternId") && !readText(value, "bingoSpecialPatternId", flow.strBingoSpecialPatternId))
-			{ outStatus = "Bingo special Pattern must be a string."; return false; }
+			{
+				outStatus = "Bingo special Pattern must be a string.";
+				return false;
+			}
 			for (const auto& row : entries->Get_Array())
 			{
 				KOUKU_SAYDON_COMPOSITION_FLOW_ENTRY entry;
@@ -4762,36 +6197,59 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 					!readText(row, "entryId", entry.strEntryId) || !readText(row, "kind", entry.strKind) ||
 					!readText(row, "targetId", entry.strTargetId) || !wait ||
 					!Try_ParseUnsigned(*wait, MAX_TIME_MS, entry.iWaitAfterMs))
-				{ outStatus = "Pattern Flow entry properties are invalid."; return false; }
+				{
+					outStatus = "Pattern Flow entry properties are invalid.";
+					return false;
+				}
 				flow.Entries.push_back(std::move(entry));
 			}
 			if (const auto* groups = value.Find("entryGroups"))
 			{
 				if (!groups->Is_Array() || groups->Get_Array().size() > 64u)
-				{ outStatus = "Pattern Flow groups must be a bounded array."; return false; }
+				{
+					outStatus = "Pattern Flow groups must be a bounded array.";
+					return false;
+				}
 				for (const auto& row : groups->Get_Array())
 				{
 					KOUKU_SAYDON_COMPOSITION_FLOW_GROUP group;
 					if (!Has_Properties(row, {"groupId", "displayName", "startEntryId", "endEntryId"}, {"repeatUntilHealthBars", "transitionAt"}) ||
 						!readText(row, "groupId", group.strGroupId) || !readText(row, "displayName", group.strDisplayName) ||
 						!readText(row, "startEntryId", group.strStartEntryId) || !readText(row, "endEntryId", group.strEndEntryId))
-					{ outStatus = "Pattern Flow group properties are invalid."; return false; }
+					{
+						outStatus = "Pattern Flow group properties are invalid.";
+						return false;
+					}
+
+					// 체력 반복 조건에는 종료 경계를 함께 요구한다. PATTERN_END와 GROUP_END만 허용하며
+					// 체력 조건 없이 transitionAt만 제공하면 거절한다.
 					if (const auto* threshold = row.Find("repeatUntilHealthBars"))
 					{
-						std::uint32_t bars = 0u; std::string transition;
+						std::uint32_t bars = 0u;
+						std::string transition;
 						if (!Try_ParseUnsigned(*threshold, 1000u, bars) || !readText(row, "transitionAt", transition) ||
 							(transition != "PATTERN_END" && transition != "GROUP_END"))
-						{ outStatus = "HP repeat requires a bounded threshold and explicit completion boundary."; return false; }
-						group.RepeatUntilHealthBars = bars; group.bTransitionAtGroupEnd = transition == "GROUP_END";
+						{
+							outStatus = "HP repeat requires a bounded threshold and explicit completion boundary.";
+							return false;
+						}
+						group.RepeatUntilHealthBars = bars;
+						group.bTransitionAtGroupEnd = transition == "GROUP_END";
 					}
 					else if (row.Find("transitionAt"))
-					{ outStatus = "A completion boundary requires an HP repeat condition."; return false; }
+					{
+						outStatus = "A completion boundary requires an HP repeat condition.";
+						return false;
+					}
 					flow.EntryGroups.push_back(std::move(group));
 				}
 			}
 			staged.PatternFlows.push_back(std::move(flow));
 		}
 	}
+
+	// 모든 패턴·계층·Flow를 갖춘 staged로 최종 교차 참조 검증을 수행한다.
+	// 성공한 경우에만 outDocument를 교체하므로 호출자는 이 뒤 별도 자산/게시 계약 검증을 이어갈 수 있다.
 	if (!Validate_Shape(staged, outStatus))
 		return false;
 	outDocument = std::move(staged);
@@ -4799,6 +6257,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Parse_Text(
 	return true;
 }
 
+// Reload가 네 프로필의 읽기 전용 Action 참조를 각각 읽는다. 한 참조가 실패해도 다른 참조와 Composition 편집은 유지한다.
+// 반환 true는 시도 완료를 뜻하며 모든 참조의 로드 성공을 뜻하지 않는다. 개별 오류는 outStatus에 모은다.
 bool_t Client::CKoukuSaydonCompositionDocument::Load_ImmutableActionReferences(
 	KOUKU_SAYDON_ACTION_REFERENCE_SET& outReferences,
 	std::string& outStatus)
@@ -4821,21 +6281,27 @@ bool_t Client::CKoukuSaydonCompositionDocument::Load_ImmutableActionReferences(
 		}
 		staged.SourceBytes[index] = std::move(bytes);
 	}
-	// Resource failures never revoke composition editing or other profiles.
+	// 일부 참조 리소스의 실패는 Composition 편집과 다른 프로필의 로드를 취소하지 않는다.
 	outReferences = std::move(staged);
 	outStatus = errors.empty() ? "Loaded KoukuSaydon resources." : errors;
 	return true;
 }
 
+// 방향별 소환 자식의 Logic을 검사한다. 허용된 즉시 방향 전환과 HP 또는 광기 접촉 결과로 범위를 제한한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogic(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& child, std::string& status)
 {
+    // 방향 자식 선택 목록과 소환 구간 검증이 호출한다. 문서/자식은 읽기만 하며
+    // 성공 시 status를 비우지는 않는다. 전체 문서 형태 검증은 별도 단계다.
     const auto findLogic = [&](const std::string& id) -> const KOUKU_SAYDON_COMPOSITION_LOGIC_DEFINITION* {
         const auto row = std::find_if(document.Logics.begin(), document.Logics.end(),
             [&](const auto& value) { return value.strLogicId == id; });
         return row == document.Logics.end() ? nullptr : &*row;
     };
+
+    // 이 검사는 enabled에 따라 행을 생략하지 않는다. 이동 배율 0의 1..34ms 방향 전환은
+    // 세 결과 목록이 모두 비어 있을 때만 즉시 방향 전환으로 인정한다.
     for (const auto& contact : child.LogicOccurrences)
     {
         const auto* definition = findLogic(contact.strLogicId);
@@ -4843,13 +6309,17 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogi
             definition->strTriggerKind == "BOSS_TRACK_TARGET" && definition->fFollowSpeedScale == 0.0 &&
             contact.iDurationMs >= 1u && contact.iDurationMs <= 34u && contact.OnSuccessLogicIds.empty() &&
             contact.OnFailLogicIds.empty() && contact.OnTimeoutLogicIds.empty();
-        if (instantFacing) continue;
+        if (instantFacing)
+            continue;
         if (!definition || (definition->strJudgementKind != "AREA_OVERLAP" && definition->strTriggerKind != "ENTER_AREA"))
         {
             status = "Direction child " + child.strPatternId + " Logic " + contact.strOccurrenceId +
                 " must be an overlap contact or an instant facing Trigger (1..34 ms, no movement/results).";
             return false;
         }
+
+        // 접촉 Logic의 세 결과 목록은 각각 정의를 찾아 결과 종류를 제한한다.
+        // 이 함수는 종류 문자열을 확인하며 RESULT 타입 여부까지 별도로 확인하지 않는다.
         for (const auto* outcomes : { &contact.OnSuccessLogicIds, &contact.OnFailLogicIds, &contact.OnTimeoutLogicIds })
             for (const auto& outcome : *outcomes)
             {
@@ -4865,28 +6335,42 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_CrossDirectionChildLogi
     return true;
 }
 
+// 방향별 자식 구간을 검증한 뒤 해석한다. 성공한 구간 목록만 반환하며 실패하면 기존 출력 목록을 보존한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveCrossDirectionWindows(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
     std::vector<KOUKU_SAYDON_COMPOSITION_CROSS_DIRECTION_WINDOW>& outWindows,
     std::string& outStatus)
 {
-    if (!Validate_CrossDirectionWindows(document, pattern, outStatus)) return false;
-    if (!Resolve_CrossDirectionWindows(document, pattern, outWindows, outStatus)) return false;
+    // Workbench의 표시와 PresentationPlayer의 clone 준비가 사용한다. 검증 helper가 한 번
+    // 해석한 뒤 실제 출력용으로 다시 해석하며, 두 단계 성공 뒤 오류 문자열을 비운다.
+    if (!Validate_CrossDirectionWindows(document, pattern, outStatus))
+        return false;
+    if (!Resolve_CrossDirectionWindows(document, pattern, outWindows, outStatus))
+        return false;
     outStatus.clear();
     return true;
 }
 
+// 빙고 특수 패턴 후보가 유한한 부모와 자식인지 검사한다. 활성 폭발 trigger가 전체에서 정확히 하나여야 한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarget(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document, const std::string_view patternId, std::string& outStatus)
 {
+    // Workbench 후보 선택과 BossTool의 Flow 준비가 요청한 ID를 검사한다.
+    // 여기서는 특수 부모/자식 제약과 폭발 수만 확인하며 전체 문서의 수치/참조 검증을 대신하지 않는다.
     const auto parent = std::find_if(document.Patterns.begin(), document.Patterns.end(),
         [&](const auto& row) { return row.strPatternId == patternId; });
-    const auto reject = [&](const char* message) { outStatus = message; return false; };
+    const auto reject = [&](const char* message) {
+        outStatus = message;
+        return false;
+    };
     if (parent == document.Patterns.end() || !parent->strLoadError.empty() || parent->strGateId != "BINGO" ||
-        parent->strTargetBossPlacementId != "boss.kakulsaydon.bingo.saydon" || parent->PatternOccurrences.empty() ||
+        parent->strTargetBossPlacementId != "boss.koukusaydon.bingo.saydon" || parent->PatternOccurrences.empty() ||
         !parent->strLoopStartPatternOccurrenceId.empty())
         return reject("Bingo special requires a finite Parent on the Bingo boss.");
+
+    // 부모 포인터 뒤에 배치별 자식 포인터를 넣는다. 모두 document가 소유한 행을 호출 동안만 차용하며
+    // 같은 자식이 여러 배치에 있으면 목록에서 중복 제거하지 않는다.
     std::vector<const KOUKU_SAYDON_COMPOSITION_PATTERN*> owners{&*parent};
     for (const auto& box : parent->PatternOccurrences)
     {
@@ -4898,24 +6382,35 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_BingoSpecialPatternTarg
             return reject("Bingo special children must be finite Patterns on the same Gate and boss.");
         owners.push_back(&*child);
     }
+
+    // 부모와 각 자식 배치가 참조하는 활성 BINGO_DETONATION을 센다.
+    // 종류만 같은 비활성 box는 제외하며 합계가 정확히 하나인 경우에만 성공한다.
     std::size_t detonations = 0u;
     for (const auto* owner : owners)
-        for (const auto& box : owner->LogicOccurrences) if (box.bEnabled)
+        for (const auto& box : owner->LogicOccurrences)
+            if (box.bEnabled)
             for (const auto& logic : document.Logics)
-                if (logic.strLogicId == box.strLogicId && logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "BINGO_DETONATION") ++detonations;
-    if (detonations != 1u) return reject("Bingo special requires exactly one enabled BINGO_DETONATION across its Parent and children.");
-    outStatus.clear(); return true;
+                if (logic.strLogicId == box.strLogicId && logic.strLogicType == "TRIGGER" && logic.strTriggerKind == "BINGO_DETONATION")
+                    ++detonations;
+    if (detonations != 1u)
+        return reject("Bingo special requires exactly one enabled BINGO_DETONATION across its Parent and children.");
+    outStatus.clear();
+    return true;
 }
 
+// 소환 배치가 가리키는 같은 actor와 관문의 독립적인 자식 패턴을 검사한다. 중첩 소환과 공유 상태 제어는 제한한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& owner,
     const std::string_view targetPatternId, std::string& outStatus)
 {
+    // Workbench 소환 후보와 문서 검증이 사용한다. 같은 관문·actor·boss의 다른 MECHANIC만 받고
+    // 명시적인 실패는 진단 문자열만 바꾸며 document/owner/대상 패턴은 변경하지 않는다.
     const auto target = std::find_if(document.Patterns.begin(), document.Patterns.end(),
         [&](const auto& row) { return row.strPatternId == targetPatternId; });
     const auto fail = [&](const char* reason) {
-        outStatus = "Summon Pattern " + std::string(targetPatternId) + ": " + reason; return false;
+        outStatus = "Summon Pattern " + std::string(targetPatternId) + ": " + reason;
+        return false;
     };
     if (target == document.Patterns.end() || !target->strLoadError.empty())
         return fail("target is missing or invalid.");
@@ -4923,6 +6418,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
         target->strActorProfileId != owner.strActorProfileId || target->strCategory != "MECHANIC" ||
         target->strTargetBossPlacementId != owner.strTargetBossPlacementId)
         return fail("choose another MECHANIC Pattern with the same Gate, actor and boss target.");
+
+    // 대상이 다시 다른 자식/소환/World/Scene을 소유하거나 절대 BossMotion·spawn 복귀·전투 진입·부모 timeline을 제어하면 거절한다.
+    // 단계의 retarget도 이 독립 소환 actor 경계에서 허용하지 않는다.
     if (!target->PatternOccurrences.empty() || !target->SummonOccurrences.empty() ||
         !target->WorldOccurrences.empty() || !target->SceneProfileOccurrences.empty() ||
         target->BossMotion || target->bEnterCombatOnFinish || target->bResetBossToSpawn || target->ResetBossYawDegrees ||
@@ -4930,6 +6428,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
             return folder.strTimelinePatternId == target->strPatternId;
         }) || std::any_of(target->Stages.begin(), target->Stages.end(), [](const auto& stage) { return stage.bRetargetOnEnter; }))
         return fail("nested Summon, Parent, World, Scene and boss movement overrides are unavailable.");
+
+    // 소환 actor의 표현은 BOSS anchor의 Effect/Sound/Collider만 받는다.
+    // World 연결은 허용하지 않으며 Logic 배치 연결은 Collider에만 허용한다.
     for (const auto& box : target->PresentationOccurrences)
     {
         const auto resource = std::find_if(document.PresentationResources.begin(), document.PresentationResources.end(),
@@ -4941,6 +6442,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
             (!box.strLogicOccurrenceId.empty() && resource->eKind != KOUKU_SAYDON_PRESENTATION_KIND::COLLIDER))
             return fail("spawned presentation supports actor-bound BOSS Effect, Sound and contact Collider rows.");
     }
+
+    // 대상의 Logic은 enabled와 무관하게 검사한다. 접촉 종류는 세 결과 목록의 RESULT 타입과
+    // 피해/광기 결과를 확인하고, 그 외에는 결과 없는 ALBION_AIRBORNE JUMP/SLAM만 허용한다.
     for (const auto& box : target->LogicOccurrences)
     {
         const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
@@ -4968,6 +6472,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
             !box.OnFailLogicIds.empty() || !box.OnTimeoutLogicIds.empty())
             return fail("spawned Logic supports only actor-local airborne JUMP and SLAM without outcomes.");
     }
+
+    // 대상에는 양수 수명과 적어도 하나의 애니메이션 행이 필요하다. 이미 owner의 소환 목록에서
+    // 이 대상을 쓰는 각 배치가 전체 자식 수명을 덮는지도 확인하되 새 배치를 여기서 만들지는 않는다.
     if (!Pattern_Lifetime(*target) || std::none_of(target->Stages.begin(), target->Stages.end(),
         [](const auto& stage) { return !stage.AnimationOccurrences.empty(); }))
         return fail("target needs a nonempty Animation timeline.");
@@ -4979,6 +6486,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate_SummonPatternTarget(
     return true;
 }
 
+// 편집 문서의 형태와 연결을 검사하는 공개 API다. 현재 references 인자는 검사 조건에 사용하지 않는다.
+// 이 성공을 게시 데이터 생성이나 Server 전투 실행 성공으로 해석하지 않는다.
 bool_t Client::CKoukuSaydonCompositionDocument::Validate(
 	const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
 	const KOUKU_SAYDON_ACTION_REFERENCE_SET& references,
@@ -4992,11 +6501,18 @@ bool_t Client::CKoukuSaydonCompositionDocument::Validate(
 	return true;
 }
 
+// 저작 문서를 JSON 문자열로 만든다. 이 함수 자체는 입력 검증, 디스크 저장 또는 게시를 수행하지 않는다.
+// 오류로 격리한 행은 보존 JSON을 다시 쓰고 실행 중 파생한 블렌드 창은 저작 문서에 저장하지 않는다.
 std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 	const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document)
 {
+	// 저장용 문자열은 double 왕복에 필요한 유효 자릿수로 작성한다. 입력 문서를 변경하지 않으며
+	// 비유한 값·잘못된 enum 문자열·stream 실패를 이 함수가 검증 결과로 반환하지는 않는다.
 	std::ostringstream output;
 	output << std::setprecision(std::numeric_limits<double>::max_digits10);
+
+	// 문자열 목록의 순서를 유지해 Escape하고 마지막 속성인지에 따라 쉼표를 붙인다.
+	// 이 lambda는 지역 output만 차용하며 목록을 저장하거나 정렬하지 않는다.
 	const auto textList = [&output](const char_t* const key, const std::vector<std::string>& list,
 		const char_t* const indent, const bool_t last)
 	{
@@ -5005,6 +6521,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << (0u == index ? "" : ", ") << "\"" << CDataJson::Escape(list[index]) << "\"";
 		output << "]" << (last ? "" : ",") << "\n";
 	};
+
+	// 문서 identity·revision·시계·다음 순번과 광기 정책을 먼저 쓴다.
+	// revision을 올리는 책임은 저장 경로에 있으므로 여기서는 입력 값을 그대로 사용한다.
 	output << "{\n"
 		<< "  \"schema\": \"" << COMPOSITION_SCHEMA << "\",\n"
 		<< "  \"formatVersion\": " << document.iFormatVersion << ",\n"
@@ -5035,18 +6554,36 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"logicId\": \"" << CDataJson::Escape(logic.strLogicId) << "\",\n"
 			<< "      \"displayName\": \"" << CDataJson::Escape(logic.strDisplayName) << "\",\n"
 			<< "      \"logicType\": \"" << CDataJson::Escape(logic.strLogicType) << "\"";
-		if (!logic.FixedHits.empty()) { output << ",\n      \"fixedHits\": "; Write_AttackHits(output, logic.FixedHits); }
-		if (!logic.TrackingHits.empty()) { output << ",\n      \"trackingHits\": "; Write_AttackHits(output, logic.TrackingHits); }
-		if (!logic.ProjectileHits.empty()) { output << ",\n      \"projectileHits\": "; Write_AttackHits(output, logic.ProjectileHits); }
+
+		// 공격 템플릿 배열은 비어 있지 않을 때만 쓴다. 무작위 volley의 바깥/안쪽 배열 순서도 그대로 보존한다.
+		if (!logic.FixedHits.empty())
+		{
+			output << ",\n      \"fixedHits\": ";
+			Write_AttackHits(output, logic.FixedHits);
+		}
+		if (!logic.TrackingHits.empty())
+		{
+			output << ",\n      \"trackingHits\": ";
+			Write_AttackHits(output, logic.TrackingHits);
+		}
+		if (!logic.ProjectileHits.empty())
+		{
+			output << ",\n      \"projectileHits\": ";
+			Write_AttackHits(output, logic.ProjectileHits);
+		}
 		if (!logic.RandomVolleyHits.empty())
 		{
 			output << ",\n      \"randomVolleyHits\": [";
 			for (std::size_t index = 0; index < logic.RandomVolleyHits.size(); ++index)
-			{ if (index) output << ", "; Write_AttackHits(output, logic.RandomVolleyHits[index]); }
+			{
+				if (index)
+					output << ", ";
+				Write_AttackHits(output, logic.RandomVolleyHits[index]);
+			}
 			output << "]";
 		}
-		/* Only the keys of the definition's kind are written, so a typed file
-		   stays exactly what the projector accepts. */
+		// 정의 종류에 해당하는 키만 쓴다. 다른 종류의 기본 필드를 섞지 않는 직렬화 규칙이다.
+		// 게시 가능 여부는 이 함수 밖의 검증과 publisher에서 별도로 판단한다.
 		if ("DURATION" == logic.strLogicType && !logic.strJudgementKind.empty())
 		{
 			output << ",\n      \"judgementKind\": \"" << CDataJson::Escape(logic.strJudgementKind) << "\"";
@@ -5066,6 +6603,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< "\",\n      \"trackingPresentationOccurrenceId\": \"" << CDataJson::Escape(logic.strTrackingPresentationOccurrenceId)
 					<< "\",\n      \"spawnIntervalMs\": " << logic.iSpawnIntervalMs
 					<< ",\n      \"followSpeedScale\": " << logic.fFollowSpeedScale;
+
+				// 무작위 배치 집합이 있을 때만 간격·아레나 범위·anchor·배율을 함께 출력한다.
+				// 이 직렬화가 무작위 배치를 생성하거나 실제 좌표를 결정하지 않는다.
 				if (!logic.RandomVolleyOccurrenceSets.empty())
 				{
 					output << ",\n      \"randomVolleyOccurrenceSets\": [";
@@ -5089,7 +6629,7 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << ",\n      \"trackingPresentationOccurrenceId\": \"" << CDataJson::Escape(logic.strTrackingPresentationOccurrenceId) << "\"";
 			else if ("BOSS_TRACK_TARGET" == logic.strJudgementKind)
 			{
-				// A rotate-only window stays byte-identical to its saved form.
+				// 회전만 하는 구간의 0 배율은 생략하여 기존 선택 필드 형식을 유지한다.
 				if (logic.fFollowSpeedScale != 0.0)
 					output << ",\n      \"followSpeedScale\": " << logic.fFollowSpeedScale;
                 if (!logic.strBombPresentationOccurrenceId.empty())
@@ -5135,14 +6675,16 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			else if ("AREA_OVERLAP" == logic.strJudgementKind)
 			{
 				output << ",\n      \"insideOutcome\": \"" << logic.strInsideOutcome << "\"";
-				if (logic.iRepeatIntervalMs) output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
+				if (logic.iRepeatIntervalMs)
+					output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
 			}
 			else if ("GAZE_REAL_BOSS" == logic.strJudgementKind)
 			{
 				output << ",\n      \"halfAngleDegrees\": " << logic.fHalfAngleDegrees
 					<< ",\n      \"maxDistanceM\": " << logic.fMaxDistanceM
 					<< ",\n      \"insideOutcome\": \"" << logic.strInsideOutcome << "\"";
-                if (logic.bGazeDuringWindow) output << ",\n      \"gazeDuringWindow\": true";
+                if (logic.bGazeDuringWindow)
+                    output << ",\n      \"gazeDuringWindow\": true";
 			}
 			else if ("POSE_INPUT" == logic.strJudgementKind)
 			{
@@ -5161,14 +6703,18 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"normalYawOffsetDegrees\": " << logic.fNormalYawOffsetDegrees;
 			}
 		}
+
+		// RESULT는 공통 결과 종류·비율·기간·후속 패턴을 쓰고 종류별 선택 필드를 덧붙인다.
+		// 피해량·밀치기·FEAR·잡기·World motion의 허용 조합은 호출 전 검증을 전제로 한다.
 		else if ("RESULT" == logic.strLogicType && !logic.strOutcomeKind.empty())
 		{
 			output << ",\n      \"outcomeKind\": \"" << CDataJson::Escape(logic.strOutcomeKind) << "\""
 				<< ",\n      \"percent\": " << logic.iPercent
 				<< ",\n      \"durationMs\": " << logic.iDurationMs
 				<< ",\n      \"followupPatternId\": \"" << CDataJson::Escape(logic.strFollowupPatternId) << "\"";
-			if (logic.strOutcomeKind == "FIXED_DAMAGE") output << ",\n      \"damageAmount\": " << logic.iDamageAmount;
-			// Omitted at 0 so existing MARIO_ENTER rows re-save byte-identical.
+			if (logic.strOutcomeKind == "FIXED_DAMAGE")
+				output << ",\n      \"damageAmount\": " << logic.iDamageAmount;
+			// 0이면 MARIO_ENTER 선택 필드를 생략하여 기존 저장 형식을 유지한다.
 			if (logic.strOutcomeKind == "MARIO_ENTER" && logic.iMarioEntryStage != 0u)
 				output << ",\n      \"marioStage\": " << logic.iMarioEntryStage;
 			if ((logic.strOutcomeKind == "MAX_HP_PERCENT_DAMAGE" || logic.strOutcomeKind == "FIXED_DAMAGE") && (logic.fPushRangeM != 0.0 || logic.fPushHeightM != 0.0 || logic.iPushMs != 0u))
@@ -5176,11 +6722,16 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"pushMs\": " << logic.iPushMs;
 			if (logic.strPushDirection != "AWAY_FROM_BOSS")
 				output << ",\n      \"pushDirection\": \"" << logic.strPushDirection << "\"";
-			if (logic.bForcePush) output << ",\n      \"forcePush\": true";
-			if (logic.bPushCanLeaveArena) output << ",\n      \"pushCanLeaveArena\": true";
-			if (logic.fPushHeightM > 0.0) output << ",\n      \"pushHeightM\": " << logic.fPushHeightM;
-			if (logic.bPushBallistic) output << ",\n      \"pushBallistic\": true";
-			if (logic.fPushYawOffsetDegrees != 0.0) output << ",\n      \"pushYawOffsetDegrees\": " << logic.fPushYawOffsetDegrees;
+			if (logic.bForcePush)
+				output << ",\n      \"forcePush\": true";
+			if (logic.bPushCanLeaveArena)
+				output << ",\n      \"pushCanLeaveArena\": true";
+			if (logic.fPushHeightM > 0.0)
+				output << ",\n      \"pushHeightM\": " << logic.fPushHeightM;
+			if (logic.bPushBallistic)
+				output << ",\n      \"pushBallistic\": true";
+			if (logic.fPushYawOffsetDegrees != 0.0)
+				output << ",\n      \"pushYawOffsetDegrees\": " << logic.fPushYawOffsetDegrees;
 			if (logic.strOutcomeKind == "FEAR")
                 output << ",\n      \"sceneProfileId\": \"" << CDataJson::Escape(logic.strSceneProfileId)
                     << "\",\n      \"effectResourceId\": \"" << CDataJson::Escape(logic.strEffectResourceId)
@@ -5188,6 +6739,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\",\n      \"effectDelayMs\": " << logic.iEffectDelayMs;
 			if (logic.strOutcomeKind == "FEAR" && !logic.strSoundResourceId.empty())
 				output << ",\n      \"soundResourceId\": \"" << CDataJson::Escape(logic.strSoundResourceId) << "\"";
+
+			// 잡기 offset은 forward/up/right 순서로 기록한다. 접촉 motion 결과는 대상 배치별 motion ID 목록이며
+			// 완료 신호 결과는 대상 Logic 배치와 선택 접촉 대상 ID를 기록한다.
 			if (logic.strOutcomeKind == "CAPTURE_PLAYER")
 				output << ",\n      \"attachmentSlot\": \"" << CDataJson::Escape(logic.strAttachmentSlot)
 					<< "\",\n      \"gripLocalOffset\": {\"forwardM\": " << logic.GripLocalOffset[0]
@@ -5210,6 +6764,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << ",\n      \"targetLogicOccurrenceId\": \"" << CDataJson::Escape(logic.strTargetLogicOccurrenceId)
 					<< "\",\n      \"contactTargetWorldOccurrenceId\": \"" << CDataJson::Escape(logic.strContactTargetWorldOccurrenceId) << "\"";
 		}
+
+		// TRIGGER는 발생 종류와 필요한 전용 키를 쓴다. 생략 가능한 기본값은 조건에 따라 제외하며
+		// 서버 판정·소환·이동이나 HUD 상태를 여기서 실행하지 않는다.
 		if (logic.strLogicType == "TRIGGER" && !logic.strTriggerKind.empty())
 		{
 			output << ",\n      \"triggerKind\": \"" << logic.strTriggerKind << "\"";
@@ -5223,7 +6780,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 					<< ",\n      \"soldierDamage\": " << logic.iSoldierDamage;
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRearmOnExit)
 				output << ",\n      \"rearmOnExit\": true";
-			if (logic.iRepeatIntervalMs) output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
+			if (logic.iRepeatIntervalMs)
+				output << ",\n      \"repeatIntervalMs\": " << logic.iRepeatIntervalMs;
 			if (logic.strTriggerKind == "ENTER_AREA" && logic.bRepeatAfterKnockback)
 				output << ",\n      \"repeatAfterKnockback\": true";
             if (logic.strTriggerKind == "ENTER_AREA" && logic.fBossChargeDistanceM != 0.0)
@@ -5258,6 +6816,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				if (logic.bRandomPlayerOnly)
 					output << ",\n      \"randomPlayerOnly\": true";
 			}
+
+			// 접촉 대상은 World 배치 ID 목록으로, 카드 미로 입장은 순서가 있는 이펙트 배치 ID 목록으로 저장한다.
 			else if (logic.strTriggerKind == "OBJECT_CONTACT")
 			{
 				output << ",\n";
@@ -5286,6 +6846,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				output << "]";
 			}
 		}
+
+            // 추적 투사체는 DURATION/TRIGGER 양쪽에서 같은 표현·속도·반경·수명 값을 기록한다.
+            // 선택 카드 기호, 0이 아닌 회당 개수, 양수 최대 거리는 해당 값이 있을 때만 추가한다.
             if (logic.strJudgementKind == "PURSUIT_PROJECTILES" || logic.strTriggerKind == "PURSUIT_PROJECTILES")
             {
                 output << ",\n      \"visualIds\": [";
@@ -5306,11 +6869,16 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << ",\n      \"lifetimeMs\": " << logic.iPursuitLifetimeMs
                     << ",\n      \"spawnIntervalMs\": " << logic.iSpawnIntervalMs
                     << ",\n      \"homing\": " << (logic.bPursuitHoming ? "true" : "false");
-                if (logic.iCountPerWave) output << ",\n      \"countPerWave\": " << logic.iCountPerWave;
-                if (logic.fPursuitMaxDistanceM > 0.0) output << ",\n      \"maxDistanceM\": " << logic.fPursuitMaxDistanceM;
+                if (logic.iCountPerWave)
+                    output << ",\n      \"countPerWave\": " << logic.iCountPerWave;
+                if (logic.fPursuitMaxDistanceM > 0.0)
+                    output << ",\n      \"maxDistanceM\": " << logic.fPursuitMaxDistanceM;
             }
 		output << "\n    }" << (logicIndex + 1u < document.Logics.size() ? "," : "") << "\n";
 	}
+
+	// Summon 정의를 독립 목록으로 쓴다. 종류가 있을 때만 방향 패턴과 종료 단계를 기록하고
+	// 명시 실체 패턴이 비어 있으면 그 선택 키를 생략한다.
 	output << "  ],\n  \"summons\": [\n";
 	for (std::size_t summonIndex = 0u; summonIndex < document.Summons.size(); ++summonIndex)
 	{
@@ -5328,6 +6896,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
         }
         output << "\n    }" << (summonIndex + 1u < document.Summons.size() ? "," : "") << "\n";
 	}
+
+	// World 정의에는 시퀀스 ID와 anchor/위치 보정·동반 이펙트 참조를 쓴다.
+	// objectResourceId는 비어 있지 않을 때만 기록하며 시퀀스 본문을 복제하지 않는다.
 	output << "  ],\n  \"worlds\": [\n";
 	for (std::size_t worldIndex = 0u; worldIndex < document.Worlds.size(); ++worldIndex)
 	{
@@ -5344,6 +6915,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"companionEffectResourceId\": \"" << CDataJson::Escape(world.strCompanionEffectResourceId) << "\"\n"
 			<< "    }" << (worldIndex + 1u < document.Worlds.size() ? "," : "") << "\n";
 	}
+
+	// Scene Profile 정의의 저작 ID와 렌더링 profile ID를 연결해 저장한다. 렌더링 옵션 값 자체는 이 목록이 소유하지 않는다.
 	output << "  ],\n  \"sceneProfiles\": [\n";
 	for (std::size_t profileIndex = 0u; profileIndex < document.SceneProfiles.size(); ++profileIndex)
 	{
@@ -5354,6 +6927,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"renderingProfileId\": \"" << CDataJson::Escape(profile.strRenderingProfileId) << "\"\n"
 			<< "    }" << (profileIndex + 1u < document.SceneProfiles.size() ? "," : "") << "\n";
 	}
+
+	// 표현 리소스는 공통 asset/종류/수치 필드를 기록한다. 자막 문자열은 SUBTITLE에만 쓰고
+	// innerRadiusM은 값이 양수일 때만 추가한다.
 	output << "  ],\n  \"nextPresentationResourceOrdinal\": " << document.iNextPresentationResourceOrdinal
 		<< ",\n  \"presentationResources\": [\n";
 	for (std::size_t i = 0u; i < document.PresentationResources.size(); ++i)
@@ -5373,7 +6949,8 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		if (row.eKind == KOUKU_SAYDON_PRESENTATION_KIND::SUBTITLE)
 			output << ", \"subtitleText\": \"" << CDataJson::Escape(row.strSubtitleText)
 				<< "\", \"subtitlePosition\": \"" << CDataJson::Escape(row.strSubtitlePosition) << "\"";
-		if (row.fInnerRadiusM > 0.0) output << ", \"innerRadiusM\": " << row.fInnerRadiusM;
+		if (row.fInnerRadiusM > 0.0)
+			output << ", \"innerRadiusM\": " << row.fInnerRadiusM;
 		output << ", \"radiusM\": " << row.fRadiusM << ", \"halfAngleDegrees\": " << row.fHalfAngleDegrees
 			<< '}' << (i + 1u < document.PresentationResources.size() ? "," : "") << '\n';
 	}
@@ -5381,6 +6958,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 	for (std::size_t patternIndex = 0u; patternIndex < document.Patterns.size(); ++patternIndex)
 	{
 		const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern = document.Patterns[patternIndex];
+
+		// 격리된 패턴은 편집 화면용 임시 ID나 DRAFT 값으로 재작성하지 않고 strPreservedJson을 그대로 출력한다.
+		// 이 문자열의 유효성은 앞선 파싱/검증이 보장해야 하며 이 분기에서 다시 파싱하지 않는다.
 		if (!pattern.strLoadError.empty())
 		{
 			output << "    " << pattern.strPreservedJson
@@ -5394,10 +6974,13 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
             << "      \"targetBossPlacementId\": \"" << CDataJson::Escape(pattern.strTargetBossPlacementId) << "\",\n";
         if (!pattern.strFolderId.empty())
             output << "      \"folderId\": \"" << CDataJson::Escape(pattern.strFolderId) << "\",\n";
-        if (pattern.iDurationMs) output << "      \"durationMs\": " << pattern.iDurationMs << ",\n";
-        if (pattern.bPlayChildrenSequentially) output << "      \"playChildrenSequentially\": true,\n";
+        if (pattern.iDurationMs)
+            output << "      \"durationMs\": " << pattern.iDurationMs << ",\n";
+        if (pattern.bPlayChildrenSequentially)
+            output << "      \"playChildrenSequentially\": true,\n";
         if (!pattern.strLoopStartPatternOccurrenceId.empty())
             output << "      \"loopStartPatternOccurrenceId\": \"" << CDataJson::Escape(pattern.strLoopStartPatternOccurrenceId) << "\",\n";
+        // 아래 occurrence 목록은 재사용 정의의 ID와 패턴 기준 배치 값을 저장한다. 목록 index를 저장 identity로 쓰지 않는다.
         if (!pattern.PatternOccurrences.empty() || pattern.iNextPatternOccurrenceOrdinal != 1u)
         {
             output << "      \"nextPatternOccurrenceOrdinal\": " << pattern.iNextPatternOccurrenceOrdinal
@@ -5424,6 +7007,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< "      \"nextWorldOccurrenceOrdinal\": " << pattern.iNextWorldOccurrenceOrdinal << ",\n"
 			<< "      \"nextSceneProfileOccurrenceOrdinal\": " << pattern.iNextSceneProfileOccurrenceOrdinal << ",\n"
 			<< "      \"stages\": [\n";
+
+		// stage와 애니메이션 배치를 입력 배열 순서대로 쓴다. 원본 참조 ID와 재생 시각/속도는 저장하지만
+		// 실행에서 파생한 blend window는 저장 목록에 넣지 않는다.
 		for (std::size_t stageIndex = 0u; stageIndex < pattern.Stages.size(); ++stageIndex)
 		{
 			const KOUKU_SAYDON_COMPOSITION_STAGE& stage = pattern.Stages[stageIndex];
@@ -5432,8 +7018,10 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"actionId\": \"" << CDataJson::Escape(stage.strActionId) << "\",\n"
 				<< "          \"stageKind\": \"" << CDataJson::Escape(stage.strStageKind) << "\",\n"
 				<< "          \"durationMs\": " << stage.iDurationMs << ",\n";
-			if (stage.bRetargetOnEnter) output << "          \"retargetOnEnter\": true,\n";
-            if (stage.RetargetTarget) output << "          \"retargetTarget\": \"" << CDataJson::Escape(*stage.RetargetTarget) << "\",\n";
+			if (stage.bRetargetOnEnter)
+				output << "          \"retargetOnEnter\": true,\n";
+            if (stage.RetargetTarget)
+                output << "          \"retargetTarget\": \"" << CDataJson::Escape(*stage.RetargetTarget) << "\",\n";
 			output << "          \"animationOccurrences\": [\n";
 			for (std::size_t occurrenceIndex = 0u;
 				occurrenceIndex < stage.AnimationOccurrences.size(); ++occurrenceIndex)
@@ -5460,6 +7048,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			output << "          ]\n        }"
 				<< (stageIndex + 1u < pattern.Stages.size() ? "," : "") << "\n";
 		}
+
+		// Logic 배치는 enabled를 항상 기록하고 선택 도착 정보와 hold 참조를 덧붙인다.
+		// 결과 슬롯은 이전 단일 키 대신 성공/실패/timeout 목록 세 개로 저장한다.
 		output << "      ],\n      \"logicOccurrences\": [\n";
 		for (std::size_t boxIndex = 0u; boxIndex < pattern.LogicOccurrences.size(); ++boxIndex)
 		{
@@ -5483,6 +7074,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			textList("onTimeoutLogicIds", box.OnTimeoutLogicIds, "          ", true);
 			output << "        }" << (boxIndex + 1u < pattern.LogicOccurrences.size() ? "," : "") << "\n";
 		}
+
+		// Summon 배치는 선택 자식 spawn 목록을 보존한다. 기본 BOSS anchor는 키를 생략하고
+		// 다른 anchor만 명시하며 위치와 yaw를 함께 쓴다.
 		output << "      ],\n      \"summonOccurrences\": [\n";
 		for (std::size_t boxIndex = 0u; boxIndex < pattern.SummonOccurrences.size(); ++boxIndex)
 		{
@@ -5498,17 +7092,22 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                 for (std::size_t spawnIndex = 0u; spawnIndex < box.PatternSpawns.size(); ++spawnIndex)
                 {
                     const auto& spawn = box.PatternSpawns[spawnIndex];
-                    if (spawnIndex) output << ",";
+                    if (spawnIndex)
+                        output << ",";
                     output << "\n            { \"spawnId\": \"" << CDataJson::Escape(spawn.strSpawnId)
                         << "\", \"patternId\": \"" << CDataJson::Escape(spawn.strPatternId) << "\", \"positionOffset\": ";
                     Write_PresentationVector(output, spawn.PositionOffset);
-                    if (spawn.strAnchorKind != "BOSS") output << ", \"anchorKind\": \"" << CDataJson::Escape(spawn.strAnchorKind) << "\"";
+                    if (spawn.strAnchorKind != "BOSS")
+                        output << ", \"anchorKind\": \"" << CDataJson::Escape(spawn.strAnchorKind) << "\"";
                     output << ", \"yawOffsetDegrees\": " << spawn.fYawOffsetDegrees << " }";
                 }
                 output << "\n          ]";
             }
             output << "\n        }" << (boxIndex + 1u < pattern.SummonOccurrences.size() ? "," : "") << "\n";
 		}
+
+		// World 배치는 재생 속도와 선택 placement의 위치·회전·배율을 기록한다.
+		// 이 값은 시퀀스 인스턴스 배치용이며 원본 World 파일을 수정하지 않는다.
 		output << "      ],\n      \"worldOccurrences\": [\n";
 		for (std::size_t boxIndex = 0u; boxIndex < pattern.WorldOccurrences.size(); ++boxIndex)
 		{
@@ -5521,13 +7120,18 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"playbackSpeed\": " << static_cast<double>(box.fPlaybackSpeed);
 			if (box.Placement)
 			{
-				output << ",\n          \"placement\": { \"position\": "; Write_PresentationVector(output, box.Placement->Position);
-				output << ", \"rotationDegrees\": "; Write_PresentationVector(output, box.Placement->RotationDegrees);
-				output << ", \"scale\": "; Write_PresentationVector(output, box.Placement->Scale);
+				output << ",\n          \"placement\": { \"position\": ";
+				Write_PresentationVector(output, box.Placement->Position);
+				output << ", \"rotationDegrees\": ";
+				Write_PresentationVector(output, box.Placement->RotationDegrees);
+				output << ", \"scale\": ";
+				Write_PresentationVector(output, box.Placement->Scale);
 				output << " }";
 			}
 			output << "\n        }" << (boxIndex + 1u < pattern.WorldOccurrences.size() ? "," : "") << "\n";
 		}
+
+		// Scene Profile 배치의 ID·시간 구간·blendMs를 순서대로 기록한다.
 		output << "      ],\n      \"sceneProfileOccurrences\": [\n";
 		for (std::size_t boxIndex = 0u; boxIndex < pattern.SceneProfileOccurrences.size(); ++boxIndex)
 		{
@@ -5540,6 +7144,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "          \"blendMs\": " << box.iBlendMs << "\n"
 				<< "        }" << (boxIndex + 1u < pattern.SceneProfileOccurrences.size() ? "," : "") << "\n";
 		}
+
+		// spawn reset은 항상 쓰고 기본 1이 아닌 root scale, 선택 Boss Motion·yaw만 추가한다.
+		// Boss Motion 키의 저장 순서는 입력 그대로이며 여기서 재표본화하거나 정렬하지 않는다.
 		output << "      ],\n      \"resetBossToSpawn\": " << (pattern.bResetBossToSpawn ? "true" : "false");
 		if (pattern.bEnterCombatOnFinish)
 			output << ",\n      \"enterCombatOnFinish\": true";
@@ -5571,6 +7178,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 		}
 		if (pattern.ResetBossYawDegrees)
 			output << ",\n      \"resetBossYawDegrees\": " << *pattern.ResetBossYawDegrees;
+
+		// 패턴의 표현 배치는 공통 TRS·시간·재질/소리·부착 값을 기록한다.
+		// Collider 종료값, 이펙트 원본 시간 키와 선택 World/그룹 연결은 각 생략 조건을 유지한다.
 		output << ",\n      \"nextPresentationOccurrenceOrdinal\": " << pattern.iNextPresentationOccurrenceOrdinal
 			<< ",\n      \"presentationOccurrences\": [\n";
 		for (std::size_t i = 0u; i < pattern.PresentationOccurrences.size(); ++i)
@@ -5581,30 +7191,38 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 				<< "\", \"startMs\": " << row.iStartMs << ", \"durationMs\": " << row.iDurationMs
 				<< ", \"positionOffset\": ";
 			Write_PresentationVector(output, row.PositionOffset);
-			output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
-			output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
+			output << ", \"rotationDegrees\": ";
+			Write_PresentationVector(output, row.RotationDegrees);
+			output << ", \"scale\": ";
+			Write_PresentationVector(output, row.Scale);
                 if (row.strColliderMotion == "LINEAR" || row.ColliderEndPositionOffset != std::array<double, 3u>{} ||
                     row.ColliderEndScale != std::array<double, 3u>{ 1.0, 1.0, 1.0 })
                 {
                     output << ", \"colliderMotion\": \"" << row.strColliderMotion << "\", \"colliderEndPositionOffset\": ";
                     Write_PresentationVector(output, row.ColliderEndPositionOffset);
-                    output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
+                    output << ", \"colliderEndScale\": ";
+                    Write_PresentationVector(output, row.ColliderEndScale);
                 }
-			if (!row.strAnchorPresentationOccurrenceId.empty()) output << ", \"anchorPresentationOccurrenceId\": \"" << CDataJson::Escape(row.strAnchorPresentationOccurrenceId) << "\"";
-			if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
+			if (!row.strAnchorPresentationOccurrenceId.empty())
+				output << ", \"anchorPresentationOccurrenceId\": \"" << CDataJson::Escape(row.strAnchorPresentationOccurrenceId) << "\"";
+			if (row.iEffectSourceStartMs)
+				output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
                 if (!row.EffectSourceTimeKeys.empty())
                 {
                     output << ", \"effectSourceTimeKeys\": [";
                     for (std::size_t i = 0; i < row.EffectSourceTimeKeys.size(); ++i)
                     {
-                        if (i) output << ", ";
+                        if (i)
+                            output << ", ";
                         output << "{\"timeMs\": " << row.EffectSourceTimeKeys[i][0]
                             << ", \"sourceMs\": " << row.EffectSourceTimeKeys[i][1] << '}';
                     }
                     output << ']';
                 }
-			if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
-			if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
+			if (row.bFitEffectToDuration)
+				output << ", \"fitEffectToDuration\": true";
+			if (row.bLoopEffectToDuration)
+				output << ", \"loopEffectToDuration\": true";
 			output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
 				<< ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
 				<< ", \"brightnessMultiplier\": " << row.fBrightnessMultiplier
@@ -5626,11 +7244,13 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
 			<< (patternIndex + 1u < document.Patterns.size() ? "," : "") << "\n";
 	}
 
+    // 폴더도 오류 행이면 보존 JSON을 그대로 쓰고 정상 행만 ID·관문·표시 이름·선택 timeline 참조로 직렬화한다.
     output << "  ],\n  \"folders\": [\n";
     for (size_t i = 0; i < document.Folders.size(); ++i)
     {
         const auto& folder = document.Folders[i];
-        if (!folder.strLoadError.empty()) output << folder.strPreservedJson;
+        if (!folder.strLoadError.empty())
+            output << folder.strPreservedJson;
         else
         {
             output << "    {\"folderId\": \"" << CDataJson::Escape(folder.strFolderId)
@@ -5642,11 +7262,15 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
         }
         output << (i + 1 < document.Folders.size() ? "," : "") << '\n';
     }
+
+    // Bundle의 오류 행은 보존 JSON으로 출력한다. 정상 Bundle은 멤버·Scene Profile·표현 배치를
+    // 각각의 저장 순서대로 쓰며 런타임으로 펼친 자식 패턴을 여기에 추가하지 않는다.
     output << "  ],\n  \"bundles\": [\n";
     for (size_t i = 0; i < document.Bundles.size(); ++i)
     {
         const auto& bundle = document.Bundles[i];
-        if (!bundle.strLoadError.empty()) output << bundle.strPreservedJson;
+        if (!bundle.strLoadError.empty())
+            output << bundle.strPreservedJson;
         else
         {
             output << "    {\"bundleId\": \"" << CDataJson::Escape(bundle.strBundleId)
@@ -5671,36 +7295,47 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\", \"sceneProfileId\": \"" << CDataJson::Escape(row.strSceneProfileId) << "\", \"startMs\": " << row.iStartMs
                     << ", \"durationMs\": " << row.iDurationMs << ", \"blendMs\": " << row.iBlendMs << '}';
             }
+
+            // Bundle 표현 배치는 이 목록이 지원하는 필드만 기록한다. 패턴 표현 배치 출력과 별개 경로이므로
+            // 두 출력이 모든 선택 필드를 동일하게 보존한다고 가정하지 않는다.
             output << "], \"presentationOccurrences\": [\n";
             for (size_t j = 0; j < bundle.PresentationOccurrences.size(); ++j)
             {
                 const auto& row = bundle.PresentationOccurrences[j];
                 output << "{\"occurrenceId\": \"" << CDataJson::Escape(row.strOccurrenceId)
                     << "\", \"resourceId\": \"" << CDataJson::Escape(row.strResourceId) << "\", \"startMs\": " << row.iStartMs
-                    << ", \"durationMs\": " << row.iDurationMs << ", \"positionOffset\": "; Write_PresentationVector(output, row.PositionOffset);
-                output << ", \"rotationDegrees\": "; Write_PresentationVector(output, row.RotationDegrees);
-                output << ", \"scale\": "; Write_PresentationVector(output, row.Scale);
+                    << ", \"durationMs\": " << row.iDurationMs << ", \"positionOffset\": ";
+                Write_PresentationVector(output, row.PositionOffset);
+                output << ", \"rotationDegrees\": ";
+                Write_PresentationVector(output, row.RotationDegrees);
+                output << ", \"scale\": ";
+                Write_PresentationVector(output, row.Scale);
                 if (row.strColliderMotion == "LINEAR" || row.ColliderEndPositionOffset != std::array<double, 3u>{} ||
                     row.ColliderEndScale != std::array<double, 3u>{ 1.0, 1.0, 1.0 })
                 {
                     output << ", \"colliderMotion\": \"" << row.strColliderMotion << "\", \"colliderEndPositionOffset\": ";
                     Write_PresentationVector(output, row.ColliderEndPositionOffset);
-                    output << ", \"colliderEndScale\": "; Write_PresentationVector(output, row.ColliderEndScale);
+                    output << ", \"colliderEndScale\": ";
+                    Write_PresentationVector(output, row.ColliderEndScale);
                 }
-                if (row.iEffectSourceStartMs) output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
+                if (row.iEffectSourceStartMs)
+                    output << ", \"effectSourceStartMs\": " << row.iEffectSourceStartMs;
                 if (!row.EffectSourceTimeKeys.empty())
                 {
                     output << ", \"effectSourceTimeKeys\": [";
                     for (std::size_t i = 0; i < row.EffectSourceTimeKeys.size(); ++i)
                     {
-                        if (i) output << ", ";
+                        if (i)
+                            output << ", ";
                         output << "{\"timeMs\": " << row.EffectSourceTimeKeys[i][0]
                             << ", \"sourceMs\": " << row.EffectSourceTimeKeys[i][1] << '}';
                     }
                     output << ']';
                 }
-                if (row.bFitEffectToDuration) output << ", \"fitEffectToDuration\": true";
-                if (row.bLoopEffectToDuration) output << ", \"loopEffectToDuration\": true";
+                if (row.bFitEffectToDuration)
+                    output << ", \"fitEffectToDuration\": true";
+                if (row.bLoopEffectToDuration)
+                    output << ", \"loopEffectToDuration\": true";
                 output << ", \"fadeInMs\": " << row.iFadeInMs << ", \"fadeOutMs\": " << row.iFadeOutMs
                     << ", \"dissolveStart\": " << row.fDissolveStart << ", \"dissolveEnd\": " << row.fDissolveEnd
                     << ", \"soundSourceStartMs\": " << row.iSoundSourceStartMs
@@ -5720,6 +7355,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
         }
         output << (i + 1 < document.Bundles.size() ? "," : "") << '\n';
     }
+
+    // Flow는 엔트리 순서와 대기 시간, 선택 루프/빙고 특수 패턴 및 그룹 경계를 기록한다.
+    // 실제 재생 순서를 실행하거나 관문 진행 상태를 저장하지 않는다.
     output << "  ],\n  \"patternFlows\": [\n";
     for (size_t i = 0; i < document.PatternFlows.size(); ++i)
     {
@@ -5751,6 +7389,9 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
                     << "\", \"displayName\": \"" << CDataJson::Escape(group.strDisplayName)
                     << "\", \"startEntryId\": \"" << CDataJson::Escape(group.strStartEntryId)
                     << "\", \"endEntryId\": \"" << CDataJson::Escape(group.strEndEntryId) << "\"";
+
+                // 체력 반복 optional이 있으면 값이 0이어도 기록하고 완료 경계를 함께 쓴다.
+                // optional이 없으면 두 키를 모두 생략한다.
                 if (group.RepeatUntilHealthBars)
                     output << ", \"repeatUntilHealthBars\": " << *group.RepeatUntilHealthBars
                         << ", \"transitionAt\": \"" << (group.bTransitionAtGroupEnd ? "GROUP_END" : "PATTERN_END") << "\"";
@@ -5762,22 +7403,29 @@ std::string Client::CKoukuSaydonCompositionDocument::Serialize(
     }
     output << "  ]\n}\n";
 
+	// 완성한 메모리 문자열을 반환한다. 디스크 flush·원자 교체와 재파싱 검증은 Save_Atomic의 별도 책임이다.
 	return output.str();
 }
 
+// 명시적으로 선택한 경로가 있으면 그 경로를, 없으면 기본 Composition 경로를 다시 읽는다.
 bool_t Client::CKoukuSaydonCompositionDocument::Reload(std::string& outStatus)
 {
 	const std::filesystem::path path = m_Path.empty() ? Resolve_Path() : m_Path;
+
 	return Reload_FromPath(path, outStatus);
 }
 
+// Workbench가 선택한 파일을 임시 문서로 읽고 검증한다. 성공하면 문서, 참조, 기준 bytes와 generation을 함께 교체한다.
+// 실패하면 마지막 정상 문서와 경로는 보존하되 Fresh와 상태 메시지로 최근 로드 실패를 표시한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Reload_FromPath(
 	const std::filesystem::path& path,
 	std::string& outStatus)
 {
 	std::string bytes;
+
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT stagedDocument;
 	KOUKU_SAYDON_ACTION_REFERENCE_SET stagedReferences;
+
 	std::string status;
 	if (!Is_ExpectedCompositionPath(path) ||
 		!Read_Text(path, MAX_COMPOSITION_BYTES, bytes, status,
@@ -5791,9 +7439,12 @@ bool_t Client::CKoukuSaydonCompositionDocument::Reload_FromPath(
 			"Reload rejected; last-good KoukuSaydon composition preserved: " + status :
 			"KoukuSaydon composition is not admitted yet: " + status;
 		outStatus = m_strStatus;
+
 		return false;
 	}
 
+	// Action 참조는 프로필별로 읽고 실패한 참조는 비우며 상태 문자열에 원인을 남긴다. 아래 Fresh=true는
+	// Composition을 새로 받아들였다는 뜻이며 네 Action 참조가 전부 준비됐다는 보장은 아니다.
 	std::string referenceStatus;
 	Load_ImmutableActionReferences(stagedReferences, referenceStatus);
 	m_Path = path;
@@ -5806,13 +7457,20 @@ bool_t Client::CKoukuSaydonCompositionDocument::Reload_FromPath(
 	m_strStatus = "Loaded KoukuSaydon composition revision " +
 		std::to_string(m_LastGood.iRevision) + ". " + referenceStatus;
 	outStatus = m_strStatus;
+
 	return true;
 }
 
+// Workbench 초안을 마지막 정상 문서와 비교해 저장한다. 최신 디스크 변경이 있으면 stable ID와 필드별로 병합한다.
+// 잠금, 임시 파일 재검증과 교체 직전 bytes 비교를 거쳐 최종 파일을 교체한다. 성공하면 이 객체의 정상 문서와 기준 bytes도 갱신한다.
+// Server 게시와 Workbench 초안 교체는 호출자가 별도로 수행한다.
+// 교체 뒤 재열기 실패는 false여도 디스크 교체가 이미 끝난 상태이므로 COMMIT_SUCCEEDED_REOPEN_FAILED로 구분한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 	const KOUKU_SAYDON_COMPOSITION_DOCUMENT& candidate,
 	std::string& outStatus)
 {
+	// 현재 객체가 보유한 기준 문서와 같은 revision의 후보만 저장할 수 있다.
+	// 이 사전 거절은 상태 메시지만 바꾸며 모든 실패에서 Fresh를 false로 만드는 것은 아니다.
 	if (!m_bHasLastGood || m_Path.empty())
 	{
 		outStatus = "KoukuSaydon composition Save requires a last-good baseline.";
@@ -5835,7 +7493,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 동일 파일의 협력 저장자를 잠금으로 배제한다. 잠금은 함수가 끝날 때 자동으로 해제된다.
 	COMPOSITION_WRITER_LOCK writerLock;
+
 	if (!writerLock.Acquire(m_Path, status))
 	{
 		outStatus = status;
@@ -5852,6 +7512,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		m_bFresh = false;
 		return false;
 	}
+	// 저장자가 처음 읽었던 bytes와 현재 디스크를 비교한다. 바뀌었다면 revision 진행도 확인하고 세 문서를 병합한다.
 	if (currentBytes != m_strBaselineSourceBytes)
 	{
 		KOUKU_SAYDON_COMPOSITION_DOCUMENT current;
@@ -5870,7 +7531,11 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 			!Matches_CompositionPath(m_Path, staged, status) || !Validate(staged, m_References, status))
 			return reject(status);
 	}
+
+	// 외부 병합이 있었으면 병합된 현재 revision을, 없으면 후보 revision을 하나 올린다.
+	// 이 시점에는 지역 staged만 바뀌고 메모리 정상 문서·목적 파일은 아직 그대로다.
 	++staged.iRevision;
+	// 새 revision의 문자열을 고유한 임시 파일에 쓴다. flush와 commit 및 close 결과를 모두 확인한다.
 	const std::string serialized = Serialize(staged);
 	std::filesystem::path temporary = m_Path;
 	temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) + L"." +
@@ -5895,6 +7560,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 임시 파일을 다시 읽어 bytes, 파싱과 재직렬화 결과를 모두 비교한다. 실패하면 목적 파일을 교체하지 않는다.
 	std::string verificationBytes;
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT reparsed;
 	if (!Read_Text(temporary, MAX_COMPOSITION_BYTES, verificationBytes, status,
@@ -5910,6 +7576,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 교체 직전에 목적 파일을 다시 읽어 저장 준비 도중의 외부 변경을 검사한다. 변경을 발견하면 임시 파일만 정리한다.
 	std::string finalCurrentBytes;
 	if (!Read_Text(m_Path, MAX_COMPOSITION_BYTES, finalCurrentBytes, status,
 			"Current KoukuSaydon composition") ||
@@ -5922,6 +7589,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 검증한 임시 파일로 목적 파일을 원자적으로 교체한다. 이 성공 뒤에는 디스크가 새 revision을 소유한다.
 	if (!MoveFileExW(temporary.c_str(), m_Path.c_str(),
 		MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
 	{
@@ -5931,6 +7599,7 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 교체한 파일을 재열어 메모리 기준본으로 확정한다. 여기서 실패하면 디스크를 되돌리지 않고 실패 종류를 구분해 보고한다.
 	std::string reopenedBytes;
 	KOUKU_SAYDON_COMPOSITION_DOCUMENT reopened;
 	if (!Read_Text(m_Path, MAX_COMPOSITION_BYTES, reopenedBytes, status,
@@ -5948,6 +7617,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 		return false;
 	}
 
+	// 디스크 교체와 재열기 검증이 모두 끝난 뒤 정상 문서·기준 bytes·generation을 갱신한다.
+	// 이 저장 함수는 읽기 전용 Action 참조를 다시 로드하거나 Workbench의 draft를 직접 교체하지 않는다.
 	m_LastGood = std::move(reopened);
 	m_strBaselineSourceBytes = std::move(reopenedBytes);
 	m_bFresh = true;
@@ -5959,20 +7630,30 @@ bool_t Client::CKoukuSaydonCompositionDocument::Save_Atomic(
 }
 
 
+// 연출부가 검증된 절대 보스 경로에서 현재 패턴 시각의 위치와 방향을 샘플링한다. 실패하면 출력은 그대로 둔다.
+// 키가 있으면 인접 키 선형 보간, 없으면 시작점과 끝점 사이의 보간을 사용한다.
 bool Client::Sample_KoukuSaydonBossMotion(
 	const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, const double patternTimeMs,
 	std::array<double, 3u>& outPosition, double& outYawDegrees) noexcept
 {
-	if (!pattern.BossMotion || !std::isfinite(patternTimeMs)) return false;
+	if (!pattern.BossMotion || !std::isfinite(patternTimeMs))
+		return false;
 	const auto& motion = *pattern.BossMotion;
-	if (motion.iEndMs <= motion.iStartMs) return false;
+	if (motion.iEndMs <= motion.iStartMs)
+		return false;
+
+	// 키 경로는 키 수·끝점·정렬/위치를 검사한 뒤 양끝 밖 시각을 끝 위치에 고정한다.
+	// 중간 시각만 인접 위치를 선형 보간하며 yaw는 구간에 관계없이 저장한 degree 값을 사용한다.
 	if (!motion.Keys.empty())
 	{
-		if (!Valid_BossMotionKeys(motion)) return false;
+		if (!Valid_BossMotionKeys(motion))
+			return false;
 		const auto right = std::upper_bound(motion.Keys.begin(), motion.Keys.end(), patternTimeMs,
 			[](double timeMs, const auto& key) { return timeMs < key.iTimeMs; });
-		if (right == motion.Keys.begin()) outPosition = right->Position;
-		else if (right == motion.Keys.end()) outPosition = motion.Keys.back().Position;
+		if (right == motion.Keys.begin())
+			outPosition = right->Position;
+		else if (right == motion.Keys.end())
+			outPosition = motion.Keys.back().Position;
 		else
 		{
 			const auto& left = *std::prev(right);
@@ -5983,6 +7664,9 @@ bool Client::Sample_KoukuSaydonBossMotion(
 		outYawDegrees = motion.fYawDegrees;
 		return true;
 	}
+
+	// 키가 없으면 비율을 0..1로 제한해 시작/끝 위치를 보간한다. 이 분기는 위치나 yaw의
+	// 유한성·범위를 다시 검사하지 않으므로 문서 검증을 통과한 motion을 입력으로 받는다.
 	const double alpha = std::clamp((patternTimeMs - motion.iStartMs) /
 		static_cast<double>(motion.iEndMs - motion.iStartMs), 0.0, 1.0);
 	for (std::size_t axis = 0u; axis < outPosition.size(); ++axis)
@@ -5993,6 +7677,8 @@ bool Client::Sample_KoukuSaydonBossMotion(
 }
 
 
+// 편집 미리보기가 경과 ms와 배율을 원본 클립 시각으로 바꾼다. 반복은 fmod, 단발은 끝 시각 제한을 사용한다.
+// 입력이나 구간이 잘못되면 기존 outSourceMs를 바꾸지 않는다.
 bool_t Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
     const std::uint32_t sourceStartMs, const std::uint32_t sourceEndMs,
     const double elapsedMs, const double playRate, const double nativeDurationMs,
@@ -6002,26 +7688,41 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_SampleAnimationSourceMs(
         !std::isfinite(nativeDurationMs) || nativeDurationMs <= 0.0 ||
         (sourceEndMs && (sourceEndMs <= sourceStartMs || sourceEndMs > nativeDurationMs + 1.0)))
         return false;
+
+    // 원본 끝 0은 native 끝을 뜻하고, 허용된 끝도 실제 native 길이에 제한한다.
+    // 음수 경과 시간은 0으로 만든 뒤 playRate를 곱하며 모든 시간 입력/출력 단위는 ms다.
     const double start = (std::min)(double(sourceStartMs), nativeDurationMs);
     const double end = sourceEndMs ? (std::min)(double(sourceEndMs), nativeDurationMs) : nativeDurationMs;
     const double age = (std::max)(0.0, elapsedMs) * playRate;
-    if (!std::isfinite(age) || end < start || (loop && end <= start)) return false;
+    if (!std::isfinite(age) || end < start || (loop && end <= start))
+        return false;
+
+    // 반복은 양수 길이에 대한 나머지이므로 정확히 한 주기 끝이면 시작으로 돌아간다.
+    // 단발은 끝에 멈추며 길이 0도 허용한다. 검사가 끝난 뒤에만 출력 ms를 쓴다.
     outSourceMs = loop ? start + std::fmod(age, end - start) : (std::min)(end, start + age);
     return true;
 }
 
+// 타임라인 핸들의 앞 또는 뒤 이동을 임시 occurrence에 계산한다. 유효한 창이 남을 때만 원본 occurrence를 교체한다.
+// 반복 창을 자르는 처리와 단발 원본 구간을 자르는 처리를 구분한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Trim_AnimationWindow(
     KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE& occurrence,
     const std::int64_t deltaMs, const bool_t front, const std::uint32_t stageDurationMs,
     const std::uint32_t nativeDurationMs)
 {
     if (!occurrence.iPlayMs || !std::isfinite(occurrence.fPlayRate) || occurrence.fPlayRate <= 0.f ||
-        std::uint64_t(occurrence.iStartOffsetMs) + occurrence.iPlayMs > stageDurationMs) return false;
+        std::uint64_t(occurrence.iStartOffsetMs) + occurrence.iPlayMs > stageDurationMs)
+        return false;
     const double rate = occurrence.fPlayRate;
+
+    // Workbench가 드래그 원점으로 만든 occurrence를 임시 복사한다. 이후 조기 반환은
+    // 원본을 보존하고 실제 재생·모델 상태는 이 편집 계산에서 바꾸지 않는다.
     auto staged = occurrence;
     const bool loop = occurrence.strEndPolicy == "LOOP_TO_WINDOW";
     const double previousEnd = occurrence.iSourceEndMs ? occurrence.iSourceEndMs :
         (loop ? double(nativeDurationMs) : occurrence.iSourceStartMs + occurrence.iPlayMs * rate);
+
+    // 반복의 앞 손잡이는 stage 안 시작/길이만 바꾸고 원본 클립 구간을 자르지 않는다.
     if (front && loop)
     {
         const auto trim = std::clamp(deltaMs, -std::int64_t(occurrence.iStartOffsetMs), std::int64_t(occurrence.iPlayMs) - 1);
@@ -6030,12 +7731,15 @@ bool_t Client::CKoukuSaydonCompositionDocument::Trim_AnimationWindow(
     }
     else if (front)
     {
+        // 단발 앞 손잡이는 stage 시작과 원본 시작을 함께 이동한다. playRate로 원본 ms를 환산하고
+        // 이전 끝에서 1ms를 뺀 값을 원본 상한으로 사용해 정수 이동량을 계산한다.
         const auto minDelta = (std::max)(-std::int64_t(occurrence.iStartOffsetMs),
             -std::int64_t(std::floor(occurrence.iSourceStartMs / rate)));
         const double sourceLimit = previousEnd > 0.0 ? previousEnd - 1.0 : 600000.0;
         const auto maxDelta = (std::min)(std::int64_t(occurrence.iPlayMs) - 1,
             std::int64_t(std::floor((sourceLimit - occurrence.iSourceStartMs) / rate)));
-        if (maxDelta < minDelta) return false;
+        if (maxDelta < minDelta)
+            return false;
         const auto trim = std::clamp(deltaMs, minDelta, maxDelta);
         staged.iStartOffsetMs = std::uint32_t(std::int64_t(occurrence.iStartOffsetMs) + trim);
         staged.iSourceStartMs = std::uint32_t(std::int64_t(occurrence.iSourceStartMs) + std::llround(trim * rate));
@@ -6046,26 +7750,40 @@ bool_t Client::CKoukuSaydonCompositionDocument::Trim_AnimationWindow(
     }
     else
     {
+        // 뒤 손잡이는 stage 남은 길이에 맞춰 재생 길이를 제한한다. 단발일 때만 원본 끝을
+        // playRate로 다시 계산하고, native 길이가 주어졌으면 그 끝을 넘지 않게 한다.
         staged.iPlayMs = std::uint32_t(std::clamp(std::int64_t(occurrence.iPlayMs) + deltaMs,
             std::int64_t(1), std::int64_t(stageDurationMs) - occurrence.iStartOffsetMs));
         if (!loop)
         {
             double end = occurrence.iSourceStartMs + staged.iPlayMs * rate;
-            if (nativeDurationMs) end = (std::min)(end, double(nativeDurationMs));
-            if (end > 600000.0) return false;
+            if (nativeDurationMs)
+                end = (std::min)(end, double(nativeDurationMs));
+            if (end > 600000.0)
+                return false;
             staged.iSourceEndMs = std::uint32_t(std::llround(end));
         }
     }
+
+    // blend-in을 새 길이에 제한하고 빈 원본 구간을 처리한다. HOLD_LAST_POSE만 끝 0으로
+    // 돌릴 수 있고 다른 종료 정책은 거절한다. 마지막 이동 대입 전까지 원본은 유지된다.
     staged.iBlendInMs = (std::min)(staged.iBlendInMs, staged.iPlayMs);
     if (staged.iSourceEndMs && staged.iSourceEndMs <= staged.iSourceStartMs)
     {
-        if (staged.strEndPolicy == "HOLD_LAST_POSE") staged.iSourceEndMs = 0u;
-        else return false;
+        if (staged.strEndPolicy == "HOLD_LAST_POSE")
+            staged.iSourceEndMs = 0u;
+        else
+            return false;
     }
     occurrence = std::move(staged);
     return true;
 }
 
+// Workbench 재생 준비가 선택 패턴의 자식 배치를 실행용 문서로 만든다. 저작 source는 변경하지 않는다.
+// 순차 실행, 반복 예약과 자식 없는 패턴은 각각의 조기 반환 경로를 사용한다.
+// 일반 자식 펼치기 분기에서는 임시 문서의 ID를 다시 연결하고 소유권과 30 Hz 단계 경계를 검사한 뒤 출력을 교체한다.
+// MainApp의 서버 시퀀스 준비/재생도 같은 확장을 사용한다. 명시적인 false는 기존 outDocument를 보존하며
+// 복사·컨테이너 할당 예외를 이 함수가 bool 실패로 변환하지는 않는다.
 bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& source, const std::string_view patternId,
     KOUKU_SAYDON_COMPOSITION_DOCUMENT& outDocument, std::string& outStatus)
@@ -6076,61 +7794,98 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         outStatus = "Parent expansion " + std::string(patternId) + ": " + reason;
         return false;
     };
-    if (selected == source.Patterns.end()) return fail("Pattern is missing.");
-    if (!selected->strLoadError.empty()) return fail(selected->strLoadError);
-    if (!Validate_Shape(source, outStatus)) return false;
-    if (!Validate_PatternChildren(source, *selected, outStatus)) return false;
+    if (selected == source.Patterns.end())
+        return fail("Pattern is missing.");
+    if (!selected->strLoadError.empty())
+        return fail(selected->strLoadError);
+    if (!Validate_Shape(source, outStatus))
+        return false;
+    if (!Validate_PatternChildren(source, *selected, outStatus))
+        return false;
+
+    // 선택 패턴과 자식 참조를 검증한 뒤 실행 형태를 나눈다. 순차 실행은 문서를 그대로 복사하고,
+    // 빙고 반복은 아래 전용 stage만 만든다. 일반 시간 배치의 길이·lane 확장은 그 뒤에 수행한다.
     const auto lifetime = Pattern_Lifetime(*selected);
     if (selected->bPlayChildrenSequentially && selected->strLoopStartPatternOccurrenceId.empty())
-    { outDocument = source; outStatus.clear(); return true; }
+    {
+        outDocument = source;
+        outStatus.clear();
+        return true;
+    }
     if (!selected->strLoopStartPatternOccurrenceId.empty())
     {
-        // Server schedules the child Patterns through the existing audition member.
-        // Keep their authored references and individual root-motion ownership.
+        // Server가 기존 audition 멤버 경로로 자식 패턴을 예약한다.
+        // 저작한 참조와 자식별 root motion 소유권을 그대로 남긴다.
         auto staged = source;
         auto& owner = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
+
+        // 반복 부모에는 34ms의 단일 idle stage를 둔다. 기존 자식 참조와 보드 Logic은 유지하며
+        // 일반 자식 펼치기와 마지막 blend window 계산을 거치지 않고 이 문서를 반환한다.
         KOUKU_SAYDON_COMPOSITION_STAGE stage;
-        stage.strStageId = "STAGE_1"; stage.strActionId = owner.strPatternId + ".parent-owner";
-        stage.strStageKind = "ACTIVE"; stage.iDurationMs = 34u;
+        stage.strStageId = "STAGE_1";
+        stage.strActionId = owner.strPatternId + ".parent-owner";
+        stage.strStageKind = "ACTIVE";
+        stage.iDurationMs = 34u;
         KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE animation;
         animation.strOccurrenceId = owner.strPatternId + ".idle.1";
-        animation.strProfileId = owner.strActorProfileId; animation.strSourceStageId = "RAW";
+        animation.strProfileId = owner.strActorProfileId;
+        animation.strSourceStageId = "RAW";
         animation.strSourceSlotId = animation.strRuntimeClip = "rpct00_idle_battle_1";
-        animation.iPlayMs = 34u; animation.fPlayRate = 1.f; animation.strEndPolicy = "LOOP_TO_WINDOW";
+        animation.iPlayMs = 34u;
+        animation.fPlayRate = 1.f;
+        animation.strEndPolicy = "LOOP_TO_WINDOW";
         stage.AnimationOccurrences.push_back(std::move(animation));
         owner.Stages = {std::move(stage)};
         owner.iNextStageOrdinal = (std::max)(2u, owner.iNextStageOrdinal);
         owner.iNextAnimationOrdinal = (std::max)(2u, owner.iNextAnimationOrdinal);
-        outDocument = std::move(staged); outStatus.clear(); return true;
+        outDocument = std::move(staged);
+        outStatus.clear();
+        return true;
     }
-    if (lifetime > MAX_TIME_MS) return fail("Timeline exceeds 600 seconds.");
+    if (lifetime > MAX_TIME_MS)
+        return fail("Timeline exceeds 600 seconds.");
+
+    // 자식이 없으면 복사본의 선택 패턴에 파생 blend window만 계산한다. 계산 실패는 복사본을 버린다.
     if (selected->PatternOccurrences.empty())
     {
         auto staged = source;
         auto& pattern = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
-        // Row tails never lengthen the authored Stage/animation clock.
-        if (!Try_ResolveAnimationBlendWindows(staged, pattern, pattern.AnimationBlendWindows, outStatus)) return false;
-        outDocument = std::move(staged); outStatus.clear(); return true;
+        // 각 행의 끝이 더 늦어도 저작한 단계와 애니메이션 시계를 늘리지 않는다.
+        if (!Try_ResolveAnimationBlendWindows(staged, pattern, pattern.AnimationBlendWindows, outStatus))
+            return false;
+        outDocument = std::move(staged);
+        outStatus.clear();
+        return true;
     }
-    if (!lifetime) return fail("Timeline needs a positive duration.");
+    if (!lifetime)
+        return fail("Timeline needs a positive duration.");
 
+    // 이후 생성하는 stage·Logic 정의·배치는 모두 지역 복사본에 모은다. 원본 참조는 복사본의
+    // 선택 패턴과 구분하며, 최종 검증 이전에는 outDocument를 교체하지 않는다.
     KOUKU_SAYDON_COMPOSITION_DOCUMENT staged = source;
     auto& result = staged.Patterns[static_cast<size_t>(selected - source.Patterns.begin())];
+
+    // Logic 정의에서 참조하는 고정/선택 이펙트 그룹 이름을 모은다. 이 수집 자체는 box의 enabled를 검사하지 않는다.
     const auto showtimeGroups = [&](const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern) {
         std::unordered_set<std::string> groups;
         for (const auto& box : pattern.LogicOccurrences)
             for (const auto& definition : source.Logics)
                 if (definition.strLogicId == box.strLogicId && definition.strJudgementKind == "SHOWTIME_PLAYER_TARGETS" &&
-                    !definition.strFixedSelectionGroupId.empty()) groups.insert(definition.strFixedSelectionGroupId);
+                    !definition.strFixedSelectionGroupId.empty())
+                    groups.insert(definition.strFixedSelectionGroupId);
         for (const auto& box : pattern.LogicOccurrences)
             for (const auto& definition : source.Logics)
                 if (definition.strLogicId == box.strLogicId && !definition.strSelectedEffectGroupId.empty())
                     groups.insert(definition.strSelectedEffectGroupId);
         return groups;
     };
+
+    // 부모 표현 행의 연결되지 않은 선택 그룹을 비우고 자식 목록과 stage를 다시 구성할 준비를 한다.
+    // 부모의 다른 lane은 복사본에 남기고 자식 lane을 뒤에서 덧붙인다.
     const auto parentShowtimeGroups = showtimeGroups(result);
     for (auto& row : result.PresentationOccurrences)
-        if (!parentShowtimeGroups.contains(row.strSelectionGroupId)) row.strSelectionGroupId.clear();
+        if (!parentShowtimeGroups.contains(row.strSelectionGroupId))
+            row.strSelectionGroupId.clear();
     result.PatternOccurrences.clear();
     result.iNextPatternOccurrenceOrdinal = 1u;
     result.iDurationMs = static_cast<std::uint32_t>(lifetime);
@@ -6145,24 +7900,31 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
     std::sort(slots.begin(), slots.end(), [](const auto& a, const auto& b) {
         return a.iStartMs < b.iStartMs;
     });
+
+    // 원본 stage에서 남길 [begin,end) 구간을 목적 시작 ms로 옮긴다. 비어 있으면 추가하지 않는다.
+    // 애니메이션 끝은 자를 수 있지만 시작이 남길 구간보다 앞서면 거절하고, retarget은 원래 stage 시작에서만 유지한다.
     const auto addStage = [&](const KOUKU_SAYDON_COMPOSITION_STAGE& original,
         const std::uint32_t origin, const std::uint32_t begin, const std::uint32_t end,
         const std::uint32_t destination, const std::string& animationScope, std::size_t& animationIndex) -> bool {
-        if (begin >= end) return true;
+        if (begin >= end)
+            return true;
         if (stages.size() >= MAX_PRODUCT_STAGES_PER_PATTERN)
             return fail("Expanded timeline exceeds 64 Stages.");
         TimedStage item{destination, original};
         item.stage.iDurationMs = end - begin;
         item.stage.bRetargetOnEnter = original.bRetargetOnEnter && begin == origin;
-        if (!item.stage.bRetargetOnEnter) item.stage.RetargetTarget.reset();
+        if (!item.stage.bRetargetOnEnter)
+            item.stage.RetargetTarget.reset();
         item.stage.AnimationOccurrences.clear();
         for (const auto& originalAnimation : original.AnimationOccurrences)
         {
             const auto index = ++animationIndex;
             const auto start = std::uint64_t(origin) + originalAnimation.iStartOffsetMs;
             const auto finish = start + originalAnimation.iPlayMs;
-            if (start >= end || finish <= begin) continue;
-            if (start < begin) return fail("Animation starts before its retained Stage segment.");
+            if (start >= end || finish <= begin)
+                continue;
+            if (start < begin)
+                return fail("Animation starts before its retained Stage segment.");
             auto animation = originalAnimation;
             animation.iStartOffsetMs = static_cast<std::uint32_t>(start - begin);
             animation.iPlayMs = static_cast<std::uint32_t>((std::min)(finish, std::uint64_t(end)) - start);
@@ -6176,8 +7938,8 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         return true;
     };
 
-    // A child owns the boss for its entire placement window. Parent lanes remain
-    // untouched; only animation-free portions of its Stage clock are replaced.
+    // 자식은 배치 구간 전체에서 보스 포즈를 소유한다. 부모의 다른 lane은 유지한다.
+    // 부모 단계 중 애니메이션이 없는 부분만 자식 단계로 대체한다.
     std::uint32_t origin = 0u;
     for (const auto& stage : selected->Stages)
     {
@@ -6188,16 +7950,20 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         for (const auto& slot : slots)
         {
             const auto slotEnd = slot.iStartMs + slot.iDurationMs;
-            if (slotEnd <= cursor || slot.iStartMs >= end) continue;
+            if (slotEnd <= cursor || slot.iStartMs >= end)
+                continue;
             std::size_t index = 0u;
-            if (!addStage(stage, origin, cursor, (std::min)(end, slot.iStartMs), cursor, {}, index)) return false;
+            if (!addStage(stage, origin, cursor, (std::min)(end, slot.iStartMs), cursor, {}, index))
+                return false;
             cursor = (std::min)(end, slotEnd);
         }
         std::size_t index = 0u;
-        if (!addStage(stage, origin, cursor, end, cursor, {}, index)) return false;
+        if (!addStage(stage, origin, cursor, end, cursor, {}, index))
+            return false;
         origin = end;
     }
 
+    // 검증된 자식 ID로 원본을 찾는다. 일반 확장은 자식의 spawn reset·완료 시 전투 진입을 허용하지 않는다.
     for (const auto& slot : slots)
     {
         const auto childIt = std::find_if(source.Patterns.begin(), source.Patterns.end(),
@@ -6207,14 +7973,18 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             return fail("Child spawn reset or combat-entry completion is unsupported: " + child.strPatternId);
         if (child.BossMotion)
         {
-            // Validation admits a single complete non-repeated actor owner. Its
-            // absolute path keeps source positions and uses the Parent clock.
+            // 검증은 반복하지 않는 완전한 actor 소유자 하나만 허용한다.
+            // 절대 경로의 위치는 유지하고 키 시각만 부모 패턴의 시계로 옮긴다.
             auto motion = *child.BossMotion;
             motion.iStartMs += slot.iStartMs;
             motion.iEndMs += slot.iStartMs;
-            for (auto& key : motion.Keys) key.iTimeMs += slot.iStartMs;
+            for (auto& key : motion.Keys)
+                key.iTimeMs += slot.iStartMs;
             result.BossMotion = motion;
         }
+
+        // 수직 root 배율은 부모와 같아야 한다. 수평 배율은 같거나, 자식이 0이고 모든 stage를
+        // 이동 가능한 tracking Logic이 덮을 때만 허용한다.
         if (child.fAnimationRootVerticalScale != selected->fAnimationRootVerticalScale)
             return fail("Child animation root vertical scale differs from Parent: " + child.strPatternId);
         if (child.fAnimationRootHorizontalScale != selected->fAnimationRootHorizontalScale &&
@@ -6224,14 +7994,19 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         const auto slotEnd = slot.iStartMs + slot.iDurationMs;
         std::uint32_t cycleStart = slot.iStartMs;
         std::uint32_t repeatIndex = 0u;
+
+        // 자식 반복마다 부모 배치 안에 남은 길이와 자식 수명 중 작은 값을 사용한다.
+        // 반복 순번을 ID 범위에 넣고 64회 및 범위 문자열 길이 상한을 검사한다.
         while (cycleStart < slotEnd)
         {
             if (repeatIndex >= MAX_PRODUCT_STAGES_PER_PATTERN)
                 return fail("Expanded timeline exceeds 64 child repetitions.");
             const auto available = (std::min)(childDuration, slotEnd - cycleStart);
             const std::string scope = slot.strOccurrenceId + ".r" + std::to_string(repeatIndex);
-            if (scope.size() > 96u) return fail("Child occurrence namespace exceeds the stable-ID limit.");
+            if (scope.size() > 96u)
+                return fail("Child occurrence namespace exceeds the stable-ID limit.");
             std::unordered_map<std::string, std::string> ids;
+            // 자식의 각 반복마다 독립적인 ID 범위를 만든다. 원래 ID의 내부 연결은 아래 remap으로 같은 범위 안에서 유지한다.
             const auto mapRows = [&](const auto& rows, const std::string& kind) {
                 for (size_t i = 0u; i < rows.size(); ++i)
                     ids.emplace(rows[i].strOccurrenceId, scope + "." + kind + "." + std::to_string(i + 1u));
@@ -6242,23 +8017,30 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             mapRows(child.SceneProfileOccurrences, "sceneprofile");
             mapRows(child.PresentationOccurrences, "presentation");
             const auto childShowtimeGroups = showtimeGroups(child);
+
+            // 활성 Logic이 사용하는 무작위/고정/선택 그룹·추적·폭탄 표현을 템플릿 집합으로 모은다.
+            // 이 템플릿은 아래 일반 lane 자르기로 수명을 줄이지 않고 잘릴 경우 거절한다.
             std::unordered_set<std::string> childShowtimeTemplateIds;
             for (const auto& box : child.LogicOccurrences)
             {
-                if (!box.bEnabled) continue;
+                if (!box.bEnabled)
+                    continue;
                 const auto definition = std::find_if(source.Logics.begin(), source.Logics.end(),
                     [&](const auto& row) { return row.strLogicId == box.strLogicId; });
-                if (definition == source.Logics.end()) continue;
+                if (definition == source.Logics.end())
+                    continue;
                 if (!definition->strSelectedEffectGroupId.empty())
                     for (const auto& row : child.PresentationOccurrences)
-                        if (row.strSelectionGroupId == definition->strSelectedEffectGroupId) childShowtimeTemplateIds.insert(row.strOccurrenceId);
+                        if (row.strSelectionGroupId == definition->strSelectedEffectGroupId)
+                            childShowtimeTemplateIds.insert(row.strOccurrenceId);
                 if (!definition->strBombPresentationOccurrenceId.empty())
                 {
                     childShowtimeTemplateIds.insert(definition->strBombPresentationOccurrenceId);
                     childShowtimeTemplateIds.insert(definition->strBombExplosionPresentationOccurrenceId);
                     childShowtimeTemplateIds.insert(definition->strBombSectorPresentationOccurrenceId);
                 }
-                if (definition->strJudgementKind != "SHOWTIME_PLAYER_TARGETS") continue;
+                if (definition->strJudgementKind != "SHOWTIME_PLAYER_TARGETS")
+                    continue;
                 for (const auto& volley : definition->RandomVolleyOccurrenceSets)
                     childShowtimeTemplateIds.insert(volley.begin(), volley.end());
                 if (!definition->strTrackingPresentationOccurrenceId.empty())
@@ -6270,23 +8052,36 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             for (const auto& row : child.PresentationOccurrences)
                 if (childShowtimeTemplateIds.contains(row.strOccurrenceId) && std::uint64_t(row.iStartMs) + row.iDurationMs > available)
                     return fail("Parent slot would truncate a SHOWTIME Effect template; extend its child window: " + row.strOccurrenceId);
+
+            // 이펙트 그룹과 region도 반복별 ID로 연결한다. 같은 원래 이름의 emplace는 최초 대응을 유지한다.
             for (size_t i = 0u; i < child.PresentationOccurrences.size(); ++i)
                 if (const auto& group = child.PresentationOccurrences[i].strSelectionGroupId; childShowtimeGroups.contains(group))
                     ids.emplace(group, scope + ".effectgroup." + std::to_string(i + 1u));
             for (size_t i = 0u; i < child.PresentationOccurrences.size(); ++i)
                 if (!child.PresentationOccurrences[i].strRegionId.empty())
                     ids.emplace(child.PresentationOccurrences[i].strRegionId, scope + ".region." + std::to_string(i + 1u));
+
+            // 일반 remap은 대응표에 없는 ID를 유지한다. 원본 카탈로그 참조처럼 재명명 대상이 아닐 수 있다.
             const auto remap = [&](std::string& id) {
                 const auto found = ids.find(id);
-                if (found != ids.end()) id = found->second;
-            };
-            const auto remapRequired = [&](std::string& id) -> bool {
-                if (id.empty()) return true;
-                const auto found = ids.find(id);
-                if (found == ids.end()) return fail("Child refers outside its own occurrences: " + id);
-                id = found->second; return true;
+                if (found != ids.end())
+                    id = found->second;
             };
 
+            // 필수 내부 참조는 빈 값만 그대로 허용한다. 비어 있지 않은 이름이 대응표에 없으면
+            // 자식 범위 밖 연결로 거절하며 이후 참조를 임의로 지우지 않는다.
+            const auto remapRequired = [&](std::string& id) -> bool {
+                if (id.empty())
+                    return true;
+                const auto found = ids.find(id);
+                if (found == ids.end())
+                    return fail("Child refers outside its own occurrences: " + id);
+                id = found->second;
+                return true;
+            };
+
+            // 자식 Logic 배치의 정의와 성공/실패/timeout 결과 정의를 모아 반복별 복제 ID를 예약한다.
+            // 원본 정의가 없는 참조는 복제를 시작하기 전에 거절한다.
             std::unordered_set<std::string> usedLogic;
             for (const auto& row : child.LogicOccurrences)
             {
@@ -6298,10 +8093,15 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                 if (usedLogic.contains(source.Logics[i].strLogicId))
                     ids.emplace(source.Logics[i].strLogicId, scope + ".definition." + std::to_string(i + 1u));
             for (const auto& id : usedLogic)
-                if (!ids.contains(id)) return fail("Child Logic definition is missing: " + id);
+                if (!ids.contains(id))
+                    return fail("Child Logic definition is missing: " + id);
+
+            // 필요한 정의만 복제하되 전체 패턴 전환·지속 HUD 변경은 거절한다. 내부 배치/그룹 참조를
+            // 새 ID로 다시 연결하고 contact group도 같은 반복 안에서 최초 대응을 공유한다.
             for (const auto& sourceLogic : source.Logics)
             {
-                if (!usedLogic.contains(sourceLogic.strLogicId)) continue;
+                if (!usedLogic.contains(sourceLogic.strLogicId))
+                    continue;
                 if (sourceLogic.bEndsPatternOnSuccess || sourceLogic.strOutcomeKind == "FOLLOWUP_PATTERN" ||
                     sourceLogic.strTriggerKind == "HUD_ENTER" || sourceLogic.strTriggerKind == "CARD_MAZE_HIDE_NEXT" ||
                     sourceLogic.strTriggerKind == "CARD_MAZE_ENTER" || sourceLogic.strTriggerKind == "CARD_MAZE_STAGE_PLAYERS")
@@ -6316,11 +8116,18 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                     !remapRequired(definition.strBombSectorPresentationOccurrenceId) ||
                     !remapRequired(definition.strSummonOccurrenceId)) return false;
                 for (auto& volley : definition.RandomVolleyOccurrenceSets)
-                    for (auto& id : volley) if (!remapRequired(id)) return false;
-                for (auto& id : definition.RegionIds) if (!remapRequired(id)) return false;
-                for (auto& id : definition.TargetWorldOccurrenceIds) if (!remapRequired(id)) return false;
+                    for (auto& id : volley)
+                        if (!remapRequired(id))
+                            return false;
+                for (auto& id : definition.RegionIds)
+                    if (!remapRequired(id))
+                        return false;
+                for (auto& id : definition.TargetWorldOccurrenceIds)
+                    if (!remapRequired(id))
+                        return false;
                 for (auto& motion : definition.ContactMotions)
-                    if (!remapRequired(motion.strTargetWorldOccurrenceId)) return false;
+                    if (!remapRequired(motion.strTargetWorldOccurrenceId))
+                        return false;
                 if (!remapRequired(definition.strTargetLogicOccurrenceId) ||
                     !remapRequired(definition.strContactTargetWorldOccurrenceId)) return false;
                 remap(definition.strTargetWorldInstanceId);
@@ -6331,34 +8138,46 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                     definition.strContactGroupId = contact->second;
                 }
                 staged.Logics.push_back(std::move(definition));
-                if (staged.Logics.size() > MAX_LOGICS) return fail("Expanded Logic definitions exceed 4096.");
+                if (staged.Logics.size() > MAX_LOGICS)
+                    return fail("Expanded Logic definitions exceed 4096.");
             }
 
+            // 자식 stage의 시계는 자식 시작 기준으로 검증하고 부모의 cycleStart를 더해 배치한다.
+            // 이번 반복에 남은 길이 뒤의 stage는 복사하지 않는다.
             std::uint32_t childOrigin = 0u;
             std::size_t animationIndex = 0u;
             for (const auto& stage : child.Stages)
             {
                 if (!stage.iDurationMs || std::uint64_t(childOrigin) + stage.iDurationMs > childDuration)
                     return fail("Invalid child Stage duration: " + child.strPatternId);
-                if (childOrigin >= available) break;
+                if (childOrigin >= available)
+                    break;
                 if (!addStage(stage, childOrigin, childOrigin, (std::min)(childOrigin + stage.iDurationMs, available),
                     cycleStart + childOrigin, scope, animationIndex)) return false;
                 childOrigin += stage.iDurationMs;
             }
+
+            // 공통 lane 복사는 남은 구간 밖 시작을 생략하고 끝을 잘라 부모 ms로 이동한다.
+            // 종류별 adjust가 성공한 행만 지역 결과에 추가하며 실패 시 전체 확장 출력을 교체하지 않는다.
             const auto copyLane = [&](const auto& from, auto& destination, const auto& adjust) -> bool {
                 for (const auto& sourceRow : from)
                 {
-                    if (sourceRow.iStartMs >= available) continue;
+                    if (sourceRow.iStartMs >= available)
+                        continue;
                     auto row = sourceRow;
                     const bool clipped = std::uint64_t(row.iStartMs) + row.iDurationMs > available;
                     row.iDurationMs = (std::min)(row.iDurationMs, available - row.iStartMs);
                     row.iStartMs += cycleStart;
                     remap(row.strOccurrenceId);
-                    if (!adjust(row, clipped)) return false;
+                    if (!adjust(row, clipped))
+                        return false;
                     destination.push_back(std::move(row));
                 }
                 return true;
             };
+
+            // 잘린 돌진은 거절한다. 다른 Logic은 결과 정의/hold 참조를 재연결하고
+            // 실제로 잘렸는지를 bCancelAtEnd에 기록한다.
             if (!copyLane(child.LogicOccurrences, result.LogicOccurrences, [&](auto& row, const bool clipped) {
                 const auto definition = std::find_if(source.Logics.begin(), source.Logics.end(),
                     [&](const auto& item) { return item.strLogicId == row.strLogicId; });
@@ -6366,46 +8185,68 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
                     return fail("Child charge cannot be truncated; extend its Pattern window: " + row.strOccurrenceId);
                 remap(row.strLogicId);
                 for (auto* list : {&row.OnSuccessLogicIds, &row.OnFailLogicIds, &row.OnTimeoutLogicIds})
-                    for (auto& id : *list) remap(id);
+                    for (auto& id : *list)
+                        remap(id);
                 row.bCancelAtEnd = clipped;
                 return remapRequired(row.strHoldLogicOccurrenceId);
-            })) return false;
-            if (!copyLane(child.SummonOccurrences, result.SummonOccurrences, [](auto&, bool) { return true; })) return false;
-            if (!copyLane(child.WorldOccurrences, result.WorldOccurrences, [](auto&, bool) { return true; })) return false;
+            }))
+                return false;
+            if (!copyLane(child.SummonOccurrences, result.SummonOccurrences, [](auto&, bool) { return true; }))
+                return false;
+            if (!copyLane(child.WorldOccurrences, result.WorldOccurrences, [](auto&, bool) { return true; }))
+                return false;
             if (!copyLane(child.SceneProfileOccurrences, result.SceneProfileOccurrences, [](auto& row, bool) {
-                row.iBlendMs = (std::min)(row.iBlendMs, row.iDurationMs); return true;
-            })) return false;
+                row.iBlendMs = (std::min)(row.iBlendMs, row.iDurationMs);
+                return true;
+            }))
+                return false;
+
+            // 표현 행의 그룹·region·내부 부착 참조를 재연결한다. fade-in을 기간에 제한한 뒤
+            // fade-out은 남은 기간에 제한하므로 두 fade의 합이 잘린 기간을 넘지 않는다.
             if (!copyLane(child.PresentationOccurrences, result.PresentationOccurrences, [&](auto& row, bool) {
-                // Server visual templates retain their scoped group references.
-                if (childShowtimeGroups.contains(row.strSelectionGroupId)) remap(row.strSelectionGroupId);
-                else row.strSelectionGroupId.clear();
+                // Server 시각 템플릿에서도 확장 범위에 맞춘 그룹 참조를 유지한다.
+                if (childShowtimeGroups.contains(row.strSelectionGroupId))
+                    remap(row.strSelectionGroupId);
+                else
+                    row.strSelectionGroupId.clear();
                 remap(row.strRegionId);
                 row.iFadeInMs = (std::min)(row.iFadeInMs, row.iDurationMs);
                 row.iFadeOutMs = (std::min)(row.iFadeOutMs, row.iDurationMs - row.iFadeInMs);
                 return remapRequired(row.strLogicOccurrenceId) && remapRequired(row.strWorldOccurrenceId) && remapRequired(row.strAnchorPresentationOccurrenceId);
-            })) return false;
+            }))
+                return false;
+
+            // 이번 반복을 붙인 뒤 종류별 기존 최대 행 수를 검사한다. 반복하지 않는 slot은 한 번만 처리한다.
             if (result.LogicOccurrences.size() > MAX_LOGIC_OCCURRENCES_PER_PATTERN ||
                 result.SummonOccurrences.size() > MAX_SUMMON_OCCURRENCES_PER_PATTERN ||
                 result.WorldOccurrences.size() > MAX_WORLD_OCCURRENCES_PER_PATTERN ||
                 result.SceneProfileOccurrences.size() > MAX_SCENE_PROFILE_OCCURRENCES_PER_PATTERN ||
                 result.PresentationOccurrences.size() > 1024u)
                 return fail("Expanded child lanes exceed the existing Pattern capacity.");
-            if (!slot.bRepeat) break;
+            if (!slot.bRepeat)
+                break;
             cycleStart += available;
             ++repeatIndex;
         }
     }
 
+    // 수집한 stage를 시작 ms로 정렬하고 actor별 idle clip을 선택한다. 빈 구간도 stage로 채우므로
+    // 뒤의 최종 stage 수와 30Hz 경계 검사에는 채워 넣은 idle도 포함된다.
     std::sort(stages.begin(), stages.end(), [](const auto& a, const auto& b) { return a.start < b.start; });
     const std::string idleClip = selected->strActorProfileId == "MN_RPCT_05" ? "rpct00_idle_battle_1" :
         selected->strActorProfileId == "MN_RPCT_06" ? "mn_rpct_06_sk.ao_idle_battle_1" :
         selected->strActorProfileId == "MN_RPCZ_00" ? "rpcz00_idle_battle_1" : "";
-    if (idleClip.empty()) return fail("Actor has no supported idle clip.");
+    if (idleClip.empty())
+        return fail("Actor has no supported idle clip.");
     std::uint32_t stageOrdinal = 0u;
     std::uint64_t emittedDuration = 0u;
     std::uint64_t emittedEndTick = 0u;
+    // 서로 다른 단계 끝이 같은 30 Hz tick으로 합쳐지지 않는지 확인한다. ms만 양수인 너무 짧은 단계도 여기서 거절한다.
+    // 누적 끝 시각을 ceil(ms*30/1000)으로 바꾸어 이전 끝 tick보다 뒤에 있는지 검사한다.
+    // 허용한 stage에는 새 순번을 부여하고 애니메이션이 없으면 전 구간 idle을 넣는다.
     const auto emitStage = [&](KOUKU_SAYDON_COMPOSITION_STAGE stage) -> bool {
-        if (stageOrdinal >= MAX_PRODUCT_STAGES_PER_PATTERN) return fail("Expanded timeline exceeds 64 Stages.");
+        if (stageOrdinal >= MAX_PRODUCT_STAGES_PER_PATTERN)
+            return fail("Expanded timeline exceeds 64 Stages.");
         const auto endTick = ((emittedDuration + stage.iDurationMs) * FIXED_TICK_HZ + 999u) / 1000u;
         if (endTick <= emittedEndTick)
             return fail("Parent Stage boundaries must occupy distinct 30 Hz Server ticks; extend the short gap.");
@@ -6426,40 +8267,64 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
             idle.strEndPolicy = "LOOP_TO_WINDOW";
             stage.AnimationOccurrences.push_back(std::move(idle));
         }
-        // A blend is only meaningful when its previous clip survives the
-        // placement boundary. No implicit blend reaches across an idle gap.
+        // 이전 클립이 배치 경계에 남아 있어야 블렌드가 의미를 가진다.
+        // idle 구간을 건너는 암묵적인 블렌드는 만들지 않는다.
         for (auto& animation : stage.AnimationOccurrences)
         {
-            if (!animation.iBlendInMs) continue;
-            if (animation.iStartOffsetMs || result.Stages.empty()) { animation.iBlendInMs = 0u; continue; }
+            if (!animation.iBlendInMs)
+                continue;
+            if (animation.iStartOffsetMs || result.Stages.empty())
+            {
+                animation.iBlendInMs = 0u;
+                continue;
+            }
             const auto& previous = result.Stages.back();
             const bool adjacent = std::any_of(previous.AnimationOccurrences.begin(), previous.AnimationOccurrences.end(),
                 [&](const auto& row) { return std::uint64_t(row.iStartOffsetMs) + row.iPlayMs == previous.iDurationMs; });
-            if (!adjacent) animation.iBlendInMs = 0u;
+            if (!adjacent)
+                animation.iBlendInMs = 0u;
         }
         result.Stages.push_back(std::move(stage));
         return true;
     };
+
+    // 시각이 비는 구간은 ACTIVE idle stage로 채운다. 0ms gap은 추가하지 않는다.
     const auto emitGap = [&](const std::uint32_t duration) -> bool {
-        if (!duration) return true;
+        if (!duration)
+            return true;
         KOUKU_SAYDON_COMPOSITION_STAGE idle;
-        idle.strStageKind = "ACTIVE"; idle.iDurationMs = duration;
+        idle.strStageKind = "ACTIVE";
+        idle.iDurationMs = duration;
         return emitStage(std::move(idle));
     };
     std::uint32_t cursor = 0u;
     for (auto& item : stages)
     {
-        if (item.start < cursor) return fail("Expanded Stage intervals overlap.");
-        if (!emitGap(item.start - cursor) || !emitStage(std::move(item.stage))) return false;
+        if (item.start < cursor)
+            return fail("Expanded Stage intervals overlap.");
+        if (!emitGap(item.start - cursor) || !emitStage(std::move(item.stage)))
+            return false;
         cursor = item.start + result.Stages.back().iDurationMs;
     }
-    if (!emitGap(static_cast<std::uint32_t>(lifetime) - cursor)) return false;
+    if (!emitGap(static_cast<std::uint32_t>(lifetime) - cursor))
+        return false;
     result.iNextStageOrdinal = stageOrdinal + 1u;
-    if (!Validate_Shape(staged, outStatus, true, true)) return false;
-    // These consumers own one boss/HUD/camera state rather than one state per
-    // occurrence. Reject conflicting owners while independent lanes coexist.
-    struct ExclusiveWindow { std::uint32_t start, end; std::string owner; };
+
+    // 최종 형태 검증은 패턴 참조 검사를 유지하면서 파생 ID를 허용하는 옵션으로 실행한다.
+    // 이 호출이 파일 리소스를 로드하거나 서버에 문서를 게시하지는 않는다.
+    if (!Validate_Shape(staged, outStatus, true, true))
+        return false;
+    // 이 소비자는 occurrence마다 별도 상태를 두지 않고 보스, HUD 또는 카메라 상태 하나를 공유한다.
+    // 서로 독립적인 lane은 허용하되 서로 다른 소유자의 공유 상태 구간이 겹치면 거절한다.
+    struct ExclusiveWindow
+    {
+        std::uint32_t start, end;
+        std::string owner;
+    };
     std::unordered_map<std::string, std::vector<ExclusiveWindow>> exclusiveWindows;
+
+    // 종류별 반열린 시간 구간을 모아 다른 owner와의 겹침을 거절한다.
+    // owner는 occurrence ID의 logic/sceneprofile/presentation 접미 범위에서 추정하며 같은 owner의 겹침은 여기서 거절하지 않는다.
     const auto admitExclusive = [&](const std::string& kind, const auto& row) -> bool {
         auto& windows = exclusiveWindows[kind];
         const auto end = row.iStartMs + row.iDurationMs;
@@ -6467,80 +8332,121 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ExpandPatternDocument(
         for (const auto* family : { ".logic.", ".sceneprofile.", ".presentation." })
         {
             const auto found = row.strOccurrenceId.rfind(family);
-            if (found != std::string::npos) ownerEnd = found;
+            if (found != std::string::npos)
+                ownerEnd = found;
         }
         const auto owner = row.strOccurrenceId.substr(0, ownerEnd);
         if (std::any_of(windows.begin(), windows.end(), [&](const auto& previous) {
             return previous.owner != owner && previous.start < end && row.iStartMs < previous.end;
-        })) return fail("Overlapping " + kind + " windows would share one runtime owner: " + row.strOccurrenceId);
+        }))
+            return fail("Overlapping " + kind + " windows would share one runtime owner: " + row.strOccurrenceId);
         windows.push_back({row.iStartMs, end, owner});
         return true;
     };
+
+    // 활성 STAGGER/COUNTER/POSE_INPUT Logic, 모든 Scene Profile 및 CAMERA 표현을
+    // 각 종류의 공유 상태 검사에 넣는다. 다른 lane을 이 검사에 일괄 포함하지 않는다.
     for (const auto& row : result.LogicOccurrences)
     {
-        if (!row.bEnabled) continue;
+        if (!row.bEnabled)
+            continue;
         const auto definition = std::find_if(staged.Logics.begin(), staged.Logics.end(),
             [&](const auto& item) { return item.strLogicId == row.strLogicId; });
-        if (definition == staged.Logics.end()) return fail("Expanded Logic definition is missing.");
+        if (definition == staged.Logics.end())
+            return fail("Expanded Logic definition is missing.");
         const auto& kind = definition->strJudgementKind;
         if ((kind == "STAGGER_WINDOW" || kind == "COUNTER_WINDOW" || kind == "POSE_INPUT") &&
-            !admitExclusive(kind, row)) return false;
+            !admitExclusive(kind, row))
+            return false;
     }
     for (const auto& row : result.SceneProfileOccurrences)
-        if (!admitExclusive("SCENE_PROFILE", row)) return false;
+        if (!admitExclusive("SCENE_PROFILE", row))
+            return false;
     for (const auto& row : result.PresentationOccurrences)
     {
         const auto resource = std::find_if(staged.PresentationResources.begin(), staged.PresentationResources.end(),
             [&](const auto& item) { return item.strResourceId == row.strResourceId; });
         if (resource != staged.PresentationResources.end() && resource->eKind == KOUKU_SAYDON_PRESENTATION_KIND::CAMERA &&
-            !admitExclusive("CAMERA", row)) return false;
+            !admitExclusive("CAMERA", row))
+            return false;
     }
-    if (!Try_ResolveAnimationBlendWindows(staged, result, result.AnimationBlendWindows, outStatus)) return false;
+
+    // blend window까지 계산한 문서만 출력으로 이동한다. 성공하면 이전 오류 메시지를 비운다.
+    if (!Try_ResolveAnimationBlendWindows(staged, result, result.AnimationBlendWindows, outStatus))
+        return false;
     outDocument = std::move(staged);
     outStatus.clear();
     return true;
 }
 
+// ANIMATION_BLEND 구간과 실제로 연속한 두 포즈 소유자를 연결한다. 모델과 시간 범위가 맞고 전환이 하나일 때만 허용한다.
+// 성공한 정렬 결과만 outWindows에 교체하므로 실패하면 이전 출력 목록을 보존한다.
 bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows(
     const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern,
     std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW>& outWindows, std::string& status)
 {
+    // 검증과 미리보기 소비가 파생 blend window를 요청한다. 애니메이션은 지역 배열로 복사하고
+    // 실패하면 outWindows는 보존하며 status에 원인을 남긴다.
     std::vector<KOUKU_SAYDON_ANIMATION_BLEND_WINDOW> staged;
     std::vector<KOUKU_SAYDON_COMPOSITION_ANIMATION_OCCURRENCE> animations;
     std::uint64_t origin = 0u;
     for (const auto& stage : pattern.Stages)
     {
+        // 각 stage에서 가장 이른 offset/ID의 행은 stage 시작부터 포즈를 소유한다.
+        // 나머지는 자기 offset부터 소유하며 재생 시작과 pose 시작 시각을 별도로 패턴 ms로 바꾼다.
         const auto first = std::min_element(stage.AnimationOccurrences.begin(), stage.AnimationOccurrences.end(),
             [](const auto& a, const auto& b) { return a.iStartOffsetMs != b.iStartOffsetMs ?
                 a.iStartOffsetMs < b.iStartOffsetMs : a.strOccurrenceId < b.strOccurrenceId; });
         for (auto row : stage.AnimationOccurrences)
         {
-            if (origin + row.iStartOffsetMs > MAX_TIME_MS) { status = "Animation blend timeline exceeds 600 seconds."; return false; }
+            if (origin + row.iStartOffsetMs > MAX_TIME_MS)
+            {
+                status = "Animation blend timeline exceeds 600 seconds.";
+                return false;
+            }
             row.iPoseStartMs = uint32_t(origin) + (row.strOccurrenceId == first->strOccurrenceId ? 0u : row.iStartOffsetMs);
             row.iStartOffsetMs += uint32_t(origin);
             animations.push_back(std::move(row));
         }
         origin += stage.iDurationMs;
     }
+
+    // 명시 수명이 있으면 이를 사용하고 없으면 stage 합계를 사용한다.
+    // 포즈 소유자를 시작 시각·ID 순으로 정렬한 뒤 활성 ANIMATION_BLEND Logic만 검사한다.
     const auto lifetime = pattern.iDurationMs ? pattern.iDurationMs : origin;
     std::sort(animations.begin(), animations.end(), [](const auto& a, const auto& b) {
         return a.iPoseStartMs != b.iPoseStartMs ? a.iPoseStartMs < b.iPoseStartMs : a.strOccurrenceId < b.strOccurrenceId; });
     for (const auto& box : pattern.LogicOccurrences)
     {
-        if (!box.bEnabled) continue;
+        if (!box.bEnabled)
+            continue;
         const auto logic = std::find_if(document.Logics.begin(), document.Logics.end(),
             [&](const auto& value) { return value.strLogicId == box.strLogicId; });
-        if (logic == document.Logics.end() || logic->strTriggerKind != "ANIMATION_BLEND") continue;
-        const auto fail = [&](const std::string& reason) { status = "Animation blend " + box.strOccurrenceId + ": " + reason; return false; };
+        if (logic == document.Logics.end() || logic->strTriggerKind != "ANIMATION_BLEND")
+            continue;
+
+        // blend box는 수명 안의 1..1000ms 구간이어야 한다. 끝점을 포함해 그 안에 드는
+        // 후속 포즈 시작이 정확히 하나여야 앞/뒤 소유자 쌍을 정할 수 있다.
+        const auto fail = [&](const std::string& reason) {
+            status = "Animation blend " + box.strOccurrenceId + ": " + reason;
+            return false;
+        };
         const uint64_t end = uint64_t(box.iStartMs) + box.iDurationMs;
         if (!box.iDurationMs || box.iDurationMs > 1000u || end > lifetime)
             return fail("the existing clip transition requires a 1..1000 ms box inside this Pattern.");
         size_t target = animations.size(), count = 0u;
         for (size_t i = 1u; i < animations.size(); ++i)
             if (box.iStartMs <= animations[i].iPoseStartMs && animations[i].iPoseStartMs <= end)
-            { target = i; ++count; }
-        if (count != 1u) return fail("the box must contain exactly one transition between consecutive pose owners.");
+            {
+                target = i;
+                ++count;
+            }
+        if (count != 1u)
+            return fail("the box must contain exactly one transition between consecutive pose owners.");
+
+        // 동일 시각의 모호한 포즈, box보다 늦게 시작하는 source, box 끝 이내의 세 번째 포즈를 거절한다.
+        // source/destination은 같은 actor 모델로 해석되어야 한다.
         const auto& source = animations[target - 1u];
         const auto& destination = animations[target];
         if (source.iPoseStartMs >= destination.iPoseStartMs || box.iStartMs < source.iPoseStartMs ||
@@ -6548,6 +8454,9 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows
             return fail("the source/target pair is ambiguous or another pose owner enters this window.");
         if (Resolve_ActorProfileId(source.strProfileId) != Resolve_ActorProfileId(destination.strProfileId))
             return fail("both clips must belong to the same actor model.");
+
+        // clip의 기존 blendInMs 구간 또는 먼저 받은 Logic blend 구간과의 양수 길이 겹침을 거절한다.
+        // 서로 끝과 시작만 맞닿는 경우는 이 겹침 조건에 포함하지 않는다.
         for (const auto& row : animations)
             if (row.iBlendInMs && uint64_t(row.iStartOffsetMs) < end &&
                 uint64_t(box.iStartMs) < uint64_t(row.iStartOffsetMs) + row.iBlendInMs)
@@ -6557,53 +8466,78 @@ bool_t Client::CKoukuSaydonCompositionDocument::Try_ResolveAnimationBlendWindows
             return fail("two Logic blend windows overlap.");
         staged.push_back({box.strOccurrenceId, box.iStartMs, box.iDurationMs, source, destination});
     }
+
+    // 완성한 window를 시작 ms로 정렬한 뒤 한 번에 출력으로 옮긴다. 호출자는 pattern의
+    // AnimationBlendWindows를 출력으로 전달할 수도 있으며 원본 애니메이션/Logic 배치 목록은 다시 쓰지 않는다.
     std::sort(staged.begin(), staged.end(), [](const auto& a, const auto& b) { return a.iStartMs < b.iStartMs; });
     outWindows = std::move(staged);
     status.clear();
     return true;
 }
 
+// 검증된 시간 키에서 배치 경과 ms를 원본 Effect ms로 보간한다. 키가 없으면 원본 시작 오프셋을 더한다.
 double Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Effect_SourceTimeMs(
     const double elapsedMs) const noexcept
 {
-    if (EffectSourceTimeKeys.empty()) return iEffectSourceStartMs + (std::max)(0., elapsedMs);
-    if (elapsedMs <= EffectSourceTimeKeys.front()[0]) return EffectSourceTimeKeys.front()[1];
+    // 미리보기 재생과 타임라인 자르기가 호출한다. 키가 없으면 음수 경과 시간을 0으로 제한하고
+    // 원본 시작을 더한다. 키가 있으면 검증된 정렬·증가를 전제로 양끝 밖 값을 고정한다.
+    if (EffectSourceTimeKeys.empty())
+        return iEffectSourceStartMs + (std::max)(0., elapsedMs);
+    if (elapsedMs <= EffectSourceTimeKeys.front()[0])
+        return EffectSourceTimeKeys.front()[1];
     const auto right = std::upper_bound(EffectSourceTimeKeys.begin(), EffectSourceTimeKeys.end(), elapsedMs,
         [](const double time, const auto& key) { return time < key[0]; });
-    if (right == EffectSourceTimeKeys.end()) return EffectSourceTimeKeys.back()[1];
+    if (right == EffectSourceTimeKeys.end())
+        return EffectSourceTimeKeys.back()[1];
     const auto& left = *(right - 1);
     return left[1] + (right->at(1) - left[1]) * (elapsedMs - left[0]) / (right->at(0) - left[0]);
 }
 
+// 검증된 시간 키의 두 축을 바꾸어 원본 ms를 배치 경과 ms로 환산한다. capture 구간 보존을 위해 끝 구간 밖도 외삽한다.
 double Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Effect_ElapsedTimeMs(
     const double sourceMs) const noexcept
 {
-    if (EffectSourceTimeKeys.empty()) return sourceMs - iEffectSourceStartMs;
+    if (EffectSourceTimeKeys.empty())
+        return sourceMs - iEffectSourceStartMs;
+
+    // capture가 원본 Effect 구간을 배치 시각으로 역변환한다. 키가 있으면 최소 두 개와
+    // 두 축의 엄격한 증가가 전제이며 이 함수는 입력 finite나 키 유효성을 다시 검사하지 않는다.
     auto right = std::upper_bound(EffectSourceTimeKeys.begin(), EffectSourceTimeKeys.end(), sourceMs,
         [](const double time, const auto& key) { return time < key[1]; });
-    // Preserve out-of-window capture boundaries instead of clamping them into a visible frame.
-    if (right == EffectSourceTimeKeys.begin()) ++right;
-    if (right == EffectSourceTimeKeys.end()) --right;
+    // 구간 밖 capture 경계를 보존해야 하므로 보이는 프레임으로 자르지 않고 끝 구간으로 외삽한다.
+    if (right == EffectSourceTimeKeys.begin())
+        ++right;
+    if (right == EffectSourceTimeKeys.end())
+        --right;
     const auto& left = *(right - 1);
     return left[0] + (right->at(0) - left[0]) * (sourceMs - left[1]) / (right->at(1) - left[1]);
 }
 
+// 위 시간 변환 전에 필요한 전제다. 키 개수, 두 축의 엄격한 증가, 수명 경계와 MAP 전용 조건을 검사한다.
 bool Client::KOUKU_SAYDON_COMPOSITION_PRESENTATION_OCCURRENCE::Has_ValidEffectSourceTimeKeys(
     const std::uint32_t resourceDurationMs) const noexcept
 {
-    if (EffectSourceTimeKeys.empty()) return true;
+    // 키가 없으면 다른 부착/시간 옵션과 무관하게 true다. 키가 있는 경로만 MAP 고정 배치와
+    // 다른 시간 보정의 배타성, 양끝의 배치 수명 및 원본 리소스 수명을 검사한다.
+    if (EffectSourceTimeKeys.empty())
+        return true;
     if (EffectSourceTimeKeys.size() < 2u || EffectSourceTimeKeys.size() > 4096u ||
         strAnchorKind != "MAP" || bFollowBoss || !strBone.empty() || !strWorldId.empty() ||
         !strAnchorPresentationOccurrenceId.empty() || !strWorldEffectTrackId.empty() || iEffectSourceStartMs || bFitEffectToDuration ||
         bLoopEffectToDuration || iFadeInMs || iFadeOutMs ||
         EffectSourceTimeKeys.front()[0] != 0. || EffectSourceTimeKeys.back()[0] != iDurationMs ||
-        EffectSourceTimeKeys.back()[1] > resourceDurationMs) return false;
+        EffectSourceTimeKeys.back()[1] > resourceDurationMs)
+        return false;
+
+    // 두 축 모두 0..600000ms의 유한 값이며 앞 행보다 엄격히 커야 한다.
+    // 이 전제가 보간/역보간 분모 0을 막으며 기존 키를 정렬하거나 수정하지 않는다.
     for (std::size_t i = 0; i < EffectSourceTimeKeys.size(); ++i)
     {
         const auto& key = EffectSourceTimeKeys[i];
         if (!std::isfinite(key[0]) || !std::isfinite(key[1]) || key[0] < 0. || key[1] < 0. ||
             key[0] > 600000. || key[1] > 600000. ||
-            (i && (key[0] <= EffectSourceTimeKeys[i-1][0] || key[1] <= EffectSourceTimeKeys[i-1][1]))) return false;
+            (i && (key[0] <= EffectSourceTimeKeys[i-1][0] || key[1] <= EffectSourceTimeKeys[i-1][1])))
+            return false;
     }
     return true;
 }

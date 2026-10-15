@@ -1,11 +1,8 @@
-// Included by Model.cpp after Model_StaticCluster.inl and its decode cache.
-#pragma push_macro("new")
-#undef new
+﻿// Model.cpp가 Model_StaticCluster.inl과 decode cache 뒤에 포함하는 구현 조각이다.
 #include "../ThirdPartyLib/xatlas/xatlas.h"
 #include <bcrypt.h>
 #include <fstream>
 #include <numeric>
-#pragma pop_macro("new")
 #pragma comment(lib, "bcrypt.lib")
 
 namespace
@@ -57,7 +54,7 @@ namespace
 
     uint64_t ProxyGeometryBytes(size_t vertices, size_t indices, size_t sources)
     {
-        // Includes capacity for the full dynamic visible IB and source metadata.
+        // 전체 동적 visible IB와 source metadata를 담을 용량도 포함한다.
         return uint64_t(vertices) * (sizeof(VTXMESH) + sizeof(CModel::STATIC_PROXY_VERTEX)) +
             uint64_t(indices) * sizeof(uint32_t) * 2u +
             uint64_t(sources) * (sizeof(VTXMESHINSTANCE) + sizeof(CModel::STATIC_PROXY_METADATA));
@@ -219,20 +216,30 @@ HRESULT CModel::Create_StaticProxy(std::span<const STATIC_CLUSTER_SOURCE> source
             if (!std::isfinite(determinant) || std::abs(determinant) < 1.e-12f) return E_INVALIDARG;
             if (sourceIndex == 0u) mirrored = determinant < 0.f;
             else if (mirrored != (determinant < 0.f)) return S_FALSE;
+            shared_ptr<const MODEL_ASSET_DATA> decodedOwner;
             const vector<MODEL_MESH_DATA>* meshes = model.m_pOrderedStaticGeometrySource.get();
             if (!meshes)
             {
                 if (!model.m_pMaterialSource || !model.m_bHasSelfConsistentUnauthenticatedGeometryMetadata) return S_FALSE;
                 const auto& identity = model.m_pMaterialSource->identity;
                 const auto path = identity.meshPath.lexically_normal();
-                auto found = cache.assets.find(path);
-                if (found == cache.assets.end())
+                const auto found = cache.assets.find(path);
+                if (found != cache.assets.end()) decodedOwner = found->second;
+                else
                 {
                     auto decoded = make_shared<MODEL_ASSET_DATA>();
                     if (!CModelDecoderRegistry::Get().Decode(identity, *decoded)) return E_FAIL;
-                    found = cache.assets.emplace(path, std::move(decoded)).first;
+                    decodedOwner = decoded;
+                    constexpr uint64_t maximumDecodedBytes = 64ull * 1024ull * 1024ull;
+                    const uint64_t bytes = ClusterDecodedBytes(*decoded);
+                    if (bytes <= maximumDecodedBytes)
+                    {
+                        if (cache.decodedBytes + bytes > maximumDecodedBytes)
+                        { cache.assets.clear(); cache.decodedBytes = 0u; }
+                        cache.assets.emplace(path, std::move(decoded)); cache.decodedBytes += bytes;
+                    }
                 }
-                const auto& decoded = *found->second;
+                const auto& decoded = *decodedOwner;
                 if (!decoded.geometryMetadata.present || decoded.hasSkeleton ||
                     decoded.geometryMetadata.payloadSha256 != model.m_GeometryPayloadSha256 ||
                     decoded.geometryMetadata.metadataIdentitySha256 != model.m_GeometryMetadataIdentitySha256 ||
@@ -371,6 +378,178 @@ HRESULT CModel::Create_StaticProxy(std::span<const STATIC_CLUSTER_SOURCE> source
     catch (const std::filesystem::filesystem_error&) { return E_FAIL; }
 }
 
+// Client package reader가 hash/재질 호환성 검증 뒤 호출한다. 원본 CModel을 다시 decode하거나
+// source mesh별 UV 경계를 복원하면 축소된 VB/IB가 다시 늘어나므로, 완성된 low geometry만 복사한다.
+// source 범위 하나는 placement 전체이며, 원본 표시와 proxy 선택의 원자성은 Client가 소유한다.
+HRESULT CModel::Create_StaticProxy(const STATIC_PROXY_GEOMETRY& geometry,
+    std::span<const STATIC_PROXY_PLACEMENT_SOURCE> sources,
+    const STATIC_PROXY_OPTIONS& options, shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats)
+{
+    if (sources.empty() || sources.size() > options.maximumSources || options.maximumSources > 256u ||
+        !sources.front().model || geometry.vertices.empty() || geometry.indices.empty() ||
+        geometry.atlasUV.size() != geometry.vertices.size() || geometry.indices.size() % 3u ||
+        geometry.vertices.size() > UINT32_MAX || geometry.indices.size() > UINT32_MAX ||
+        options.atlasResolution < 64u || options.atlasResolution > 8192u ||
+        (options.atlasResolution & (options.atlasResolution - 1u)) ||
+        !std::isfinite(options.texelsPerUnit) || options.texelsPerUnit <= 0.f ||
+        options.maximumGeometryBytes == 0u || options.maximumGeometryBytes > 64ull * 1024ull * 1024ull)
+        return E_INVALIDARG;
+
+    // 32-bit D3D buffer와 range 오프셋으로 내리기 전에 곱셈을 64-bit로 검사한다.
+    const uint64_t vertexCount = uint64_t(geometry.vertices.size()) * sources.size();
+    const uint64_t indexCount = uint64_t(geometry.indices.size()) * sources.size();
+    if (vertexCount > UINT32_MAX / sizeof(VTXMESH) || indexCount > UINT32_MAX / sizeof(uint32_t) ||
+        ProxyGeometryBytes(vertexCount, indexCount, sources.size()) > options.maximumGeometryBytes) return S_FALSE;
+    const float localMaximum = (std::numeric_limits<float>::max)();
+    float3_t lowMinimum{localMaximum,localMaximum,localMaximum}, lowMaximum{-localMaximum,-localMaximum,-localMaximum};
+    for (size_t vertexIndex = 0u; vertexIndex < geometry.vertices.size(); ++vertexIndex)
+    {
+        const auto& vertex = geometry.vertices[vertexIndex];
+        const auto& uv = geometry.atlasUV[vertexIndex];
+        if (!ClusterFinite(&vertex.vPosition.x, 16u) || !ClusterFinite(&vertex.vTexcoord2.x, 2u) ||
+            !ClusterFinite(&uv.x, 2u) || uv.x < 0.f || uv.y < 0.f || uv.x > 1.f || uv.y > 1.f)
+            return E_INVALIDARG;
+        for (size_t axis = 0u; axis < 3u; ++axis)
+        {
+            (&lowMinimum.x)[axis] = (std::min)((&lowMinimum.x)[axis], (&vertex.vPosition.x)[axis]);
+            (&lowMaximum.x)[axis] = (std::max)((&lowMaximum.x)[axis], (&vertex.vPosition.x)[axis]);
+        }
+    }
+    for (uint32_t index : geometry.indices)
+        if (index >= geometry.vertices.size()) return E_INVALIDARG;
+
+    try
+    {
+        const auto& first = *sources.front().model;
+        if (!first.m_pDevice || !first.m_pContext) return E_INVALIDARG;
+        auto storage = make_shared<STATIC_PROXY_STORAGE>();
+        vector<VTXMESH> vertices;
+        vector<STATIC_PROXY_VERTEX> metadata;
+        vector<VTXMESHINSTANCE> records;
+        vertices.reserve(static_cast<size_t>(vertexCount)); metadata.reserve(static_cast<size_t>(vertexCount));
+        storage->indices.reserve(static_cast<size_t>(indexCount)); storage->ranges.reserve(sources.size());
+        records.reserve(sources.size());
+        const float maximum = (std::numeric_limits<float>::max)();
+        float3_t minimum{maximum,maximum,maximum}, maximumPoint{-maximum,-maximum,-maximum};
+        bool mirrored = false;
+        ProxyHash identity;
+        constexpr char version[] = "StaticProxy-supplied-whole-model-v1";
+        identity.Add(version, sizeof(version));
+        identity.Add(&options.atlasResolution, sizeof(options.atlasResolution));
+        identity.Add(geometry.vertices.data(), geometry.vertices.size_bytes());
+        identity.Add(geometry.atlasUV.data(), geometry.atlasUV.size_bytes());
+        identity.Add(geometry.indices.data(), geometry.indices.size_bytes());
+        for (size_t sourceIndex = 0u; sourceIndex < sources.size(); ++sourceIndex)
+        {
+            const auto& source = sources[sourceIndex];
+            if (!source.model || !source.sourceId) return E_INVALIDARG;
+            const auto& model = *source.model;
+            if (model.m_eType != MODEL::NONANIM || model.m_StaticCluster || model.m_StaticProxy ||
+                model.m_pDevice != first.m_pDevice || model.m_pContext != first.m_pContext) return S_FALSE;
+            // 상위 Layer BVH는 원본 placement bounds를 유지한다. 원본과 같은 pretransform m
+            // 공간에서 low가 그 경계를 벗어나면 미리 가려질 수 있으므로 이 경로는 받지 않는다.
+            // 0.1 mm 허용은 오프라인 double -> GPU float 반올림만 수용하며 모델을 늘리지 않는다.
+            constexpr float boundsTolerance = 1.e-4f;
+            if (!model.m_bHasLocalBounds || !ClusterFinite(&model.m_vLocalBoundsMin.x, 3u) ||
+                !ClusterFinite(&model.m_vLocalBoundsMax.x, 3u)) return S_FALSE;
+            for (size_t axis = 0u; axis < 3u; ++axis)
+                if ((&model.m_vLocalBoundsMin.x)[axis] > (&model.m_vLocalBoundsMax.x)[axis] ||
+                    (&lowMinimum.x)[axis] < (&model.m_vLocalBoundsMin.x)[axis] - boundsTolerance ||
+                    (&lowMaximum.x)[axis] > (&model.m_vLocalBoundsMax.x)[axis] + boundsTolerance) return S_FALSE;
+            if (source.sourceMeshIndices.empty() || source.sourceMeshIndices.size() != model.m_Meshes.size())
+                return E_INVALIDARG;
+            for (size_t previous = 0u; previous < sourceIndex; ++previous)
+                if (sources[previous].sourceId == source.sourceId) return E_INVALIDARG;
+            // range가 whole-model을 뜻하므로 누락/중복 mesh를 받으면 원본의 일부를 숨길 위험이 있다.
+            // 재질 shader/texture의 적격 여부는 scene package 계약을 아는 Client에서 판정한다.
+            vector<bool> seen(model.m_Meshes.size(), false);
+            for (uint32_t meshIndex : source.sourceMeshIndices)
+            {
+                if (meshIndex >= model.m_Meshes.size() || seen[meshIndex]) return E_INVALIDARG;
+                seen[meshIndex] = true;
+                if (!model.m_Meshes[meshIndex] || model.m_Meshes[meshIndex]->Has_MorphBaseVertices()) return S_FALSE;
+            }
+            if (!ClusterAffine(model.m_PreTransformMatrix) || !ClusterAffine(source.instance.World) ||
+                !ClusterFinite(reinterpret_cast<const float*>(&source.instance), sizeof(VTXMESHINSTANCE) / sizeof(float)))
+                return E_INVALIDARG;
+            const matrix_t world = XMLoadFloat4x4(&source.instance.World);
+            const float determinant = XMVectorGetX(XMMatrixDeterminant(world));
+            if (!std::isfinite(determinant) || std::abs(determinant) < 1.e-12f) return E_INVALIDARG;
+            if (sourceIndex == 0u) mirrored = determinant < 0.f;
+            else if (mirrored != (determinant < 0.f)) return S_FALSE;
+
+            const uint32_t base = static_cast<uint32_t>(vertices.size());
+            STATIC_PROXY_SOURCE_RANGE range{};
+            range.sourceId = source.sourceId; range.sourceMeshIndex = STATIC_PROXY_WHOLE_MODEL_MESH_INDEX;
+            range.firstIndex = static_cast<uint32_t>(storage->indices.size());
+            range.indexCount = static_cast<uint32_t>(geometry.indices.size());
+            range.boundsMin = {maximum,maximum,maximum}; range.boundsMax = {-maximum,-maximum,-maximum};
+            for (size_t vertexIndex = 0u; vertexIndex < geometry.vertices.size(); ++vertexIndex)
+            {
+                const auto& vertex = geometry.vertices[vertexIndex];
+                float3_t position;
+                // low VB는 이미 pretransform된 m 단위다. World만 한 번 적용해 기존 range 가림 bounds를 만든다.
+                XMStoreFloat3(&position, XMVector3TransformCoord(XMLoadFloat3(&vertex.vPosition), world));
+                if (!ClusterFinite(&position.x, 3u)) return E_INVALIDARG;
+                for (size_t axis = 0u; axis < 3u; ++axis)
+                {
+                    (&range.boundsMin.x)[axis] = (std::min)((&range.boundsMin.x)[axis], (&position.x)[axis]);
+                    (&range.boundsMax.x)[axis] = (std::max)((&range.boundsMax.x)[axis], (&position.x)[axis]);
+                }
+                vertices.push_back(vertex);
+                metadata.push_back({geometry.atlasUV[vertexIndex], static_cast<uint32_t>(sourceIndex)});
+            }
+            // cache로 정렬한 삼각형과 winding을 보존한다. source별 base만 더해 연속 range로 만든다.
+            for (uint32_t index : geometry.indices) storage->indices.push_back(base + index);
+            for (size_t axis = 0u; axis < 3u; ++axis)
+            {
+                (&minimum.x)[axis] = (std::min)((&minimum.x)[axis], (&range.boundsMin.x)[axis]);
+                (&maximumPoint.x)[axis] = (std::max)((&maximumPoint.x)[axis], (&range.boundsMax.x)[axis]);
+            }
+            storage->ranges.push_back(range); records.push_back(source.instance);
+            identity.Add(&source.sourceId, sizeof(source.sourceId));
+            identity.Add(source.sourceMeshIndices.data(), source.sourceMeshIndices.size_bytes());
+            identity.Add(&model.m_PreTransformMatrix, sizeof(model.m_PreTransformMatrix));
+            identity.Add(model.m_GeometryPayloadSha256.data(), model.m_GeometryPayloadSha256.size());
+            identity.Add(model.m_GeometryMetadataIdentitySha256.data(), model.m_GeometryMetadataIdentitySha256.size());
+        }
+        identity.Add(records);
+        if (!identity.Finish(storage->identity)) return E_FAIL;
+
+        // 기존 CMesh와 STATIC_PROXY_STORAGE가 자원을 소유한다. 중간 실패는 지역 shared_ptr/ComPtr가
+        // 정리하고, 호출자가 보유하던 output과 stats는 마지막 commit 전까지 바꾸지 않는다.
+        auto staged = shared_ptr<CModel>(new CModel(first.m_pDevice, first.m_pContext));
+        staged->m_eType = MODEL::NONANIM; staged->m_fGeometryPreScale = 1.f;
+        XMStoreFloat4x4(&staged->m_PreTransformMatrix, XMMatrixIdentity());
+        MODEL_MESH_DATA data;
+        data.name = "static-supplied-proxy"; data.materialIndex = 0u; data.vertexKind = MODEL_VERTEX_KIND::STATIC;
+        data.hasColor0 = data.hasTexcoord1 = data.hasTexcoord2 = true;
+        data.vertices = std::move(vertices); data.indices = storage->indices;
+        data.color0Rgba8.reserve(data.vertices.size());
+        for (const auto& vertex : data.vertices) data.color0Rgba8.push_back(vertex.color0Rgba8);
+        auto mesh = shared_ptr<CMesh>(new CMesh(first.m_pDevice, first.m_pContext));
+        HRESULT result = mesh->Initialize_Prototype(MODEL::NONANIM, data, MODEL_SKELETON_DATA{}, XMMatrixIdentity(), true, false);
+        if (FAILED(result)) return result;
+        D3D11_BUFFER_DESC desc{};
+        desc.ByteWidth = static_cast<UINT>(metadata.size() * sizeof(STATIC_PROXY_VERTEX));
+        desc.Usage = D3D11_USAGE_IMMUTABLE; desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA initial{}; initial.pSysMem = metadata.data();
+        if (FAILED(result = first.m_pDevice->CreateBuffer(&desc, &initial, &storage->vertexMetadata))) return result;
+        if (FAILED(result = ProxyStructuredBuffer(first.m_pDevice.Get(), records.data(), static_cast<uint32_t>(records.size()),
+            sizeof(VTXMESHINSTANCE), storage->sourceRecords))) return result;
+        storage->stats = {static_cast<uint32_t>(sources.size()), static_cast<uint32_t>(vertexCount),
+            static_cast<uint32_t>(indexCount), options.atlasResolution, options.atlasResolution, 0u,
+            options.texelsPerUnit, ProxyGeometryBytes(vertexCount, indexCount, sources.size()), false};
+        staged->m_Meshes.push_back(std::move(mesh)); staged->m_iNumMeshes = 1u;
+        staged->m_vLocalBoundsMin = minimum; staged->m_vLocalBoundsMax = maximumPoint; staged->m_bHasLocalBounds = true;
+        staged->m_StaticProxy = storage;
+        stats = storage->stats; output = std::move(staged);
+        return S_OK;
+    }
+    catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
+    catch (const std::length_error&) { return E_OUTOFMEMORY; }
+}
+
 const CModel::STATIC_PROXY_STATS* CModel::Get_StaticProxyStats() const
 { return m_StaticProxy ? &m_StaticProxy->stats : nullptr; }
 
@@ -414,7 +593,9 @@ HRESULT CModel::Set_StaticProxyMetadata(std::span<const STATIC_PROXY_METADATA> m
 
 HRESULT CModel::Set_StaticProxyAtlases(std::span<const ComPtr<ID3D11ShaderResourceView>> atlases)
 {
-    if (!m_StaticProxy || atlases.empty() || atlases.size() > 8u) return E_INVALIDARG;
+    // Client가 기존 atlas 집합에 원본 UV 변화율을 보존하는 Jacobian SRV를 더할 수 있다.
+    // Engine은 최대 9개 자원의 수명만 소유하며 배치와 재질별 채널 의미는 Client가 정한다.
+    if (!m_StaticProxy || atlases.empty() || atlases.size() > 9u) return E_INVALIDARG;
     for (const auto& atlas : atlases) if (!atlas) return E_INVALIDARG;
     try { vector<ComPtr<ID3D11ShaderResourceView>> staged(atlases.begin(), atlases.end()); m_StaticProxyAtlases.swap(staged); return S_OK; }
     catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
@@ -424,7 +605,7 @@ HRESULT CModel::Bind_StaticProxySources(const shared_ptr<CShader>& shader) const
 {
     if (!shader || !m_StaticProxy) return E_INVALIDARG;
     if (FAILED(shader->Bind_Texture("g_MapProxySources", m_StaticProxy->sourceRecords))) return E_FAIL;
-    // Bake VS uses source records alone. Runtime additionally requires metadata.
+    // bake VS는 source record만 쓰지만 runtime에는 metadata도 필요하다.
     if (m_StaticProxyMetadata && FAILED(shader->Bind_Texture("g_MapProxyMetadata", m_StaticProxyMetadata))) return E_FAIL;
     return S_OK;
 }

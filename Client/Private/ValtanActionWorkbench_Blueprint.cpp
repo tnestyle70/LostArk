@@ -1,3 +1,5 @@
+﻿// Boss Pattern graph의 표시와 선택·분기·Stage topology 입력을 담당한다.
+// 실행 분기 정의는 BalanceTool에 요청하고 graph의 pan·zoom·preview 경로 선택은 Workbench 세션에 남긴다.
 #include "imgui.h"
 
 #include "ValtanActionWorkbench.h"
@@ -13,12 +15,17 @@
 #include <string_view>
 #include <utility>
 
+// 이 CPP의 graph 좌표 변환·경로 조회·Stage ID 생성 보조는 익명 이름 공간으로 제한한다.
+// 다른 Workbench CPP의 공통 저작 helper와 연결할 필요가 없어 별도 공개 선언을 만들지 않는다.
 namespace
 {
 	constexpr float BOSS_PATTERN_MIN_ZOOM = 0.35f;
 	constexpr float BOSS_PATTERN_MAX_ZOOM = 2.50f;
 	constexpr float BOSS_PATTERN_CANVAS_MIN_HEIGHT = 220.f;
 
+	// 새 Stage ID와 action ID는 현재 Pattern에서 모두 비어 있는 후보를 찾아 함께 반환한다.
+	// 긴 action ID는 Pattern ID의 고정 hash를 사용해 줄이지만 hash가 무조건 유일하다고 가정하지 않고 기존 action과 다시 비교한다.
+	// 후보가 소진되면 출력 둘을 비우고 false로 끝내므로 호출자는 불완전한 한쪽 ID만 쓰지 않는다.
 	bool_t BuildNextBossPatternStageIdentity(
 		const Client::VALTAN_PATTERN_VIEW& Pattern,
 		std::string& strOutStageId,
@@ -81,6 +88,8 @@ namespace
 			Path.EdgeIndices.begin(), Path.EdgeIndices.end(), iEdge);
 	}
 
+	// graph 좌표에 zoom을 곱한 뒤 canvas 원점과 pan을 더해 ImGui 화면 좌표를 만든다.
+	// 아래 역변환은 같은 값을 빼고 zoom으로 나눠 picking과 표시가 같은 좌표계를 사용하게 한다.
 	ImVec2 GraphToScreen(
 		const Client::ACTION_COMPOSITION_GRAPH_POINT& Point,
 		const ImVec2& Origin,
@@ -307,10 +316,8 @@ Render_BossPatternStageTopologyControls(
 		"WAIT/GAP is a real Server Stage clock with animation NONE. Dragging graph wires is read-only until that branch type has a typed writer.");
 	if (bChanged)
 	{
-		/* Stage insertion/removal/reorder can invalidate either the source action
-		   or the outcome selected by a preview-only route.  Reset the whole route
-		   transactionally after the typed topology writer succeeds; the next
-		   immutable Pattern view will rebuild its default path. */
+		/* Stage 삽입·삭제·재정렬은 preview 전용 경로의 원본 action이나 선택 outcome을 무효화할 수 있다.
+		   타입별 topology writer가 성공한 뒤 경로 전체를 한 번에 초기화하며, 다음 불변 Pattern view에서 기본 경로를 재구성한다. */
 		m_BossPatternOutcomeOverrides.clear();
 		++m_iBossPatternRouteGeneration;
 		Invalidate_TimelineCache();
@@ -410,8 +417,8 @@ void Client::CValtanActionWorkbench::Render_BossPatternPane(
 			m_iBossPatternRouteGeneration;
 	if (!bAttemptKeyMatches)
 	{
-		/* Commit the attempted key before projection. A malformed graph is one
-		   diagnostic event, not a per-frame projection loop. */
+		/* 투영을 시도하기 전에 시도한 key부터 기록한다.
+		   잘못된 graph는 같은 key에 대해 진단 한 번으로 남기고 매 프레임 다시 투영하지 않는다. */
 		m_bBossPatternGraphAttempted = true;
 		m_strBossPatternGraphAttemptPatternId = pPattern->strPatternId;
 		m_strBossPatternGraphAttemptCanonicalRevision =
@@ -511,9 +518,8 @@ void Client::CValtanActionWorkbench::Render_BossPatternPane(
 		if (Render_BossPatternStageTopologyControls(
 				*pPattern, *SelectedStage, bPatternMutationAdmitted))
 		{
-			/* The writer advanced the live draft after this frame's immutable
-			   Pattern view was chosen.  Do not hit-test the old projection again
-			   before next-frame rematerialization. */
+			/* 현재 프레임의 불변 Pattern view를 고른 뒤 writer가 live draft를 갱신했다.
+			   다음 프레임에 다시 구성하기 전까지 이전 투영으로 hit-test를 반복하지 않는다. */
 			bCanInteractSnapshot = false;
 		}
 	}

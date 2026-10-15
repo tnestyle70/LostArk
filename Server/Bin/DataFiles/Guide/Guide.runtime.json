@@ -1,7 +1,7 @@
 {
     "schema":  "lostark.guide-runtime",
     "formatVersion":  1,
-    "revision":  54095755338659,
+    "revision":  100127177253230,
     "guideId":  "guide.dimensionmaster",
     "characterClass":  "DIMENSIONMASTER",
     "displayName":  "가이드 차원술사",
@@ -21,7 +21,7 @@
                        {
                            "categoryId":  "koukusaydon",
                            "displayName":  "쿠크세이튼",
-                           "worldId":  "KAKULSAYDON_ARENA",
+                           "worldId":  "KOUKUSAYDON_ARENA",
                            "areaId":  "LV_LUT_MIDNIGHTC_ED"
                        }
                    ],
@@ -283,7 +283,7 @@
                          "enabled":  true,
                          "event":  {
                                        "type":  "BOSS_PATTERN_STARTED",
-                                       "patternId":  "KAKULSAYDON_G1_PATTERN_2"
+                                       "patternId":  "KOUKUSAYDON_G1_PATTERN_2"
                                    },
                          "promptId":  "guide.koukusaydon.boss.find_real_saydon",
                          "comboId":  "",
@@ -309,7 +309,7 @@
                          "enabled":  true,
                          "event":  {
                                        "type":  "RAID_RETURNED",
-                                       "raidWorldId":  "KAKULSAYDON_ARENA"
+                                       "raidWorldId":  "KOUKUSAYDON_ARENA"
                                    },
                          "promptId":  "guide.bern.return.kouku",
                          "comboId":  "",

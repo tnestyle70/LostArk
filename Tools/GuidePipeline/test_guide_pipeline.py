@@ -132,7 +132,7 @@ class GuidePipelineTests(unittest.TestCase):
         runtime = read(self.root / RUNTIMES[0])
         events = [t["event"] for t in runtime["triggers"]]
         self.assertIn({"type": "GUIDE_STARTED"}, events)
-        for world in ("VALTAN_ARENA", "KAKULSAYDON_ARENA"):
+        for world in ("VALTAN_ARENA", "KOUKUSAYDON_ARENA"):
             self.assertIn({"type": "RAID_RETURNED", "raidWorldId": world}, events)
         for world in ("MAHARAKA", "COLOSSEUM"):
             self.assertIn({"type": "WORLD_RETURNED", "sourceWorldId": world}, events)

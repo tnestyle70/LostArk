@@ -1,50 +1,22 @@
 #!/usr/bin/env python3
-"""Build the 환경설정 window's row document from the retail option table.
-
-The whole retail window is data driven: `EFTable_SystemOption` (787 rows) owns every tab,
-group, row order, control type, default, range and combo choice, and `EFTable_GameMsg` owns
-the text. Nothing here is read off a screenshot.
-
-Output
-------
-  Data/UI/SystemOption/SystemOptionRows.json
-      schema `lostark.system-option-rows`. One entry per retail tab in the retail tab-column
-      order, each with its rows in `DisplayOrder`. Tabs this project does not implement stay
-      in the document with `"included": false` so the excluded set is visible rather than
-      silently dropped.
-
-How the retail table lays a screen out
---------------------------------------
-  Tab / Category   which screen, and which tab-column parent it hangs under
-  DisplayOrder     order inside the screen -- and, on the `TAB_TITLE` row, the order of the
-                   tab column itself (0 video, 100 audio, 200 accessibility, 300..600 the
-                   four game-play children, 700.. community, 1000.. hotkeys, 1700.. gamepad)
-  ComponentType    the control (see COMPONENT_TYPES)
-  AttachTargetIndex + Direction + MarginX/Y
-                   relative layout: a row attaches to another row's PrimaryKey (or to a
-                   container anchor >= 20000) and sits either below it (Direction 3) or to
-                   its right (Direction 2), offset by the margins
-  Enabled          0 = retail does not show the row at all (e.g. the DirectX setting rows)
-  WidgetEnabled    1 on a GROUP_TITLE = it carries the favourite star
-  ExportName       the save tag, identical to UserOption.xml's `Tag="..."`
-  ChildComp01..11  combo box / radio choices, as GameMsg keys
-
-Inputs (extract first if missing)
-  python unpack_lpk.py <EFGame>/data2.lpk --region KR --filter EFTable_SystemOption --out <dir>
-  D:/ClaudeWork/Extracted/LpkTables/EFGame_Extra/ClientData/TableData/EFTable_SystemOption.db
-  D:/ClaudeWork/Extracted/LpkTables/EFGame_Extra/ClientData/TableData/EFTable_GameMsg.db
-
-Usage:
-  python build_system_option_rows.py [--repo <LostArk root>]
+"""환경설정 DB의 탭·행·기본값과 GameMsg 문구를 SystemOptionRows.json으로 옮긴다.
+원본 DisplayOrder·배치 연결을 유지하고 미지원 탭은 included=false로 남긴다.
+입력은 EFTable_SystemOption.db/EFTable_GameMsg.db, 출력은 Data/UI/SystemOption이다.
 """
 
 from __future__ import annotations
 
+# 출력할 저장소 경로 --repo를 받는다.
 import argparse
+# 옵션 행과 원본 출처를 JSON으로 저장한다.
 import json
+# GameMsg의 표시 마크업을 제거한다.
 import re
+# 추출한 SystemOption·GameMsg DB를 조회한다.
 import sqlite3
+# 현재 본문에서는 사용하지 않는 기존 import다.
 import sys
+# 추출 DB와 저작 JSON 경로를 결합한다.
 from pathlib import Path
 
 EXTRACTED = Path(r"D:/ClaudeWork/Extracted")
@@ -52,31 +24,28 @@ TABLES = EXTRACTED / "LpkTables/EFGame_Extra/ClientData/TableData"
 SYSTEM_OPTION_DB = TABLES / "EFTable_SystemOption.db"
 GAMEMSG_DB = TABLES / "EFTable_GameMsg.db"
 
-# ComponentType -> what the retail window instantiates. Derived from the ExportName /
-# CompName of every row of each type (combobox_*, slider_*, checkbox_*, color_*, ...) plus
-# the decoration types, which carry no CompName at all.
+# 원본 ComponentType을 JSON의 컨트롤 이름으로 연결한다. 장식 행도 별도 종류로 남긴다.
 COMPONENT_TYPES = {
     0: "COMBOBOX",
     1: "SLIDER",
     2: "CHECKBOX",
     3: "HOTKEY",
     4: "COLOR",
-    5: "SCALE_LIST",      # HUD / buff size radio row
+    5: "SCALE_LIST",      # HUD·버프 크기 선택
     6: "BUTTON",          # 초기화, 자동 설정
-    7: "GROUP_TITLE",     # "| <name>" heading, optional favourite star
-    8: "SUBTITLE",        # small caption under a slider (느리게 / 빠르게)
-    9: "SEPARATOR",       # horizontal rule, no text
+    7: "GROUP_TITLE",     # 그룹 제목과 즐겨찾기 표시
+    8: "SUBTITLE",        # 슬라이더 설명(느리게 / 빠르게)
+    9: "SEPARATOR",       # 글자 없는 구분선
     10: "TEXT_INPUT",
     11: "UNKNOWN_11",
     12: "UNKNOWN_12",
-    13: "TAB_TITLE",      # the screen's own heading, and the tab column's order
-    14: "COUNT_LIST",     # buff count radio row
+    13: "TAB_TITLE",      # 화면 제목과 탭 순서
+    14: "COUNT_LIST",     # 버프 개수 선택
     15: "RADIO_PAIR",     # 기본 연출 / 부드러운 연출
-    16: "SPINNER",        # -/+ numeric with a slider (FPS limit)
+    16: "SPINNER",        # 숫자 증감과 슬라이더(FPS 제한)
 }
 
-# Category -> the tab-column parent. A category with a single tab has no parent row in the
-# column; the four game-play screens and the hotkey / gamepad / community sets do.
+# 여러 탭을 묶는 category는 부모 행 ID와 문구 키를 가진다. 단독 탭은 부모를 두지 않는다.
 CATEGORY_PARENTS = {
     0: (None, None),
     1: (None, None),
@@ -87,7 +56,7 @@ CATEGORY_PARENTS = {
     4: ("controller", "sys.preferences.window_tap_controller"),
 }
 
-# What this project implements. The rest stays in the document, flagged out.
+# 지원 탭만 included=true로 표시하며 나머지 원본 행도 문서에 보존한다.
 INCLUDED_TABS = {0, 1, 2, 21, 22, 8, 9}
 
 CHILD_COMP_KEYS = ["ChildComp%02d" % i for i in range(1, 12)]
@@ -125,14 +94,13 @@ def read_strings() -> dict[str, str]:
         name = key.decode("ascii", "replace")
         text = MARKUP.sub("", msg.decode("utf-8", "replace")).strip()
         out[name] = text
-        # EFTable_SystemOption spells a handful of keys in mixed case
-        # (`combobox_NarrationAssistant`, `keyboard_language_Korean`) while GameMsg stores
-        # them lowercase. Keep a folded alias so those rows resolve instead of going blank.
+        # 두 원본 테이블의 대소문자 차이로 문구가 비지 않도록 소문자 조회 키도 보관한다.
         out.setdefault(name.lower(), text)
     conn.close()
     return out
 
 
+# 탭/행은 DisplayOrder로 정렬하고 텍스트 키·기본값·범위·상대 배치를 한 문서로 묶는다.
 def build(rows: list[dict], strings: dict[str, str]) -> dict:
     missing_strings: set[str] = set()
 
@@ -261,10 +229,12 @@ def main() -> int:
             print("missing input:", path)
             return 1
 
+    # 두 DB의 문자 인코딩을 각각 해석한 뒤 ID로 문구를 연결한다.
     rows = read_table(SYSTEM_OPTION_DB, "SystemOption")
     strings = read_strings()
     document, missing_strings = build(rows, strings)
 
+    # JSON 저장 후 누락 문구를 보고한다. 문구 누락 자체가 저장을 취소하지는 않는다.
     out_dir = args.repo / "Data/UI/SystemOption"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "SystemOptionRows.json"

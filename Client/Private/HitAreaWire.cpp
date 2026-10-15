@@ -1,13 +1,18 @@
+﻿// 투영한 화면 좌표의 선을 현재 viewport의 배경 draw list에 제출한다.
 #include "imgui.h"
 
+// 전투·저작 도형 값을 선분으로 해석하는 정적 그리기 함수다.
 #include "HitAreaWire.h"
 
+// 현재 카메라의 view/projection 행렬을 조회한다.
 #include "GameInstance.h"
 
+// 원호의 sin/cos와 축 길이의 유한값 검사를 사용한다.
 #include <cmath>
 
 namespace
 {
+	// 정수 cm 거리를 월드 m로 바꾸고 원호 하나를 48개 선분으로 나눈다.
 	constexpr f32_t UNITS_TO_METERS = 0.01f;
 	constexpr int32_t ARC_SEGMENTS = 48;
 }
@@ -26,11 +31,13 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 
 	const matrix_t WorldRoot = XMLoadFloat4x4(&Root);
 	const vector_t vPosition = WorldRoot.r[3];
+	// 평면 도형은 루트의 수평 전방·우측을 사용하고 지면 위 Y 0.03에 그린다.
 	const vector_t vLook = XMVector3Normalize(XMVectorSetY(WorldRoot.r[2], 0.f));
 	const vector_t vRight = XMVector3Normalize(XMVector3Cross(
 		XMVectorSet(0.f, 1.f, 0.f, 0.f), vLook));
 	const f32_t fGroundY = XMVectorGetY(vPosition) + 0.03f;
 
+	// view Z가 0.1보다 가까운 점은 거부하고 NDC를 ImGui viewport 픽셀로 바꾼다.
 	auto Project = [&](fvector_t vWorld, ImVec2& vOut) -> bool_t
 	{
 		const vector_t vView = XMVector3TransformCoord(vWorld, View);
@@ -41,6 +48,7 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		vOut.y = pViewport->Pos.y + (0.5f - XMVectorGetY(vClip) * 0.5f) * pViewport->Size.y;
 		return true;
 	};
+	// 양 끝점이 모두 투영되는 선분만 그린다. 카메라 앞 경계에서 선을 자르지는 않는다.
 	auto Draw_Segment = [&](fvector_t vFrom, fvector_t vTo)
 	{
 		ImVec2 vA{}, vB{};
@@ -65,6 +73,7 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		}
 	};
 
+	// 타원 부채꼴은 명시 X/Z 반지름과 sweep을 사용한다. 반전은 반대쪽 360-sweep 영역이다.
 	if (Shape.iAreaType == 3 && Shape.fSectorRadiusXM > 0.f && Shape.fSectorRadiusZM > 0.f)
 	{
 		const f32_t safeSweep = Shape.fSectorAngleDegrees;
@@ -88,14 +97,13 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 	}
 	const f32_t fOffset = Shape.iAreaOffsetX * UNITS_TO_METERS;
 	const f32_t fRange = Shape.iAreaRange * UNITS_TO_METERS;
-	/* Official AreaType: 1 circle/ring, 2 forward box whose AreaAngle is the
-	width in cm, 3 fan whose AreaAngle is the sweep in degrees. */
+	// 종류 1은 원/고리, 2는 전방 BOX, 3은 부채꼴이다. BOX의 AreaAngle은 cm 폭이다.
 	switch (Shape.iAreaType)
 	{
 	case 4:
 	{
 		if (!(Shape.fCylinderHalfHeightM > 0.f) || !(fRange > 0.f)) break;
-		// Cylinder is upright in gameplay; both discs and vertical rails expose its finite Y extent.
+		// 원기둥은 월드 Y축을 따라 위·아래 원과 세로선을 그려 유한 높이를 표시한다.
 		const auto point = [&](float degrees, float height) {
 			return XMVectorSetY(At(fOffset, fRange, degrees), XMVectorGetY(vPosition) + height);
 		};
@@ -113,7 +121,7 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		const f32_t fHalfWidth = Shape.iAreaAngle * UNITS_TO_METERS * 0.5f;
 		if (std::isfinite(Shape.fBoxHalfHeightM) && Shape.fBoxHalfHeightM > 0.f)
 		{
-			// Size is already baked into Shape; retain only the authored pivot orientation.
+			// 크기는 Shape에 있으므로 루트 축을 정규화해 회전만 사용한다.
 			vector_t axes[3];
 			for (int32_t axis = 0; axis < 3; ++axis)
 			{
@@ -147,6 +155,7 @@ void Client::CHitAreaWire::Draw(const float4x4_t& Root, const HIT_AREA_SHAPE& Sh
 		Draw_Segment(vFarL, vNearL);
 		break;
 	}
+	// 원·고리·부채꼴은 바깥 원호와 선택적 안쪽 원호를 그리고 필요한 경우 양 끝을 연결한다.
 	case 1:
 	case 3:
 	{

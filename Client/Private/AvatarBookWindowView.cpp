@@ -1,8 +1,5 @@
 #include "AvatarBookWindowView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "Character.h"
 #include "CharacterInfoWindowView.h"
@@ -11,7 +8,7 @@
 #include "DataJson.h"
 #include "GameInstance.h"
 #include "ItemCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -479,7 +476,7 @@ void Client::CAvatarBookWindowView::Update_Chrome()
 		"UI/CharacterInfo/win_close_over.png" : "UI/CharacterInfo/win_close_normal.png");
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -499,7 +496,7 @@ void Client::CAvatarBookWindowView::Update_Tabs()
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			k != m_iSelectedTab)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedTab = k;
 			m_iSelectedCell = -1;
 		}
@@ -545,7 +542,7 @@ void Client::CAvatarBookWindowView::Update_Grid()
 		if (pEntry->bServerAvatar && Router.Is_RightClickEdge() &&
 			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedCell = k;
 			if (bWorn)
 				m_ePendingUnequipSlot = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == pEntry->eKind ?
@@ -559,7 +556,7 @@ void Client::CAvatarBookWindowView::Update_Grid()
 		{
 			/* Click: try-on, the avatar goes onto the mannequin (preview only). Double click: the
 			real equip on the world character (retail). */
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedCell = k;
 			if (pEntry->bServerAvatar)
 				continue;
@@ -616,7 +613,7 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 			if (Router.Is_RightClickEdge() && m_pView->Get_SlotRect(strBgId, fX, fY, fWidth, fHeight) &&
 				Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_ePendingUnequipSlot = EQUIPMENT_SLOT_KIND::AVATAR_HEAD == pEntry->eKind ?
 					LostArk::Shared::EQUIPMENT_SLOT::AVATAR_HEAD : LostArk::Shared::EQUIPMENT_SLOT::AVATAR_OUTFIT;
 			}
@@ -626,7 +623,7 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 			Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (Register_Click(strBgId) && nullptr != pLocalCharacter)
 			{
 				pLocalCharacter->Set_AvatarPartVisible(pEntry->eKind, false);
@@ -655,7 +652,7 @@ void Client::CAvatarBookWindowView::Update_PreviewSlots(const std::shared_ptr<CC
 		const bool_t bHovered = Router.Is_Hovered(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight);
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iPreviewHiddenAvatarKinds ^= iBit;
 		}
 		const bool_t bWorn = 0u == (m_iPreviewHiddenAvatarKinds & iBit);
@@ -690,7 +687,7 @@ void Client::CAvatarBookWindowView::Update_Buttons(const std::shared_ptr<CCharac
 		m_pView->Set_SlotTexture(Button.pSlotId, bHovered ? Button.pOver : Button.pNormal);
 		if (!bHovered || !Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 			continue;
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		if (0 == strcmp(Button.pSlotId, "AB_AutoEquipBtn"))
 		{
 			m_iPreviewHiddenAvatarKinds = 0u;
@@ -721,7 +718,7 @@ void Client::CAvatarBookWindowView::Update_Buttons(const std::shared_ptr<CCharac
 		if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight) &&
 			k != m_iSelectedCamera)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iSelectedCamera = k;
 		}
 		m_pView->Set_SlotTexture(strTabId, (k == m_iSelectedCamera) ? "UI/AvatarBook/camera_tab_selected.png" :

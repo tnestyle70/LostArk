@@ -13,7 +13,11 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Engine { struct MODEL_MATERIAL_OVERRIDE; struct MODEL_SOURCE_CHARACTER_PARAMETERS; }
+namespace Engine 
+{ 
+	struct MODEL_MATERIAL_OVERRIDE; 
+	struct MODEL_SOURCE_CHARACTER_PARAMETERS; 
+}
 
 NS_BEGIN(Client)
 

@@ -5,7 +5,7 @@
 
 #include "DataJson.h"
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "ProjectDataRoot.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
@@ -129,7 +129,7 @@ namespace
 	{
 		if ("BERN" == strName) return LEVEL::BERN;
 		if ("VALTAN_ARENA" == strName) return LEVEL::VALTAN_ARENA;
-		if ("KAKULSAYDON_ARENA" == strName) return LEVEL::KAKULSAYDON_ARENA;
+		if ("KOUKUSAYDON_ARENA" == strName) return LEVEL::KOUKUSAYDON_ARENA;
 		return LEVEL::END;
 	}
 
@@ -848,7 +848,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 			"UI/WorldMap/WorldMap_DlgIconCancel_Over.png" : "UI/WorldMap/WorldMap_DlgIconCancel_Normal.png");
 		if (bOk)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iPendingHoleId = pDialogHole->iId;
 			Close();
 			Hide();
@@ -856,7 +856,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		}
 		if (bCancel)
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iDialogHoleId = 0u;
 		}
 		else
@@ -906,26 +906,26 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 	{
 		if (Button("WM_Close", "UI/HonorTitle/HonorTitle_Close_Normal.png", "UI/HonorTitle/HonorTitle_Close_Over.png"))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			Close();
 			Hide();
 			return;
 		}
 		if (Button("WM_BtnWorld", "UI/WorldMap/WorldMap_BtnWorld_Normal.png", "UI/WorldMap/WorldMap_BtnWorld_Over.png"))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iZoomLevel = ZOOM_FIT;
 			m_fCenterU = 0.5f;
 			m_fCenterV = 0.5f;
 		}
 		if (Button("WM_BtnMyLocation", "UI/WorldMap/WorldMap_BtnMyLocation_Normal.png", "UI/WorldMap/WorldMap_BtnMyLocation_Over.png", bCurrentMap))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			Center_On(pSnapshot->fLocalX, pSnapshot->fLocalZ);
 		}
 		if (Button("WM_BtnPlayerMark", "UI/WorldMap/WorldMap_BtnPlayerMark_Normal.png", "UI/WorldMap/WorldMap_BtnPlayerMark_Over.png", bCurrentMap))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_bShowMarkers = !m_bShowMarkers;
 		}
 		/* worldMapCheckBox_squareHole / worldMapCheckBox_legend: one tree panel at a time; the
@@ -941,14 +941,14 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 				? "UI/HonorTitle/HonorTitle_Btn_Over.png" : "UI/HonorTitle/HonorTitle_Btn_Normal.png");
 			if (bHovered && (Clicked(pPlateId) || Clicked(pIconId)))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_ePanel = bSelected ? PANEL::NONE : ePanel;
 			}
 		};
 		if (Button("WM_SearchBtn", "UI/WorldMap/WorldMap_SearchBtn_Normal.png",
 			"UI/WorldMap/WorldMap_SearchBtn_Over.png"))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		}
 		PanelToggle("WM_ToggleSquareHoleBg", "WM_ToggleSquareHole", PANEL::SQUARE_HOLE, "UI/WorldMap/WorldMap_ToggleSquareHole");
 		PanelToggle("WM_ToggleLegendBg", "WM_ToggleLegend", PANEL::LEGEND, "UI/WorldMap/WorldMap_ToggleLegend");
@@ -957,14 +957,14 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 		for (const char* pSlotId : { "WM_BtnLiner", "WM_BtnMemo" })
 		{
 			if (Button(pSlotId, "UI/HonorTitle/HonorTitle_Btn_Normal.png", "UI/HonorTitle/HonorTitle_Btn_Over.png"))
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		}
 		/* This project currently authors the ship landing only in Bern. Other map-capable
 		levels retain the chrome but cannot submit a travel request that has no Server row. */
 		if (Button("WM_BtnOcean", "UI/HonorTitle/HonorTitle_Btn_Normal.png", "UI/HonorTitle/HonorTitle_Btn_Over.png",
 			ETOUI(LEVEL::BERN) == ETOUI(eLevel)))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_bPendingShipTravel = true;
 			Close();
 			Hide();
@@ -1065,7 +1065,7 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 				bOverHole = true;
 				if (Router.Is_Clicked(fSX - fW * 0.5f, fSY - fH * 0.5f, fW, fH, REF_WIDTH, REF_HEIGHT))
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					m_iDialogHoleId = pHoles->Holes[i].iId;
 				}
 			}
@@ -1288,12 +1288,12 @@ void Client::CWorldMapWindowView::Update(const f32_t fTimeDelta, const LEVEL eLe
 				fRY + fRH * 0.5f, ROW_TEXT_PX * fUiScale, Row.vColor, -1 });
 			if (bClicked && Row.iLegendIndex >= 0 && static_cast<size_t>(Row.iLegendIndex) < m_LegendRows.size())
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_LegendRows[Row.iLegendIndex].bChecked = !m_LegendRows[Row.iLegendIndex].bChecked;
 			}
 			else if (bClicked && 0u != Row.iHoleId)
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iDialogHoleId = Row.iHoleId;
 			}
 		}

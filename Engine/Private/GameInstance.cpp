@@ -1,4 +1,4 @@
-#include "Input_Device.h" // Load DirectInput before Engine::POINT enters global lookup.
+﻿#include "Input_Device.h" // Load DirectInput before Engine::POINT enters global lookup.
 #include "GameInstance.h"
 #include "Engine_InitTypes.h"
 #include "Engine_RenderTypes.h"
@@ -61,6 +61,7 @@ CGameInstance::~CGameInstance()
 {
 }
 
+// Client 초기화가 서비스 생성을 요청한다. 실패하면 부분 생성 서비스와 출력 장치 참조를 함께 정리한다.
 HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc,
 	ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext)
 {
@@ -68,6 +69,7 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc,
 	pOutDevice.Reset();
 	pOutContext.Reset();
 	Release_Engine();
+
 	const auto FailInitialization = [this, &pOutDevice, &pOutContext](
 		const HRESULT hResult) -> HRESULT
 	{
@@ -77,7 +79,7 @@ HRESULT CGameInstance::Initialize_Engine(const ENGINE_DESC& EngineDesc,
 		return FAILED(hResult) ? hResult : E_FAIL;
 	};
 
-	//viewport ������ ����
+	//viewport 
 	m_vViewportDesc = float2_t(EngineDesc.iWinSizeX, EngineDesc.iWinSizeY);
 
 	m_pGraphic_Device = CGraphic_Device::Create(EngineDesc.hWnd, EngineDesc.eWinMode,
@@ -175,7 +177,7 @@ HRESULT CGameInstance::Resize_Viewport(uint32_t width, uint32_t height)
         m_pTarget_Manager->Release_OutputReferences();
         result = m_pGraphic_Device->Resize_BackBuffer(width, height);
         if (FAILED(result)) return result;
-        // All allocations and fallible GPU work have completed. Publish one coherent size.
+        // GPU 자원 준비가 모두 성공한 뒤 새 크기를 한 번에 공개한다.
         m_pRenderer->Commit_ViewportResize(*m_pTarget_Manager, staged);
         m_vViewportDesc = float2_t(static_cast<f32_t>(width), static_cast<f32_t>(height));
         return S_OK;
@@ -193,8 +195,7 @@ HRESULT CGameInstance::Set_FullscreenMode(bool fullscreen, uint32_t width, uint3
 
 void CGameInstance::Update_Engine(f32_t fTimeDelta)
 {
-	/* The deferred fog drifts on a renderer owned clock, advanced once per
-	   frame so no screen pass has to be handed a time value. */
+	/* Renderer의 안개 시계를 프레임마다 한 번 갱신해 각 화면 pass가 같은 시간을 사용한다. */
 	m_pRenderer->Advance_PresentationClock(fTimeDelta);
 
 	CProfiler* const pProfiler = m_pProfiler.get();
@@ -231,8 +232,7 @@ void CGameInstance::Update_Engine(f32_t fTimeDelta)
 		m_pObject_Manager->Post_Physics_Update(fTimeDelta);
 	}
 
-	/* Level gameplay can commit authoritative transforms and bind the
-	follow camera. Run it before render submission and frustum culling. */
+	/* Level의 확정 Transform·추적 카메라를 먼저 갱신한 뒤 렌더 제출과 frustum 판정을 수행한다. */
 	{
 		CProfilerScope scope(pProfiler, "Engine.LevelUpdate");
 		m_pLevel_Manager->Update(fTimeDelta);
@@ -379,6 +379,18 @@ void CGameInstance::Stop_SoundCue(uint64_t handle)
 HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume)
 {
 	return m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume);
+}
+
+HRESULT CGameInstance::Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume, SOUND_CATEGORY eCategory)
+{
+    return m_pSound_Manager ? 
+		m_pSound_Manager->Play_Sound(strSoundFilePath, fVolume, eCategory) : E_FAIL;
+}
+
+HRESULT CGameInstance::Prepare_Sound(const wstring_t& strSoundFilePath, bool_t bLoop)
+{
+    return m_pSound_Manager ? 
+		m_pSound_Manager->Prepare_Sound(strSoundFilePath, bLoop) : E_FAIL;
 }
 
 HRESULT CGameInstance::Play_LoopingSound(const wstring_t& strSoundFilePath, f32_t fVolume)
@@ -543,6 +555,16 @@ bool_t CGameInstance::Is_SceneEnvironmentReplaced() const
     return m_pRenderer && m_pRenderer->Is_SceneEnvironmentReplaced();
 }
 
+void CGameInstance::Register_GpuSceneVisibility(const shared_ptr<CGpuSceneVisibility>& scene)
+{
+    if (m_pRenderer) m_pRenderer->Register_GpuSceneVisibility(scene);
+}
+
+void CGameInstance::Unregister_GpuSceneVisibility(const CGpuSceneVisibility* scene)
+{
+    if (m_pRenderer) m_pRenderer->Unregister_GpuSceneVisibility(scene);
+}
+
 MAP_VISIBILITY_SETTINGS CGameInstance::Get_MapVisibilitySettings() const
 {
     return m_pRenderer ? m_pRenderer->Get_MapVisibilitySettings() : MAP_VISIBILITY_SETTINGS{};
@@ -613,6 +635,11 @@ RENDER_ENVIRONMENT_STATE CGameInstance::Get_RenderEnvironment() const
 HRESULT CGameInstance::Bind_HeightFog(CShader* shader) const
 {
     return m_pRenderer->Bind_HeightFog(shader);
+}
+
+HRESULT CGameInstance::Bind_ActiveSceneColorTransform(CShader* shader) const
+{
+    return m_pRenderer ? m_pRenderer->Bind_ActiveSceneColorTransform(shader) : E_FAIL;
 }
 
 HRESULT CGameInstance::Apply_HeightFog(
@@ -843,11 +870,7 @@ bool_t CGameInstance::isIn_Frustum_InWorldSpace(fvector_t vWorldPoint, f32_t fRa
 
 void CGameInstance::Release_Engine()
 {
-	/* A level can restore a presentation camera from its destructor. Keep the
-	   pipeline, frustum and renderer alive until that teardown has completed;
-	   otherwise CCamera::End_PresentationOverride writes its final view/proj
-	   matrices through an already-destroyed CPipeLine. This also joins a
-	   Loading level's worker before any service it may still reference. */
+	/* Level 소멸자가 카메라를 복원하고 Loading worker를 합류시킬 때 필요한 Pipeline·Renderer를 먼저 해제하지 않는다. */
 	m_pLevel_Manager.reset();
 	m_pProfiler.reset();
 	m_pFrustum.reset();

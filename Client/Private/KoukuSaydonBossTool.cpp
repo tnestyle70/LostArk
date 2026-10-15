@@ -7,7 +7,7 @@
 #include "KoukuSaydonCompositionDocument.h"
 #include "KoukuSaydonActionWorkbench.h"
 #include "KoukuSaydonPresentationAssetService.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "NetworkManager.h"
 #include "ProjectDataRoot.h"
 
@@ -26,9 +26,9 @@ namespace
 	constexpr ImVec4 LIVE_COLOR{ 0.3f, 1.f, 0.45f, 1.f };
 	constexpr std::string_view PRODUCT_SCHEMA = "lostark.encounter-profile";
 	constexpr std::uint32_t PRODUCT_VERSION = 4u;
-	constexpr std::string_view ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1";
+	constexpr std::string_view ENCOUNTER_ID = "ENCOUNTER_KOUKUSAYDON_G1";
 	constexpr std::string_view BOSS_ARCHETYPE_ID =
-		"BOSS_KAKULSAYDON_G1_KOUKU";
+		"BOSS_KOUKUSAYDON_G1_KOUKU";
 	constexpr std::uintmax_t MAX_PRODUCT_BYTES = 64u * 1024u * 1024u;
 	constexpr std::size_t MAX_PRODUCT_VALUES = 4'000'000u;
 
@@ -466,7 +466,7 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 #endif
 	auto& service = CKoukuSaydonPatternAuditionService::Get();
 	service.Update();
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 	const auto& network = CNetworkManager::Get();
 	const auto revision = network.Get_GameplayRevisionState().ServerActiveRevision;
 	if (m_PlayPreparation || service.Get_Snapshot().Is_InFlight() || service.Get_FlowSnapshot().bActive)
@@ -476,8 +476,8 @@ bool Client::CKoukuSaydonBossTool::Prepare_ServerPlay(const std::string_view gat
 	if (arena->Is_DebugGatePending() || arena->Get_DebugPlayerController().Is_DebugPlayerPlacementPending())
 	{ status = m_strStatus = "Wait for the current Server gate or player placement before Server Play."; return false; }
 	const std::size_t gateIndex = gateId == "GATE1" ? 0u : gateId == "GATE2" ? 1u :
-		gateId == "GATE3" ? 2u : gateId == "BINGO" ? 8u : CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE;
-	if (gateIndex == CLevel_KakulSaydonArena::NO_ACTIVE_DEBUG_GATE || targets.empty() ||
+		gateId == "GATE3" ? 2u : gateId == "BINGO" ? 8u : CLevel_KoukuSaydonArena::NO_ACTIVE_DEBUG_GATE;
+	if (gateIndex == CLevel_KoukuSaydonArena::NO_ACTIVE_DEBUG_GATE || targets.empty() ||
 		std::any_of(targets.begin(), targets.end(), [gateId](const auto& target) {
 			const auto actor = CKoukuSaydonCompositionDocument::Resolve_ActorProfileForPlacement(target);
 			return actor.empty() || CKoukuSaydonCompositionDocument::Resolve_DefaultPlacementId(gateId, actor) != target;
@@ -550,7 +550,7 @@ bool Client::CKoukuSaydonBossTool::Play_Draft(KOUKU_DRAFT_PLAY_REQUEST request, 
 bool Client::CKoukuSaydonBossTool::Cancel_PlayPreparation(std::string& status)
 {
 	if (!m_PlayPreparation) return false;
-    if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
+    if (auto* arena = CLevel_KoukuSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
 	m_PlayPreparation.reset();
 	status = m_strStatus = "Pending Server Play cancelled; the submitted gate placement may still finish.";
 	return true;
@@ -560,13 +560,13 @@ void Client::CKoukuSaydonBossTool::Update()
 {
 	if (!m_PlayPreparation) return;
 	const auto fail = [&](const std::string& reason) {
-        if (auto* arena = CLevel_KakulSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
+        if (auto* arena = CLevel_KoukuSaydonArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
 		m_PlayPreparation.reset();
 		m_strStatus = "Server Play preparation stopped: " + reason;
 	};
 	auto& pending = *m_PlayPreparation;
 	const auto& network = CNetworkManager::Get();
-	auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 	const auto& service = CKoukuSaydonPatternAuditionService::Get();
 	if (!arena || !network.Is_Connected() || network.Get_WorldInboundGeneration() != pending.iWorldGeneration)
 	{ fail("the connected world changed."); return; }
@@ -705,7 +705,7 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view
 	const auto revision =
 		CNetworkManager::Get().Get_GameplayRevisionState().ServerActiveRevision;
 #ifdef _DEBUG
-	const auto* arena = CLevel_KakulSaydonArena::Get_Active();
+	const auto* arena = CLevel_KoukuSaydonArena::Get_Active();
 	const bool encoreReplay = m_bReplayGate3OnEncore && arena && arena->Get_ActiveDebugGate() == 8u &&
 		pattern->strGateId == "GATE3" && pattern->strActorProfileId == "MN_RPCT_05";
 #else
@@ -731,7 +731,7 @@ bool Client::CKoukuSaydonBossTool::Play_LoadedPatternById(const std::string_view
 		}
 	}
 	const std::string id = pattern->strPatternId;
-	const std::string target = encoreReplay ? "boss.kakulsaydon.bingo.saydon" : pattern->strTargetBossPlacementId;
+	const std::string target = encoreReplay ? "boss.koukusaydon.bingo.saydon" : pattern->strTargetBossPlacementId;
 	const auto sourceRevision = m_iSourceRevision;
 	const auto marioStage = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestStage();
 	const auto marioSeed = CKoukuSaydonPatternAuditionService::Get().Get_MarioTestSeed();
@@ -1599,7 +1599,7 @@ void Client::CKoukuSaydonBossTool::Render()
 	}
 	ImGui::SameLine();
 #ifdef _DEBUG
-	if (const auto* arena = CLevel_KakulSaydonArena::Get_Active(); arena && arena->Get_ActiveDebugGate() == 8u)
+	if (const auto* arena = CLevel_KoukuSaydonArena::Get_Active(); arena && arena->Get_ActiveDebugGate() == 8u)
 	{
 		ImGui::Checkbox("Reuse Gate 3 attacks on Encore", &m_bReplayGate3OnEncore);
 		ImGui::TextDisabled("Select a saved Gate 3 attack and Play Isolated. Layout/mechanic sequences keep their Gate.");

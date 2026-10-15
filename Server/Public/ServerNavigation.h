@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -10,9 +10,7 @@
 
 namespace LostArk::Server
 {
-	/* Height hint of a query whose caller does not know a height for the point.
-	Only detail regions that share an XZ footprint (stacked height layers) care:
-	without a hint they fall back to manifest order. */
+	/* 높이를 모르는 질의의 NaN 표식이다. 겹친 XZ region은 지면 유무를 우선하고 높이 hint가 없으면 동률을 manifest 순서로 고른다. */
 	inline constexpr float NAVIGATION_HEIGHT_UNKNOWN =
 		std::numeric_limits<float>::quiet_NaN();
 
@@ -23,7 +21,7 @@ namespace LostArk::Server
 		float z = 0.f;
 	};
 
-	// Room-owned temporary floor. It can support existing ground, never open a blocked cell.
+	// room 소유 임시 지지면이다. 기존 지면을 받치며 막힌 cell을 열지는 않는다.
 	struct SERVER_NAVIGATION_SUPPORT_SURFACE final
 	{
 		std::string strOwnerKey;
@@ -52,15 +50,12 @@ namespace LostArk::Server
 		std::uint64_t iNextRevision = 0u;
 		std::map<std::string, bool> ConditionValues;
 		std::vector<std::uint16_t> BlockCounts;
-		/* Parallel to BlockCounts and staged in the same transaction: how many
-		active regions removed the ground under this cell, as opposed to putting
-		an obstacle on it. */
+		/* 같은 준비·commit에 포함되는 cell별 지면 제거 region 수다. 장애물 개수를 담는 BlockCounts와 구분한다. */
 		std::vector<std::uint16_t> VoidCounts;
 		bool bChanged = false;
 	};
 
-	// Cumulative since Load; queried and mutated only by the owning room thread.
-	// Durations are inclusive, so SmoothPath and its LineOfSight calls overlap.
+	// Load 이후 room thread가 조회·누적하는 통계다. inclusive 시간이므로 SmoothPath와 내부 LineOfSight 시간은 겹친다.
 	struct SERVER_NAVIGATION_QUERY_METRICS final
 	{
 		std::uint64_t iCalls = 0u;
@@ -80,16 +75,15 @@ namespace LostArk::Server
 		SERVER_NAVIGATION_QUERY_METRICS LineOfSight;
 	};
 
+	// 룸이 값으로 소유하는 이동 검사기로, 게시 격자·지면 높이·동적 차단 조건을 보관한다.
+	// 같은 룸 스레드에서 경로·도달점·지지면을 질의하며 클라이언트 Transform을 직접 바꾸지 않는다.
 	class CServerNavigation final
 	{
 	public:
 		bool Load(const std::string& areaId);
-		// Includes leaf detail grids once; region dispatch itself is not timed.
+		// 각 leaf detail grid를 한 번씩 합친다. region 선택 자체의 시간은 포함하지 않는다.
 		SERVER_NAVIGATION_PERFORMANCE_METRICS Get_PerformanceMetrics() const;
-		/* Every query that takes a trailing height hint (startY, hintY, fromY) uses
-		it only to pick the detail region when several regions share the XZ of the
-		query's first point; see Select_Region. Callers that stand on a known deck
-		should pass that deck's height. */
+		/* startY·hintY·fromY는 시작 XZ가 겹친 detail region 중 layer를 고르는 값이다. 현재 deck을 아는 호출자는 그 높이를 전달한다. */
 		bool Find_Path(
 			float startX,
 			float startZ,
@@ -97,8 +91,7 @@ namespace LostArk::Server
 			float goalZ,
 			std::vector<SERVER_NAV_POINT>& outPath,
 			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Line-of-sight string pulling shared by player commands and monster AI.
-		The exact projected goal replaces the last cell centre when it is visible. */
+		/* player·monster가 공유하는 시야선 기반 경로 단순화다. 투영한 실제 목표점이 보이면 마지막 cell 중심을 그 점으로 바꾼다. */
 		void Smooth_Path(
 			float startX,
 			float startZ,
@@ -106,9 +99,7 @@ namespace LostArk::Server
 			float goalZ,
 			std::vector<SERVER_NAV_POINT>& path,
 			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Deterministic bounded BFS used by wander admission and its runtime
-		fallback. Every returned cell centre stays inside the spawn circle, so a
-		reachable destination whose only route leaves the radius is rejected. */
+		/* wander의 준비·실행이 쓰는 제한된 결정적 BFS다. 경로의 모든 cell 중심을 spawn 원 안으로 제한한다. */
 		bool Find_PathToReachablePointWithinRadius(
 			float startX,
 			float startZ,
@@ -123,10 +114,7 @@ namespace LostArk::Server
 			float z,
 			SERVER_NAV_POINT& outPoint,
 			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Projects onto ground that belongs to the same deck as the cell under
-		(x, z). Project_Point searches in XZ only, so beside a collapsed arena
-		floor it can hand back walkable ground more than ten metres lower on
-		another deck. A fall revive has to come back on the floor that fell. */
+		/* 현재 cell과 같은 deck의 지면에 투영한다. XZ만 가까운 아래층으로 낙하 부활 위치가 넘어가지 않게 한다. */
 		bool Project_PointOnSameLevel(
 			float x,
 			float z,
@@ -147,32 +135,26 @@ namespace LostArk::Server
 		const std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE>& Get_RuntimeSupportSurfaces() const noexcept { return m_RuntimeSupportSurfaces; }
 
 		bool Has_Condition(const std::string& conditionId) const;
-		// Diagnostic counter for the Debug audition panel: how many authored
-		// blocker regions are still holding cells closed right now.
+		// 현재 cell을 닫고 있는 저작 blocker region 수를 Debug 진단에 제공한다.
 		std::size_t Get_ActiveBlockerRegionCount() const;
 		bool Is_PointWalkableExact(
 			float x,
 			float z,
 			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Declares which conditions open a hole rather than clear an obstacle.
-		Called once at room admission from the world destruction descriptor that
-		authored them; every id must already exist and every region that uses it
-		must block when the condition becomes true, or the room fails to load. */
+		/* 장애물 해제가 아닌 구멍 생성 조건을 지정한다. 등록된 ID·region이 있어야 하며 조건 true가 차단을 활성화하는 방향이어야 한다. */
 		bool Set_VoidConditions(
 			const std::set<std::string>& conditionIds,
 			std::string& outStatus);
 		bool Is_PointInVoidRegion(float x, float z) const;
 		std::uint64_t Get_Revision() const noexcept { return m_iRevision; }
-		// Physical floor for airborne landing; static/runtime walking obstacles do not remove it.
+		// 공중 착지용 물리 지면을 조회한다. 걷기 장애물은 지면을 없애지 않지만 void cell은 거부한다.
 		bool Sample_SurfacePosition(float x, float z, SERVER_NAV_POINT& outPoint) const;
 		bool Sample_Position(
 			float x,
 			float z,
 			SERVER_NAV_POINT& outPoint,
 			float hintY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Resolves one live walking step against the ground under both XZ
-		positions. The returned Y always comes from the destination cell; callers
-		must not interpolate toward a distant smoothed-waypoint Y. */
+		/* 출발·도착 XZ의 실제 지면으로 한 걸음을 검증한다. 결과 Y는 도착 cell 값이며 먼 경유점의 높이로 보간하지 않는다. */
 		bool Resolve_TraversalStep(
 			float fromX,
 			float fromZ,
@@ -186,38 +168,19 @@ namespace LostArk::Server
 			float endX,
 			float endZ,
 			float startY = NAVIGATION_HEIGHT_UNKNOWN) const;
-		/* Runtime-authored deck guard. Zero disables the guard for maps whose
-		single-layer grid intentionally joins large encounter height changes. */
+		/* 저작한 deck 높이 차 제한이다. 0이면 단층 grid의 큰 높이 변화를 허용하도록 이 제한을 끈다. */
 		bool Is_HeightTransitionAllowed(float fromY, float toY) const;
 
 		bool Is_Loaded() const { return !m_Walkable.empty(); }
-		/* The smallest cell size among the base grid and its detail regions.
-		Every caller uses it as a sampling step or probe distance, and a finer
-		step is always safe. */
+		/* base·detail grid 중 최소 cell 크기다. 호출자는 표본 간격·탐색 거리에 사용한다. */
 		float Get_CellSize() const;
-		/* Detail grids nested inside this Area. A region owns its XZ footprint:
-		a query whose first point lies inside it runs on that grid and never
-		sees base cells, so a region has to cover the whole walkable extent of
-		the stage it refines. Stages joined only by authored moves need no
-		cross-region paths, which is why none exist.
-		Regions may share an XZ footprint when they are stacked height layers
-		(an upper deck and the ground below it). The query's height hint then
-		picks the layer whose ground at that XZ is nearest, and Load rejects a
-		pair that has ground on both layers at one XZ closer than
-		max(2 m, 2 x the larger step policy), because a hint cannot tell those
-		apart. Layers are never joined on foot; moving between them is an
-		authored move like any other cross-region change. */
+		/* 질의 시작 XZ가 속한 detail grid 안에서만 경로를 찾는다. 겹친 layer는 높이 hint로 고르며 지면 간격이 max(2m, 큰 step 제한의 2배)보다 좁으면 Load가 거부한다. grid·layer 간 이동은 저작 이동이 맡는다. */
 		std::size_t Get_RegionCount() const noexcept { return m_Regions.size(); }
-		/* Both points must belong to the same loaded detail grid, not the base
-		grid. An authored stage entrance can identify its whole refined region
-		without duplicating that region's bounds in gameplay code. */
+		/* 두 점이 같은 로드된 detail grid에 있어야 한다. base grid만 공유하는 경우는 제외한다. */
 		bool Is_InSameDetailRegion(float x, float z, float otherX, float otherZ) const;
-		/* Includes the base grid, for an explicitly admitted stage without a
-		separate refinement grid. Neither point may lie outside loaded grids. */
+		/* base를 포함한 같은 navigation grid에 있는지 검사한다. 두 점 모두 로드된 grid 안이어야 한다. */
 		bool Is_InSameNavigationGrid(float x, float z, float otherX, float otherZ) const;
-		/* True only when the detail region named by its manifest id answers a query at (x, z, hintY) and
-		has walkable ground there. A rule that must stand on one particular grid (a ship on the harbour
-		sea) uses this instead of accepting any ground of a similar height. */
+		/* manifest ID로 지정한 detail region이 해당 위치·높이 질의에 선택되고 걸을 수 있을 때만 true다. */
 		bool Is_PointWalkableInRegion(
 			const std::string& regionId,
 			float x,
@@ -253,13 +216,7 @@ namespace LostArk::Server
 		bool Load_RuntimeBlockers(const std::string& areaId);
 		void Rebuild_InitialRuntimeBlockers() noexcept;
 		bool Load_Regions(const std::string& areaId);
-		/* The one place that decides which detail region answers a query.
-		Without overlapping regions it is exactly the old rule (the region that
-		contains the XZ, else the base grid). With several candidates, a region
-		with walkable ground at that XZ beats one without; among those the
-		smallest |ground - hintY| wins, and a tie or an unknown hint keeps
-		manifest order. A candidate with no ground there is ranked by its
-		distance to the height band of its walkable cells. */
+		/* 겹친 region은 해당 XZ의 걷는 지면을 우선한다. 그 안에서는 hint 높이와 가까운 곳, 동률·hint 없음은 manifest 순서다. 지면이 없는 후보는 전체 걷는 높이 band와의 거리로 비교한다. */
 		const CServerNavigation* Select_Region(
 			float x,
 			float z,
@@ -284,7 +241,7 @@ namespace LostArk::Server
 		float m_fOriginX = 0.f;
 		float m_fOriginZ = 0.f;
 		float m_fMaximumTraversalStepHeight = 0.f;
-		/* Height band of the walkable cells, set by Load. Empty band: min > max. */
+		/* Load가 계산한 walkable cell의 높이 범위다. min > max이면 비어 있다. */
 		float m_fWalkableMinY = (std::numeric_limits<float>::max)();
 		float m_fWalkableMaxY = std::numeric_limits<float>::lowest();
 		std::vector<std::uint8_t> m_Walkable;
@@ -298,10 +255,9 @@ namespace LostArk::Server
 		std::vector<std::uint16_t> m_VoidCounts;
 		std::uint64_t m_iRevision = 0u;
 		std::string m_strStatus;
-		/* Manifest id of this grid when it is a detail region; empty for the base grid. */
+		/* detail grid의 manifest ID이며 base grid에서는 비어 있다. */
 		std::string m_strRegionId;
-		/* Owner container of the detail regions in manifest order. Each entry is
-		a fully loaded grid whose own m_Regions stays empty. */
+		/* manifest 순서로 detail grid를 값 소유한다. 각 자식 grid의 m_Regions는 비어 있다. */
 		std::vector<CServerNavigation> m_Regions;
 	};
 }

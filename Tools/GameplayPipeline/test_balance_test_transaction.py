@@ -192,9 +192,9 @@ class BalanceRuntimeSetPublication(unittest.TestCase):
     """Run the production promotion/rollback with isolated publisher outputs."""
 
     WORLD_FILES = tuple(name + ".worldbootstrap" for name in (
-        "BERN", "VALTAN_ARENA", "KAKULSAYDON_ARENA", "TRAINING_GROUND",
+        "BERN", "VALTAN_ARENA", "KOUKUSAYDON_ARENA", "TRAINING_GROUND",
         "CHARACTER_SELECT_ARENA", "MAHARAKA")) + tuple(name + ".spawngroupsbootstrap" for name in (
-        "VALTAN_ARENA", "KAKULSAYDON_ARENA", "CHARACTER_SELECT_ARENA"))
+        "VALTAN_ARENA", "KOUKUSAYDON_ARENA", "CHARACTER_SELECT_ARENA"))
     REVISION = "a" * 64
 
     def setUp(self):
@@ -227,7 +227,7 @@ class BalanceRuntimeSetPublication(unittest.TestCase):
             "Items/Items.bootstrap",
         )
         for relative in self.outputs:
-            if relative == "World/KAKULSAYDON_ARENA.spawngroupsbootstrap":
+            if relative == "World/KOUKUSAYDON_ARENA.spawngroupsbootstrap":
                 continue  # Rollback must restore absence as well as old bytes.
             path = self.runtime / relative
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -283,7 +283,7 @@ class BalanceRuntimeSetPublication(unittest.TestCase):
         self.assert_clean_transaction()
 
     def test_missing_required_world_rejects_before_any_runtime_promotion(self):
-        for missing in ("BERN", "VALTAN_ARENA", "TRAINING_GROUND", "CHARACTER_SELECT_ARENA", "KAKULSAYDON_ARENA"):
+        for missing in ("BERN", "VALTAN_ARENA", "TRAINING_GROUND", "CHARACTER_SELECT_ARENA", "KOUKUSAYDON_ARENA"):
             with self.subTest(world=missing):
                 self.fixture_publisher("Tools/WorldPipeline/Publish-WorldGameplay.ps1",
                     tuple(name for name in self.WORLD_FILES if name != missing + ".worldbootstrap"), retail=True)

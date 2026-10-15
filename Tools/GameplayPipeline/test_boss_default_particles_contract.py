@@ -29,7 +29,7 @@ class BossDefaultParticlesContractTests(unittest.TestCase):
         add("null", lambda b: b.update(defaultParticles=None))
         add("not-array", lambda b: b.update(defaultParticles={}))
         add("too-many", lambda b: b.update(defaultParticles=b["defaultParticles"] * 17))
-        add("wrong-consumer", lambda b: b.update(clientPresentationId="boss.kakulsaydon.g1.kouku.client.v1"))
+        add("wrong-consumer", lambda b: b.update(clientPresentationId="boss.koukusaydon.g1.kouku.client.v1"))
         add("duplicate", lambda b: b["defaultParticles"].append(copy.deepcopy(b["defaultParticles"][0])))
         add("unknown-field", lambda b: b["defaultParticles"][0].update(unexpected=0))
         add("missing-field", lambda b: b["defaultParticles"][0].pop("scale"))

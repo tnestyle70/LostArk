@@ -63,12 +63,12 @@ class KoukuDomainOwnerTransactionTests(unittest.TestCase):
             product_paths = ["Data/Encounters/KoukuSaydon/KoukuSaydonEncounter.json",
                              "Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json"]
             map_paths = next(row["outputs"] for row in json.loads(
-                MANIFEST.read_text(encoding="utf-8"))["domains"] if row["id"] == "map.kakulsaydon")
+                MANIFEST.read_text(encoding="utf-8"))["domains"] if row["id"] == "map.koukusaydon")
             bootstrap = "Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap"
             generation = "Server/Bin/DataFiles/Gameplay/ValtanPresentationGenerations"
             manifest = {"domains": [
                 {"id": "koukusaydon.product", "outputs": product_paths},
-                {"id": "map.kakulsaydon", "outputs": map_paths},
+                {"id": "map.koukusaydon", "outputs": map_paths},
                 {"id": "world.gameplay", "outputs": [], "requiredOutputPatterns": [],
                  "action": {"arguments": []}},
                 {"id": "gameplay.balance", "outputs": [bootstrap, generation + "/*.json"]},
@@ -104,10 +104,10 @@ function Invoke-BuildDomain($RepositoryRoot, $Domain, $ResourceRoot, $ReceiptRoo
                 bootstrap: b"old bootstrap",
                 generation + "/old-generation.json": b"old generation",
                 "out/BuildPipeline/receipts/koukusaydon.product.receipt.json": b"old receipt",
-                "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap": b"old world placement",
+                "Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.worldbootstrap": b"old world placement",
                 "Client/Bin/DataFiles/World/LV_LUT_MIDNIGHTC_ED.viewer.world.json": b"old viewer",
                 "out/BuildPipeline/receipts/world.gameplay.receipt.json": b"old world receipt",
-                "out/BuildPipeline/receipts/map.kakulsaydon.receipt.json": b"old map receipt",
+                "out/BuildPipeline/receipts/map.koukusaydon.receipt.json": b"old map receipt",
             }
             originals.update({path: f"old map output {index}".encode("utf-8")
                               for index, path in enumerate(map_paths[:-1])})
@@ -125,7 +125,7 @@ function Invoke-BuildDomain($RepositoryRoot, $Domain, $ResourceRoot, $ReceiptRoo
             self.assertEqual(originals, {relative: (root / relative).read_bytes() for relative in originals})
             for relative in (product_paths[1], map_paths[-1], generation + "/new-generation.json",
                              "out/BuildPipeline/receipts/gameplay.balance.receipt.json",
-                             "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"):
+                             "Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.stagemarkers.json"):
                 self.assertFalse((root / relative).exists(), relative)
             self.assertEqual(before_source, source.read_bytes())
             self.assertEqual([], list(root.rglob("*.rollback")))
@@ -141,7 +141,7 @@ class BuildDomainManifestContractTests(unittest.TestCase):
             "BERN": "LV_BER_BERNCASTLE",
             "VALTAN_ARENA": "LV_LUT_HEARTRB_ED",
             "TRAINING_GROUND": "LV_DEV_TRAINING_GROUND",
-            "KAKULSAYDON_ARENA": "LV_LUT_MIDNIGHTC_ED",
+            "KOUKUSAYDON_ARENA": "LV_LUT_MIDNIGHTC_ED",
             "MAHARAKA": "LV_OCN_EVENTIS_MHP",
             "CHARACTER_SELECT_ARENA": "LV_LOBBY_CLASSSELECT_SL00",
         }
@@ -271,7 +271,7 @@ foreach ($case in (Get-Content -LiteralPath (Join-Path $repoRoot 'cases.json') -
         self.assertEqual(
             publishers,
             {
-                "map.kakulsaydon",
+                "map.koukusaydon",
                 "koukusaydon.product",
                 "composition.presentation",
                 "world.gameplay",
@@ -361,7 +361,7 @@ foreach ($case in (Get-Content -LiteralPath (Join-Path $repoRoot 'cases.json') -
         self.assertIn("Publish-Compositions.ps1", json.dumps(composition))
 
     def test_kouku_saydon_map_publisher_has_exact_clean_checkout_closure(self) -> None:
-        domain = self.domains["map.kakulsaydon"]
+        domain = self.domains["map.koukusaydon"]
         self.assertEqual(domain["kind"], "publisher")
         self.assertEqual(domain["profiles"], ["Core", "FullDiagnostic"])
         self.assertEqual(
@@ -410,10 +410,10 @@ foreach ($case in (Get-Content -LiteralPath (Join-Path $repoRoot 'cases.json') -
         self.assertIsNotNone(selection)
         expected = {
             "Client": [
-                "koukusaydon.product", "map.kakulsaydon", "composition.presentation",
+                "koukusaydon.product", "map.koukusaydon", "composition.presentation",
                 "world.gameplay", "navigation",
             ],
-            "KoukuSaydon": ["koukusaydon.product", "map.kakulsaydon", "world.gameplay", "gameplay.balance"],
+            "KoukuSaydon": ["koukusaydon.product", "map.koukusaydon", "world.gameplay", "gameplay.balance"],
             "Server": [
                 "koukusaydon.product", "world.gameplay", "navigation",
                 "world.destruction", "gameplay.balance", "items.catalog", "vehicles.profiles",
@@ -426,22 +426,22 @@ foreach ($case in (Get-Content -LiteralPath (Join-Path $repoRoot 'cases.json') -
             for domain_id in actual:
                 self.assertEqual(self.domains[domain_id]["kind"], "publisher", domain_id)
 
-    def test_client_project_exposes_kouku_saydon_world_and_navigation_authoring(self) -> None:
-        project = (ROOT / "Client/Default/Client.vcxproj").read_text(
-            encoding="utf-8-sig"
-        )
-        filters = (ROOT / "Client/Default/Client.vcxproj.filters").read_text(
-            encoding="utf-8-sig"
-        )
+    def test_solution_exposes_kouku_saydon_world_and_navigation_authoring(self) -> None:
+        project = (ROOT / "Client/Default/Client.vcxproj").read_text(encoding="utf-8-sig")
+        filters = (ROOT / "Client/Default/Client.vcxproj.filters").read_text(encoding="utf-8-sig")
+        solution_lines = [line.strip() for line in
+                          (ROOT / "Framework.sln").read_text(encoding="utf-8-sig").splitlines()]
         paths = (
-            r"..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource",
-            r"..\..\Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint",
-            r"..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\Gameplay.world.json",
-            r"..\..\Data\Worlds\LV_LUT_MIDNIGHTC_ED\StageMarkers.json",
+            r"Data\Navigation\LV_LUT_MIDNIGHTC_ED.navsource",
+            r"Data\Navigation\LV_LUT_MIDNIGHTC_ED.navpaint",
+            r"Data\Worlds\LV_LUT_MIDNIGHTC_ED\Gameplay.world.json",
+            r"Data\Worlds\LV_LUT_MIDNIGHTC_ED\StageMarkers.json",
         )
         for path in paths:
-            self.assertEqual(project.count(f'<None Include="{path}" />'), 1, path)
-            self.assertEqual(filters.count(f'<None Include="{path}">'), 1, path)
+            self.assertEqual(solution_lines.count(path + " = " + path), 1, path)
+            self.assertTrue((ROOT / path.replace("\\", "/")).is_file(), path)
+            self.assertNotIn(path, project)
+            self.assertNotIn(path, filters)
 
     def test_product_receipt_closes_exe_and_pdb_pairs(self) -> None:
         product = self.document["product"]

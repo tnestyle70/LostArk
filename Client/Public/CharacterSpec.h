@@ -1,41 +1,37 @@
-#pragma once
+﻿#pragma once
 
+// Client 이름 공간과 공통 선언을 사용한다.
 #include "Client_Defines.h"
+// clip index·색·logic 소유에 쓸 엔진 기본 타입을 사용한다.
 #include "Engine_Defines.h"
+// 직업별 선택적 천·머리카락 solver의 BONE_CHAIN_SPEC을 사용한다.
 #include "BoneChainSimulation.h"
+// Server와 공유하는 직업·stance·skill ID를 표현 설정에 연결한다.
 #include "Network/PacketMessages.h"
 
 NS_BEGIN(Client)
 
 class CCharacter;
 
-/* Animation states every class has. Skill clips are not listed here: their count
-and ordering differ per class, so the logic addresses those by name itself. */
+// 직업별 공통 표현 상태의 clip 이름을 배열에서 찾는 index다. 개별 skill clip은 이 배열 밖에서 처리한다.
 enum class CHARACTER_ANIM {
 	IDLE, RUN, HIT, DEAD,
 	KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
-	/* The Esther call (act_estherskill_1) lives in the attached animation-set
-	wmodel, not the body cook; a class without that attachment keeps nullptr
-	here and its cast presentation is isolated to the pose it already holds. */
+	// 에스더 호출 표현 clip이다. 지정하지 않는 직업은 해당 배열 원소를 nullptr로 둔다.
 	ESTHER_CAST,
-	/* The standing pose the retail character-creation screen uses instead of the
-	class's battle idle. It ships in an attached animation set like ESTHER_CAST,
-	so a class without that attachment keeps nullptr here and creation falls back
-	to the class's own idle. */
+	// 생성 화면의 idle 표현이다. clip이 없으면 공통 경로가 해당 직업의 일반 idle을 사용한다.
 	CUSTOMIZING_IDLE,
 	FEAR,
-	/* The square-hole song (<armature>_act_music_loop_1), a body clip like IDLE/RUN; a class
-	without it keeps nullptr and holds its current pose. */
+	// 스퀘어홀 노래 표현 clip이다. 지정하지 않은 직업은 nullptr다.
 	SQUAREHOLE_SONG,
 	END
 };
 
-/* Per-class presentation behaviour. Input, network transport and gameplay truth
-stay outside this interface. One implementation per class keeps team ownership
-separate without allowing class code to issue commands. */
+// 직업별 로컬 표현 갱신 인터페이스다. 입력·전송·gameplay 판정 API는 이 계약에 없다.
 class ICharacterLogic
 {
 public:
+	// CCharacter의 unique_ptr<ICharacterLogic>가 파생 logic을 올바르게 소멸시킨다.
 	virtual ~ICharacterLogic() = default;
 
 public:
@@ -44,27 +40,18 @@ public:
 		f32_t fTimeDelta) = 0;
 };
 
-/* DEFAULT_HELMET is the base head piece an AVATAR_HEAD slot covers; every
-other base armour piece is plain DEFAULT and only an AVATAR_ARMOR slot covers
-those. CCharacter derives visibility from which kinds are present -- see
-Ready_PartObjects -- so a class only has to declare its parts, not their
-show/hide rule. */
+// CCharacter가 base/avatar 표시 관계를 판단하는 종류다. DEFAULT_HELMET은 AVATAR_HEAD, 나머지 DEFAULT는 AVATAR_ARMOR에 가려진다.
 enum class EQUIPMENT_SLOT_KIND
 {
 	DEFAULT,
 	DEFAULT_HELMET,
 	AVATAR_HEAD,
 	AVATAR_ARMOR,
-	/* A stance-owned piece such as the Guardian Knight wings: never covered by an
-	avatar set, shown only while eRequiredStance is the active stance. */
+	// stance로 표시하는 전용 Part다. 의상 교체로 가리지 않으며 요구 stance가 지정된다.
 	IDENTITY,
 };
 
-/* Authored replacement slot for one default presentation part. This is
-independent from EQUIPMENT_SLOT_KIND: that enum preserves the base/avatar
-visibility relationship, while this one identifies which authoring-tool slot
-may replace the part. Weapons are declared separately in CHARACTER_SPEC, but
-WEAPON lives in the same mask so one preview transaction can cover all slots. */
+// 외형 편집에서 교체할 부위다. base/avatar 표시 관계인 EQUIPMENT_SLOT_KIND와는 역할이 다르다.
 enum class EQUIPMENT_PRESENTATION_SLOT
 {
 	HEAD,
@@ -76,6 +63,7 @@ enum class EQUIPMENT_PRESENTATION_SLOT
 	END,
 };
 
+// END 미만 enum 값을 bit mask로 바꾸고 END 이상의 값은 0을 반환한다.
 constexpr uint32_t EquipmentPresentationSlotMask(
 	const EQUIPMENT_PRESENTATION_SLOT eSlot)
 {
@@ -88,27 +76,23 @@ constexpr uint32_t EQUIPMENT_PRESENTATION_SLOT_MASK_ALL =
 
 struct EQUIPMENT_PART_SPEC
 {
-	const tchar_t* pPartTag;      /* sorts after "Part_Body", see CCharacter */
+	const tchar_t* pPartTag;      // 본체 뒤에 갱신되도록 정한 Part tag다.
 	const tchar_t* pModelTag;
 
-	/* Bit i hides submesh i of this piece, for content the body already draws. */
+	// 장비 자체의 i번 submesh를 숨기는 mask다.
 	uint32_t iHiddenMeshMask;
-	/* Created but not rendered. For pieces the current outfit covers -- hair
-	under a helmet -- kept as a part so a later equip toggle can show it. */
+	// Part는 생성하되 처음에는 표시하지 않는다. 이후 공통 외형/stance 처리에서 표시를 조절한다.
 	bool_t isHidden;
 
 	EQUIPMENT_SLOT_KIND eSlotKind = EQUIPMENT_SLOT_KIND::DEFAULT;
 	EQUIPMENT_PRESENTATION_SLOT ePresentationSlot =
 		EQUIPMENT_PRESENTATION_SLOT::END;
-	/* NONE draws in every stance; otherwise the piece is visible only in this one,
-	the same rule WEAPON_PART_SPEC uses. */
+	// NONE은 stance 제한이 없고 그 외 값은 해당 stance에서만 표시한다.
 	LostArk::Shared::PLAYER_STANCE_ID eRequiredStance =
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
-/* Both model-view admission and costume replacement validate the same base
-part inventory. Identity wings have no replaceable clothing slot; their exact
-class/stance contract must not make END valid for ordinary equipment. */
+// 공통 외형 승인 검사다. IDENTITY의 END 슬롯 예외는 GuardianKnight dragon wing 계약에만 허용한다.
 constexpr bool_t Is_ValidEquipmentPresentationPart(
 	const EQUIPMENT_PART_SPEC& part,
 	const LostArk::Shared::CHARACTER_CLASS_ID characterClass)
@@ -133,14 +117,10 @@ constexpr bool_t Is_ValidEquipmentPresentationPart(
 	}
 }
 
-/* A piece that rides one bone instead of the whole palette. Classes differ in how
-many they carry and what the bone is called -- LanceMaster holds one lance at
-b_weapon_rhand, GunSlinger dual-wields at b_wp_1 and b_wp_2 -- so this is a list,
-not a fixed pair of fields. Character creation must reject a missing socket; an
-unparented weapon is invalid content, not a runtime fallback. */
+// 단일 본에 붙이는 무기 Part의 정의다. CPart_Equipment 초기화는 실제 소켓이 없으면 실패한다.
 struct WEAPON_PART_SPEC
 {
-	const tchar_t* pPartTag;      /* sorts after equipment, e.g. "Part_90_Weapon_R" */
+	const tchar_t* pPartTag;      // 장비 뒤에 갱신되도록 정한 Part tag다.
 	const tchar_t* pModelTag;
 	const char_t* pSocketBone;
 	f32_t fSocketYawDegrees = 0.f;
@@ -148,8 +128,7 @@ struct WEAPON_PART_SPEC
 		LostArk::Shared::PLAYER_STANCE_ID::NONE;
 };
 
-/* Optional per-skill presentation authored beside the owning class.  This is
-visual state only; Server action snapshots still decide when it is active. */
+// Server action snapshot의 skill ID에 대응하는 선택적 발광 표현 설정이다.
 struct SKILL_SURFACE_EMISSIVE_SPEC
 {
 	LostArk::Shared::SKILL_ID iSkillId = LostArk::Shared::INVALID_SKILL_ID;
@@ -157,9 +136,7 @@ struct SKILL_SURFACE_EMISSIVE_SPEC
 	f32_t fIntensity = 0.f;
 };
 
-/* A stance the class stands and runs differently in. Only the stances a class
-lists here replace the shared IDLE and RUN clips; every other stance keeps them,
-so a class that merely swaps weapons needs no entry. */
+// 지정한 stance에서 공통 IDLE/RUN을 대신할 clip이다. 목록에 없는 stance는 공통 clip을 사용한다.
 struct STANCE_LOCOMOTION_SPEC
 {
 	LostArk::Shared::PLAYER_STANCE_ID eStance =
@@ -168,28 +145,22 @@ struct STANCE_LOCOMOTION_SPEC
 	const char_t* pRunClip = nullptr;
 };
 
-/* Everything that makes one class different, as data. Held as a constant next to
-that class's logic; CCharacter itself stays class-agnostic. */
+// CCharacter가 공통 조립 경로에서 읽는 직업별 불변 설정이다. 각 직업 CPP의 정적 배열·문자열을 가리킨다.
 struct CHARACTER_SPEC
 {
-	/* Stable data ID. For example LanceMaster resolves under
-	Data/Animation/{Authored,Reference}/LanceMaster. */
+	// Animation 등 직업별 데이터 경로를 찾는 stable asset 이름이다.
 	const char_t* pAssetName;
 
-	/* Which class this spec is. Carried here rather than plumbed at spawn so a
-	character knows its own class in local preview too, where no snapshot ever
-	arrives to tell it. Input binding resolves quick slots through this. */
+	// snapshot 유무와 관계없이 표현 설정의 직업을 식별한다. 네트워크의 CHARACTER_CLASS_ID와 연결한다.
 	LostArk::Shared::CHARACTER_CLASS_ID eCharacterClass;
 
 	const tchar_t* pBodyModelTag;
 	const tchar_t* pShaderTag;
 
-	/* Bit i hides body submesh i, for the skin the equipment already carries. */
+	// 장비가 대신 그리는 본체 submesh를 숨긴다.
 	uint32_t iBodyHiddenMeshMask;
 
-	/* Hair submeshes baked into the body. Normally hidden in favor of separate
-	hair parts; isBodyHairFallback keeps them until a HEAD replacement is worn.
-	Zero means there is no baked hair to suppress. */
+	// 본체에 포함된 머리카락 mask다. fallback 정책이 켜지면 HEAD 교체 전까지 유지하며 0은 숨길 비트가 없다는 뜻이다.
 	uint32_t iBodyHairMeshMask;
 
 	const tchar_t* pWeaponShaderTag;
@@ -199,10 +170,10 @@ struct CHARACTER_SPEC
 	const EQUIPMENT_PART_SPEC* pEquipment;
 	uint32_t iNumEquipment;
 
-	/* Clip names differ per class ("flm_idle_battle_1", "wbk_..."), so the shared
-	states are looked up through this table instead of by index. */
+	// CHARACTER_ANIM 순서의 clip 이름이다. 실제 Model에서 이름으로 조회하며 nullptr인 선택 기능도 있다.
 	const char_t* AnimationClips[ETOUI(CHARACTER_ANIM::END)];
 
+	// 로컬 Character가 필요할 때 호출하는 factory다. 반환 logic은 그 Character가 단독 소유한다.
 	unique_ptr<ICharacterLogic> (*pCreateLogic)();
 
 	const SKILL_SURFACE_EMISSIVE_SPEC* pSkillSurfaceEmissives = nullptr;
@@ -211,18 +182,14 @@ struct CHARACTER_SPEC
 	const STANCE_LOCOMOTION_SPEC* pStanceLocomotion = nullptr;
 	uint32_t iNumStanceLocomotion = 0u;
 
-	/* Hair and cloth chains this class solves after the animation. Empty leaves
-	every bone exactly where the clip put it. */
+	// animation 뒤에 추가로 계산할 머리카락·천 체인이다. 비어 있으면 이 spec의 체인 solver가 활성화되지 않는다.
 	const BONE_CHAIN_SPEC* pBoneChains = nullptr;
 	uint32_t iNumBoneChains = 0u;
 
-	/* Retail face race code ("FT", "WR", ...) whose
-	Data/Customizing/FaceSliders/<race>.facesliders.json drives this class's face
-	customizing sliders. Null leaves the face untouched. */
+	// FaceSliders/<race>.facesliders.json을 고를 종족 코드다. nullptr면 해당 slider 설정을 지정하지 않는다.
 	const char_t* pFaceSliderRace = nullptr;
 
-	/* Classes without a default hair part may keep the baked hairstyle until a
-	HEAD replacement commits. Other classes retain their existing hair policy. */
+	// 기본 hair Part가 없는 경우 HEAD 교체 commit 전까지 본체 머리카락을 유지하도록 한다.
 	bool_t isBodyHairFallback = false;
 };
 

@@ -96,8 +96,8 @@ def trim_pattern(pattern, resources):
 def build(originals):
     result = {}
     for path, pattern_id in [
-        ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KAKULSAYDON_G1_PATTERN_10'),
-        ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KAKULSAYDON_G1_PATTERN_97')]:
+        ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KOUKUSAYDON_G1_PATTERN_10'),
+        ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KOUKUSAYDON_G1_PATTERN_97')]:
         raw = originals[path]
         before = json.loads(raw)
         resources = {r['resourceId']: r for r in before['presentationResources']}

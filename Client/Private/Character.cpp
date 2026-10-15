@@ -1,9 +1,6 @@
 #include "Character.h"
 #include "BoneAnimationDocument.h"
-#pragma push_macro("new")
-#undef new
 #include "DirectXTK/DDSTextureLoader.h"
-#pragma pop_macro("new")
 #include "PlayableCharacterAssetService.h"
 #include "Profiler.h"
 #include "ProfilerCaptureIO.h"

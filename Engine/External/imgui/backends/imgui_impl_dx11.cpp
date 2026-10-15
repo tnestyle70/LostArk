@@ -48,10 +48,7 @@
 #include "imgui.h"
 #ifndef IMGUI_DISABLE
 #include "imgui_impl_dx11.h"
-// Keep Engine debug allocation macros out of ImGui placement-new expressions.
-#pragma push_macro("new")
 #include "Profiler.h" // LostArk optional observer; rendering remains backend-owned.
-#pragma pop_macro("new")
 
 // DirectX
 #include <chrono>

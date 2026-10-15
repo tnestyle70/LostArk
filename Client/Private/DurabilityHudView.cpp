@@ -1,15 +1,17 @@
+﻿// 부위별 장비 상태를 내구도 HUD 이미지로 바꾼다.
 #include "DurabilityHudView.h"
 
+// 실루엣과 부위 이미지를 HUD 정렬 layer에 배치한다.
 #include "UITextOcclusion.h"
+// 문서 슬롯의 이미지·사각형·표시 상태를 조작한다.
 #include "UILayoutRuntime.h"
 
+// 저작 배율이 유한한지 isfinite로 검사한다.
 #include <cmath>
 
 namespace
 {
-	/* One row per part: the layout slot, and for each state the Resources-relative art and its
-	source size. Both come from durability.gfx's own DefineSubImage regions, so the two frames
-	keep their real sizes instead of being stretched to a single box. */
+	// 부위별 slot ID와 손상·파괴 이미지의 원본 크기다. 상태마다 다른 종횡비를 유지한다.
 	struct PART_ART
 	{
 		const char*	pSlotId;
@@ -49,7 +51,7 @@ namespace
 		sizeof(PART_TABLE) / sizeof(PART_TABLE[0]),
 		"every PART needs one row of source art");
 
-	/* Without bracers the account uses a different glove overlay and silhouette frame. */
+	// 팔찌를 사용하지 않을 때 장갑과 실루엣이 참조하는 별도 이미지다.
 	constexpr const char* GLOVES_PLAIN_DAMAGED = "UI/Durability/gloves_plain_damaged.png";
 	constexpr const char* GLOVES_PLAIN_DESTROYED = "UI/Durability/gloves_plain_destroyed.png";
 	constexpr f32_t GLOVES_PLAIN_DAMAGED_WIDTH = 48.f;
@@ -69,8 +71,7 @@ Client::CDurabilityHudView::CDurabilityHudView(
 		L"UI/Durability/DurabilityUI.json") }
 {
 	m_pView->Set_UISortLayer(UI_TEXT_LAYER::HUD);
-	/* These GameObjects live under LEVEL::STATIC, so without this the whole widget is on
-	screen from construction (Lobby included) until the first Update(). */
+	// STATIC sprite는 생성 직후 보일 수 있으므로 MainApp의 첫 표시 판정 전에는 숨긴다.
 	Hide();
 }
 
@@ -84,6 +85,7 @@ void Client::CDurabilityHudView::Hide()
 		m_pView->Set_AllSlotsVisible(false);
 }
 
+// 설정이 실제로 바뀐 때만 실루엣과 장갑을 교체한다.
 void Client::CDurabilityHudView::Set_BracerEnabled(const bool_t bEnabled)
 {
 	if (m_bBracerEnabled == bEnabled)
@@ -95,6 +97,7 @@ void Client::CDurabilityHudView::Set_BracerEnabled(const bool_t bEnabled)
 	Apply_Part(PART::GLOVES);
 }
 
+// 유효한 부위의 변경된 상태만 저장하고 해당 이미지를 갱신한다.
 void Client::CDurabilityHudView::Set_PartState(const PART ePart, const PART_STATE eState)
 {
 	const uint32_t iPart = ETOUI(ePart);
@@ -104,6 +107,7 @@ void Client::CDurabilityHudView::Set_PartState(const PART ePart, const PART_STAT
 	Apply_Part(ePart);
 }
 
+// 부위 상태로 이미지와 원본 크기를 고른다. 슬롯·배율 조회 실패는 현재 이미지를 더 바꾸지 않는다.
 void Client::CDurabilityHudView::Apply_Part(const PART ePart)
 {
 	if (nullptr == m_pView)
@@ -132,8 +136,7 @@ void Client::CDurabilityHudView::Apply_Part(const PART ePart)
 			GLOVES_PLAIN_DESTROYED_HEIGHT : GLOVES_PLAIN_DAMAGED_HEIGHT;
 	}
 
-	/* Capture the authored scale before this class first resizes the part. Later frames must
-	not derive it from the previous state's output, or different-sized art scales repeatedly. */
+	// 처음의 저작 배율을 저장한다. 이전 상태의 출력 크기로 다시 나누면 상태 전환마다 크기가 달라진다.
 	f32_t fSlotX = 0.f, fSlotY = 0.f, fSlotWidth = 0.f, fSlotHeight = 0.f;
 	if (!m_pView->Get_SlotRect(Art.pSlotId, fSlotX, fSlotY, fSlotWidth, fSlotHeight))
 		return;
@@ -151,6 +154,7 @@ void Client::CDurabilityHudView::Apply_Part(const PART ePart)
 	m_pView->Set_SlotVisible(Art.pSlotId, true);
 }
 
+// MainApp이 손상 부위가 있는 허용 Level에서 호출해 현재 부위 상태 전체를 다시 표시한다.
 void Client::CDurabilityHudView::Update()
 {
 	if (nullptr == m_pView)

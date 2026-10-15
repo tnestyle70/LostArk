@@ -80,3 +80,66 @@ BernEntranceCamera JSON의16키 FOV45도와 나머지 값 보존, Client project
 데이터 publish·Core/FullDiagnostic·Client/Server 실행·UI 조작·화면 캡처는 수행하지 않았다.
 기존 Undo/Redo 구현 `1ef2616b`와 PR #530은 통합 이력에 남아 있다.
 실제 F1/F7·컷신 구도·카메라 목록·게임 화면 확인은 사용자 검증으로 남는다.
+
+
+## G06. 2026-10-10 Debug/Release F1 컷신 반복 재생 누락 수정
+
+사용자 첨부 화면은 `Bern Entrance Camera`에 FOV만 표시한다. 실제 재생 버튼은
+`MainApp_Dragon.cpp`의 Debug 전용 `Camera` 아래에 있었고, `Level_Bern`의 재생 선언·요청
+소비·상태도 `_DEBUG`에 묶여 있었다. 10-07 FOV UI를 두 구성에 연결할 때 이 기존 재생 기능을
+같은 위치로 연결하지 않아 Release에서는 재생 버튼이 없었다.
+
+`F1 → Bern Entrance Camera → Start Bern Cutscene`을 Debug/Release 공통 진입점으로
+옮겼다. Bern 밖에서는 버튼이 비활성이고 세션 FOV 선택은 계속 가능하다. 버튼은 기존
+`Request_DebugEntranceReplay`만 호출하고 다음 Level Update가 요청을 소비한다. 이전 Debug
+`Camera`의 중복 버튼과 전용 include를 제거했다. 새 재생기·Level·Server 명령을 추가하지 않았다.
+
+공통 guard는 중복 재생, 전환·캐릭터 복원·연결 종료와 다른 camera owner를 이전처럼 거절한다.
+Debug 전용 저작·Move Player 상태 검사만 `_DEBUG`에 남겼다. 최초 자동 재생의 session latch,
+cue 임시 후보 검증, 16초 cue의 0.5배 재생, ESC 및 실패 시 기존 camera 복원은 유지한다.
+현재 FOV override는 기존 sampler 뒤에서 동일하게 적용되고 저장 JSON은 변경하지 않았다.
+
+기존 `Tools/ValtanPipeline/test_bern_entrance_camera_contract.py`의 4개 검사가 통과했다.
+변경한 네 C++는 UTF-8 BOM 없음·CRLF를 유지했다. 신규 파일이 없어 project/filter 등록 변경과
+publisher 실행은 없다. PLAN의 해당 C++ 전문을 후보 코드로 먼저 갱신하고 원본 SHA256을
+재확인한 뒤 소스에 반영했다. 전문 복사의 기존 주석 뒤 공백은 문서에서만 정리했다.
+
+Debug/Release의 정상 Product Build·링크·SDK/shader/runtime DLL 배포가 모두 PASS다.
+`out/BuildPipeline/runs/20261010T014621388Z-debug-product.json`과
+`20261010T014843810Z-release-product.json`이 근거다. Client 단계는 각각41.083/82.340초,
+OBJ9/7개가 갱신됐으며 CSO 갱신은 두 구성 모두0개다. runtime 입력 누락·유효성 오류도0개였다.
+기존 Level.h 인코딩 경고와 Release DirectXTK PDB 누락 경고는 남았고 컴파일·링크 오류는 없다.
+변경 JSON은 없으며 현재 워로드 문서 parse·원본 bytes 보존과 전체 `git diff --check`를
+확인했다. 새 파일이 없어 project/filter XML 변경도 없다. 실제 버튼 표시·재생·FOV 및 FPS는
+사용자 확인 전이다. Client를 자율 실행·종료하거나 UI를 조작하지 않았다.
+
+## G07. 2026-10-10 1600×900 입장 컷신 20~30FPS의 근거 범위
+
+`Client/Default/ClientStartup.user.log`의 현재 사용자 Release PID31304는 10:31:41에
+`NVIDIA GeForce RTX 4050 Laptop GPU`를 선택했다. 저장된 ProfilerCaptures의 최신 파일은
+10-07 11:20 Debug 자료이며, 현재 1600×900 Release 컷신의 CPU/GPU 프레임 캡처는 없다.
+따라서 지금 관측한 20~30FPS를 shader·camera matrix·전원·CPU/GPU 중 하나로 확정하지 않는다.
+
+카메라 구도가 원인이 될 가능성은 기존 측정과 맞는다. 이전 Bern 캡처의 컷신 진입 경계는
+draw2216→10004, VS2.831M→11.958M, NONBLEND CPU42.123→254.011ms였다(G03).
+같은 16:9 비율에서 해상도만 낮추면 픽셀 수는 줄지만 같은 camera eye/look/FOV가 포함하는
+시야 범위는 같으므로, 많은 객체의 CPU 제출 비용이 같은 비율로 줄지는 않는다. 현재 코드의
+LOD 선택과 실제 가시 객체 분포 때문에 정확한 draw 수·GPU 비용은 새 캡처가 있어야 알 수 있다.
+
+기존 10-04 결과 G12의 실제 camera/sampler/frustum 본문 10,568pose 검사에서는 같은
+pose/FOV의 cinematic과 free view/projection 차이가0이었다. 이는 당시 수치 검증이며 현재
+GPU frame을 직접 검사한 결과는 아니다. 카메라 수학의 결함과 넓은 장면의 제출량 증가를
+같은 원인으로 취급하지 않는다. 반복 재생 버튼은 현재 FOV와 같은 경로로 캡처를 남길 수 있는
+진입점이며, 이 UI 수정으로 컷신 성능까지 해결했다고 기록하지 않는다.
+
+현재 남은10-02 15:48:37의 `무비_프레임측정_베른`과15:49:24의
+`베른_기본캐릭터시점`도 기존 `analyze_capture.py`로 읽었다. 두 파일 모두 export metadata는
+1600×900, Debug/D3D debug layer ON, RTX4050 Laptop이며120frame이다. 무비 이름의 캡처와
+기본 시점의 평균은 각각 CPU123.099/75.431ms, draw2251.825/1089,
+가시 map instances3055.517/1035, Map.Batch.Draw1709.85/773,
+Map.Batch.Render CPU43.221/21.613ms였다. 무비 캡처의 최대 draw는6621,
+최대 가시 map instance는10574다. 이 구버전 캡처의 전체 구간이 컷신인지는 파일만으로
+확정하지 않는다. 첫 캡처의 일부 raw CPU scope가 누락돼 map 시간은 누락 없는
+`cpuWork`120개를 사용했다. GPU timestamp124.195/76.115ms도 CPU 제출 대기를 포함할 수
+있으므로 GPU 병목의 단독 증거로 쓰지 않는다. 분석은
+`out/BernReplayRelease20261010/existing-bern-capture-analysis.json`에 보존했다.

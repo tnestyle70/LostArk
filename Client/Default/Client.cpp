@@ -1,299 +1,66 @@
-﻿// Client.cpp : 애플리케이션에 대한 진입점을 정의합니다.
-//
+// Client.exe의 창과 메시지 루프를 구성하고, 게임 프레임은 MainApp에 맡긴다.
 
+// 창 생성·OS 메시지 처리에 필요한 Win32 선언을 사용한다.
 #include "framework.h"
+// 기존 COM 헤더다. 이 파일은 COM API를 직접 호출하지 않으며 초기화는 MainApp에서 한다.
 #include <objbase.h>
+// EXE의 제목·아이콘·단축키 리소스 ID를 사용한다.
 #include "Client.h"
 
+// 초기 창 크기와 Client 전역 창 handle 선언을 사용한다.
 #include "Client_Defines.h"
+// Client 초기화·프레임 갱신·렌더링·종료를 맡긴다.
 #include "MainApp.h"
+// 엔진이 관리하는 프레임 타이머와 Profiler에 접근한다.
 #include "GameInstance.h"
+// 한 프레임의 Update·Render 시간을 측정한다.
 #include "Profiler.h"
+// 문자·마우스 휠 메시지를 제품 UI에 전달한다.
 #include "UIInputRouter.h"
+// 저장된 화면 설정과 창 크기 변경을 적용한다.
 #include "ClientWindowDisplay.h"
+// 창 생성 전에 저장된 화면 설정을 읽는다.
 #include "UserSettingsDocument.h"
+// EXE 경로로 크래시 기록을 준비한다.
+#include "ClientDiagnostics.h"
 
+// 도구 창의 Win32 입력 메시지를 ImGui에 전달한다.
 #include "ImGuiLayer.h"
 
+// Debug 할당 중단점의 숫자 변환을 사용한다.
 #include <cstdlib>
-#include <exception>
-#include <csignal>
-#include <fstream>
-#include <filesystem>
-#include <iomanip>
 
+// 창 제목과 클래스 이름의 버퍼 크기다.
 #define MAX_LOADSTRING 100
 
-// 전역 변수:
+// MainApp과 화면 설정 서비스가 같은 주 창을 참조한다.
 HINSTANCE g_hInst; // 현재 인스턴스입니다.
 HWND    g_hWnd;
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
-// 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
+// 창 생성은 wWinMain이 요청하고, 창·대화상자 메시지는 아래 콜백으로 받는다.
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-namespace
-{
-    // Prepare the file before a fatal C++ path; crash reporting must not depend
-    // on Engine lifetime, iostreams, a heap-built path or symbol-loader state.
-    wchar_t g_CrashLogPath[32768]{};
-    HANDLE g_CrashLogFile = INVALID_HANDLE_VALUE;
-    std::terminate_handler g_PreviousTerminateHandler = nullptr;
-    using AbortSignalHandler = void (*)(int);
-    AbortSignalHandler g_PreviousAbortHandler = SIG_DFL;
-    volatile LONG g_TerminateDiagnosticEntered = 0;
-    char g_CrashLogText[65536]{};
-
-    struct CrashText final
-    {
-        DWORD length = 0;
-
-        void Character(const char value) noexcept
-        {
-            if (length < sizeof(g_CrashLogText))
-                g_CrashLogText[length++] = value;
-        }
-
-        void Text(const char* value, const size_t limit = 4096u) noexcept
-        {
-            if (!value) value = "<null>";
-            for (size_t index = 0; index < limit && value[index]; ++index)
-                Character(value[index]);
-        }
-
-        void Escaped(const char* value, const size_t limit = 4096u) noexcept
-        {
-            if (!value) value = "<null>";
-            size_t index = 0;
-            for (; index < limit && value[index]; ++index)
-            {
-                const unsigned char ch = static_cast<unsigned char>(value[index]);
-                if (ch == '\r') Text("\\r");
-                else if (ch == '\n') Text("\\n");
-                else if (ch == '\t') Text("\\t");
-                else if (ch < 32u || ch == 127u) Character('?');
-                else Character(static_cast<char>(ch));
-            }
-            if (index == limit) Text("<truncated>");
-        }
-
-        void Number(ULONGLONG value, const unsigned int width = 0u,
-            const unsigned int radix = 10u) noexcept
-        {
-            char reversed[32]{};
-            unsigned int count = 0;
-            do
-            {
-                reversed[count++] = "0123456789ABCDEF"[value % radix];
-                value /= radix;
-            } while (value && count < sizeof(reversed));
-            for (unsigned int padding = count; padding < width; ++padding) Character('0');
-            while (count) Character(reversed[--count]);
-        }
-
-        void Address(const ULONG_PTR value) noexcept
-        {
-            Text("0x");
-            Number(value, static_cast<unsigned int>(sizeof(void*) * 2u), 16u);
-        }
-    };
-
-    void RecordFatalDiagnostic(const char* kind) noexcept
-    {
-        CrashText text;
-        SYSTEMTIME time{};
-        GetLocalTime(&time);
-        text.Text("\r\n"); text.Text(kind); text.Text(" local=");
-        text.Number(time.wYear, 4); text.Character('-');
-        text.Number(time.wMonth, 2); text.Character('-');
-        text.Number(time.wDay, 2); text.Character(' ');
-        text.Number(time.wHour, 2); text.Character(':');
-        text.Number(time.wMinute, 2); text.Character(':');
-        text.Number(time.wSecond, 2); text.Character('.');
-        text.Number(time.wMilliseconds, 3);
-        text.Text(" pid="); text.Number(GetCurrentProcessId());
-        text.Text(" tid="); text.Number(GetCurrentThreadId());
-        text.Text(" uncaught="); text.Number(static_cast<unsigned int>(std::uncaught_exceptions()));
-        text.Text("\r\nexception=");
-
-        // The standard exception facility can itself have implementation costs.
-        // The writer around it uses fixed storage, with a recursion guard outside.
-        try
-        {
-            const std::exception_ptr exception = std::current_exception();
-            if (exception) std::rethrow_exception(exception);
-            text.Text("<no active C++ exception>");
-        }
-        catch (const std::exception& exception)
-        {
-            text.Text("std::exception what=");
-            text.Escaped(exception.what());
-        }
-        catch (...)
-        {
-            text.Text("<non-std C++ exception>");
-        }
-        text.Text("\r\n");
-
-        void* frames[64]{};
-        const USHORT count = CaptureStackBackTrace(0, 64, frames, nullptr);
-        text.Text("current_stack_frames="); text.Number(count); text.Text("\r\n");
-        for (USHORT index = 0; index < count; ++index)
-        {
-            text.Character('#'); text.Number(index, 2); text.Text(" address=");
-            const ULONG_PTR address = reinterpret_cast<ULONG_PTR>(frames[index]);
-            text.Address(address);
-            MEMORY_BASIC_INFORMATION memory{};
-            if (VirtualQuery(frames[index], &memory, sizeof(memory)) &&
-                memory.Type == MEM_IMAGE && memory.AllocationBase)
-            {
-                const ULONG_PTR base = reinterpret_cast<ULONG_PTR>(memory.AllocationBase);
-                text.Text(" module_base="); text.Address(base);
-                text.Text(" rva="); text.Address(address - base);
-                wchar_t modulePath[2048]{};
-                const DWORD pathLength = GetModuleFileNameW(
-                    static_cast<HMODULE>(memory.AllocationBase), modulePath,
-                    static_cast<DWORD>(std::size(modulePath)));
-                char utf8Path[8192]{};
-                const int utf8Length = pathLength > 0 && pathLength < std::size(modulePath) ?
-                    WideCharToMultiByte(CP_UTF8, 0, modulePath, static_cast<int>(pathLength),
-                        utf8Path, static_cast<int>(sizeof(utf8Path) - 1u), nullptr, nullptr) : 0;
-                text.Text(" module=");
-                text.Escaped(utf8Length > 0 ? utf8Path : "<unavailable or truncated>", 512u);
-            }
-            else text.Text(" module=<not an image>");
-            text.Text("\r\n");
-        }
-        text.Text("END_FATAL_DIAGNOSTIC\r\n");
-
-        if (g_CrashLogFile != INVALID_HANDLE_VALUE)
-        {
-            DWORD offset = 0;
-            while (offset < text.length)
-            {
-                DWORD written = 0;
-                if (!WriteFile(g_CrashLogFile, g_CrashLogText + offset,
-                    text.length - offset, &written, nullptr) || written == 0) break;
-                offset += written;
-            }
-            FlushFileBuffers(g_CrashLogFile);
-        }
-    }
-
-    [[noreturn]] void ClientTerminateDiagnostic() noexcept
-    {
-        if (InterlockedCompareExchange(&g_TerminateDiagnosticEntered, 1, 0) == 0)
-        {
-            RecordFatalDiagnostic("CXX_TERMINATE");
-            if (g_PreviousTerminateHandler && g_PreviousTerminateHandler != &ClientTerminateDiagnostic)
-                g_PreviousTerminateHandler();
-        }
-        // A diagnostic must never turn a fatal path into a successful return.
-        std::abort();
-    }
-
-    void ClientAbortDiagnostic(const int signal) noexcept
-    {
-        // MSVC's terminate handler is thread-local. The process SIGABRT hook
-        // also observes default-terminate/explicit-abort in loader workers.
-        if (InterlockedCompareExchange(&g_TerminateDiagnosticEntered, 1, 0) == 0)
-            RecordFatalDiagnostic("CRT_SIGABRT");
-        if (g_PreviousAbortHandler != SIG_DFL && g_PreviousAbortHandler != SIG_IGN &&
-            g_PreviousAbortHandler != SIG_ERR && g_PreviousAbortHandler != &ClientAbortDiagnostic)
-            g_PreviousAbortHandler(signal);
-        // Returning to abort preserves its fatal termination behavior.
-    }
-
-    void PrepareTerminateDiagnostic() noexcept
-    {
-        DWORD length = GetModuleFileNameW(nullptr, g_CrashLogPath,
-            static_cast<DWORD>(std::size(g_CrashLogPath)));
-        bool absolutePath = length > 0 && length < std::size(g_CrashLogPath);
-        for (unsigned int parent = 0; absolutePath && parent < 3u; ++parent)
-        {
-            while (length > 0 && g_CrashLogPath[length - 1u] != L'\\' &&
-                g_CrashLogPath[length - 1u] != L'/') --length;
-            if (length == 0) absolutePath = false;
-            else g_CrashLogPath[--length] = L'\0';
-        }
-        constexpr wchar_t suffix[] = L"\\Default\\ClientCrash.user.log";
-        if (absolutePath && length + std::size(suffix) <= std::size(g_CrashLogPath))
-        {
-            for (size_t index = 0; index < std::size(suffix); ++index)
-                g_CrashLogPath[length + index] = suffix[index];
-        }
-        else
-        {
-            constexpr wchar_t fallback[] = L"ClientCrash.user.log";
-            for (size_t index = 0; index < std::size(fallback); ++index)
-                g_CrashLogPath[index] = fallback[index];
-        }
-        g_CrashLogFile = CreateFileW(g_CrashLogPath, FILE_APPEND_DATA,
-            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-            OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (g_CrashLogFile == INVALID_HANDLE_VALUE)
-            OutputDebugStringW(L"[CrashDiagnostic] Unable to open ClientCrash.user.log\n");
-        // The OS closes this process-lifetime handle after fatal/static teardown.
-        g_PreviousAbortHandler = std::signal(SIGABRT, &ClientAbortDiagnostic);
-        g_PreviousTerminateHandler = std::set_terminate(&ClientTerminateDiagnostic);
-    }
-
-    void WriteExitDiagnostic(const char* reason, const HRESULT result = S_OK)
-    {
-        // Exit reporting must also work before Engine initialization succeeds.
-        wchar_t modulePath[32768]{};
-        const DWORD pathLength = GetModuleFileNameW(nullptr, modulePath,
-            static_cast<DWORD>(std::size(modulePath)));
-        std::filesystem::path logPath = "ClientExit.user.log";
-        if (pathLength > 0 && pathLength < std::size(modulePath))
-            logPath = std::filesystem::path(modulePath).parent_path().parent_path().parent_path() /
-                L"Default" / L"ClientExit.user.log";
-        std::ofstream output(logPath, std::ios::binary | std::ios::app);
-        if (!output)
-            return;
-
-        SYSTEMTIME time{};
-        ::GetLocalTime(&time);
-        output << std::setfill('0')
-            << time.wYear << '-'
-            << std::setw(2) << time.wMonth << '-'
-            << std::setw(2) << time.wDay << ' '
-            << std::setw(2) << time.wHour << ':'
-            << std::setw(2) << time.wMinute << ':'
-            << std::setw(2) << time.wSecond
-            << " reason=" << reason
-            << " hr=0x" << std::hex << std::uppercase
-            << static_cast<unsigned long>(result)
-            << std::dec
-            << " pid=" << GetCurrentProcessId()
-            << '\n';
-    }
-}
-
+// 창 생성 → MainApp 준비 → 메시지/프레임 반복 → 화면·앱 종료를 연결한다.
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
-    PrepareTerminateDiagnostic();
+    // 엔진 생성 전 설치해 초기화·종료 정리 중의 치명적 예외도 기록한다.
+    Client::PrepareCrashReport();
 
 #ifdef _DEBUG
-    /* Tracking on, but not the CRT's own end-of-executable report: that runs before
-    Engine.dll is detached, so everything an Engine static still held was listed as a leak
-    although it is freed moments later. Engine/Private/DebugLeakReport.cpp reports instead,
-    from the last static destroyed in that module. */
+    // Engine의 static 자원이 해제된 뒤 DebugLeakReport가 누수를 보고하도록 EXE 자동 보고는 끈다.
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF);
-    /* The leak dump names an allocation number but not a call stack, and the blocks it
-    reports are container bookkeeping (_Container_proxy: one pointer to the container plus
-    a null iterator list), which an address alone cannot attribute. Set LOSTARK_BREAK_ALLOC
-    to one of the numbers in braces from the dump and the debugger stops on that exact
-    allocation, so the next run says where it came from. Off unless the variable is set. */
+    // LOSTARK_BREAK_ALLOC에 지정한 할당 번호에서 디버거를 중단한다.
     char_t szBreakAlloc[32]{};
     size_t iBreakAllocLength = 0;
+
     if (0 == getenv_s(&iBreakAllocLength, szBreakAlloc, sizeof(szBreakAlloc),
             "LOSTARK_BREAK_ALLOC") && iBreakAllocLength > 1)
     {
@@ -306,77 +73,80 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: 여기에 코드를 입력합니다.
-
-    // 전역 문자열을 초기화합니다.
+    // 창 리소스를 읽고 OS 메시지를 받을 창 클래스를 등록한다.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_CLIENT, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
+    // 창을 만들기 전에 저장된 화면 설정을 읽는다. 실패하면 현재 설정으로 계속한다.
     std::string settingsStatus;
     if (!Client::CUserSettings::Get().Load_Persisted(settingsStatus))
         OutputDebugStringA(("[Settings] " + settingsStatus + "\n").c_str());
 
-    // 애플리케이션 초기화를 수행합니다:
+    // 엔진 장치를 연결할 주 창을 먼저 만든다.
     if (!InitInstance (hInstance, nCmdShow))
     {
-        WriteExitDiagnostic("InitInstance failed", E_FAIL);
         return FALSE;
     }
 
+    // MainApp이 엔진 관리자·공용 원형·제품 UI를 준비하고 Lobby 진입을 시작한다.
     auto    pMainApp = CMainApp::Create();
     if (nullptr == pMainApp)
     {
-        WriteExitDiagnostic("MainApp creation failed", E_FAIL);
         return 1;
     }
 
-    // Timer_60 remains the shared rendered-frame clock used by raid-entry animation.
+    // Update에 전달할 경과 시간을 엔진 타이머로 측정한다. Timer_60은 FPS 제한값이 아니다.
     if (FAILED(CGameInstance::Get().Add_Timer(TEXT("Timer_60"))))
     {
-        WriteExitDiagnostic("Timer_60 creation failed", E_FAIL);
         return FALSE;
     }
 
+    // 리소스 단축키와 OS 메시지 큐를 연결한다.
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_CLIENT));
     MSG msg{};
 
+    // 대기 메시지를 처리한 뒤 게임 프레임을 실행한다.
     while (true)
     {
-        // Drain queued input before the next frame; rendering is not capped at 60 Hz.
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             if (WM_QUIT == msg.message)
                 break;
+
+            // 단축키가 소비하지 않은 메시지를 WndProc으로 전달한다.
             if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
             {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
         }
+
         if (WM_QUIT == msg.message)
         {
-            WriteExitDiagnostic("WM_QUIT", S_OK);
             break;
         }
 
+        // WndProc이 예약한 창 크기를 프레임 시작 전에 GPU에 적용한다.
         std::string displayStatus;
         if (!Client::CClientWindowDisplay::Process_PendingResize(displayStatus))
         {
-            WriteExitDiagnostic("Display resize failed", E_FAIL);
             break;
         }
-        // Keep consuming network events and frame-owned render submissions while minimized.
-        // The last nonzero GPU size remains valid; throttle these background frames to 20 Hz.
+
+        // 최소화해도 네트워크·프레임 처리를 이어가되 대기를 넣어 실행 빈도를 낮춘다.
         if (Client::CClientWindowDisplay::Is_Minimized())
             MsgWaitForMultipleObjects(0, nullptr, FALSE, 50, QS_ALLINPUT);
 
+        // 지난 프레임 처리와 제한 대기를 포함한 실제 경과 시간을 갱신한다.
         CGameInstance::Get().Update_TimeDelta(TEXT("Timer_60"));
+        // 엔진 Profiler가 이번 Update·Render 구간을 측정한다.
         Engine::CProfiler* pProfiler = CGameInstance::Get().Get_Profiler();
         if (nullptr != pProfiler)
             pProfiler->Begin_Frame();
 
         {
+            // MainApp → GameInstance → Object_Manager/Level_Manager 순서로 갱신한다.
             Engine::CProfilerScope scope(pProfiler, "Client.Update");
             pMainApp->Update(CGameInstance::Get().Get_TimeDelta(TEXT("Timer_60")));
         }
@@ -390,27 +160,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         if (nullptr != pProfiler)
             pProfiler->End_Frame();
 
-        // System option frame limit (off by default): outside the profiled frame.
+        // 시스템 옵션의 프레임 제한 대기는 Profiler 프레임 구간 밖에서 수행한다.
         pMainApp->Limit_FrameRate();
 
         if (FAILED(hRenderResult))
         {
-            WriteExitDiagnostic("Render failed", hRenderResult);
             break;
         }
     }
 
+    // 엔진 종료 전에 화면 설정 연결을 해제한다. MainApp 종료가 UI·도구와 엔진 정리를 이어간다.
     Client::CClientWindowDisplay::Shutdown();
     return (int) msg.wParam;
 }
 
 
 
-//
-//  함수: MyRegisterClass()
-//
-//  용도: 창 클래스를 등록합니다.
-//
+// wWinMain이 호출해 창 모양과 WndProc 연결을 Windows에 등록한다.
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
     WNDCLASSEXW wcex;
@@ -432,20 +198,12 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-//
-//   함수: InitInstance(HINSTANCE, int)
-//
-//   용도: 인스턴스 핸들을 저장하고 주 창을 만듭니다.
-//
-//   주석:
-//
-//        이 함수를 통해 인스턴스 핸들을 전역 변수에 저장하고
-//        주 프로그램 창을 만든 다음 표시합니다.
-//
+// 주 창을 만들고 저장된 화면 설정을 적용한다. 설정 실패 시 만든 창도 닫는다.
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     g_hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
+   // 원하는 게임 화면 크기에 창 테두리·제목 표시줄을 더한다.
    RECT     rcWindow = { 0, 0, g_iWinSizeX, g_iWinSizeY };
 
    AdjustWindowRect(&rcWindow, WS_OVERLAPPEDWINDOW, FALSE);
@@ -463,11 +221,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    if (!Client::CClientWindowDisplay::Configure_InitialWindow(hWnd,
        Client::CUserSettings::Get().Get_DisplaySettings(), displayStatus))
    {
-       WriteExitDiagnostic("Initial display configuration failed", E_FAIL);
        DestroyWindow(hWnd);
        return FALSE;
    }
 
+   // 준비된 주 창을 표시한 뒤 MainApp 초기화로 넘어간다.
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -476,25 +234,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-//
-//  함수: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  용도: 주 창의 메시지를 처리합니다.
-//
-//  WM_COMMAND  - 애플리케이션 메뉴를 처리합니다.
-//  WM_PAINT    - 주 창을 그립니다.
-//  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
-//
-//
+// 창 크기·DPI·UI 입력·종료 메시지를 각 담당 서비스에 전달한다.
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    // GPU 크기 변경은 즉시 실행하지 않고 다음 프레임 경계로 예약한다.
     if (message == WM_SIZE)
         Client::CClientWindowDisplay::Queue_Size(LOWORD(lParam), HIWORD(lParam), wParam == SIZE_MINIMIZED);
+    // 모니터 DPI 변경에 따른 Windows 권장 창 영역을 적용한다.
     if (message == WM_DPICHANGED)
     {
         Client::CClientWindowDisplay::On_DpiChanged(HIWORD(wParam), *reinterpret_cast<const RECT*>(lParam));
         return 0;
     }
+    // Client 영역의 크기 제한을 DPI·테두리가 포함된 창 크기로 변환한다.
     if (message == WM_GETMINMAXINFO)
     {
         auto* limits = reinterpret_cast<MINMAXINFO*>(lParam);
@@ -503,8 +255,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             FALSE, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_EXSTYLE)), GetDpiForWindow(hWnd));
         limits->ptMinTrackSize.x = minimum.right - minimum.left;
         limits->ptMinTrackSize.y = minimum.bottom - minimum.top;
-        // A physical client resolution can need a larger outer frame than the desktop.
-        // Keep maximize's monitor bounds, but allow explicit resolution/window resizing.
+        // 지정 해상도가 모니터보다 커도 명시적인 창 크기 조절을 허용한다.
         RECT maximum{0, 0, 16384, 16384};
         AdjustWindowRectExForDpi(&maximum, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_STYLE)),
             FALSE, static_cast<DWORD>(GetWindowLongPtrW(hWnd, GWL_EXSTYLE)), GetDpiForWindow(hWnd));
@@ -513,26 +264,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
+    // ImGui가 소비하지 않은 메시지를 제품 UI와 기본 창 처리로 넘긴다.
     if (CImGuiLayer::HandleWindowMessage(hWnd, message, wParam, lParam))
         return 1;
 
     switch (message)
     {
     case WM_CHAR:
-        /* Committed text (ASCII and IME-composed Hangul alike arrive here; ImGui's handler
-        above queues but never consumes WM_CHAR) for the runtime UI's own text fields -- the
-        router drops it unless one of them is active. */
+        // 입력 중인 제품 UI에 확정 문자를 전달한다.
         Client::CUIInputRouter::Get().On_Char(static_cast<wchar_t>(wParam));
         break;
     case WM_MOUSEWHEEL:
-        /* Runtime UI lists scroll from this message (see CUIInputRouter::On_MouseWheel); ImGui's
-        handler above only records the wheel for its own windows and never consumes it. */
+        // 제품 UI 목록의 스크롤 입력을 전달한다.
         Client::CUIInputRouter::Get().On_MouseWheel(GET_WHEEL_DELTA_WPARAM(wParam));
         break;
+    // 리소스 단축키의 정보 창·종료 명령을 처리한다.
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
-            // 메뉴 선택을 구문 분석합니다:
             switch (wmId)
             {
             case IDM_ABOUT:
@@ -546,14 +295,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    // Windows 갱신 영역을 처리한다. 게임 화면은 MainApp::Render가 그린다.
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
             EndPaint(hWnd, &ps);
         }
         break;
+    // wWinMain의 프레임 루프에 종료를 알린다.
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -563,7 +313,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// 정보 대화 상자의 메시지 처리기입니다.
+// 정보 대화상자의 확인·취소를 처리한다.
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     UNREFERENCED_PARAMETER(lParam);

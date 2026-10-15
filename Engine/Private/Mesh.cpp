@@ -1,19 +1,27 @@
 #include "Mesh.h"
-#pragma push_macro("new")
-#undef new
+// Assimp 메시의 정점·면·본 구조를 읽는다.
 #include "Assimp/scene.h"
-#pragma pop_macro("new")
+// static/skinned 정점의 GPU 배치와 stride를 결정한다.
 #include "Engine_VertexTypes.h"
+// WModel 디코더가 복원한 메시·골격 데이터를 입력받는다.
 #include "BinaryAsset/ModelAssetData.h"
+// 모델 본 이름을 연결하고 현재 combined 변환으로 skin palette를 만든다.
 #include "Bone.h"
 
 #include "Shader.h"
+// 세션의 LOD 설정과 제출 geometry를 기록할 profiler를 조회한다.
 #include "GameInstance.h"
+// LOD 사용 여부를 읽는 렌더링 설정의 완전한 타입이 필요하다.
 #include "Engine_RenderTypes.h"
+// draw 수·index 수와 실제 제출한 메시를 계측한다.
 #include "Profiler.h"
+// 화면 오차로 선택할 파생 index 버퍼를 생성하고 조회한다.
 #include "StaticMeshLod.h"
+// BVH의 중앙 분할과 cluster index 범위 검증에 사용한다.
 #include <algorithm>
+// 피킹 위치·skin weight의 유한값과 정규화 오차를 검사한다.
 #include <cmath>
+// BVH 경계의 최초 최소·최대값을 준비한다.
 #include <limits>
 
 CMesh::CMesh(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext)
@@ -25,6 +33,7 @@ CMesh::~CMesh()
 {
 }
 
+// 원본 메시의 정점·삼각형과 스킨 정보를 GPU 버퍼로 준비한다. 실패한 새 메시의 수명 정리는 Create의 소유 포인터가 맡는다.
 HRESULT CMesh::Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones, fmatrix_t PreTransformMatrix)
 {
 #pragma region PUBLIC_DATA
@@ -79,6 +88,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const aiMesh* pAIMesh, const ve
 	return S_OK;
 }
 
+// 디코더의 geometry를 GPU 버퍼로 변환한다. CPU 입력은 호출 중 차용하고 피킹에 필요한 값만 별도로 보관한다.
 HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	const MODEL_SKELETON_DATA& skeleton, fmatrix_t PreTransformMatrix, bool_t preserveStaticVertices, bool_t buildPickingGeometry)
 {
@@ -136,7 +146,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 		for (size_t index = 0; index < staticVertices.size(); ++index)
 		{
 			VTXMESH& vertex = staticVertices[index];
-			// The WModel reader already decoded RGBA; upload without a second swizzle.
+			// WModel reader가 RGBA를 이미 복원했으므로 채널 순서를 다시 바꾸지 않는다.
 			vertex.color0Rgba8 = mesh.hasColor0 ? mesh.color0Rgba8[index] : 0xffffffffu;
             if (preserveStaticVertices) continue;
 			XMStoreFloat3(&vertex.vPosition,
@@ -164,8 +174,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	if (FAILED(m_pDevice->CreateBuffer(&indexBufferDesc, &indexInitialData, &m_pIB)))
 		return E_FAIL;
 
-    // Derived clusters retain the original placements for picking. Avoid a
-    // second CPU geometry copy and BVH for presentation-only aggregate buffers.
+    // 피킹은 원래 placement를 사용한다. 표시 전용 cluster에 CPU geometry·BVH를 중복 보관하지 않는다.
     if (!buildPickingGeometry) return S_OK;
 
     auto pick = make_shared<PICK_GEOMETRY>();
@@ -183,6 +192,7 @@ HRESULT CMesh::Initialize_Prototype(MODEL eType, const MODEL_MESH_DATA& mesh,
 	return S_OK;
 }
 
+// 유효한 삼각형만 BVH에 넣는다. 가장 긴 축의 삼각형 중심값을 기준으로 개수를 절반으로 나눈다.
 void CMesh::Prepare_StaticPickGeometry(PICK_GEOMETRY& geometry)
 {
     if (geometry.skinned) return;
@@ -251,11 +261,13 @@ void CMesh::Prepare_StaticPickGeometry(PICK_GEOMETRY& geometry)
             self(self, first, half);
             self(self, first + half, count - half);
         }
+        // 전위 배열에서 이 subtree 다음 위치를 기록해 ray가 경계를 놓치면 자식 전체를 건너뛴다.
         geometry.nodes[nodeIndex].end = static_cast<uint32_t>(geometry.nodes.size());
     };
     build(build, 0u, static_cast<uint32_t>(geometry.triangles.size()));
 }
 
+// CModel이 변환한 local ray로 정적 BVH를 조회한다. 놓친 경우 distance를 바꾸지 않는다.
 bool_t CMesh::Try_PickStaticLocal(fvector_t origin, fvector_t direction,
     const f32_t maxDistance, const f32_t cullSign, f32_t& distance) const
 {
@@ -278,8 +290,7 @@ bool_t CMesh::Try_PickStaticLocal(fvector_t origin, fvector_t direction,
             const vector_t a = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle]].position);
             const vector_t b = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle + 1u]].position);
             const vector_t c = XMLoadFloat3(&geometry.vertices[geometry.indices[triangle + 2u]].position);
-            // D3D's default CW front faces have normals toward the viewer:
-            // dot(normal, incoming ray) is negative in the LH view basis.
+            // D3D 기본 CW 앞면은 관찰자를 향한다. LH view에서 입사 ray와 법선의 내적은 음수다.
             if (cullSign != 0.f && XMVectorGetX(XMVector3Dot(
                 XMVector3Cross(b - a, c - a), direction)) * cullSign >= 0.f) continue;
             float candidate;
@@ -297,6 +308,7 @@ HRESULT CMesh::Initialize(void* pArg)
 	return S_OK;
 }
 
+// 현재 pose의 보수적 경계를 계산할 본별 bind 위치 범위를 만든다. 모든 weight 검증 뒤에만 반영한다.
 void CMesh::Prepare_BoneVertexBounds(const MODEL_MESH_DATA& mesh)
 {
     vector<BONE_VERTEX_BOUNDS> staged(m_iNumBones);
@@ -330,13 +342,13 @@ void CMesh::Prepare_BoneVertexBounds(const MODEL_MESH_DATA& mesh)
             bounds.maximum.y = (std::max)(bounds.maximum.y, position.y);
             bounds.maximum.z = (std::max)(bounds.maximum.z, position.z);
         }
-        // WModel decoding normalizes nonnegative weights. This convex bound is
-        // unavailable for any other weight contract; never change the geometry.
+        // WModel의 정규화된 비음수 skin weight에만 이 볼록 경계가 성립한다. geometry 자체는 바꾸지 않는다.
         if (!std::isfinite(sum) || std::fabs(sum - 1.f) > 1.e-5f) return;
     }
     m_BoneVertexBounds = std::move(staged);
 }
 
+// 메시의 inverse bind와 현재 본 pose를 합성해 CModel이 제공한 출력 배열에 기록한다.
 void CMesh::Build_SkinPalette(const vector<shared_ptr<class CBone>>& Bones,
     float4x4_t* pOutMatrices) const
 {
@@ -357,21 +369,64 @@ HRESULT CMesh::Render()
     return result;
 }
 
+HRESULT CMesh::Render(const MESH_SCREEN_LOD_DESC* screenLod)
+{
+    if (!screenLod) return Render();
+    if (!m_pVB || !m_pIB || !m_iNumIndices) return E_INVALIDARG;
+    uint32_t count = 0u, first = 0u;
+    const uint32_t level = Select_StaticLod(screenLod, count, first);
+    const auto* lod = Get_StaticLod(screenLod->attributeSensitive);
+    // 일반 draw도 동일한 원본 VB와 선택 IB만 소비한다. 다음 근경 draw에서 LOD0 IB를 복구한다.
+    m_pContext->IASetIndexBuffer(level ? lod->Get_IndexBuffer() : m_pIB.Get(), m_eIndexFormat, 0u);
+    m_pContext->DrawIndexed(count, first, 0);
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+    {
+        profiler->Add_Counter(EProfilerCounter::DrawCalls);
+        profiler->Add_Counter(EProfilerCounter::Indices, count);
+        if (lod && !Has_MorphBaseVertices()) profiler->Add_Counter(EProfilerCounter::MapLodAvailableDraws);
+        profiler->Add_Counter(level >= 2u ? EProfilerCounter::MapLod2Draws :
+            level ? EProfilerCounter::MapLod1Draws : EProfilerCounter::MapLod0Draws);
+        profiler->Add_Counter(EProfilerCounter::MapLodSourceIndices, m_iNumIndices);
+        profiler->Add_Counter(EProfilerCounter::MapLodSubmittedIndices, count);
+        profiler->Record_MeshSubmitted(this, count, 1u, m_szName, m_iNumVertices, m_iMaterialIndex);
+    }
+    return S_OK;
+}
+
+const CStaticMeshLod* CMesh::Get_StaticLod(bool_t attributeSensitive) const
+{
+    return attributeSensitive ? m_AttributeLod.get() : m_StaticLod ? m_StaticLod.get() : m_AttributeLod.get();
+}
+
+bool_t CMesh::Get_StaticLodRange(uint32_t level, bool_t attributeSensitive,
+    uint32_t& count, uint32_t& first, f32_t& localError) const
+{
+    if (!level) { count = m_iNumIndices; first = 0u; localError = 0.f; return true; }
+    const auto* lod = Get_StaticLod(attributeSensitive);
+    CStaticMeshLod::SELECTION selection{};
+    if (!lod || Has_MorphBaseVertices() || !CGameInstance::Get().Get_RenderOptimizationSettings().MeshLodEnabled ||
+        !lod->Get_Range(level, selection, localError)) return false;
+    count = selection.indexCount; first = selection.firstIndex;
+    return true;
+}
+
 uint32_t CMesh::Select_StaticLod(const MESH_SCREEN_LOD_DESC* view,
     uint32_t& indexCount, uint32_t& firstIndex) const
 {
     indexCount = m_iNumIndices;
     firstIndex = 0u;
     CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
-    if (!view || !m_StaticLod || Has_MorphBaseVertices() ||
+    const auto* lod = Get_StaticLod(view && view->attributeSensitive);
+    if (!view || !lod || Has_MorphBaseVertices() ||
         !CGameInstance::Get().Get_RenderOptimizationSettings().MeshLodEnabled ||
-        S_OK != m_StaticLod->Select_Range(*view, selection))
+        S_OK != lod->Select_Range(*view, selection))
         return 0u;
     indexCount = selection.indexCount;
     firstIndex = selection.firstIndex;
     return selection.level;
 }
 
+// CPU가 보유한 instance 수와 버퍼 범위를 확인한 뒤 공통 메시를 여러 배치에 제출한다.
 HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	uint32_t iInstanceStride, uint32_t iNumInstances,
 	uint32_t iInstanceByteOffset, const MESH_SCREEN_LOD_DESC* screenLod)
@@ -393,11 +448,11 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 		requiredBytes > instanceDesc.ByteWidth)
 		return E_INVALIDARG;
 
-    // The view and immutable LOD errors are already CPU-owned. Select a range
-    // directly instead of submitting a one-thread compute dispatch per draw.
+    // CPU가 가진 view·불변 LOD 오차로 범위를 선택해 draw마다 1-thread compute를 제출하지 않는다.
     CStaticMeshLod::SELECTION selection{ m_iNumIndices, 0u, 0u };
     selection.level = Select_StaticLod(screenLod, selection.indexCount, selection.firstIndex);
     const bool_t useLod = selection.level > 0u;
+    const auto* lod = Get_StaticLod(screenLod && screenLod->attributeSensitive);
 
 	ID3D11Buffer* vertexBuffers[] =
 	{
@@ -421,7 +476,7 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	);
 
 	m_pContext->IASetIndexBuffer(
-        useLod ? m_StaticLod->Get_IndexBuffer() : m_pIB.Get(),
+        useLod ? lod->Get_IndexBuffer() : m_pIB.Get(),
 		m_eIndexFormat,
 		0
 	);
@@ -446,9 +501,10 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
         pProfiler->Add_Counter(EProfilerCounter::Indices, submittedIndices);
         if (screenLod)
         {
-            if (m_StaticLod && !Has_MorphBaseVertices())
+            if (lod && !Has_MorphBaseVertices())
                 pProfiler->Add_Counter(EProfilerCounter::MapLodAvailableDraws);
-            const EProfilerCounter levelCounter = selection.level == 2u ? EProfilerCounter::MapLod2Draws :
+            // 확장된 원경 단계도 LOD0으로 오기록하지 않고 기존 LOD2+ 집계에 포함한다.
+            const EProfilerCounter levelCounter = selection.level >= 2u ? EProfilerCounter::MapLod2Draws :
                 selection.level == 1u ? EProfilerCounter::MapLod1Draws : EProfilerCounter::MapLod0Draws;
             pProfiler->Add_Counter(levelCounter);
             pProfiler->Add_Counter(EProfilerCounter::MapLodSourceIndices,
@@ -470,6 +526,42 @@ HRESULT CMesh::Render_Instanced(ID3D11Buffer* pInstanceBuffer,
 	return S_OK;
 }
 
+// GPU가 확정한 draw 인자를 그대로 제출한다. 여기서는 버퍼 범위·LOD만 검사하고 GPU count를 읽지 않는다.
+HRESULT CMesh::Render_InstancedIndirect(ID3D11Buffer* instanceBuffer, uint32_t stride,
+    uint32_t byteOffset, ID3D11Buffer* args, uint32_t argsByteOffset,
+    uint32_t lodLevel, bool_t attributeSensitive)
+{
+    if (!instanceBuffer || !args || !stride || !m_pVB || !m_pIB || !m_iNumIndices ||
+        byteOffset % sizeof(float) || argsByteOffset % sizeof(uint32_t)) return E_INVALIDARG;
+    D3D11_BUFFER_DESC instanceDesc{}, argsDesc{};
+    instanceBuffer->GetDesc(&instanceDesc); args->GetDesc(&argsDesc);
+    if (!(instanceDesc.BindFlags & D3D11_BIND_VERTEX_BUFFER) ||
+        !(argsDesc.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) ||
+        uint64_t(byteOffset) + stride > instanceDesc.ByteWidth ||
+        uint64_t(argsByteOffset) + 5u * sizeof(uint32_t) > argsDesc.ByteWidth) return E_INVALIDARG;
+    uint32_t count = 0u, first = 0u; float error = 0.f;
+    if (!Get_StaticLodRange(lodLevel, attributeSensitive, count, first, error)) return E_INVALIDARG;
+    const auto* lod = Get_StaticLod(attributeSensitive);
+    ID3D11Buffer* buffers[] = { m_pVB.Get(), instanceBuffer };
+    const uint32_t strides[] = { m_iVertexStride, stride }, offsets[] = { 0u, byteOffset };
+    m_pContext->IASetVertexBuffers(0u, 2u, buffers, strides, offsets);
+    m_pContext->IASetIndexBuffer(lodLevel ? lod->Get_IndexBuffer() : m_pIB.Get(), m_eIndexFormat, 0u);
+    m_pContext->IASetPrimitiveTopology(m_ePrimitiveTopology);
+    m_pContext->DrawIndexedInstancedIndirect(args, argsByteOffset);
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+    {
+        profiler->Record_GeometryIndirectDraw(args, argsByteOffset);
+        profiler->Add_Counter(EProfilerCounter::DrawCalls);
+        profiler->Add_Counter(EProfilerCounter::InstancedDrawCalls);
+        profiler->Add_Counter(EProfilerCounter::IndirectDrawCalls);
+        // 실제 생존 개수는 GPU 소유다. 용량 상한을 실측 indices/instances로 둔갑시키지 않는다.
+        profiler->Add_Counter(EProfilerCounter::IndirectIndexUpperBound,
+            uint64_t(count) * ((instanceDesc.ByteWidth - byteOffset) / stride));
+    }
+    return S_OK;
+}
+
+// 정점별 원본 배치 번호와 선택적 원경 index를 불변 버퍼로 만든다. 실패하면 기존 cluster 참조를 유지한다.
 HRESULT CMesh::Prepare_StaticClusterStreams(std::span<const uint32_t> sourceIndices,
     std::span<const uint32_t> farIndices)
 {
@@ -498,6 +590,7 @@ HRESULT CMesh::Prepare_StaticClusterStreams(std::span<const uint32_t> sourceIndi
     return S_OK;
 }
 
+// CModel이 준비한 합성 geometry에 원본 번호 stream을 연결해 near 또는 far 삼각형을 제출한다.
 HRESULT CMesh::Render_StaticCluster(bool_t farGeometry)
 {
     if (!m_pVB || !m_pIB || !m_ClusterSourceIndices || m_iNumIndices == 0u ||
@@ -521,6 +614,7 @@ HRESULT CMesh::Render_StaticCluster(bool_t farGeometry)
     return S_OK;
 }
 
+// Assimp 정적 정점에 모델 사전 변환을 한 번 적용한 뒤 GPU 버퍼로 복사한다.
 HRESULT CMesh::Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTransformMatrix)
 {
 	D3D11_BUFFER_DESC		VertexBufferDesc{};
@@ -566,6 +660,7 @@ HRESULT CMesh::Ready_VertexBuffer_NonAnim(const aiMesh* pAIMesh, fmatrix_t PreTr
 	return S_OK;
 }
 
+// 메시별 본 이름을 모델 골격 index에 연결한다. 정점은 bind 위치에 두고 이후 shader skinning이 변환한다.
 HRESULT CMesh::Ready_VertexBuffer_Anim(const aiMesh* pAIMesh, const vector<shared_ptr<class CBone>>& Bones)
 {
 	D3D11_BUFFER_DESC		VertexBufferDesc{};
@@ -648,6 +743,7 @@ HRESULT CMesh::Ready_VertexBuffer_Anim(const aiMesh* pAIMesh, const vector<share
 		}
 	}
 
+	// 본 weight가 없는 부착 메시도 같은 이름의 모델 본에 연결할 palette 항목을 마련한다.
 	if (0 == m_iNumBones)
 	{
 		m_iNumBones = 1;
@@ -726,11 +822,7 @@ HRESULT CMesh::Make_VertexBuffer_Unique()
 
 	const uint32_t iByteWidth = m_iVertexStride * m_iNumVertices;
 
-	/* The unmorphed rest position/normal has to come from somewhere, and the vertex buffer
-	is D3D11_USAGE_DEFAULT with CPUAccessFlags 0, so it cannot be Map()ed directly. Copying
-	it into a staging buffer first is the one supported readback path, and doing it here --
-	once, for the one character that actually opens the face editor -- costs nothing for
-	every other model, which is why nothing is retained at load time. */
+	/* DEFAULT vertex buffer는 직접 Map할 수 없어 staging으로 복사해 원래 위치·법선을 읽는다. 얼굴 편집을 연 모델에서만 준비한다. */
 	D3D11_BUFFER_DESC stagingDesc{};
 	stagingDesc.ByteWidth = iByteWidth;
 	stagingDesc.Usage = D3D11_USAGE_STAGING;
@@ -755,7 +847,7 @@ HRESULT CMesh::Make_VertexBuffer_Unique()
 	const uint8_t* pVertices = static_cast<const uint8_t*>(mapped.pData);
 	for (uint32_t i = 0; i < m_iNumVertices; ++i)
 	{
-		/* vPosition sits at offset 0 and vNormal at 12 in both VTXMESH and VTXANIMMESH. */
+		/* VTXMESH·VTXANIMMESH 모두 위치 offset은 0, 법선 offset은 12다. */
 		const uint8_t* pVertex = pVertices + static_cast<size_t>(i) * m_iVertexStride;
 		memcpy(&(*pPositions)[i], pVertex, sizeof(float3_t));
 		memcpy(&(*pNormals)[i], pVertex + sizeof(float3_t), sizeof(float3_t));
@@ -772,9 +864,7 @@ HRESULT CMesh::Make_VertexBuffer_Unique()
 	if (FAILED(m_pDevice->CreateBuffer(&vertexBufferDesc, nullptr, &pUniqueVB)))
 		return E_FAIL;
 
-	/* GPU-side copy of the buffer this instance still shares with the prototype and its
-	siblings, so the new one starts identical -- every field, not just the position/normal
-	this class knows how to touch. */
+	/* prototype·다른 복제본과 공유하던 GPU buffer 전체를 복사해 나머지 정점 필드도 그대로 유지한다. */
 	m_pContext->CopyResource(pUniqueVB.Get(), m_pVB.Get());
 
 	m_pMorphBasePositions = pPositions;
@@ -812,9 +902,7 @@ HRESULT CMesh::Update_Vertices(const vector<uint32_t>& iIndices,
 		Box.front = 0u;
 		Box.back = 1u;
 
-		/* vPosition and vNormal are adjacent (offset 0 and 12) in both VTXMESH and
-		VTXANIMMESH, so one 24-byte box covers both; every other field (tangent, binormal,
-		UV, blend indices/weights) is outside this box and is left untouched. */
+		/* 두 정점 형식의 위치·법선은 연속된 24바이트다. 이 구간만 갱신해 tangent·UV·skin 입력은 보존한다. */
 		m_pContext->UpdateSubresource(m_pVB.Get(), 0, &Box, PositionNormal, 0, 0);
 		m_TouchedVertexIndices.push_back(iVertex);
 	}
@@ -865,9 +953,10 @@ shared_ptr<CPrototype> CMesh::Clone(void* pArg)
 }
 
 
+// CModel 로드 단계의 선택적 준비다. 같은 정점 배치에서 일반·속성 보존 LOD를 만들고 원본 IB는 유지한다.
 HRESULT CMesh::Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTransform)
 {
-    if (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || mesh.indices.size() < CStaticMeshLod::MINIMUM_INDICES ||
+    if (mesh.vertexKind != MODEL_VERTEX_KIND::STATIC || mesh.indices.size() < CStaticMeshLod::ATTRIBUTE_MINIMUM_INDICES ||
         mesh.indices.size() > 3u * 1024u * 1024u || Has_MorphBaseVertices()) return S_FALSE;
     try
     {
@@ -881,7 +970,10 @@ HRESULT CMesh::Prepare_StaticLod(const MODEL_MESH_DATA& mesh, fmatrix_t preTrans
             XMStoreFloat3(&v.vTangent, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&v.vTangent), preTransform)));
             XMStoreFloat3(&v.vBinormal, XMVector3Normalize(XMVector3TransformNormal(XMLoadFloat3(&v.vBinormal), preTransform)));
         }
-        return CStaticMeshLod::Create(m_pDevice.Get(), vertices, mesh.indices, m_StaticLod);
+        const HRESULT standard = CStaticMeshLod::Create(m_pDevice.Get(), vertices, mesh.indices, m_StaticLod);
+        const HRESULT attributes = CStaticMeshLod::Create(m_pDevice.Get(), vertices, mesh.indices, m_AttributeLod, true);
+        if (standard == S_OK || attributes == S_OK) return S_OK;
+        return FAILED(standard) ? standard : attributes;
     }
     catch (const std::bad_alloc&) { return E_OUTOFMEMORY; }
     catch (const std::length_error&) { return E_OUTOFMEMORY; }

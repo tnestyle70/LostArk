@@ -1,15 +1,11 @@
-#include "Logic_Warlord.h"
+﻿#include "Logic_Warlord.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* A gunlance in the right hand and a shield in the left. The wr rig carries
-	the LanceMaster family of socket names -- b_weapon_rhand / b_weapon_lhand,
-	with no b_wp_* at all -- plus a third, b_weapon_hold_01, that the earlier
-	classes do not have. The socket name has to be read off each class's own rig:
-	one the rig lacks fails silently, since Get_BoneMatrix returns identity and
-	the body's 0.0001 preTransform never reaches the weapon. */
+	// 건랜스는 b_weapon_rhand, 방패는 b_weapon_lhand에 붙인다. 소켓 누락은 현재 Part 초기화가 거부한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
@@ -18,16 +14,13 @@ namespace
 		  TEXT("Prototype_Component_Model_Warlord_Shield"), "b_weapon_lhand" },
 	};
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before the weapon tags. Hair is an equipment part here because the
-	body does not draw it -- see the mask note below. */
+	// 본체→장비→무기 순서로 갱신하도록 tag를 정한다. 머리카락도 별도 장비 Part다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Warlord_Arm"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HANDS },
-		/* Hidden while the helmet is worn: the loose hairstyle pokes through the
-		shell. The part stays created for a later helmet toggle. */
+		// 머리카락 Part는 생성하되 기본 helmet과 겹치지 않도록 처음에는 숨긴다.
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_Warlord_Hair"),
 		  0u, true, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
@@ -45,48 +38,21 @@ namespace
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
-	/* The cook lays this body out 0 lower / 1 upper / 2 base_upper / 3 arm /
-	4 face / 5 eye, so the four skin meshes below the head are hidden and the
-	armour draws them instead.
-
-	This class splits the head differently from every earlier one: pc_wr_00_sk
-	lists face and eye materials but no hair material, so the face and eyes stay
-	visible on the body while the hair ships as its own part. Slayer and Artist
-	draw all three from the body; LanceMaster draws none of them. These bits are
-	read off the cooked model every time, never copied from another class, and
-	re-cooking the body with different content invalidates them. */
+	// 장비와 겹치는 본체 submesh 0·1·2·3을 숨기고 face·eye는 남긴다.
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 0) | (1u << 1) | (1u << 2) | (1u << 3);
 
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. This body ships no hair submesh. */
+	// 이 본체에는 별도 hair submesh 숨김 비트를 지정하지 않는다.
 	constexpr uint32_t BAKED_HAIR = 0u;
 
-	/* Defence stance is a posture, not a weapon swap: the class crouches behind
-	the shield and keeps that pose until it leaves the stance, so idle and run
-	both belong to the stance rather than to the class. */
+	// 방어 stance의 idle/run은 방패 방어용 clip으로 교체한다. 무기 교체를 의미하지 않는다.
 	constexpr STANCE_LOCOMOTION_SPEC StanceLocomotion[] =
 	{
 		{ LostArk::Shared::PLAYER_STANCE_ID::WARLORD_DEFENSE,
 		  "wgl_sk_defence_loop", "wgl_run_defence_1" },
 	};
 
-	/* The source rig keys only the first bone of each chain and leaves _02
-	through _05 in bind pose, because the original solves them at runtime. These
-	are those chains: the animation still swings the panel from the hip, and the
-	links below it trail.
-
-	The solver measures every link's rest direction inside its parent's already
-	simulated frame, so gravity and the travel wind sag the chain a little more
-	at every link and the tip carries the sum. Stiffness is only what carries
-	the chain along with the body -- the shape comes from the forces. Damping
-	is the fraction of velocity a link keeps per step; past half it starts to
-	ring like a spring.
-
-	The skirt stays stiffer and drier than the cape: it has no leg collision
-	yet, and the further it strays from the animation the deeper it cuts into
-	the thighs. */
+	// 치마와 망토 체인의 복원·감쇠·중력·최대 변위·이동풍 계수를 따로 정한다.
 	constexpr f32_t PLATE_STIFFNESS = 0.12f;
 	constexpr f32_t PLATE_DAMPING = 0.45f;
 	constexpr f32_t PLATE_GRAVITY = 12.f;
@@ -99,21 +65,14 @@ namespace
 	constexpr f32_t CAPE_MAX_DISPLACEMENT = 0.35f;
 	constexpr f32_t CAPE_WIND_RESPONSE = 5.f;
 
-	/* The helmet plume. The helmet mesh skins to bip001-head plus its own
-	b_helmet_b chain -- not to the b_hair01_b chain, which only the hidden
-	loose hairstyle uses. It hangs off the fast-moving head, so it stays
-	stiffer and drier than the cape. */
+	// 투구 장식에는 망토와 다른 solver 계수를 사용한다.
 	constexpr f32_t PLUME_STIFFNESS = 0.12f;
 	constexpr f32_t PLUME_DAMPING = 0.5f;
 	constexpr f32_t PLUME_GRAVITY = 15.f;
 	constexpr f32_t PLUME_MAX_DISPLACEMENT = 0.25f;
 	constexpr f32_t PLUME_WIND_RESPONSE = 3.f;
 
-	/* Swing cones from this class's own body PhysicsAsset. Our cone is one
-	symmetric half-angle per chain, so each value is that chain's first simulated
-	link's authored Swing1LimitAngle -- the link that sets the silhouette. PC_WR_00_Physics
-	authors helmet_b 30/40/45/50 down its four links; b_hair01_b has no bodies in
-	that asset at all, so its 40 is this project's own. */
+	// 마지막 값은 degree 단위 반각 제한이다. 실제 적용 대상은 아래 본 이름과 개수로 정한다.
 	constexpr BONE_CHAIN_SPEC BoneChains[] =
 	{
 		{ "b_skirt_f_01",  5u, PLATE_STIFFNESS, PLATE_DAMPING,
@@ -143,15 +102,14 @@ namespace
 		{ "b_helmet_b_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
 		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 30.0f },
 
-		/* The loose hairstyle and the belt tail. Both are in this body's own palette but
-		were never solved, so they rode the animation rigidly while the cape beside them
-		swung. Same treatment as the plume: they hang off fast parents. */
+		// 별도 머리카락과 허리 장식도 동일 solver 목록에 포함한다.
 		{ "b_hair01_b_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
 		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 40.0f },
 		{ "b_add_tail_1_01", 4u, PLUME_STIFFNESS, PLUME_DAMPING,
 		  PLUME_GRAVITY, PLUME_MAX_DISPLACEMENT, PLUME_WIND_RESPONSE, 40.0f },
 	};
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Warlord>();
@@ -160,6 +118,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_Warlord::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -168,7 +127,8 @@ void CLogic_Warlord::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// catalog가 extern으로 참조할 프로세스 수명의 직업 설정이다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_Warlord =
 {
 	"Warlord",
@@ -179,9 +139,7 @@ const CHARACTER_SPEC Spec_Warlord =
 	COVERED_BY_ARMOUR,
 	BAKED_HAIR,
 
-	/* Item 1013002 is this class's default weapon and names WP_WWGL_04. That
-	package holds two meshes, the gunlance and the shield the class carries in
-	its off hand, and both are cooked static like the other weapons. */
+	// 건랜스와 방패는 static mesh 셰이더로 그리는 두 무기 Part다.
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,
 	static_cast<uint32_t>(size(Weapons)),
@@ -189,10 +147,7 @@ const CHARACTER_SPEC Spec_Warlord =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
-	ESTHER_CAST -- FBX takes are "<armature>_<action>" and the armature is
-	named "wgl", so every clip carries that prefix. The cast clip comes from
-	the attached Esther animation set. */
+	// CHARACTER_ANIM 순서에 wgl 계열 기본·에스더 clip을 대응시킨다.
 	{
 		"wgl_idle_battle_1",
 		"wgl_run_battle_1",
@@ -203,11 +158,10 @@ const CHARACTER_SPEC Spec_Warlord =
 		"wgl_down",
 		"wgl_standup_1",
 		"wgl_act_estherskill_1",
-		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
+		// 캐릭터 생성 화면에서 사용할 idle clip이다.
 		"idle_charactercustomizing_1",
 		"wgl_abn_fear_1",
-		/* Square-hole song: the family PSA act_music_loop_1 appended to the body cook
-		(append_psa_clip_to_wmodel.py --name), named like the other body clips. */
+		// 스퀘어홀 노래 상태에 사용할 body clip이다.
 		"wgl_act_music_loop_1",
 	},
 

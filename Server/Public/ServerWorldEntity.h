@@ -16,7 +16,7 @@
 namespace LostArk::Server
 {
 	struct KOUKUSAYDON_LOGIC_LEDGER;
-	// The existing root-motion consumer owns this vertical phase for one Pattern.
+	// Kouku의 기존 stage 루트모션 소비자가 한 pattern sequence의 수직 단계를 함께 관리한다.
 	struct SERVER_ALBION_AIRBORNE_STATE final
 	{
 		ALBION_AIRBORNE_PHASE ePhase = ALBION_AIRBORNE_PHASE::NONE;
@@ -28,16 +28,17 @@ namespace LostArk::Server
 		float fSourceUpAtStart = 0.f, fSourceUpMinimum = 0.f, fLandingProgress = 0.f;
 	};
 
+	// 패턴 시작 시 Brain이 준비 tick을 기록하고 일반 후보 선택이 남은 재사용 대기를 읽는다.
 	struct SERVER_BOSS_PATTERN_COOLDOWN final
 	{
-		/* Source-derived patterns that share the same primary action share one
-		cooldown family. Synthetic patterns have source action 0 and fall back to
-		their stable pattern ID. */
+		// 같은 원본 주 action ID를 공유하는 패턴은 재사용 대기 family도 공유한다.
+		// 원본 ID가 0인 정의는 stable pattern ID로 구분한다.
 		std::uint32_t iSourcePrimaryActionId = 0;
 		std::string strPatternId;
 		std::uint32_t iReadyTick = 0;
 	};
 
+	// 체력 기믹 한 발생의 생명주기다. 실행 큐와 완료/실패 기록을 별도 상태로 표현한다.
 	enum class SERVER_BOSS_MECHANIC_STATE : std::uint8_t
 	{
 		QUEUED,
@@ -46,6 +47,7 @@ namespace LostArk::Server
 		FAILED_REQUIRES_RESET
 	};
 
+	// 재시도 가능한 대상 부재와 정의/commit 실패를 구분하는 원인이다.
 	enum class SERVER_BOSS_MECHANIC_FAILURE : std::uint8_t
 	{
 		NONE,
@@ -57,17 +59,14 @@ namespace LostArk::Server
 		BOSS_DIED
 	};
 
-	/* One health-bar mechanic is armed exactly once by stable pattern ID. The
-	legacy PendingPatternIds queue remains the execution queue, while this
-	bounded ledger explains whether that occurrence is waiting, running, done,
-	or unsafe to retry without resetting the encounter. */
+	// 체력 경계를 통과할 때 stable pattern ID로 생성하는 기믹 발생 기록이다.
+	// PendingPatternIds는 실행 대기열이고, 이 기록은 대기/진행/완료/reset 필요 상태를 구분한다.
+	// 대상 부재로 다시 예약해도 같은 기록을 사용하여 체력 경계를 중복 발생시키지 않는다.
 	struct SERVER_BOSS_MECHANIC_OCCURRENCE final
 	{
 		std::string strPatternId;
-		/* A forced mechanic is an occurrence when the threshold is crossed, not
-		an ID to reinterpret against whichever catalog happens to be active when
-		the current pattern finishes. Keep that immutable definition generation
-		until this queued/running occurrence reaches a terminal state. */
+		// 체력 경계를 평가한 정의 revision을 저장한다.
+		// 실행 차례가 왔을 때 최신 Catalog의 같은 ID로 바꾸어 해석하지 않도록 GameRoom이 세대를 유지한다.
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision;
 		SERVER_BOSS_MECHANIC_STATE eState =
 			SERVER_BOSS_MECHANIC_STATE::QUEUED;
@@ -80,10 +79,9 @@ namespace LostArk::Server
 		std::uint32_t iPatternSequence = 0u;
 	};
 
-	/* The live state of one authored boss armour plate. iPlateIndex is copied
-	from the profile and never changes, so it stays the slot a broken plate is
-	named by. iRemainingDurability only falls inside a GROGGY stage and stops at
-	zero; iDefense stops counting toward mitigation at that moment. */
+	// 기존 갑옷 표시/방어 경로가 읽는 상태다. plate index는 생성 시 profile의 값을 복사한다.
+	// 정의된 typed part가 있으면 파괴 결과를 이 상태에도 반영하고, 없으면 GROGGY의 기존 내구도 경로를 사용한다.
+	// 남은 내구도가 0인 plate의 방어값은 HP 피해 계산에 더하지 않는다.
 	struct SERVER_BOSS_ARMOR_PLATE_STATE final
 	{
 		std::uint32_t iPlateIndex = 0;
@@ -91,6 +89,7 @@ namespace LostArk::Server
 		std::uint32_t iDefense = 0;
 	};
 
+	// 외부 snapshot에 반영할 큰 행동 상태다. 패턴 내부의 세부 action ID와 stage는 별도 필드로 보관한다.
 	enum class SERVER_ENTITY_ACTION
 	{
 		IDLE,
@@ -115,21 +114,19 @@ namespace LostArk::Server
 		ABORTED
 	};
 
+	// FinishPattern과 공개 실패 경로가 남긴 최근 종료 결과다. 다음 패턴 예약과 Debug 완료 판단이 소비한다.
 	struct SERVER_BOSS_PATTERN_TERMINAL_RECEIPT final
 	{
 		std::uint32_t iPatternSequence = 0u;
-		/* Equal to iPatternSequence for an ordinary occurrence. A follow-up
-		chain retains the sequence of the selector-owned source so Debug
-		lifecycle owners can close the whole outcome group only after its leaf. */
+		// 일반 실행에서는 현재 sequence와 같고, 후속 패턴은 최초 선택된 실행의 root sequence를 유지한다.
+		// Debug 실행 소유자는 이 값을 이용해 후속 연쇄의 마지막 종료까지 같은 작업으로 묶는다.
 		std::uint32_t iRootPatternSequence = 0u;
 		SERVER_BOSS_PATTERN_TERMINAL_RESULT eResult =
 			SERVER_BOSS_PATTERN_TERMINAL_RESULT::NONE;
 	};
 
-	/* One outcome-owned successor waiting behind an exact completed occurrence.
-	Unlike the legacy ID queue, this reservation carries the immutable gameplay
-	generation that authored the branch and therefore cannot be reinterpreted
-	against a later hot-reload generation. */
+	// 결과 분기가 예약한 다음 패턴이다. 완료한 원본 sequence와 정의 revision을 함께 보관한다.
+	// SelectPattern은 일치하는 완료 기록을 확인한 뒤 실행하여 다른 실행의 결과나 최신 정의와 섞이지 않게 한다.
 	struct SERVER_BOSS_PATTERN_FOLLOWUP final
 	{
 		std::string strPatternId;
@@ -138,14 +135,14 @@ namespace LostArk::Server
 		std::uint32_t iRootPatternSequence = 0u;
 		std::uint8_t iDepth = 0u;
 
+		// 예약 ID의 존재만 검사한다. revision과 완료 기록의 유효성은 실제 선택 경로가 검사한다.
 		[[nodiscard]] bool Is_Pending() const noexcept
 		{
 			return !strPatternId.empty();
 		}
 	};
 
-	/* One player's raid-clear award input on one boss: what their hits did to it and how
-	long they stayed alive while it was being fought. */
+	// 한 보스에 대한 플레이어별 MVP 입력이다. 전투 기여와 생존 시간은 서로 다른 경로에서 누적한다.
 	struct SERVER_MVP_LEDGER_ROW final
 	{
 		LostArk::Shared::PLAYER_ID iPlayerId = LostArk::Shared::INVALID_PLAYER_ID;
@@ -154,41 +151,45 @@ namespace LostArk::Server
 		std::uint32_t iCounterCount = 0u;
 		std::uint32_t iAliveTicks = 0u;
 		std::uint32_t iFightTicks = 0u;
-		/* Medal facts. */
+		// 보상 평가에 사용할 세부 기록이다. 아래 HP 비율 단위는 천분율이다.
 		std::uint64_t iPartDamage = 0u;
 		std::uint32_t iFinishingBlows = 0u;
 		std::uint32_t iDamagingHitsTaken = 0u;
 		std::uint32_t iLowestHpPermille = 1000u;
 		std::uint32_t iLastCounterTick = 0u;
 		std::uint32_t iMinCounterGapTicks = 0u;
-		/* Health seen on the previous fight tick; a drop is one damaging hit. */
+		// 이전 전투 tick의 HP와 비교해 감소한 tick을 센다. 개별 피격 event 개수와는 다를 수 있다.
 		std::uint32_t iLastHp = 0u;
 		bool bHpSeen = false;
-		/* KNOCKDOWN entries, counted on the edge. */
+		// KNOCKDOWN 상태로 바뀐 순간만 세고 같은 상태의 다음 tick에는 더하지 않는다.
 		std::uint32_t iKnockdowns = 0u;
 		bool bWasKnockedDown = false;
 	};
 
+	// 피격/MVP 집계가 player ID의 기존 행을 찾고 없으면 기본 행을 추가한다.
+	// 반환 참조는 ledger vector 요소이므로 이후 재할당이 가능한 추가를 넘겨 보관하지 않는다.
 	SERVER_MVP_LEDGER_ROW& Find_Or_Add_MvpLedgerRow(
 		std::vector<SERVER_MVP_LEDGER_ROW>& ledger, LostArk::Shared::PLAYER_ID playerId);
 
+	// GameRoom이 소유하는 월드 entity의 가변 실행 상태다. Catalog의 불변 정의와 구분한다.
+	// server의 world entity와 gamecatalog의 불변 정의가 어떤 차이를 가지고 있는 걸까?
+	// Brain, 전투, 이동, 복제가 같은 방의 simulation 흐름에서 읽고 갱신하며 이 struct 자체에는 잠금이 없다.
+	// 값 복사는 단계별 사전 검사/commit 준비에도 사용하므로 원시 포인터 대신 ID와 소유형 상태를 보관한다.
 	struct SERVER_WORLD_ENTITY
 	{
 		LostArk::Shared::NET_ENTITY_ID iNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		/* Dependent bosses share the existing boss runtime, never the primary HUD
-		identity or damage target set. This relation outlives a pattern cycle. */
+		// 종속 보스의 소유 보스 ID다. 기존 Brain을 사용하되 주 보스의 HUD/피격 대상을 대신하지 않는다.
+		// 한 패턴을 끝낸 뒤에도 소유 관계를 식별하는 데 사용한다.
 		LostArk::Shared::NET_ENTITY_ID iOwnerBossNetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		/* Server-only lifecycle routing. Auxiliary ghosts run one normal authored
-		attack through the dependent brain; portal runners only present and
-		interpolate one nav-independent triangle edge. */
+		// Server 내부 진행 역할이다. AUXILIARY는 종속 Brain으로 저작 공격을 수행한다.
+		// PORTAL_RUNNER는 navigation과 별도로 준비한 삼각 경계의 한 구간을 보간한다.
 		SERVER_DEPENDENT_BOSS_ROLE eDependentBossRole =
 			SERVER_DEPENDENT_BOSS_ROLE::NONE;
 		BOSS_PATTERN_SEQUENCE_DEFINITION DependentPatternSequence;
-		/* Phase-three keeps the primary Valtan entity as the sole HP, damage,
-		HUD, and reward authority. The finale-authored list becomes its ordered
-		foreground loop while the portal occurrence runs on an independent clock. */
+		// 유령 단계의 주 Valtan은 HP/피격/HUD/보상 소유권을 유지한다.
+		// 전면 패턴 목록과 포탈 발생 시계를 분리하여 각각 진행한다.
 		BOSS_PATTERN_SEQUENCE_DEFINITION GhostPhasePatternSequence;
 		bool bGhostPhasePatternLoopActive = false;
 		bool bKoukuGazeClone = false;
@@ -196,34 +197,32 @@ namespace LostArk::Server
 		std::vector<std::size_t> KoukuSummonStartedTriggers;
 		std::uint32_t iKoukuCloneOwnerSequence = 0u;
 		std::uint32_t iKoukuCloneEndTick = 0u;
-		// Immutable staged child reuses the existing brain/root consumer while
-		// this entity keeps the parent Pattern, HP, identity and Logic ledger.
+		// 방향 연출은 별도로 stage한 자식 상태를 const shared_ptr로 보관한다.
+		// 부모 entity의 패턴/HP/identity/logic 기록은 유지하며, GameRoom이 자식 복사본을 갱신해 교체한다.
 		std::shared_ptr<const SERVER_WORLD_ENTITY> KoukuDirectionPlayback;
+		// Kouku 독립 contact 실행의 ledger를 공유 소유한다. entity 복사만으로 ledger 내용까지 독립 복제되지는 않는다.
 		std::shared_ptr<KOUKUSAYDON_LOGIC_LEDGER> KoukuContactLedger;
 		std::uint32_t iKoukuDirectionEndTick = 0u;
 		bool bKoukuDirectionPlaybackComplete = false;
-		/* Auxiliary ghosts use their own deterministic occurrence identity and
-		next-spawn edge. Neither value is derived from the primary attack cursor,
-		portal cadence, entity allocation order, or the wall clock. */
+		// 보조 유령 발생의 sequence와 다음 spawn tick이다.
+		// 주 보스의 패턴 커서와 포탈 발생 sequence를 대신 사용하지 않도록 별도로 둔다.
 		std::uint32_t iGhostAuxiliaryOccurrenceSequence = 0u;
 		std::uint32_t iGhostAuxiliaryNextSpawnTick = 0u;
 		std::uint32_t iGhostPortalLastSpawnTick = 0u;
 		std::uint32_t iGhostPortalOccurrenceSequence = 0u;
-		/* Explicit/debug relocation transaction state. The product phase-three
-		foreground loop does not begin this transaction after an attack. */
+		// 명시적 Debug 재배치의 진행 상태다. 제품 유령 순환의 공격 완료마다 자동으로 여는 상태는 아니다.
 		bool bGhostRepositionPending = false;
 		std::uint32_t iGhostReappearTick = 0u;
 		std::uint32_t iGhostRelocationSequence = 0u;
-		/* A relocation search never makes the room fatal. If this tick's bounded
-		candidate set has no same-deck footprint, the primary holds its current
-		pose and retries from a deterministic next-tick seed before another attack
-		may start. */
+		// 한 tick의 후보에서 같은 바닥 높이의 재배치 지점을 못 찾으면 현재 위치를 유지한다.
+		// 다음 tick 재시도를 표시하여 이동 위치를 못 찾은 일을 방 전체의 치명 오류로 처리하지 않는다.
 		bool bGhostRelocationRetryPending = false;
 		std::uint32_t iGhostRelocationRetryTick = 0u;
-		/* Cleanup may clear only the combat flags committed by the relocation
-		transaction. Other mechanics can independently own INVULNERABLE. */
+		// 재배치 정리는 자신이 설정한 숨김/무적 플래그만 해제한다.
+		// 다른 기믹이 이미 소유한 무적 상태를 함께 지우지 않기 위한 기록이다.
 		bool bGhostRelocationOwnsHiddenFlag = false;
 		bool bGhostRelocationOwnsInvulnerableFlag = false;
+		// 저장 문서의 placement/archetype/encounter ID와 현재 실행 pattern/stage/action ID를 값으로 보관한다.
 		std::string strPlacementId;
 		std::string strArchetypeId;
 		std::string strEncounterId;
@@ -234,6 +233,7 @@ namespace LostArk::Server
 		std::string strSpawnGroupId;
 		WORLD_BOOTSTRAP_KIND eKind = WORLD_BOOTSTRAP_KIND::END;
 		SERVER_ENTITY_ACTION eAction = SERVER_ENTITY_ACTION::IDLE;
+		// 월드 위치는 m, yaw는 degree다. 이동과 판정은 이 Server 상태를 사용하고 Client는 복제된 값을 표현한다.
 		float fPositionX = 0.f;
 		float fPositionY = 0.f;
 		float fPositionZ = 0.f;
@@ -242,100 +242,80 @@ namespace LostArk::Server
 		float fPatternMinimumRange = 0.f;
 		float fPatternMaximumRange = 0.f;
 		float fPatternForcedMotionSpeed = 0.f;
-		/* The travel the running stage baked into its clip, copied on stage entry
-		so the step never reaches back into the catalog. A stage that has one is
-		stepped along it and ignores fPatternForcedMotionSpeed. */
+		// stage 진입 시 복사한 누적 루트모션 샘플이다. 이동 tick마다 Catalog에 다시 접근하지 않는다.
+		// Valtan의 일반 이동에서는 이 샘플이 고정 전진 속도보다 우선하며 포탈/도약 이동은 별도 분기가 우선한다.
 		std::vector<ROOT_MOTION_SAMPLE> PatternStageRootMotion;
 		SERVER_ALBION_AIRBORNE_STATE AlbionAirborne;
 		bool bPortalMotionActive = false;
-		/* PORTAL_TARGET_RUSH captures its target, facing and endpoint on Stage
-		   entry so presentation can place both portals on the same edge. The
-		   authored delay still gates movement and hit sweeps. */
+		// PORTAL_TARGET_RUSH는 stage 시작에 대상 방향과 끝점을 잠근다.
+		// 표시는 이 경로로 두 포탈을 배치하고, 저작 지연 시간은 실제 이동/판정 시작을 제어한다.
 		bool bPortalRushTargetLocked = false;
 		std::uint32_t iPortalRushRetargetDelayMs = 0u;
 		float fPortalRushSpeedMps = 0.f;
 		float fPortalRushDistanceM = 0.f;
 		std::vector<LostArk::Shared::NET_ENTITY_ID> PortalStageHitTargets;
-		/* ACTIVE_WINDOW is a distinct Stage-hit authority. A target is recorded
-		only after a landed Server hit, and the set is reset on every Stage edge. */
+		// ACTIVE_WINDOW에서 실제 LANDED 결과가 난 대상만 기록한다. stage마다 초기화하여 같은 구간의 중복 피해를 막는다.
 		std::vector<LostArk::Shared::NET_ENTITY_ID> PatternActiveWindowHitTargets;
 		float fPortalStartX = 0.f;
 		float fPortalStartZ = 0.f;
 		float fPortalEndX = 0.f;
 		float fPortalEndZ = 0.f;
-		/* Portal contact is swept from the last authored pulse, rather than the
-		current render pose, so a fast root-motion step cannot tunnel through a
-		player between two 50 ms evaluations. */
+		// 이전 포탈 예약 판정의 Server 위치다. BOX 판정은 현재 위치까지의 전진 거리도 도형에 포함한다.
+		// 지난 tick의 전체 위치 이력을 재생하는 저장소는 아니다.
 		float fPortalLastHitSampleX = 0.f;
 		float fPortalLastHitSampleZ = 0.f;
-		/* The authored placement this entity spawned at. The 109 phase
-		transition lands Valtan back on it, so the landing point stays authored
-		data rather than a constant recomputed inside the brain. */
+		// 생성 시 확정한 위치다. 원형 저작 위치가 navigation에 투영된 경우에는 그 확정 위치를 저장한다.
+		// spawn 복귀, 아레나 기준 배치와 안전 지점 탐색이 사용하며 현재 보스 위치와 구분한다.
 		float fSpawnPositionX = 0.f;
 		float fSpawnPositionY = 0.f;
 		float fSpawnPositionZ = 0.f;
-		/* Mario source monsters patrol the published lane through their spawn.
-		Server-only bounds are signed distances from the unchanged source anchor. */
+		// Mario 몬스터 순찰의 축과 spawn 기준 부호 있는 거리 경계다. MonsterBrain이 왕복 위치를 계산한다.
 		std::uint8_t iMarioPatrolStage = 0u;
 		float fMarioPatrolAxisX = 0.f;
 		float fMarioPatrolAxisZ = 0.f;
 		float fMarioPatrolMinimum = 0.f;
 		float fMarioPatrolMaximum = 0.f;
 		bool bMarioPatrolForward = true;
-		/* Where the current authored leap started. No jump clip exists in the
-		converted Valtan model, so the Server owns the whole arc and the Client
-		only presents the replicated transform. */
+		// 현재 도약을 시작한 Server 위치다. Brain이 도약 곡선으로 위치를 갱신하고 Client에는 transform이 복제된다.
 		float fLeapOriginX = 0.f;
 		float fLeapOriginY = 0.f;
 		float fLeapOriginZ = 0.f;
 		float fLeapApexHeight = 0.f;
-		/* Where the current authored leap lands. Copied from the pattern's one
-		compiled anchor, never from the boss placement, so the landing, the
-		cinematic lookAt and the radial wall directions stay on one point. */
+		// 현재 도약 착지점이다. LEAP_TO_TARGET은 저장한 대상 위치를 사용하고 나머지 도약은 저작 anchor를 사용한다.
+		// 대상 위치를 확보하지 못한 경우도 저작 anchor를 사용한다.
 		float fLeapLandingX = 0.f;
 		float fLeapLandingY = 0.f;
 		float fLeapLandingZ = 0.f;
-		/* Apex the current pattern authored, zero when it owns no leap. */
+		// 패턴에 저작된 도약 높이다. 도약을 소유하지 않는 패턴은 0이다.
 		float fPatternLeapApexHeight = 0.f;
-		/* Compiled serverMotion travel stage. A leap may hold at its apex in
-		   authored stages between TAKEOFF and this descent stage. */
+		// 저작된 하강 stage index다. 첫 이륙 stage와 그 사이의 stage는 정점 유지 구간을 구성할 수 있다.
 		std::uint32_t iPatternLeapTravelStageIndex = 1u;
-		/* The clip may spend most of a stage anticipating or recovering. These
-		   authored subwindows keep the Server transform on the actual lift/drop
-		   interval instead of stretching the leap across the whole stage. */
+		// stage 전체 시간과 실제 상승/하강 구간을 구분하는 ms 경계다.
+		// StageWindowRatio가 이 구간 안의 진행률을 계산한다.
 		std::uint32_t iPatternLeapTakeoffStartMs = 0u;
 		std::uint32_t iPatternLeapTakeoffEndMs = 0u;
 		std::uint32_t iPatternLeapTravelStartMs = 0u;
 		std::uint32_t iPatternLeapTravelEndMs = 0u;
 		bool bPatternMoveToAnchorBeforeTakeoff = false;
-		/* The encounter's intro pattern runs once per encounter epoch, on the
-		first engage. A late joiner never replays it, and only a room-empty or
-		Debug reset clears the ledger. */
+		// 입장 공격과 입장 연출의 소비 여부다. 플레이어별 상태가 아니므로 늦게 참가한 플레이어마다 다시 실행하지 않는다.
 		bool bIntroPatternConsumed = false;
 		bool bEntranceCinematicConsumed = false;
-		/* The Debug ordered audition replays an authored 1-67 list and requires an
-		empty queue between steps, so product pattern follow-ups must not be
-		queued while it drives the boss. */
+		// Debug 순서 재생 여부다. 재생이 실행 대기열을 관리하는 동안 제품의 후속 패턴 예약과 섞이지 않게 한다.
 		bool bScriptedPatternPlayback = false;
-		/* Debug entrance/health-bar audition temporarily yields the Product
-		automatic sequence without changing the timeline playback contract. The
-		brain holds the boss while an armed health-bar audition waits to cross. */
+		// 입장/체력 기믹 시험은 제품 자동 sequence를 잠시 양보시킨다.
+		// ARM_HEALTH_BAR 대기와 시험 완료 후 대기를 서로 다른 플래그로 구분한다.
 		bool bAutomaticPatternSequenceAuditionOverride = false;
 		bool bAutomaticPatternSequenceAuditionHold = false;
-		/* Set only after the Product automatic sequence selects its current step.
-		The cursor advances in FinishPattern, never at selection, so an aborted
-		step cannot be silently skipped. */
+		// 선택한 순서형 항목이 실행 중임을 뜻한다. 커서는 선택 순간이 아니라 정상 FinishPattern에서 진행한다.
+		// 대상 부재로 취소하면 같은 항목을 재시도하고 다른 실행 실패는 reset 필요 상태를 남긴다.
 		bool bAutomaticPatternSequenceStepRunning = false;
-		/* A non-empty party with no engageable player pauses an already-running
-		Product sequence step until Debug revive restores a target. This is not a
-		mechanic failure: the stage, hit cursor, and ordered cursor remain owned by
-		the same occurrence. The last tick drives exact clock compensation while
-		the pause is replicated through the unchanged action identity. */
+		// 기존 pause 상태를 읽는 GameRoom/Debug 경계가 남아 있는 필드다.
+		// 현재 ValtanBrain은 대상 부재를 NO_VALID_TARGET 종료/재예약으로 처리하며 이 플래그를 true로 올리지 않는다.
+		// 따라서 이 필드만 보고 stage와 판정 커서를 정지 보존하는 기능이 현재 동작한다고 해석하지 않는다.
 		bool bAutomaticPatternSequencePausedForRevive = false;
 		std::uint32_t iAutomaticPatternSequencePauseLastTick = 0u;
-		/* Every successful non-terminal step yields a fixed authored pursuit
-		window. During this countdown the normal CHASE path follows the nearest
-		player, but no selector condition may replace or reorder the next step. */
+		// 순서형 비마지막 항목을 완료한 뒤의 저작 추적 대기 tick이다.
+		// 남은 시간이 있는 동안 일반 CHASE를 사용하되 다음 순서형 항목을 다른 후보로 바꾸지 않는다.
 		std::uint32_t iAutomaticPatternSequenceInterStepPursuitTicks = 0u;
 		std::uint32_t iAutomaticPatternSequencePursuitTicksRemaining = 0u;
 		std::uint32_t iPatternTelegraphMs = 0;
@@ -345,30 +325,25 @@ namespace LostArk::Server
 		std::uint32_t iPatternStartTick = 0;
 		SERVER_BOSS_PATTERN_TERMINAL_RECEIPT PatternTerminalReceipt;
 		SERVER_BOSS_PATTERN_FOLLOWUP PendingPatternFollowup;
-		/* Zero for a selector-owned occurrence; one-based for a pattern entered
-		from a cross-pattern outcome chain. */
+		// 직접 선택한 실행은 0이고, 결과 분기를 통해 다른 패턴에 들어갈 때마다 깊이를 증가시킨다.
 		std::uint8_t iPatternFollowupDepth = 0u;
 		std::uint32_t iPatternFollowupRootSequence = 0u;
-		/* Only a committed typed grab execution authorizes the current stage to
-		finish its animation clock after the last living target was executed. */
+		// GameRoom이 실제 잡기 처형을 확정한 sequence/stage다.
+		// 마지막 살아 있는 대상을 처형한 뒤에도 해당 stage의 남은 시간을 진행할 근거로 사용한다.
 		std::uint32_t iGrabExecutionCommittedPatternSequence = 0u;
 		std::uint32_t iGrabExecutionCommittedStageIndex = 0u;
 		std::uint32_t iPatternStageIndex = 0;
-		/* Immutable gameplay bootstrap identity pinned when this entity is
-		created and refreshed at each boss pattern occurrence boundary. */
+		// 생성 및 패턴 실행 경계에서 고정한 정의 revision이다. 실제 불변 Catalog의 보관은 GameRoom이 맡는다.
 		LostArk::Shared::GameplayDataRevision PinnedDefinitionRevision{};
-		/* Product owns one immutable sequence from its first selected step through
-		terminal idle. Hot reload cannot combine an old ordinal with a new list;
-		only a fresh encounter/reset releases this pin. Debug Flow owns its own pin. */
+		// 제품 sequence가 첫 항목부터 종료 대기까지 사용할 정의 revision이다.
+		// 기존 순번을 새 목록에 적용하지 않도록 실행 정의를 고정하며 Debug Flow는 별도 고정을 사용한다.
 		LostArk::Shared::GameplayDataRevision ProductSequencePinnedDefinitionRevision{};
 		std::uint32_t iPatternStageDurationMs = 0;
-		/* First nonzero Server tick on which this stage is evaluated. Tick zero is
-		the process-wide reserved sentinel, so wrap advances UINT32_MAX -> 1. */
+		// stage를 처음 평가할 0이 아닌 Server tick이다. 0은 미설정이며 UINT32_MAX 다음 tick은 1이다.
 		std::uint32_t iPatternStageFirstEvaluationTick = 0;
 		std::uint64_t iPatternAimLastElapsedTicks = 0u;
-		/* Number of stage-owned spawn waves committed for the current action.
-		The ENTER edge commits wave zero and later fixed ticks advance this only
-		after the whole mixed volley transaction succeeds. */
+		// 현재 action에서 commit한 spawn wave 수다.
+		// ENTER의 첫 wave와 이후 예약 wave 모두 전체 생성 transaction 성공 뒤에만 횟수를 진행한다.
 		std::uint32_t iAppliedPatternStageSpawnWaveCount = 0;
 		BOSS_PATTERN_STAGE_MOTION_KIND ePatternStageMotionKind =
 			BOSS_PATTERN_STAGE_MOTION_KIND::NONE;
@@ -391,8 +366,8 @@ namespace LostArk::Server
 		std::uint32_t iPatternBossResponseThreshold = 0u;
 		std::uint32_t iPatternBossResponseAccumulatedHealthDamage = 0u;
 		bool bPatternBossResponsePublished = false;
-		/* Pattern vertical offset is relative to this captured occurrence base,
-		never to the previous offset pose, so repeated finale cycles cannot drift. */
+		// 높이 보정은 실행 시작 때 저장한 기준 Y에 더한다. 이전 보정 결과에 다시 더해 누적하지 않는다.
+		// stage 보정을 먼저 제거한 뒤 pattern 보정을 제거할 수 있도록 각각 기준값을 둔다.
 		bool bPatternVerticalOffsetApplied = false;
 		float fPatternVerticalBaseY = 0.f;
 		bool bPatternStageVerticalOffsetApplied = false;
@@ -402,6 +377,8 @@ namespace LostArk::Server
 		float fPatternHitAngleDegrees = 0.f;
 		float fPatternHitLength = 0.f;
 		float fPatternHitHalfWidth = 0.f;
+		// stage 진입 시 복사한 예약 판정 수와 ms 간격/지연이다.
+		// iAppliedPatternHitCount는 명중 수가 아니라 이미 처리한 기회 수이며 miss여도 증가한다.
 		std::uint32_t iPatternHitCount = 0;
 		std::uint32_t iPatternHitIntervalMs = 0;
 		std::uint32_t iPatternHitDelayMs = 0;
@@ -415,41 +392,35 @@ namespace LostArk::Server
 			BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE;
 		std::uint32_t iPatternHitActivationStartMs = 0u;
 		std::uint32_t iPatternHitActivationLifetimeMs = 0u;
-		/* Immutable pose captured at EnterPatternStage before stage motion. */
+		// stage 이동 전의 기준 위치/방향이다. 판정 anchor가 STAGE_ORIGIN일 때 이 값을 사용한다.
 		float fPatternStageOriginX = 0.f;
 		float fPatternStageOriginZ = 0.f;
 		float fPatternStageOriginYawDegrees = 0.f;
-		// Kouku stage root motion captures after spawn reset and ENTER retarget.
+		// Kouku 루트모션 원점은 spawn 복귀와 ENTER 대상 갱신을 마친 뒤 확정한다.
 		float fPatternStageOriginY = 0.f;
 		float fPatternStageRootGroundY = 0.f;
 		bool bPatternStageRootOriginCaptured = false;
-		// An explicit grounded teleport anchors later stages to navigation until this pattern ends.
+		// 명시적 지상 순간이동 뒤에는 이 패턴이 끝날 때까지 navigation 기준 높이를 사용한다.
 		bool bPatternRootGrounded = false;
 		std::uint32_t iPatternStageRootLastTick = 0u;
 		bool bPatternWallContact = false;
-		/* The running stage reaches through a raised encounter prop, so cover
-		does not answer this blow. */
+		// 현재 stage의 공격이 엄폐물을 관통하는지 정한다. true이면 엄폐 선분 검사를 건너뛴다.
 		bool bPatternPiercesCover = false;
-		/* Player push of the running pattern stage's hit; negative pulls toward
-		the boss. */
+		// 현재 stage의 기본 플레이어 밀기 거리(m)다. 음수는 공격 원점 쪽으로 끌어당긴다.
+		// 개별 AttackContacts가 있으면 그 contact의 밀기 정의가 이 기본값을 덮는다.
 		float fPatternPushRangeM = 0.f;
 		std::uint32_t iPatternPushMs = 0;
 		bool bPatternKnockdown = false;
 		std::uint32_t iPatternDownMs = 0;
-		/* True only while a GROGGY stage runs. Set by the stage transition, so
-		it clears itself when the pattern moves on or is interrupted. */
+		// 현재 GROGGY stage 여부다. stage 전환/패턴 정리와 갑옷 파괴 응답이 이 상태를 갱신한다.
 		bool bPatternGroggy = false;
-		/* True while a charge stage drives the boss forward. Meeting either an
-		ordinary authoritative wall or a destructible impact receiver ends that
-		stage early into the GROGGY stage behind it. */
+		// 현재 stage가 벽 충돌 처리를 요구하는 돌진인지 나타낸다.
+		// 실제 충돌 뒤의 목적 stage는 저작된 WALL_CONTACT 분기로 결정한다.
 		bool bPatternChargeImpact = false;
-		/* True for as long as an authored invulnerable pattern runs. Player hits
-		resolve to nothing while it is set, so the raid answers the mechanic
-		instead of outracing it. Cleared when the pattern ends. */
+		// 패턴 실행 동안의 무적 정책이다. 외부 player hit 경로가 먼저 검사하고 패턴 종료 시 해제한다.
 		bool bPatternInvulnerable = false;
-		/* KoukuSaydon stagger window: while raised, player hits whose caster
-		stands inside the frontal arc are reflected back at that caster instead
-		of landing. Owned by CKoukuSaydonLogicRuntime for one window. */
+		// Kouku logic window의 무력화 입력과 방어 상태다.
+		// 방패의 반사 대상은 저작 region 또는 방향 범위를 통해 검사하며 window 종료 시 해당 상태를 정리한다.
 		std::uint32_t iKoukuItemStaggerMaximum = 0u;
 		std::uint32_t iKoukuItemStaggerCredit = 0u;
 		std::uint32_t iKoukuDamageReductionWindows = 0u;
@@ -457,30 +428,26 @@ namespace LostArk::Server
 		float fKoukuShieldArcDegrees = 0.f;
 		float fKoukuShieldNormalYawOffsetDegrees = 0.f;
 		std::vector<BOSS_LOGIC_REGION> KoukuShieldRegions;
-		// Server-only weak links: the room owns retired occurrence snapshots and their deadlines.
+		// 종료 뒤 유지되는 logic 소유자에 대한 weak_ptr다. 실제 소유와 만료 시각은 GameRoom이 관리한다.
 		std::vector<std::weak_ptr<SERVER_WORLD_ENTITY>> KoukuRetainedLogicOwners;
-		/* Raised by the hit that took a plate to zero durability. The brain owns
-		stage transitions, so it consumes this on its next tick and enters the
-		PART_BREAK stage; the damage path never moves the boss itself. */
+		// 피해 경로가 갑옷 파괴 후 남기는 반응 요청이다.
+		// Brain이 다음 결과 분기 또는 PART_BREAK 진입을 처리하며 피해 계산 중에 직접 stage를 바꾸지 않는다.
 		bool bPendingArmorBreakReaction = false;
 		std::uint32_t iActionStartTick = 0;
-		/* Debuffs a player skill put on this entity, such as the damage amplify
-		the Guardian Knight's dragon form marks a boss with. */
+		// 플레이어 스킬이 이 entity에 적용한 buff/debuff 상태다. 지속 시간과 피해 증폭 등의 소비는 전투 경로가 맡는다.
 		std::vector<LostArk::Shared::ACTIVE_BUFF> ActiveBuffs;
-		/* An ordinary monster holds still until this tick. Bosses never carry it. */
+		// 일반 몬스터가 다시 동작할 수 있는 기준 tick이다. MonsterBrain은 그 tick 전까지 동작을 멈춘다.
 		std::uint32_t iStunEndTick = 0;
 		std::uint32_t iCurrentHp = 1;
 		std::uint32_t iMaximumHp = 1;
-		// Server-only profile scale for bar damage; zero follows actual maximum HP.
+		// 체력줄 피해량 계산의 기준 HP다. 0이면 실제 최대 HP를 사용한다.
 		std::uint32_t iDamageReferenceHp = 0;
 		std::uint32_t iMaximumHealthBars = 1;
 		std::uint32_t iLastEvaluatedHealthBar = 1;
 		std::uint8_t iPhase = 1;
-		/* Room-local immutable-generation epoch last used to evaluate health
-		thresholds. It is distinct from PinnedDefinitionRevision: a running A
-		occurrence executes from A while new crossings are evaluated from active B.
-		The room fails closed before this compact epoch can wrap, and placing it
-		here consumes the phase field's existing alignment gap. */
+		// 마지막 체력 경계 평가에 사용한 방 내부 정의 세대다.
+		// 실행 중인 패턴의 PinnedDefinitionRevision과 새 체력 기믹 평가의 활성 세대는 다를 수 있다.
+		// 고정된 제품 sequence는 기존 실행 정의로 평가하므로 모든 hot reload가 즉시 이 값에 반영되지는 않는다.
 		std::uint16_t iLastHealthMechanicGenerationEpoch = 0u;
 		SERVER_BOSS_COMBAT_STATE BossCombat;
 		float fEngageDistance = 0.f;
@@ -494,37 +461,30 @@ namespace LostArk::Server
 		float fCollisionRadius = 0.f;
 		float fAttackRange = 0.f;
 		std::uint32_t iAttackPower = 0;
-		// Encounter-owned fixed base hit; normal monsters retain zero and use attack power.
+		// 기믹 몬스터의 고정 기본 피해다. 0이면 일반 공격력 경로를 사용한다.
 		std::uint32_t iAttackFixedDamage = 0u;
 		std::uint32_t iDefense = 0;
 		std::uint32_t iDeadDespawnMs = 0;
-		/* Latches once this BOSS entity's Valtan clear rewards have been granted
-		to the room's players, so a boss that stays DEAD without despawning (see
-		Valtan) is never re-looted on a later tick. */
+		// 보스 사망 보상을 이미 지급했는지 기록한다. 사망 entity가 남은 다음 tick에도 같은 보상을 반복 지급하지 않는다.
 		bool bLootGranted = false;
-		/* Raid-clear award input per player, filled by player hits (CServerCombatHitRuntime)
-		and the room's per-tick fight clock once the first hit landed. */
+		// 플레이어 공격 결과와 방의 전투 tick이 함께 쌓는 MVP 기록이다.
+		// 최초 기여 행이 생긴 뒤부터 살아 있는 주 보스의 전투 시간을 집계한다.
 		std::vector<SERVER_MVP_LEDGER_ROW> MvpLedger;
-		/* Multiplier on the authored push range of each player hit, from the
-		monster profile; 0 never moves. */
+		// 몬스터가 피격될 때 저작된 밀기 거리에 적용하는 배율이다. 0이면 그 경로의 밀림을 만들지 않는다.
 		float fHitKnockbackScale = 0.f;
-		/* Player push of this monster's landed attack, from the monster profile;
-		negative pulls the player toward the monster. */
+		// 몬스터 공격이 플레이어에게 적용할 밀기 거리(m)다. 음수는 몬스터 쪽으로 끌어당긴다.
 		float fAttackPushRangeM = 0.f;
 		std::uint32_t iAttackPushMs = 0;
 		bool bAttackKnockdown = false;
 		std::uint32_t iAttackDownMs = 0;
-		/* The knockback in flight: unit XZ direction away from the attacker,
-		metres per second (negative pulls closer), and how much of the authored
-		push window is left. A new hit restarts the window with its own
-		direction instead of stacking. */
+		// 진행 중인 피격 이동의 XZ 단위 방향, m/s 속도와 남은 초다.
+		// 음수 속도는 반대 방향으로 당기며 새 피격은 기존 이동을 누적하지 않고 새 구간으로 갱신한다.
 		float fKnockbackDirectionX = 0.f;
 		float fKnockbackDirectionZ = 0.f;
 		float fKnockbackSpeed = 0.f;
 		float fKnockbackRemainingSeconds = 0.f;
-		/* A raid Esther summon plays one roster-owned strike for iEstherStrikeMs
-		instead of running a brain, and despawns the moment it ends rather than
-		through the MONSTER dead sweep. */
+		// 에스더 소환은 일반 Brain 대신 정해진 타격 시간을 진행한다.
+		// 타격 종료 뒤 소환 entity를 정리하므로 일반 몬스터 사망 후 despawn 시간과 구분한다.
 		bool isEstherSummon = false;
 		std::uint32_t iEstherStrikeMs = 0;
 		LostArk::Shared::ESTHER_ID eEstherId = LostArk::Shared::ESTHER_ID::NONE;
@@ -533,56 +493,58 @@ namespace LostArk::Server
 		bool bEstherSupportApplied = false;
 		std::uint32_t iNextPathReplanTick = 0;
 		BOSS_PHASE_POLICY PhasePolicy;
-		/* Deprecated fixture mirror retained until callers have migrated to the
-		typed PhasePolicy. Product runtime never reads this field. */
+		// 생성 시 PhasePolicy의 임계값을 복사해 두는 기존 fixture 필드다. 제품 선택은 typed PhasePolicy를 읽는다.
 		std::uint32_t iPhaseTwoHpPercent = 0;
-		/* Staged from the boss profile at spawn, in authored plate order. Empty
-		for every entity that wears no armour. */
+		// 생성 시 profile의 저작 plate 순서대로 복사한다. 갑옷이 없는 entity는 빈 vector다.
 		std::vector<SERVER_BOSS_ARMOR_PLATE_STATE> ArmorPlates;
 		bool hasAppliedPatternDamage = false;
 		std::string strLastPatternId;
-		/* Active automatic program or normal-selection span plus its ordered
-		cursor. Product sequence steps advance only after successful completion;
-		WEIGHTED_POOL spans keep the cursor at zero and use only the id for
-		diagnostics. */
+		// 활성 자동 sequence/rotation의 ID와 순서 커서다. 순서형 실행은 정상 종료 때 진행한다.
+		// 가중치 선택에서는 ID를 진단에 쓰고 커서를 순서 실행처럼 진행하지 않는다.
 		std::string strRotationId;
 		std::uint32_t iRotationStepIndex = 0;
 		std::uint32_t iConsecutivePatternUses = 0;
 		std::vector<SERVER_BOSS_PATTERN_COOLDOWN> PatternCooldowns;
+		// 강제 실행 stable ID 대기열이다. 정의/발생 상태는 Catalog와 MechanicOccurrences에서 별도로 확인한다.
 		std::vector<std::string> PendingPatternIds;
 		std::vector<std::string> TriggeredPatternIds;
+		// 체력 기믹 발생 기록의 소유 저장소다. 원소를 가리키는 임시 포인터는 vector 변경을 넘겨 보관하지 않는다.
 		std::vector<SERVER_BOSS_MECHANIC_OCCURRENCE> MechanicOccurrences;
 		bool bMechanicLedgerRequiresReset = false;
 		LostArk::Shared::NET_ENTITY_ID iTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		/* The authored pattern target is distinct from the nearest entity used to
-		keep the encounter engaged. LOCK policies preserve this ID until the
-		pattern ends; TRACK is the only policy allowed to replace it each tick. */
+		// 패턴의 저작 대상 ID다. 전투 유지 여부를 확인할 최근접 대상과 구분한다.
+		// LOCK은 시작 대상 ID를 유지하지만 stage별 최근접 조준이나 명시적 retarget이 대상을 갱신할 수 있다.
 		LostArk::Shared::NET_ENTITY_ID iPatternTargetEntityId =
 			LostArk::Shared::INVALID_NET_ENTITY_ID;
-		/* LOCK target policies keep the last valid server position for stage
-		actions that occur after the selected player leaves or becomes invalid. */
+		// 마지막으로 유효했던 대상의 Server 위치다.
+		// 대상 부재 후에도 예약된 도약/포탈 등의 stage action이 확정 위치를 사용할 수 있게 값으로 저장한다.
 		bool bHasPatternTargetLastPosition = false;
 		float fPatternTargetLastPositionX = 0.f;
 		float fPatternTargetLastPositionY = 0.f;
 		float fPatternTargetLastPositionZ = 0.f;
-		// A presentation target Duration pins its aim only at END. Restore the
-		// preceding body basis before the next selection or pattern termination.
+		// Kouku 대상 연출이 끝난 시점에 방향을 잠그기 전의 본체 yaw를 보관한다.
+		// 다음 선택이나 패턴 종료가 원래 yaw를 복구하고 저장값을 비운다. sequence가 같은 경우만 복구한다.
 		std::optional<float> KoukuPresentationAimRestoreYawDegrees;
 		std::uint32_t iKoukuPresentationAimSequence = 0u;
+		// GameRoom의 조준 처리와 복구 함수가 현재 sequence의 저장 yaw가 있는지만 검사한다.
 		[[nodiscard]] bool Has_KoukuPresentationAim() const noexcept
 		{
 			return KoukuPresentationAimRestoreYawDegrees.has_value() &&
 				iKoukuPresentationAimSequence == iPatternSequence;
 		}
+		// Kouku Brain의 시작/종료와 GameRoom 연출 종료가 호출한다.
+		// 현재 sequence와 일치할 때만 yaw를 복구하지만 저장값과 sequence는 항상 비운다.
 		void Restore_KoukuPresentationAim() noexcept
 		{
-			if (Has_KoukuPresentationAim()) fYawDegrees = *KoukuPresentationAimRestoreYawDegrees;
+			if (Has_KoukuPresentationAim())
+				fYawDegrees = *KoukuPresentationAimRestoreYawDegrees;
 			KoukuPresentationAimRestoreYawDegrees.reset();
 			iKoukuPresentationAimSequence = 0u;
 		}
 		float fLastPathGoalX = 0.f;
 		float fLastPathGoalZ = 0.f;
+		// navigation이 만든 경로 점을 entity가 소유한다. iMovePathIndex는 다음에 소비할 점의 위치이며 저장 ID가 아니다.
 		std::vector<SERVER_NAV_POINT> MovePath;
 		std::size_t iMovePathIndex = 0;
 		SERVER_NPC_BEHAVIOR_STATE NpcBehavior;

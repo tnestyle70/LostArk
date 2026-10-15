@@ -1,15 +1,16 @@
 #include "MapPublishRunner.h"
 
+//게시 스크립트가 있는 프로젝트 루트를 찾는다.
 #include "ProjectDataRoot.h"
 
+//Area ID의 문자 검사와 CreateProcessW에 넘길 수정 가능한 명령 버퍼를 준비한다.
 #include <algorithm>
 #include <cctype>
 #include <vector>
 
 namespace
 {
-	/* Same character set the script's ValidatePattern on -AreaId accepts, so
-	   the command line can never carry anything but an Area identifier. */
+	//명령행에 들어갈 Area ID를 영숫자와 _, ., -로 제한한다.
 	bool_t IsPublisherAreaId(const std::string& areaId)
 	{
 		return !areaId.empty() && std::all_of(areaId.begin(), areaId.end(),
@@ -21,10 +22,15 @@ namespace
 	}
 }
 
+NS_BEGIN(Client)
+
+//추적 HANDLE만 해제한다. 이미 시작한 publisher는 자체 작업을 마친다.
 CMapPublishRunner::~CMapPublishRunner()
 {
 	if (nullptr != m_hProcess)
+	{
 		CloseHandle(m_hProcess);
+	}
 }
 
 bool_t CMapPublishRunner::Start(
@@ -45,6 +51,8 @@ bool_t CMapPublishRunner::Start(
 		outStatus = "Publish rejected: invalid Area id or scope.";
 		return false;
 	}
+
+	//현재 Data 루트의 형제 Tools에서 정식 게시 스크립트를 찾는다.
 	const std::filesystem::path root = CProjectDataRoot::Get().parent_path();
 	const std::filesystem::path script =
 		root / L"Tools/MapPipeline/Publish-MapAuthoring.ps1";
@@ -55,6 +63,8 @@ bool_t CMapPublishRunner::Start(
 			script.string();
 		return false;
 	}
+
+	//자식의 출력은 로그로, 입력은 NUL로 연결한다. 시작 실패 시 준비한 HANDLE을 닫는다.
 	wchar_t temporary[MAX_PATH]{};
 	if (!GetTempPathW(MAX_PATH, temporary))
 	{
@@ -81,6 +91,8 @@ bool_t CMapPublishRunner::Start(
 		outStatus = "Publish failed to start: cannot prepare standard input.";
 		return false;
 	}
+
+	//검증한 Area·scope만 인자로 넘기고 별도 콘솔 창 없이 실행한다.
 	std::wstring command =
 		L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"" +
 		script.wstring() + L"\" -AreaId " +
@@ -106,6 +118,8 @@ bool_t CMapPublishRunner::Start(
 			std::to_string(startError) + ").";
 		return false;
 	}
+
+	//시작 성공 뒤에만 실행 상태를 보관한다. stdout/stderr의 자식 참조는 자식이 유지한다.
 	CloseHandle(process.hThread);
 	m_hProcess = process.hProcess;
 	m_AreaId = areaId;
@@ -116,6 +130,7 @@ bool_t CMapPublishRunner::Start(
 	return true;
 }
 
+//저작 도구의 매 프레임 호출에서 사용한다. UI 스레드를 기다리게 하지 않는다.
 bool_t CMapPublishRunner::Poll(bool_t& outSucceeded, uint32_t& outExitCode)
 {
 	if (nullptr == m_hProcess ||
@@ -131,3 +146,5 @@ bool_t CMapPublishRunner::Poll(bool_t& outSucceeded, uint32_t& outExitCode)
 	outSucceeded = 0u == code;
 	return true;
 }
+
+NS_END

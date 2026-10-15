@@ -1,59 +1,28 @@
-"""Cut the retail chat window (EFUI_CHATTING chatting.gfx) and write its ui-layout document for
-CChatWindowView.
-
-Source: chatting.gfx sprite 340 ChattingChatWidget, which ChattingDocument places at stage
-(1,1080) -- the widget is anchored to the screen's bottom-left and every child sits at a negative
-local y. The tree below is the frame-1 display list straight out of the ffdec XML (local px on the
-1920x1080 stage, character ids in brackets):
-
-  chattingTabGroup [339]     at (0,-186): background [337] 290x42 rgba(214,214,214,0), a hit area.
-                             The tab buttons themselves are ChattingTabButton [133] instances the
-                             host adds per channel.
-  resizeRectangle_mc [116]   at (0,-150) scale (0.95,0.335): shape [112] 397x254 rgba(0,0,0,51),
-                             the drag/resize surface under the panel.
-  chattingControl [111]      at (0,-149), ChattingControlComponent:
-      background [85]        scale (1,0.374) of shape [84], bitmap [83] = page (0,0)-(378,227).
-                             This is the panel people actually see: ~75% black art, not the 20%
-                             rectangle above it.
-      textField [86]         at (26,3), 352x83, $YG760 fontHeight 280 (14 px) leading 40 (2 px).
-      chatLogTopScroll [110] at (3,1.1): bg [88] (910,175)-(928,191), arrow [101] (396,202)-(410,216)
-                             at +(0,3).
-      chatLogBottomScroll [99] at (3,82.2) scaleY -1: same bg, arrow [90] (460,202)-(474,216).
-  chattingInputbar [336]     at (0.2,-39), ChattingInput:
-      chattingInputTypeCombobox [326] at (0,-25): bg [318] 101x32 from bitmap [317]
-                             (851,37)-(944,65), arrow [321] (458,175)-(483,199) at (1,4),
-                             its label textField [319] 60x23 at (30,6), align centre.
-      inputBoxBG [331]       at (93,8) scale (0.9595,0.9211): outer [328] 297x38 at (0,-39) from
-                             bitmap [327] (554,37)-(849,69), inner [330] 292x30 at (4,-34) from
-                             bitmap [329] (554,71)-(846,101).
-      inputType_txt [332]    at (110,-20) 118x23, inputMessage_txt [333] at (110,-20) 235x23.
-      languageIcon_mc [316]  at (341,-21): frame 1 is an empty 34x24 box (Latin input shows
-                             nothing), frame 2 is the Korean glyph [303] (962,175)-(977,189) at
-                             local (10,5). Frames 3..8 are 中/РУС/あ/DE/FR/ES, which this client
-                             does not use. setLanguageType(n) does gotoAndStop(n+1).
-
-Input: --page  chatting_i1 (.png/.dds), exported with
-       umodel_lostark_v7 -export -dds -game=lostark -kr -obj=chatting_i1 EFUI_CHATTING.upk
-Writes Client/Bin/Resources/UI/Chat/*.png and Data/UI/Chat/ChatWindow_Layout.json.
+"""chatting.gfx의 atlas를 잘라 CChatWindowView용 이미지와 layout JSON을 만든다.
+원본 sprite 340의 1920×1080 좌표를 1280×720 기준으로 변환한다.
+출력은 Resources/UI/Chat 이미지와 Data/UI/Chat/ChatWindow_Layout.json이다.
 """
 
 from __future__ import annotations
 
+# --repo와 입력 atlas --page를 받는다.
 import argparse
+# CUILayoutRuntime이 읽는 slot·rect·layer 문서를 저장한다.
 import json
+# 저장소 기준으로 이미지와 JSON 출력 경로를 만든다.
 from pathlib import Path
 
+# atlas 잘라내기와 배경 PNG 생성을 담당한다.
 from PIL import Image
 
 STAGE_TO_REF = 2.0 / 3.0
-# The retail widget reads too small on this project's screens, so every local offset and size is
-# scaled about the widget's own bottom-left anchor. 1.0 reproduces the retail size exactly.
+# 원본이 작게 보여 좌하단 anchor 기준으로 위치·크기를 함께 확대한다. 1이면 원본 크기다.
 WIDGET_SCALE = 1.25
-# ChattingDocument places mainChattingWidget here; local y is negative from the screen bottom.
+# 화면 하단에 놓인 원본 anchor. 자식의 local y는 위쪽으로 음수다.
 WIDGET_STAGE = (1.0, 1080.0)
 TAB_PITCH = 96.0
 
-# name -> (x1, y1, x2, y2) on chatting_i1, from the DefineSubImage of that shape's bitmap fill
+# 이미지 이름별 chatting_i1 atlas의 crop 범위. 원본 DefineSubImage 좌표를 사용한다.
 CROPS = {
     "Chat_LogPanelArt": (0, 0, 378, 227),
     "Chat_InputBoxOuter": (554, 37, 849, 69),
@@ -71,10 +40,10 @@ CROPS = {
     "Chat_TabAddBg": (938, 0, 967, 32),
     "Chat_TabAddPlus": (872, 175, 889, 192),
 }
-# resizeRectangle_mc's own shape: a plain 20% black rectangle under the panel art.
+# 패널 이미지 아래에 깔리는 원본 20% 검정 배경이다.
 PANEL = ("Chat_LogPanel", (0, 0, 0, 51), 377, 85)
 
-# id -> (local x, local y, w, h, art or None for a text/marker slot, flipY)
+# stable slot ID별 local 위치·크기·이미지·반전 여부. 이미지 None은 텍스트/표시용 영역이다.
 SLOTS = [
     ("Chat_LogPanel", 0.0, -150.0, 377.0, 85.0, "Chat_LogPanel", False),
     ("Chat_LogPanelArt", 0.0, -149.0, 378.0, 84.9, "Chat_LogPanelArt", False),
@@ -83,11 +52,11 @@ SLOTS = [
     ("Chat_ScrollUpArrow", 3.0, -144.9, 14.0, 14.0, "Chat_ScrollArrowUp", False),
     ("Chat_ScrollDown", 3.0, -82.8, 18.0, 16.0, "Chat_ScrollButton", True),
     ("Chat_ScrollDownArrow", 3.0, -79.8, 14.0, 14.0, "Chat_ScrollArrowDown", False),
-    # chattingInputbar (0.2,-39) + combobox (0,-25)
+    # 입력바 (0.2,-39)에 combobox local (0,-25)를 합산한다.
     ("Chat_ComboBg", 0.2, -64.0, 101.0, 32.0, "Chat_ComboBg", False),
     ("Chat_ComboArrow", 1.2, -60.0, 25.0, 24.0, "Chat_ComboArrow", False),
     ("Chat_ChannelTextBox", 28.2, -60.0, 60.0, 23.0, None, False),
-    # inputBoxBG (93,8) scale (0.9595,0.9211) applied to its two children
+    # 두 입력 배경에 부모 위치 (93,8)와 배율 (0.9595,0.9211)을 적용한 값이다.
     ("Chat_InputBoxOuter", 93.2, -66.9, 285.0, 35.0, "Chat_InputBoxOuter", False),
     ("Chat_InputBoxInner", 97.0, -62.3, 280.2, 27.6, "Chat_InputBoxInner", False),
     ("Chat_InputTextBox", 110.2, -59.0, 225.0, 23.0, None, False),
@@ -102,11 +71,12 @@ SLOTS = [
 ]
 
 
+# CUILayoutRuntime이 찾는 ID·기준 해상도 rect·Resources 상대 이미지 경로를 묶는다.
 def layout_slot(slot_id, x, y, w, h, path, flip_y=False):
     return {
         "id": slot_id, "ownerClass": None, "type": 0,
         "rect": {"x": round(x, 2), "y": round(y, 2), "width": round(w, 2), "height": round(h, 2)},
-        # The bottom scroll button is the top one turned over, as the document flips it.
+        # 아래쪽 스크롤 버튼은 같은 이미지를 180도 회전해 사용한다.
         "rotation": 180 if flip_y else 0,
         "stages": {"baseFrom": 0, "shineFrom": 1 if path else 0},
         "layers": ([{"path": "UI/Chat/" + path + ".png", "hoverPath": None, "tint": [1, 1, 1, 1],
@@ -123,6 +93,7 @@ def main() -> int:
     ap.add_argument("--page", type=Path, required=True)
     args = ap.parse_args()
 
+    # atlas 조각이 완전히 투명하면 중단한다. 이미 저장한 앞쪽 PNG는 되돌리지 않는다.
     out_dir = args.repo / "Client/Bin/Resources/UI/Chat"
     out_dir.mkdir(parents=True, exist_ok=True)
     page = Image.open(args.page).convert("RGBA")
@@ -135,6 +106,7 @@ def main() -> int:
     name, rgba, w, h = PANEL
     Image.new("RGBA", (w, h), rgba).save(out_dir / (name + ".png"))
 
+    # 원본 anchor와 local 배율을 합산한 뒤 layout 기준 해상도로 환산한다.
     slots = []
     for slot_id, x, y, w, h, path, flip_y in SLOTS:
         sx = (WIDGET_STAGE[0] + x * WIDGET_SCALE) * STAGE_TO_REF
@@ -143,6 +115,7 @@ def main() -> int:
                                  h * WIDGET_SCALE * STAGE_TO_REF, path, flip_y))
     doc = {"schema": "lostark.ui-layout", "formatVersion": 1,
            "resolution": {"width": 1280, "height": 720}, "classes": ["Default"], "slots": slots}
+    # 모든 slot을 작성한 뒤 JSON을 저장한다. 실행 중 UI의 자동 Reload는 수행하지 않는다.
     layout = args.repo / "Data/UI/Chat/ChatWindow_Layout.json"
     layout.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {len(CROPS) + 1} png -> {out_dir}")

@@ -459,7 +459,7 @@ def build_waypoints(
         waypoints.append(
             StageWaypoint(
                 source_level_id=source_level_id,
-                placement_id="stage.kakul." + _stable_suffix(source_level_id),
+                placement_id="stage.kouku." + _stable_suffix(source_level_id),
                 cell_x=cell[0],
                 cell_z=cell[1],
                 x=x,
@@ -523,7 +523,7 @@ def serialize_world(
     spawns: list[tuple[float, float, float]],
 ) -> str:
     placements = [
-        _placement(f"player.spawn.kakul.party{index:02d}", position, True)
+        _placement(f"player.spawn.kouku.party{index:02d}", position, True)
         for index, position in enumerate(spawns, start=1)
     ]
     placements.extend(
@@ -542,7 +542,7 @@ def serialize_world(
 
 def serialize_stage_markers(waypoints: list[StageWaypoint]) -> str:
     document = {
-        "schema": "lostark.kakul-stage-markers",
+        "schema": "lostark.kouku-stage-markers",
         "formatVersion": 1,
         "areaId": AREA_ID,
         "revision": 1,

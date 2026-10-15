@@ -676,7 +676,7 @@ def contract_constant(name):
     """A float of the shared Server/Client hazard contract, so the authored
     telegraph and jet placement start on exactly the Server geometry."""
     import re
-    match = re.search(r'\b%s = (-?[0-9.]+)f;' % re.escape(name), CONTRACT.read_text(encoding='ascii'))
+    match = re.search(r'\b%s = (-?[0-9.]+)f;' % re.escape(name), CONTRACT.read_text(encoding='utf-8-sig'))
     assert match, ('contract constant missing', name)
     return float(match[1])
 

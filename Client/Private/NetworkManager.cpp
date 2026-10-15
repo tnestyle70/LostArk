@@ -1517,20 +1517,20 @@ bool CNetworkManager::Send_DebugKillSelf(
 }
 #endif
 
-bool CNetworkManager::Send_DebugEnterKakulSaydonArena(
+bool CNetworkManager::Send_DebugEnterKoukuSaydonArena(
 	const std::uint32_t requestSequence)
 {
 	using namespace LostArk::Shared;
 	if (!Is_Connected())
 		return false;
-	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA message{};
+	C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA message{};
 	message.iRequestSequence = requestSequence;
 	CPacketWriter payloadWriter;
 	if (!Write_Message(payloadWriter, message))
 		return false;
 	std::vector<std::uint8_t> frameBytes;
 	return Build_Packet_Frame(
-		PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+		PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA,
 		payloadWriter.Get_Buffer(), frameBytes) && Send_All(frameBytes);
 }
 
@@ -1570,7 +1570,7 @@ bool CNetworkManager::Send_MarioMove(
 	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
 {
 	using namespace LostArk::Shared;
-	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		INVALID_PLAYER_ID == m_iLocalPlayerId)
 		return false;
 	C2S_MARIO_MOVE message{};
@@ -1589,7 +1589,7 @@ bool CNetworkManager::Send_MarioReturn(
 	const std::uint32_t clientSequence)
 {
 	using namespace LostArk::Shared;
-	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		INVALID_PLAYER_ID == m_iLocalPlayerId)
 		return false;
 	C2S_MARIO_RETURN message{};
@@ -1617,7 +1617,7 @@ bool CNetworkManager::Send_DebugMarioJump(
 	const std::uint32_t clientSequence, const LostArk::Shared::MARIO_DIRECTION direction)
 {
 	using namespace LostArk::Shared;
-	if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		INVALID_PLAYER_ID == m_iLocalPlayerId)
 		return false;
 	C2S_DEBUG_MARIO_JUMP message{};
@@ -1706,7 +1706,7 @@ bool CNetworkManager::Send_InteractionSlot(std::uint32_t sequence,
  LostArk::Shared::INTERACTION_SLOT slot)
 {
  using namespace LostArk::Shared;
- if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+ if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
   return false;
  C2S_INTERACTION_SLOT message{};
  message.iRequestSequence = sequence;
@@ -1722,7 +1722,7 @@ bool CNetworkManager::Send_DebugBingoFill(std::uint32_t sequence,
  std::uint32_t cellMask, bool reset)
 {
  using namespace LostArk::Shared;
- if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+ if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
   return false;
  C2S_DEBUG_BINGO_FILL message{};
  message.iRequestSequence = sequence;
@@ -1738,7 +1738,7 @@ bool CNetworkManager::Send_DebugBingoFill(std::uint32_t sequence,
 bool CNetworkManager::Send_DebugBingoBomb(std::uint32_t sequence)
 {
  using namespace LostArk::Shared;
- if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+ if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
   return false;
  C2S_DEBUG_BINGO_BOMB message{};
  message.iRequestSequence = sequence;
@@ -1752,7 +1752,7 @@ bool CNetworkManager::Send_DebugBingoBomb(std::uint32_t sequence)
 bool CNetworkManager::Send_DebugBingoHammer(std::uint32_t sequence)
 {
  using namespace LostArk::Shared;
- if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+ if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
   return false;
  C2S_DEBUG_BINGO_HAMMER message{};
  message.iRequestSequence = sequence;
@@ -1768,7 +1768,7 @@ bool CNetworkManager::Send_DebugResummonWaveMonsters(std::uint32_t sequence,
 {
  using namespace LostArk::Shared;
  if (!Is_Connected() || INVALID_PLAYER_ID == m_iLocalPlayerId ||
-  (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId && WORLD_ID::VALTAN_ARENA != m_eWorldId))
+  (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId && WORLD_ID::VALTAN_ARENA != m_eWorldId))
   return false;
  C2S_DEBUG_RESUMMON_WAVE_MONSTERS message{};
  message.iRequestSequence = sequence;
@@ -1784,7 +1784,7 @@ bool CNetworkManager::Send_DebugKoukuHudMode(std::uint32_t sequence,
  LostArk::Shared::KOUKU_HUD_MODE mode)
 {
  using namespace LostArk::Shared;
- if (!Is_Connected() || WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
+ if (!Is_Connected() || WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || INVALID_PLAYER_ID == m_iLocalPlayerId)
   return false;
  C2S_DEBUG_SET_KOUKU_HUD_MODE message{};
  message.iRequestSequence = sequence;

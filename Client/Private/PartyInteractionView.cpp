@@ -1,15 +1,12 @@
 #include "PartyInteractionView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 #include <algorithm>
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
 
 #include "Character.h"
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "PlayerCommandSink.h"
 #include "PlayerController.h"
 #include "PartyTransferNotice.h"
@@ -139,9 +136,7 @@ bool_t Client::CPartyInteractionView::Update(
 		m_isInvitePopupOpen = true;
 		m_hasInvitePopupJustOpened = true;
 
-		const std::filesystem::path soundPath = CRuntimeAssetRoot::Resolve(
-			L"Sound/UI/System/sys_party_request1__654410772.wav");
-		CGameInstance::Get().Play_Sound(soundPath.wstring(), 1.f);
+		Client::Play_UISound(Client::UI_SOUND_CUE::POPUP_REQUEST);
 	}
 
     const auto& match = Replication.Get_ColosseumMatchState();
@@ -409,7 +404,7 @@ void Client::CPartyInteractionView::Render_ContextMenu(
                 else pCommandSink->Request_PartyInvite(
                     m_iNextRequestSequence++, m_iContextMenuTargetNetEntityId);
 			}
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			closeMenu = true;
 		}
 	}
@@ -496,7 +491,7 @@ void Client::CPartyInteractionView::Render_InvitePopup(
 			"UI/ClassSelect/Common/NormalButton.png");
 		if (isHovered && Router.Is_Clicked(fX, fY, fW, fH, fResolutionWidth, fResolutionHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (button.isConfirm)
 				acceptClicked = true;
 			else

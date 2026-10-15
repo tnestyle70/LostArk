@@ -47,7 +47,7 @@ void LostArk::Server::CGameRoom::Handle_KoukuSaydonDraftChunk(
 {
 #ifdef _DEBUG
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA ||
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA ||
 		!m_PlayerIdBySessionId.contains(sessionId) || Is_KoukuRaidRunning()) return;
 	CPacketWriter shape;
 	if (!Write_Message(shape, chunk)) { m_KoukuDraftUploads.erase(sessionId); return; }
@@ -179,7 +179,7 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	const bool running = m_KoukuSaydonPatternAudition.ePhase != PHASE::INACTIVE;
 	const bool ownsRun = m_KoukuSaydonPatternAudition.iRoomAuditionEpoch != 0u;
 	CPacketWriter shape;
-	if (!Write_Message(shape, request) || m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.Scope.eWorldId != m_eWorldId ||
+	if (!Write_Message(shape, request) || m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || request.Scope.eWorldId != m_eWorldId ||
 		request.Scope.strEncounterId != KOUKUSAYDON_G1_ENCOUNTER_ID)
 		return reject(RESULT::REJECTED_SCOPE_MISMATCH, "KoukuSaydon audition world/session/selection scope is invalid");
 	if (continueRaid && (!ownsRun || running || restart ||
@@ -295,9 +295,9 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 	};
 	const auto gateOwns = [](const std::string& gate, const std::string& placement)
 	{
-		return (gate == "GATE1" && (placement == "boss.kakulsaydon.g1.kouku" || placement == "boss.kakulsaydon.g1.saydon")) ||
-			(gate == "GATE2" && (placement == "boss.kakulsaydon.g2.kouku" || placement == "boss.kakulsaydon.g2.big-saydon")) ||
-			(gate == "GATE3" && placement == "boss.kakulsaydon.g3.saydon") || (gate == "BINGO" && placement == "boss.kakulsaydon.bingo.saydon");
+		return (gate == "GATE1" && (placement == "boss.koukusaydon.g1.kouku" || placement == "boss.koukusaydon.g1.saydon")) ||
+			(gate == "GATE2" && (placement == "boss.koukusaydon.g2.kouku" || placement == "boss.koukusaydon.g2.big-saydon")) ||
+			(gate == "GATE3" && placement == "boss.koukusaydon.g3.saydon") || (gate == "BINGO" && placement == "boss.koukusaydon.bingo.saydon");
 	};
 	KOUKUSAYDON_PATTERN_AUDITION_STATE staged;
 	staged.ePhase = PHASE::PENDING; staged.iOwnerSessionId = sessionId; staged.Request = request;
@@ -364,11 +364,11 @@ LostArk::Server::CGameRoom::Evaluate_KoukuSaydonPatternAudition(
 			// Encore has the same MN_RPCT_05 body/staff. Reuse the exact saved
 			// local attack; gate layouts, player modes and camera scenes keep their owner.
 			const bool encoreReplay = !bundleRequest &&
-				placement->strPlacementId == "boss.kakulsaydon.bingo.saydon" &&
-				boss->strArchetypeId == "BOSS_KAKULSAYDON_BINGO_SAYDON" &&
-				pattern->strGateId == "GATE3" && pattern->strTargetBossPlacementId == "boss.kakulsaydon.g3.saydon" &&
+				placement->strPlacementId == "boss.koukusaydon.bingo.saydon" &&
+				boss->strArchetypeId == "BOSS_KOUKUSAYDON_BINGO_SAYDON" &&
+				pattern->strGateId == "GATE3" && pattern->strTargetBossPlacementId == "boss.koukusaydon.g3.saydon" &&
 				std::find(pattern->AuditionBossArchetypeIds.begin(), pattern->AuditionBossArchetypeIds.end(),
-					"BOSS_KAKULSAYDON_G3_SAYDON") != pattern->AuditionBossArchetypeIds.end() &&
+					"BOSS_KOUKUSAYDON_G3_SAYDON") != pattern->AuditionBossArchetypeIds.end() &&
 				pattern->WorldSequences.empty() && pattern->SceneProfiles.empty() &&
 				pattern->MechanicTriggers.empty() && pattern->LogicWindows.empty() && !pattern->BossMotion &&
 				(request.Scope.strGateId.empty() || request.Scope.strGateId == "BINGO");
@@ -960,7 +960,7 @@ void LostArk::Server::CGameRoom::Clear_KoukuSaydonPatternAudition(const bool com
 bool LostArk::Server::CGameRoom::Refresh_KoukuSupportSurfaces(const std::uint32_t serverTick)
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return true;
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA) return true;
 	auto& schedule = m_KoukuSaydonPatternAudition.SupportSchedule;
 	std::erase_if(schedule, [&](const auto& support) { return Has_ReachedServerTick(serverTick, support.iEndTick); });
 	std::vector<SERVER_NAVIGATION_SUPPORT_SURFACE> surfaces;
@@ -1446,7 +1446,7 @@ void LostArk::Server::CGameRoom::Complete_KoukuMarioReturn(
 	SERVER_PLAYER& player, const std::string& sourcePlacementId, const std::uint32_t updateTick)
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || player.TriggerMove.isActive || player.iMarioStage ||
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || player.TriggerMove.isActive || player.iMarioStage ||
 		!player.iCurrentHp || player.eAction != PLAYER_ACTION_STATE::NONE) return;
 	const bool terminalReturn = std::any_of(MARIO_LANES.begin(), MARIO_LANES.end(), [&](const auto& lane) {
 		return sourcePlacementId == lane.exit && std::none_of(MARIO_LANES.begin(), MARIO_LANES.end(),

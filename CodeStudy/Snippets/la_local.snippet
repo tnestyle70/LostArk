@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>LostArk CPP 전용 보조 함수</Title>
+      <Shortcut>la_local</Shortcut>
+      <Description>클래스와 무관한 CPP 전용 static 자유 함수</Description>
+      <Author>LostArk</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal><ID>purpose</ID><ToolTip>이 CPP에만 필요한 계산 이유</ToolTip><Default>이 CPP에서만 사용하는 보조 계산의 목적</Default></Literal>
+        <Literal><ID>returnType</ID><ToolTip>현재 계약의 반환 타입</ToolTip><Default>void</Default></Literal>
+        <Literal><ID>functionName</ID><ToolTip>보조 함수 이름</ToolTip><Default>HelperName</Default></Literal>
+        <Literal><ID>parameters</ID><ToolTip>입력과 출력 매개변수</ToolTip><Default></Default></Literal>
+      </Declarations>
+      <Code Language="CPP"><![CDATA[//$purpose$
+static $returnType$ $functionName$($parameters$)
+{
+    $end$
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

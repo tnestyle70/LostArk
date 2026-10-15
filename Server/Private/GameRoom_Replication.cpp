@@ -530,7 +530,7 @@ void LostArk::Server::CGameRoom::Broadcast_WorldSnapshot()
 			[&](const auto& surface) { return surface.Contains_PointXZ(player.fPositionX, player.fPositionZ); });
 		// The Client predictor currently loads the base grid only. Refined Kouku
 		// regions use the same authoritative interpolation as temporary floors.
-		const bool onKoukuDetailGrid = m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+		const bool onKoukuDetailGrid = m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA &&
 			m_ServerNavigation.Is_InSameDetailRegion(player.fPositionX, player.fPositionZ,
 				player.fPositionX, player.fPositionZ);
 		snapshot.canPredictMove = !onRuntimeSupport && !onKoukuDetailGrid &&

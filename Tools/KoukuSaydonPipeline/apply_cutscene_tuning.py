@@ -45,7 +45,7 @@ CENTER = (-0.3, 737.5)
 RADIUS = 80.0
 MAX_TRACKS = 32
 # CMapTool plays exactly this many arena_rise instances
-# (KAKUL_ARENA_RISE_INSTANCE_COUNT in MapTool.cpp).
+# (KOUKU_ARENA_RISE_INSTANCE_COUNT in MapTool.cpp).
 INSTANCE_COUNT = 14
 BOOK_PLACEMENT_ID = 6
 BOOK_CLIP = "bg_rad_koukusaton_book.ao_evt2_book02"
@@ -354,7 +354,7 @@ def build(values, show, windows, items):
     if len(chunks) != INSTANCE_COUNT:
         raise SystemExit(
             f"묶음 {len(chunks)}개 != CMapTool 인스턴스 {INSTANCE_COUNT}개. "
-            "배치 수가 바뀌었으면 MapTool.cpp 의 KAKUL_ARENA_RISE_INSTANCE_COUNT 를 맞추세요.")
+            "배치 수가 바뀌었으면 MapTool.cpp 의 KOUKU_ARENA_RISE_INSTANCE_COUNT 를 맞추세요.")
     for index, chunk in enumerate(chunks):
         tracks, bindings = [], []
         for slot, item in enumerate(chunk, 1):

@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma push_macro("new")
-#undef new
 #include <Windows.h>
 #include <filesystem>
 #include <fstream>
@@ -10,7 +8,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#pragma pop_macro("new")
 
 namespace Client
 {
