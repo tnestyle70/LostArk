@@ -1,0 +1,2377 @@
+{
+  "schema": "lostark.out.bern-application-evidence.v1",
+  "createdUtc": "2026-10-15T09:45:38.105640+00:00",
+  "scope": "Read-only source/resources/capture/artifact evidence comparison. No product/docs/resources change, compilation or GPU execution.",
+  "git": {
+    "branchAtStart": "codex/bern-evidence-anchor-integration-20261015",
+    "headAtStart": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+    "originMainAtStart": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+    "headAtEnd": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+    "note": "기록 시점의 main 소스 근거. 이후 merge/build의 현재성을 대신 보장하지 않는다."
+  },
+  "sourceFiles": {
+    "Client/Private/MapStaticProxyBaker.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+      "sha256": "13db1aa03867eb26eb6be0ae82afc46dd89ee27fb9dd3ba6bae130d0c5828132",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Engine/Private/Model_StaticProxy.inl": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+      "sha256": "4fa78a577c7cb4c85147195ff5196a0a91707b992a196cdb3e5da0b14fa57d6b",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/MapStaticBatchObject.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+      "sha256": "43c453482eb63826d6ed9bfbaef80ecdb41914b65ffbc0269bfb9411b96a5590",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/Level_Bern.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\Level_Bern.cpp",
+      "sha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/MapPlacementRuntime.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapPlacementRuntime.cpp",
+      "sha256": "8bd09bd56972aebfa2a1f0bf07808fa66b9497b0935c88a2745f5209b2f0abf3",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/ProfilerCaptureIO.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerCaptureIO.cpp",
+      "sha256": "eb3c4196e8344315bb8496fb4e266fd9fd52c78b9d15cf80825da0ed0e9c9b0f",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Bin/ShaderFiles/Shader_VtxMeshMapProxy.hlsl": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ShaderFiles\\Shader_VtxMeshMapProxy.hlsl",
+      "sha256": "a65cfb1702fd1a6d5bd68bcaf9715f3eb20a8f48cd1ea687c431441006283d59",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/ProfilerTool.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool.cpp",
+      "sha256": "126882d9b4991ecb83750cc41b2d517c48741eef1ba255a3628fe2199837edcd",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Client/Private/ProfilerTool_Cutscene.inl": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool_Cutscene.inl",
+      "sha256": "8f7ce55cca8b03797a957732336ff9247a9b7ba81f86a368c01ec8a123a6c29b",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Engine/Private/StaticMeshLod.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\StaticMeshLod.cpp",
+      "sha256": "9ad76f68c5a7bb7c40eb9ce03b2fe04ed2d1aa4871828b5e3572fab6a0150df3",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Engine/Private/Model_StaticCluster.inl": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticCluster.inl",
+      "sha256": "218ecfe481ab36a1c952178749dc06d6799b6d35a5bb8788676c4bcc13d5df3f",
+      "encoding": "utf-8",
+      "matchesHeadIgnoringCRLF": true
+    },
+    "Engine/Private/Shader.cpp": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Shader.cpp",
+      "sha256": "688905910cb7578df058691ce1a9340d7525f9090b08dddd50befa975213209c",
+      "encoding": "cp949",
+      "matchesHeadIgnoringCRLF": true
+    }
+  },
+  "sourceDriftDuringRead": [],
+  "resources": {
+    "Map/Derived/Bern/Pillar06/manifest.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\manifest.json",
+      "expectedSha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf",
+      "actualSha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf",
+      "matches": true,
+      "bytes": 12135
+    },
+    "Map/Derived/Bern/Pillar06/low-vtxmesh.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\low-vtxmesh.bin",
+      "expectedSha256": "294da23de36ddcc8f7aba485cfc99f210cb36bc0ccec8ecd9ae29d18f154ed10",
+      "actualSha256": "294da23de36ddcc8f7aba485cfc99f210cb36bc0ccec8ecd9ae29d18f154ed10",
+      "matches": true,
+      "bytes": 82020
+    },
+    "Map/Derived/Bern/Pillar06/render-indices.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\render-indices.bin",
+      "expectedSha256": "66a4445c12d187534101138335cec2675b622430c7f3296ac0d866281c6cb7b4",
+      "actualSha256": "66a4445c12d187534101138335cec2675b622430c7f3296ac0d866281c6cb7b4",
+      "matches": true,
+      "bytes": 15372
+    },
+    "Map/Derived/Bern/Pillar06/atlas-0.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-0.bin",
+      "expectedSha256": "9141f2c29fcde261c4657a6b39d074b96772ed8349eac7ea468d55011d73d1a2",
+      "actualSha256": "9141f2c29fcde261c4657a6b39d074b96772ed8349eac7ea468d55011d73d1a2",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-1.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-1.bin",
+      "expectedSha256": "86b458931f9235705e46e1fa8545adceb0f30cf7ff16f6935c5c48efb41f4ec5",
+      "actualSha256": "86b458931f9235705e46e1fa8545adceb0f30cf7ff16f6935c5c48efb41f4ec5",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-2.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-2.bin",
+      "expectedSha256": "2c4b3876bc66dfeb0555ba420ed3f81aed1b29f13e8521f82d1abeda796f5e3e",
+      "actualSha256": "2c4b3876bc66dfeb0555ba420ed3f81aed1b29f13e8521f82d1abeda796f5e3e",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-3.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-3.bin",
+      "expectedSha256": "321b0ca33b94f59caca45ceae7a6496cbfdba346900efde2aa63a9490b9662d5",
+      "actualSha256": "321b0ca33b94f59caca45ceae7a6496cbfdba346900efde2aa63a9490b9662d5",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-4.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-4.bin",
+      "expectedSha256": "e373d1a40c60500d8836e555e30bbbc86b28431009ce9ac8bca94f3686ab8fdd",
+      "actualSha256": "e373d1a40c60500d8836e555e30bbbc86b28431009ce9ac8bca94f3686ab8fdd",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-5.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-5.bin",
+      "expectedSha256": "7cdd3638392a17cc22790039e94f46635fb04d11a2c03b0e4be0d8ed131cba77",
+      "actualSha256": "7cdd3638392a17cc22790039e94f46635fb04d11a2c03b0e4be0d8ed131cba77",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-6.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-6.bin",
+      "expectedSha256": "de7c2a8cf0252610cec7f7c96462baa8af2ac602e598ef75599c6c9e1dec98b5",
+      "actualSha256": "de7c2a8cf0252610cec7f7c96462baa8af2ac602e598ef75599c6c9e1dec98b5",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-7.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-7.bin",
+      "expectedSha256": "73455189375e3e3e16710f1d9d36f226d3831c6552f0c1951f0a046f4f44710f",
+      "actualSha256": "73455189375e3e3e16710f1d9d36f226d3831c6552f0c1951f0a046f4f44710f",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar06/atlas-8.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\atlas-8.bin",
+      "expectedSha256": "a74b4867e174e4dd676ce00078ed2d2bb7fee3d399643ce31f6dac25d06c561f",
+      "actualSha256": "a74b4867e174e4dd676ce00078ed2d2bb7fee3d399643ce31f6dac25d06c561f",
+      "matches": true,
+      "bytes": 1048576
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar06_d_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar06_d_hht.dds",
+      "expectedSha256": "7d35968d172d8685cbd5e2a886d185007bdc454672de13451a23be6a59b7feac",
+      "actualSha256": "7d35968d172d8685cbd5e2a886d185007bdc454672de13451a23be6a59b7feac",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar06_n_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar06_n_hht.dds",
+      "expectedSha256": "78a62bef06049eedcc8b8dde2999076d864f797bfc7137da3e3c7b30103434f9",
+      "actualSha256": "78a62bef06049eedcc8b8dde2999076d864f797bfc7137da3e3c7b30103434f9",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar06roof01_d_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar06roof01_d_hht.dds",
+      "expectedSha256": "a8477e4c9e1ff08b83e70782937b749c655f596f3815ea02b847457a6ecc6fd9",
+      "actualSha256": "a8477e4c9e1ff08b83e70782937b749c655f596f3815ea02b847457a6ecc6fd9",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar06roof01_n_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar06roof01_n_hht.dds",
+      "expectedSha256": "b92cab4e3a9c2d6fa854264fc700d04b22ca015e7aff85fb89426098dab0e07b",
+      "actualSha256": "b92cab4e3a9c2d6fa854264fc700d04b22ca015e7aff85fb89426098dab0e07b",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar06roof01_s_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar06roof01_s_hht.dds",
+      "expectedSha256": "855d519d4c83f5c8304f3876e8dc886963cc14d0778261d1e6e8ece5130d4475",
+      "actualSha256": "855d519d4c83f5c8304f3876e8dc886963cc14d0778261d1e6e8ece5130d4475",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07a_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07a_d_rsh.dds",
+      "expectedSha256": "78f267b4479a524692290202e1cc5fb9f633820c6f4d9caf5d5df52772c444cb",
+      "actualSha256": "78f267b4479a524692290202e1cc5fb9f633820c6f4d9caf5d5df52772c444cb",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07a_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07a_n_rsh.dds",
+      "expectedSha256": "60ac4905f66dad3b4fb38a1c4da8edc161d97638b6e70e9f16f4f352e6d941c6",
+      "actualSha256": "60ac4905f66dad3b4fb38a1c4da8edc161d97638b6e70e9f16f4f352e6d941c6",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07a_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07a_s_rsh.dds",
+      "expectedSha256": "36ae9bf14feded31fc07937b9e19d2f677d2a374f8198bb9540897c26dd3aa22",
+      "actualSha256": "36ae9bf14feded31fc07937b9e19d2f677d2a374f8198bb9540897c26dd3aa22",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07b_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07b_d_rsh.dds",
+      "expectedSha256": "c47ced57e2e481b87b9298a1bffd91f0e1be9c2d1a2fe379a5cb0362aa2cdc79",
+      "actualSha256": "c47ced57e2e481b87b9298a1bffd91f0e1be9c2d1a2fe379a5cb0362aa2cdc79",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07b_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07b_n_rsh.dds",
+      "expectedSha256": "75e2258cf08533f75a1430261466f90a3549f6b1c19df5d236f3c49b7b3e68d4",
+      "actualSha256": "75e2258cf08533f75a1430261466f90a3549f6b1c19df5d236f3c49b7b3e68d4",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07b_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07b_s_rsh.dds",
+      "expectedSha256": "50ce97610a63d31fd5605b2a402e2e7fdb6738d69c43bb41707645936c358de3",
+      "actualSha256": "50ce97610a63d31fd5605b2a402e2e7fdb6738d69c43bb41707645936c358de3",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07c_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07c_d_rsh.dds",
+      "expectedSha256": "bebefcc736c621b7dbc84b5a2dbd9807e5ab529a508472fe8fd29329ec59cce6",
+      "actualSha256": "bebefcc736c621b7dbc84b5a2dbd9807e5ab529a508472fe8fd29329ec59cce6",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07c_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07c_n_rsh.dds",
+      "expectedSha256": "6f8fc6218949f87095e93817dcfc2bc25da1a1bc4559ce6be44d34467d987e60",
+      "actualSha256": "6f8fc6218949f87095e93817dcfc2bc25da1a1bc4559ce6be44d34467d987e60",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar07c_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar07c_s_rsh.dds",
+      "expectedSha256": "964d8ef54f8f4a4364a3562e5d0a79488f7ef6e6b159d960f5a4093ee5926982",
+      "actualSha256": "964d8ef54f8f4a4364a3562e5d0a79488f7ef6e6b159d960f5a4093ee5926982",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar08roof_d_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar08roof_d_psy.dds",
+      "expectedSha256": "e29afa543644097f8cc7ce58545d43177a53582b7ec873c34acfad64c84c6cac",
+      "actualSha256": "e29afa543644097f8cc7ce58545d43177a53582b7ec873c34acfad64c84c6cac",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar08roof_n_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar08roof_n_psy.dds",
+      "expectedSha256": "ac175d15f8dfd07c048b598c4c1b4e45c10fcbecf6bcfd358bd5e23a1c48a0e1",
+      "actualSha256": "ac175d15f8dfd07c048b598c4c1b4e45c10fcbecf6bcfd358bd5e23a1c48a0e1",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_pillar08roof_s_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_pillar08roof_s_psy.dds",
+      "expectedSha256": "ae37bf10d5b03d79b5bd73ded66d809f9540ce44472e8317044040cb784a48ec",
+      "actualSha256": "ae37bf10d5b03d79b5bd73ded66d809f9540ce44472e8317044040cb784a48ec",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_structure02_d_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_structure02_d_ksr.dds",
+      "expectedSha256": "288001b92796a9f213263b5130ff012b6be789d28533dd2bc382560d1098b99c",
+      "actualSha256": "288001b92796a9f213263b5130ff012b6be789d28533dd2bc382560d1098b99c",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/textures/bg_ber_berncastle_structure02_n_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\textures\\bg_ber_berncastle_structure02_n_ksr.dds",
+      "expectedSha256": "45d40d192c62f67f0bb09d7433ecd0bf57e57ab7bddf585bef4f0a47777a7ff4",
+      "actualSha256": "45d40d192c62f67f0bb09d7433ecd0bf57e57ab7bddf585bef4f0a47777a7ff4",
+      "matches": true,
+      "bytes": 262272
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/038d6bbc096f_bg_ber_berncastle_pillar07b_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\038d6bbc096f_bg_ber_berncastle_pillar07b_n_rsh.dds",
+      "expectedSha256": "555e4bfc9052a63bc4bb5f0114535414afec08a621892cfc25d3f006f8627698",
+      "actualSha256": "555e4bfc9052a63bc4bb5f0114535414afec08a621892cfc25d3f006f8627698",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/1d2e486a1915_bg_ber_berncastle_pillar08roof_s_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\1d2e486a1915_bg_ber_berncastle_pillar08roof_s_psy.dds",
+      "expectedSha256": "7d697719f3acbc5948c272c03963615700531056f30efd73862d9f5058310c1c",
+      "actualSha256": "7d697719f3acbc5948c272c03963615700531056f30efd73862d9f5058310c1c",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/29840a498f11_bg_ber_berncastle_pillar07a_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\29840a498f11_bg_ber_berncastle_pillar07a_n_rsh.dds",
+      "expectedSha256": "2960cc4e57cd1ed300079e6bc6218c09535f97a6cf5fba89d5da7afcdcfd4c64",
+      "actualSha256": "2960cc4e57cd1ed300079e6bc6218c09535f97a6cf5fba89d5da7afcdcfd4c64",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/38700c2bccd6_bg_ber_berncastle_pillar07c_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\38700c2bccd6_bg_ber_berncastle_pillar07c_d_rsh.dds",
+      "expectedSha256": "cf915ec4e7eb760c2eaa6514e535216f5d76e7e22f1b44f51bf3f1f8cbc4ea31",
+      "actualSha256": "cf915ec4e7eb760c2eaa6514e535216f5d76e7e22f1b44f51bf3f1f8cbc4ea31",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/42006c6d925b_bg_ber_berncastle_structure02_d_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\42006c6d925b_bg_ber_berncastle_structure02_d_ksr.dds",
+      "expectedSha256": "4e5d8dc2643a242d000e86af53cec9339e630d2d3974334c5b6d12dfeb2c7035",
+      "actualSha256": "4e5d8dc2643a242d000e86af53cec9339e630d2d3974334c5b6d12dfeb2c7035",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/60a688a14d10_bg_ber_berncastle_pillar06roof01_s_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\60a688a14d10_bg_ber_berncastle_pillar06roof01_s_hht.dds",
+      "expectedSha256": "fb28fb99370e9cb83c7c45fbf9107b3422d6a774372efcb768219a122abf11e2",
+      "actualSha256": "fb28fb99370e9cb83c7c45fbf9107b3422d6a774372efcb768219a122abf11e2",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/6739b89ad8ac_bg_ber_berncastle_pillar06_n_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\6739b89ad8ac_bg_ber_berncastle_pillar06_n_hht.dds",
+      "expectedSha256": "60b0aa8f0dbebb960bac081e357196178baa7a535ec9588cf81268c586b23165",
+      "actualSha256": "60b0aa8f0dbebb960bac081e357196178baa7a535ec9588cf81268c586b23165",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/6a515e6b4641_bg_ber_berncastle_pillar06roof01_d_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\6a515e6b4641_bg_ber_berncastle_pillar06roof01_d_hht.dds",
+      "expectedSha256": "35afae892c5b2d1562ffc012e603cc3284df34792c7b428f77583fc0a7c1f964",
+      "actualSha256": "35afae892c5b2d1562ffc012e603cc3284df34792c7b428f77583fc0a7c1f964",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/8392d87309e7_bg_ber_berncastle_pillar06_d_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\8392d87309e7_bg_ber_berncastle_pillar06_d_hht.dds",
+      "expectedSha256": "7fb0c11e64f0c79eb59c86b91d4170ea2f82781381454aea1428ba2772297999",
+      "actualSha256": "7fb0c11e64f0c79eb59c86b91d4170ea2f82781381454aea1428ba2772297999",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/8e11dfec9c98_bg_ber_berncastle_pillar07b_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\8e11dfec9c98_bg_ber_berncastle_pillar07b_s_rsh.dds",
+      "expectedSha256": "6a048785ca730cbe24de9f077bc3c273b7f75d07f7e19cd02dc4c367dfa32867",
+      "actualSha256": "6a048785ca730cbe24de9f077bc3c273b7f75d07f7e19cd02dc4c367dfa32867",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/9d1e1f36babb_bg_ber_berncastle_pillar07c_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\9d1e1f36babb_bg_ber_berncastle_pillar07c_s_rsh.dds",
+      "expectedSha256": "40902ba100f639c738725e8c97e6d02507f0dd6cb7fb88108d7854df596bb932",
+      "actualSha256": "40902ba100f639c738725e8c97e6d02507f0dd6cb7fb88108d7854df596bb932",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/a0db39f852db_bg_ber_berncastle_pillar08roof_d_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\a0db39f852db_bg_ber_berncastle_pillar08roof_d_psy.dds",
+      "expectedSha256": "b68d61696b787530e5e933728d7f3b908acc50fe1897285bac20a8e40ebf082a",
+      "actualSha256": "b68d61696b787530e5e933728d7f3b908acc50fe1897285bac20a8e40ebf082a",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/a44b5907c71e_bg_ber_berncastle_structure02_n_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\a44b5907c71e_bg_ber_berncastle_structure02_n_ksr.dds",
+      "expectedSha256": "276e7d7472ecdde239e385e4c3a570fdb871e315094c526ed74d926fb9e407f6",
+      "actualSha256": "276e7d7472ecdde239e385e4c3a570fdb871e315094c526ed74d926fb9e407f6",
+      "matches": true,
+      "bytes": 349700
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/af7c03f183ff_bg_ber_berncastle_pillar07a_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\af7c03f183ff_bg_ber_berncastle_pillar07a_s_rsh.dds",
+      "expectedSha256": "eb0ecf72fddd7a80622edc90758fbd8d39edc0d0b56285e2c86ca83f92b99456",
+      "actualSha256": "eb0ecf72fddd7a80622edc90758fbd8d39edc0d0b56285e2c86ca83f92b99456",
+      "matches": true,
+      "bytes": 174924
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/bccf735a407d_bg_ber_berncastle_pillar08roof_n_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\bccf735a407d_bg_ber_berncastle_pillar08roof_n_psy.dds",
+      "expectedSha256": "f5e7dce39c5cb5c10c3110e7cf359405fe1c20a57a80dca46f73933208bc08b7",
+      "actualSha256": "f5e7dce39c5cb5c10c3110e7cf359405fe1c20a57a80dca46f73933208bc08b7",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/d63790c5f5e3_bg_ber_berncastle_pillar07b_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\d63790c5f5e3_bg_ber_berncastle_pillar07b_d_rsh.dds",
+      "expectedSha256": "c2d2733933ec2e1e39c202866dd437338514c877c684a7db1b473a1082100035",
+      "actualSha256": "c2d2733933ec2e1e39c202866dd437338514c877c684a7db1b473a1082100035",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/e102cbfbf3f8_bg_ber_berncastle_pillar07a_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\e102cbfbf3f8_bg_ber_berncastle_pillar07a_d_rsh.dds",
+      "expectedSha256": "32a0aef40f99efbc3a40850974241e2cb935937ac740ec709f3da76c5cce9c9a",
+      "actualSha256": "32a0aef40f99efbc3a40850974241e2cb935937ac740ec709f3da76c5cce9c9a",
+      "matches": true,
+      "bytes": 699212
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/e3f1339fd2e7_bg_ber_berncastle_pillar06roof01_n_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\e3f1339fd2e7_bg_ber_berncastle_pillar06roof01_n_hht.dds",
+      "expectedSha256": "deadaa8e41311a5c82905a006643fcca138ac947edcb8493beb485442586478d",
+      "actualSha256": "deadaa8e41311a5c82905a006643fcca138ac947edcb8493beb485442586478d",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/SourceMaterials/ee1d1fd3daa0_bg_ber_berncastle_pillar07c_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\SourceMaterials\\ee1d1fd3daa0_bg_ber_berncastle_pillar07c_n_rsh.dds",
+      "expectedSha256": "f2f8aecfd0f9b6a7c9f933117a7f9af79b445a14ae5916c7b201f3ca83b20a27",
+      "actualSha256": "f2f8aecfd0f9b6a7c9f933117a7f9af79b445a14ae5916c7b201f3ca83b20a27",
+      "matches": true,
+      "bytes": 1398276
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT/MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT.wmodel": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT.wmodel",
+      "expectedSha256": "f95aae55b784fbbb44a63b7a0d64fbb54bf03ce3432bdd231ecee180923941fc",
+      "actualSha256": "f95aae55b784fbbb44a63b7a0d64fbb54bf03ce3432bdd231ecee180923941fc",
+      "matches": true,
+      "bytes": 730224
+    },
+    "Map/Derived/Bern/Pillar07/manifest.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\manifest.json",
+      "expectedSha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0",
+      "actualSha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0",
+      "matches": true,
+      "bytes": 11221
+    },
+    "Map/Derived/Bern/Pillar07/low-vtxmesh.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\low-vtxmesh.bin",
+      "expectedSha256": "cd278246c02c76b9d31aaf00af54543afe676055524c309b861d7eb6cd16a8ba",
+      "actualSha256": "cd278246c02c76b9d31aaf00af54543afe676055524c309b861d7eb6cd16a8ba",
+      "matches": true,
+      "bytes": 71532
+    },
+    "Map/Derived/Bern/Pillar07/render-indices.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\render-indices.bin",
+      "expectedSha256": "b69c7c6de1492bc1a0b7798702064d5d643919eb8e04f4cb8499f3a1dc231ae9",
+      "actualSha256": "b69c7c6de1492bc1a0b7798702064d5d643919eb8e04f4cb8499f3a1dc231ae9",
+      "matches": true,
+      "bytes": 13836
+    },
+    "Map/Derived/Bern/Pillar07/atlas-0.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-0.bin",
+      "expectedSha256": "00b25c6cbf911643dd9d3345e8ca993dbcdfb334674cc5f484d9ba2b8b6089e8",
+      "actualSha256": "00b25c6cbf911643dd9d3345e8ca993dbcdfb334674cc5f484d9ba2b8b6089e8",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-1.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-1.bin",
+      "expectedSha256": "0bce9543de24c0a2b2fede161e77aec3227ab2f6d90316a9de2f34898c07b0a8",
+      "actualSha256": "0bce9543de24c0a2b2fede161e77aec3227ab2f6d90316a9de2f34898c07b0a8",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-2.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-2.bin",
+      "expectedSha256": "4141ad3434ffd47168e5a98df54abc72dd0713b880e4069547fd7bd1a6ccccfe",
+      "actualSha256": "4141ad3434ffd47168e5a98df54abc72dd0713b880e4069547fd7bd1a6ccccfe",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-3.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-3.bin",
+      "expectedSha256": "bf15ba1cadf4a12d5a6b4da55baaad671c495f7007a1c602b2d92eb0c41ddec8",
+      "actualSha256": "bf15ba1cadf4a12d5a6b4da55baaad671c495f7007a1c602b2d92eb0c41ddec8",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-4.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-4.bin",
+      "expectedSha256": "b48976c08c87a2adf6a4b5271def9dff89b3109f4860d6abd4c18d2a01a8a57c",
+      "actualSha256": "b48976c08c87a2adf6a4b5271def9dff89b3109f4860d6abd4c18d2a01a8a57c",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-5.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-5.bin",
+      "expectedSha256": "4a273425ccff03102d9e6ec4d7240327521d4834bc7a886005e95c25ea3a2580",
+      "actualSha256": "4a273425ccff03102d9e6ec4d7240327521d4834bc7a886005e95c25ea3a2580",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-6.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-6.bin",
+      "expectedSha256": "77db0d7e99f4e563c570499489211822cb0b427c48720bb793d826a25608889c",
+      "actualSha256": "77db0d7e99f4e563c570499489211822cb0b427c48720bb793d826a25608889c",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-7.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-7.bin",
+      "expectedSha256": "600c5f01ca666fccca023dc7969a0ea4a33967dcb8466a8cb1c00ad37887128f",
+      "actualSha256": "600c5f01ca666fccca023dc7969a0ea4a33967dcb8466a8cb1c00ad37887128f",
+      "matches": true,
+      "bytes": 524288
+    },
+    "Map/Derived/Bern/Pillar07/atlas-8.bin": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\atlas-8.bin",
+      "expectedSha256": "5267edb08de4166e1446542fab3d9cbac3cb0eef0b2fd9fc2b0137be5a5a962d",
+      "actualSha256": "5267edb08de4166e1446542fab3d9cbac3cb0eef0b2fd9fc2b0137be5a5a962d",
+      "matches": true,
+      "bytes": 1048576
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar06roof01_d_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar06roof01_d_hht.dds",
+      "expectedSha256": "a8477e4c9e1ff08b83e70782937b749c655f596f3815ea02b847457a6ecc6fd9",
+      "actualSha256": "a8477e4c9e1ff08b83e70782937b749c655f596f3815ea02b847457a6ecc6fd9",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar06roof01_n_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar06roof01_n_hht.dds",
+      "expectedSha256": "b92cab4e3a9c2d6fa854264fc700d04b22ca015e7aff85fb89426098dab0e07b",
+      "actualSha256": "b92cab4e3a9c2d6fa854264fc700d04b22ca015e7aff85fb89426098dab0e07b",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar06roof01_s_hht.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar06roof01_s_hht.dds",
+      "expectedSha256": "855d519d4c83f5c8304f3876e8dc886963cc14d0778261d1e6e8ece5130d4475",
+      "actualSha256": "855d519d4c83f5c8304f3876e8dc886963cc14d0778261d1e6e8ece5130d4475",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07a_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07a_d_rsh.dds",
+      "expectedSha256": "78f267b4479a524692290202e1cc5fb9f633820c6f4d9caf5d5df52772c444cb",
+      "actualSha256": "78f267b4479a524692290202e1cc5fb9f633820c6f4d9caf5d5df52772c444cb",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07a_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07a_n_rsh.dds",
+      "expectedSha256": "60ac4905f66dad3b4fb38a1c4da8edc161d97638b6e70e9f16f4f352e6d941c6",
+      "actualSha256": "60ac4905f66dad3b4fb38a1c4da8edc161d97638b6e70e9f16f4f352e6d941c6",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07a_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07a_s_rsh.dds",
+      "expectedSha256": "36ae9bf14feded31fc07937b9e19d2f677d2a374f8198bb9540897c26dd3aa22",
+      "actualSha256": "36ae9bf14feded31fc07937b9e19d2f677d2a374f8198bb9540897c26dd3aa22",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07b_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07b_d_rsh.dds",
+      "expectedSha256": "c47ced57e2e481b87b9298a1bffd91f0e1be9c2d1a2fe379a5cb0362aa2cdc79",
+      "actualSha256": "c47ced57e2e481b87b9298a1bffd91f0e1be9c2d1a2fe379a5cb0362aa2cdc79",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07b_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07b_n_rsh.dds",
+      "expectedSha256": "75e2258cf08533f75a1430261466f90a3549f6b1c19df5d236f3c49b7b3e68d4",
+      "actualSha256": "75e2258cf08533f75a1430261466f90a3549f6b1c19df5d236f3c49b7b3e68d4",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07b_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07b_s_rsh.dds",
+      "expectedSha256": "50ce97610a63d31fd5605b2a402e2e7fdb6738d69c43bb41707645936c358de3",
+      "actualSha256": "50ce97610a63d31fd5605b2a402e2e7fdb6738d69c43bb41707645936c358de3",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07c_d_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07c_d_rsh.dds",
+      "expectedSha256": "bebefcc736c621b7dbc84b5a2dbd9807e5ab529a508472fe8fd29329ec59cce6",
+      "actualSha256": "bebefcc736c621b7dbc84b5a2dbd9807e5ab529a508472fe8fd29329ec59cce6",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07c_n_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07c_n_rsh.dds",
+      "expectedSha256": "6f8fc6218949f87095e93817dcfc2bc25da1a1bc4559ce6be44d34467d987e60",
+      "actualSha256": "6f8fc6218949f87095e93817dcfc2bc25da1a1bc4559ce6be44d34467d987e60",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar07c_s_rsh.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar07c_s_rsh.dds",
+      "expectedSha256": "964d8ef54f8f4a4364a3562e5d0a79488f7ef6e6b159d960f5a4093ee5926982",
+      "actualSha256": "964d8ef54f8f4a4364a3562e5d0a79488f7ef6e6b159d960f5a4093ee5926982",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar08roof_d_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar08roof_d_psy.dds",
+      "expectedSha256": "e29afa543644097f8cc7ce58545d43177a53582b7ec873c34acfad64c84c6cac",
+      "actualSha256": "e29afa543644097f8cc7ce58545d43177a53582b7ec873c34acfad64c84c6cac",
+      "matches": true,
+      "bytes": 524416
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar08roof_n_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar08roof_n_psy.dds",
+      "expectedSha256": "ac175d15f8dfd07c048b598c4c1b4e45c10fcbecf6bcfd358bd5e23a1c48a0e1",
+      "actualSha256": "ac175d15f8dfd07c048b598c4c1b4e45c10fcbecf6bcfd358bd5e23a1c48a0e1",
+      "matches": true,
+      "bytes": 1048704
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_pillar08roof_s_psy.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_pillar08roof_s_psy.dds",
+      "expectedSha256": "ae37bf10d5b03d79b5bd73ded66d809f9540ce44472e8317044040cb784a48ec",
+      "actualSha256": "ae37bf10d5b03d79b5bd73ded66d809f9540ce44472e8317044040cb784a48ec",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_structure02_d_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_structure02_d_ksr.dds",
+      "expectedSha256": "288001b92796a9f213263b5130ff012b6be789d28533dd2bc382560d1098b99c",
+      "actualSha256": "288001b92796a9f213263b5130ff012b6be789d28533dd2bc382560d1098b99c",
+      "matches": true,
+      "bytes": 131200
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/textures/bg_ber_berncastle_structure02_n_ksr.dds": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\textures\\bg_ber_berncastle_structure02_n_ksr.dds",
+      "expectedSha256": "45d40d192c62f67f0bb09d7433ecd0bf57e57ab7bddf585bef4f0a47777a7ff4",
+      "actualSha256": "45d40d192c62f67f0bb09d7433ecd0bf57e57ab7bddf585bef4f0a47777a7ff4",
+      "matches": true,
+      "bytes": 262272
+    },
+    "Map/LV_BER_BERNCASTLE/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH/MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH.wmodel": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH.wmodel",
+      "expectedSha256": "d023625c56126bd1d3a788ea7569aeea4185734b19baca3fa54890ea42432618",
+      "actualSha256": "d023625c56126bd1d3a788ea7569aeea4185734b19baca3fa54890ea42432618",
+      "matches": true,
+      "bytes": 630868
+    }
+  },
+  "evidenceFiles": {
+    "out/BernCapture20261015/validated-limits-install/application.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\validated-limits-install\\application.json",
+      "sha256": "8eedd4c25db37abe25cd4a9c0ddd900b7b63abc5a89f1e42f406bef19cf0de28",
+      "bytes": 1645
+    },
+    "Client/Bin/Resources/Map/Derived/Bern/ReplacementIndex.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\ReplacementIndex.json",
+      "sha256": "da690814b7987956266bc734ecf59d4959408e59e87a9f40a58c6ab32da0442b",
+      "bytes": 4741
+    },
+    "Client/Bin/Resources/Map/Derived/Bern/Pillar06/manifest.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar06\\manifest.json",
+      "sha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf",
+      "bytes": 12135
+    },
+    "Client/Bin/Resources/Map/Derived/Bern/Pillar07/manifest.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\Derived\\Bern\\Pillar07\\manifest.json",
+      "sha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0",
+      "bytes": 11221
+    },
+    "out/BernCapture20261015/afternoon-analysis/summary.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\summary.json",
+      "sha256": "fa02023f6bcfa7cc272b7361b9d7d3b4338f31d653591106e7178d1b91228448",
+      "bytes": 9647
+    },
+    "out/BernCapture20261015/afternoon-analysis/Bern_CutScene_20261015_140215_622_frame1122_18456_0-analysis.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\Bern_CutScene_20261015_140215_622_frame1122_18456_0-analysis.json",
+      "sha256": "505fa15f0d23c4def60c181257325cc19c00b337b1312395d759bea0d9d6117d",
+      "bytes": 392312
+    },
+    "out/BernCapture20261015/afternoon-analysis/Bern_CutScene_20261015_140227_980_frame1468_18456_1-analysis.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\Bern_CutScene_20261015_140227_980_frame1468_18456_1-analysis.json",
+      "sha256": "29ca009edf049388e57e72ce6b918e849e78f63836db26b9e22a7d697bd0d040",
+      "bytes": 360604
+    },
+    "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-70m-001/sweep-cameras-results/installed-vs-candidate.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\installed-vs-candidate.json",
+      "sha256": "8b8cec372163a366f7a2877e4e450c6b78d45630f985feaf764313be7849ddd1",
+      "bytes": 154469
+    },
+    "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-installed-001/sweep-cameras-results/validation.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-installed-001\\sweep-cameras-results\\validation.json",
+      "sha256": "8e964e9db9ffaefbd18970c3e72ac2946bcb0b1914a7f64defe412b262a734e5",
+      "bytes": 71531
+    },
+    "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-70m-001/sweep-cameras-results/validation.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-subset-70m-001\\sweep-cameras-results\\validation.json",
+      "sha256": "447ae3d7adb7e9b973834bdd6b90ae3df4bca4a2f41b9492be0841ee302e7ff6",
+      "bytes": 71594
+    },
+    "out/BernCapture20261015/source-g44-applied-20261015-142456/application.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\source-g44-applied-20261015-142456\\application.json",
+      "sha256": "c6ef5c97089757cfacfd343db989c10225a684ff270a421740ec00abac107694",
+      "bytes": 1948
+    },
+    "out/BernCapture20261015/mirrored-uniform-candidate/cpu-audit.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\mirrored-uniform-candidate\\cpu-audit.json",
+      "sha256": "9a51ab32c14686c0462395b1e46679f9176d44fbd13320e8256beb4cbad9d707",
+      "bytes": 36298
+    },
+    "out/BernCapture20261015/mirrored-uniform-candidate/predicate-result.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\mirrored-uniform-candidate\\predicate-result.json",
+      "sha256": "09e07632a5b5e3fe14c32920c69ff564178f0172d2f5581dd3e70d631d568c34",
+      "bytes": 210
+    },
+    "out/BernMirrorProbe20261015/prepared-result.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernMirrorProbe20261015\\prepared-result.json",
+      "sha256": "c09207821b163ac9a47fffcf700704444dcd79f6e593ac9f8ab96b3b79f5a33a",
+      "bytes": 3174
+    },
+    "out/BernCapture20261015/distance-save-candidate/test-results.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\distance-save-candidate\\test-results.json",
+      "sha256": "35acc7f4f6c7ee05dc4d749af6c38c387341f6eedfd5da9d73e147a57f8e9585",
+      "bytes": 3419
+    },
+    "out/BernCapture20261015/atlas512-candidate/preflight.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\atlas512-candidate\\preflight.json",
+      "sha256": "fd4df76a44f09eaa98748602e8cd8e3a8f0074c49f20b27755ec5207cf59a968",
+      "bytes": 767
+    },
+    "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-fullmap-70m-001/bounded-attempt-result.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\full-scene-probe\\runtimes\\diagnostic-fullmap-70m-001\\bounded-attempt-result.json",
+      "sha256": "32ca4e125374cb81fc8b9917e4449a7759cdc1790de74e5d220b9b28114b9596",
+      "bytes": 438
+    },
+    "out/BernCapture20261015/source-applied-20261015-020547/application.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\source-applied-20261015-020547\\application.json",
+      "sha256": "09b5d62c9380d67cd7e572310df491bc09ad81480ab68661421319877ced99ac",
+      "bytes": 3527
+    },
+    "out/BernCapture20261015/unprepared-ovr-material-audit.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\unprepared-ovr-material-audit.json",
+      "sha256": "a1efbf8235d538babc4657948efdb202caf94f968276234235a94ca674437332",
+      "bytes": 10726
+    },
+    "out/BuildPipeline/runs/20261015T052636567Z-release-product.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261015T052636567Z-release-product.json",
+      "sha256": "b6df4af18be3f349e2513498b68e30c283e040c5c958a906d000715b2e9f8caa",
+      "bytes": 50985
+    },
+    "out/BuildPipeline/runs/20261015T052753112Z-debug-product.json": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261015T052753112Z-debug-product.json",
+      "sha256": "896231a7ea54dedf4403a83f79906b19aebc85875580fb3d47d02d00d7f8269c",
+      "bytes": 50889
+    }
+  },
+  "rows": [
+    {
+      "id": "installed_packages",
+      "status": "APPLIED_INSTALLED",
+      "topic": "PILLAR06/PILLAR07만 실제 저폴리 패키지로 설치됨",
+      "facts": {
+        "physicalModels": 2,
+        "assetIds": 53,
+        "packages": [
+          {
+            "manifest": {
+              "file": "Map/Derived/Bern/Pillar06/manifest.json",
+              "sha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf"
+            },
+            "assetIds": [
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_OVR_517CCBCAA767",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_0166FC3E860F",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_07486EE05FE2",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_491C3FEBFBC8",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_56BF3CA5CCDD",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6428FAA6D21B",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_6B31BA1F1D63",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_794C4AEB0A12",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_80D159FC7FD9",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_818AEFF6B4C8",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_90D104F913BA",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_91C4597C05C2",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_94E87927AA04",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_96AB6F400427",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9F8871D06F91",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_9FC157EDA613",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_A1B7ADA020F6",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_AC21C5C5C3F0",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_B5CEC07B858B",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_B8AC4C488234",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_B8E809EEFABA",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_B96E3314093B",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D8167033FFFA",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_D9BA01F9D67E",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E10E7E381E16",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E2AAD62AB8EC",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_E70AE56FE651",
+              "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_EFD81950AC3B"
+            ],
+            "assetIdCount": 31,
+            "limits": {
+              "maximumProjectedDiameterPixels": 1200.0,
+              "minimumSurfaceDistanceMetres": 70.0
+            },
+            "oldLimits": {
+              "maximumProjectedDiameterPixels": 202,
+              "minimumSurfaceDistanceMetres": 121.6
+            },
+            "atlasWidth": 256,
+            "atlasHeight": 256,
+            "atlasPlaneCount": 9,
+            "geometry": {
+              "vertices": {
+                "file": "Map/Derived/Bern/Pillar06/low-vtxmesh.bin",
+                "sha256": "294da23de36ddcc8f7aba485cfc99f210cb36bc0ccec8ecd9ae29d18f154ed10"
+              },
+              "indices": {
+                "file": "Map/Derived/Bern/Pillar06/render-indices.bin",
+                "sha256": "66a4445c12d187534101138335cec2675b622430c7f3296ac0d866281c6cb7b4"
+              }
+            },
+            "lowVertexCount": 1079,
+            "vertexStrideBytes": 76,
+            "lowIndexCount": 3840,
+            "compiledShaderChecks": [
+              {
+                "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Shader_VtxMeshMapInstance.cso",
+                "sha256": "fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e",
+                "accepted": true
+              },
+              {
+                "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Shader_VtxMeshMapInstance.cso",
+                "sha256": "fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e",
+                "accepted": true
+              }
+            ],
+            "manifestMatchesInstallReceipt": true
+          },
+          {
+            "manifest": {
+              "file": "Map/Derived/Bern/Pillar07/manifest.json",
+              "sha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0"
+            },
+            "assetIds": [
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_095D7D391C1C",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_0A6D0721811B",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_1743CB9D0B89",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_220AB2DD3FB7",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_3D912D88912E",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_434710B00507",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_6451A1877769",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_7A7F3AF925FF",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_8CE0EEEC3417",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_92416FE3DCD7",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_986A3082F03F",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_AD7D0449E6C9",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_B4151A3CBC25",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C403B851394A",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_C532573B711E",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_CC13CE3A95D4",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_DD31DEBC2EFC",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_EAC38C80DC9B",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F2261572B52B",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+              "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F937D69B563C"
+            ],
+            "assetIdCount": 22,
+            "limits": {
+              "maximumProjectedDiameterPixels": 1200.0,
+              "minimumSurfaceDistanceMetres": 70.0
+            },
+            "oldLimits": {
+              "maximumProjectedDiameterPixels": 553,
+              "minimumSurfaceDistanceMetres": 82.6
+            },
+            "atlasWidth": 256,
+            "atlasHeight": 256,
+            "atlasPlaneCount": 9,
+            "geometry": {
+              "vertices": {
+                "file": "Map/Derived/Bern/Pillar07/low-vtxmesh.bin",
+                "sha256": "cd278246c02c76b9d31aaf00af54543afe676055524c309b861d7eb6cd16a8ba"
+              },
+              "indices": {
+                "file": "Map/Derived/Bern/Pillar07/render-indices.bin",
+                "sha256": "b69c7c6de1492bc1a0b7798702064d5d643919eb8e04f4cb8499f3a1dc231ae9"
+              }
+            },
+            "lowVertexCount": 941,
+            "vertexStrideBytes": 76,
+            "lowIndexCount": 3456,
+            "compiledShaderChecks": [
+              {
+                "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Shader_VtxMeshMapInstance.cso",
+                "sha256": "fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e",
+                "accepted": true
+              },
+              {
+                "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Shader_VtxMeshMapInstance.cso",
+                "sha256": "fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e",
+                "accepted": true
+              }
+            ],
+            "manifestMatchesInstallReceipt": true
+          }
+        ],
+        "indexSha256": "da690814b7987956266bc734ecf59d4959408e59e87a9f40a58c6ab32da0442b",
+        "indexMatchesInstallReceipt": true,
+        "resourceReferences": 81,
+        "allResourceHashesMatch": true
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 567,
+          "endLine": 567,
+          "function": "CMapStaticProxyBaker::Has_Replacement",
+          "excerpt": "bool Client::CMapStaticProxyBaker::Has_Replacement(const std::string& assetId, std::string* error)"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 774,
+          "endLine": 779,
+          "function": "Prepare_Replacement → supplied geometry Create_StaticProxy",
+          "excerpt": "        const Engine::CModel::STATIC_PROXY_GEOMETRY geometry{ package->vertices, package->uv, package->indices };\n        const HRESULT created = Engine::CModel::Create_StaticProxy(geometry, sources, options, staged, stats);\n        if (created != S_OK) return reject(\"replacement.create_static_proxy\", created);\n        std::vector<Engine::CModel::STATIC_PROXY_METADATA> metadata(sources.size());\n        if (FAILED(staged->Set_StaticProxyMetadata(metadata)) || FAILED(staged->Set_StaticProxyAtlases(package->atlases)) ||\n            FAILED(Bind_Replacement(state.replacementShader, staged, originalModel))) throw std::runtime_error(\"Replacement binding failed\");"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+          "line": 381,
+          "endLine": 390,
+          "function": "CModel::Create_StaticProxy supplied geometry overload",
+          "excerpt": "// Client package reader가 hash/재질 호환성 검증 뒤 호출한다. 원본 CModel을 다시 decode하거나\n// source mesh별 UV 경계를 복원하면 축소된 VB/IB가 다시 늘어나므로, 완성된 low geometry만 복사한다.\n// source 범위 하나는 placement 전체이며, 원본 표시와 proxy 선택의 원자성은 Client가 소유한다.\nHRESULT CModel::Create_StaticProxy(const STATIC_PROXY_GEOMETRY& geometry,\n    std::span<const STATIC_PROXY_PLACEMENT_SOURCE> sources,\n    const STATIC_PROXY_OPTIONS& options, shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats)\n{\n    if (sources.empty() || sources.size() > options.maximumSources || options.maximumSources > 256u ||\n        !sources.front().model || geometry.vertices.empty() || geometry.indices.empty() ||\n        geometry.atlasUV.size() != geometry.vertices.size() || geometry.indices.size() % 3u ||"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/validated-limits-install/application.json",
+        "Client/Bin/Resources/Map/Derived/Bern/ReplacementIndex.json"
+      ],
+      "limits": "53개 ID는 지원 후보 alias 수이며 실제 준비 성공 수나 현재 화면 선택 수가 아니다. 나머지 모델을 자동 대체하지 않는다."
+    },
+    {
+      "id": "installed_limits",
+      "status": "APPLIED_INSTALLED",
+      "topic": "좁았던 거리/픽셀 규칙을 70m / 1200px로 실제 변경",
+      "facts": {
+        "previous": {
+          "P06": {
+            "maximumProjectedDiameterPixels": 202,
+            "minimumSurfaceDistanceMetres": 121.6
+          },
+          "P07": {
+            "maximumProjectedDiameterPixels": 553,
+            "minimumSurfaceDistanceMetres": 82.6
+          }
+        },
+        "current": {
+          "minimumSurfaceDistanceMetres": 70,
+          "maximumProjectedDiameterPixels": 1200
+        },
+        "distanceDefinition": "length(worldSphereCenter-cameraEye)-worldSphereRadius",
+        "diameterUpperBound": "2*viewRadius*focal*(depth+lateral)/(depth*depth), focal=.5*max(P11*width,P22*height)"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 516,
+          "endLine": 522,
+          "function": "Prepare_ColorProxySelection distance gate",
+          "excerpt": "        const auto& center = instance.WorldBoundsCenter;\n        const double dx = double(center.x) - eye->x, dy = double(center.y) - eye->y, dz = double(center.z) - eye->z;\n        const double surfaceDistance = std::sqrt(dx * dx + dy * dy + dz * dz) - instance.WorldBoundsRadius;\n        if (!std::isfinite(surfaceDistance) || surfaceDistance < proxy.Limits.minimumSurfaceDistanceMetres)\n        {\n            counters.Add(Engine::EProfilerCounter::MapLowGeometryDistanceRejectedInstances);\n            continue;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 524,
+          "endLine": 539,
+          "function": "Prepare_ColorProxySelection projected diameter gate",
+          "excerpt": "        float3_t view{};\n        XMStoreFloat3(&view, XMVector3TransformCoord(XMLoadFloat3(&center), XMLoadFloat4x4(&camera->lodView)));\n        const double radius = double(instance.WorldBoundsRadius) * camera->lodViewScale;\n        const double depth = double(view.z) - radius;\n        const double lateral = (std::max)(std::abs(double(view.x)), std::abs(double(view.y))) + radius;\n        if (!(radius > 0.) || !(depth > -double(projection._43) / projection._33))\n        {\n            counters.Add(Engine::EProfilerCounter::MapLowGeometryDepthRejectedInstances);\n            continue;\n        }\n        // 구면 전체의 투영 도함수를 상한으로 잡는다. 같은 식으로 실측한 package\n        // 허용 직경보다 커지면 근거리 원본을 유지한다. m와 output pixel 단위다.\n        const double diameter = 2. * radius * focal * (depth + lateral) / (depth * depth);\n        if (!std::isfinite(diameter) || diameter > proxy.Limits.maximumProjectedDiameterPixels)\n        {\n            counters.Add(Engine::EProfilerCounter::MapLowGeometryPixelRejectedInstances);"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/validated-limits-install/application.json"
+      ],
+      "limits": "거리 한 가지로 선택하지 않는다. 준비 자격, lease, 원본 meshLOD/material 정책, near-plane, 화면 크기, frustum, binding preflight를 모두 통과해야 한다."
+    },
+    {
+      "id": "cutscene_lease",
+      "status": "APPLIED_SOURCE_BASE_CAMERA_PERFORMANCE_UNMEASURED",
+      "topic": "기본 카메라에서는 저폴리 선택 lease OFF",
+      "facts": {
+        "enabledAfter": "Bern cinematic camera owner + pose application succeeds",
+        "disabledAt": "End_EntranceCinematic",
+        "defaultCameraPerFrameInstanceSelection": "lease OFF early return before instance selection loop"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\Level_Bern.cpp",
+          "line": 855,
+          "endLine": 855,
+          "function": "CLevel_Bern::Update_EntranceCinematic",
+          "excerpt": "void CLevel_Bern::Update_EntranceCinematic(const f32_t fTimeDelta)"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\Level_Bern.cpp",
+          "line": 926,
+          "endLine": 939,
+          "function": "enable after successful pose",
+          "excerpt": "\t// 카메라 소유권과 pose 적용 성공 후에만 저폴리 색상 선택을 허용한다.\n\tm_MapRuntime.Set_CutsceneGeometryEnabled(true);\n\t// Failed loading, ownership or pose application must not consume the first visit.\n\ts_hasPresentedBernEntranceThisSession = true;\n\tif (m_fEntranceCinematicSeconds >=\n\t\tstatic_cast<f32_t>(m_EntranceCameraCue.iDurationMs) * 0.001f)\n\t{\n\t\tEnd_EntranceCinematic();\n\t}\n}\n\nvoid CLevel_Bern::End_EntranceCinematic()\n{\n\tm_MapRuntime.Set_CutsceneGeometryEnabled(false);"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 445,
+          "endLine": 454,
+          "function": "Prepare_ColorProxySelection lease early return",
+          "excerpt": "void CMapStaticBatchObject::Prepare_ColorProxySelection(const MAP_CAMERA_CULL_SNAPSHOT* camera)\n{\n    // 기본 카메라에는 instance 순회·할당·GPU upload가 없다.\n    if (!m_ColorProxy) return;\n    auto& game = CGameInstance::Get();\n    if (!m_FrameState || !m_FrameState->colorProxyEnabled)\n    {\n        Reset_ColorProxySelection();\n        return;\n    }"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapPlacementRuntime.cpp",
+          "line": 439,
+          "endLine": 439,
+          "function": "Set_CutsceneGeometryEnabled",
+          "excerpt": "void CMapPlacementRuntime::Set_CutsceneGeometryEnabled(bool enabled)"
+        }
+      ],
+      "evidence": [],
+      "limits": "소스의 적용 범위 보존은 확인했다. 최신 두 사용자 캡처는 모두 lease ON이므로 기본 카메라 FPS 비회귀의 통제된 실측은 아니다. 로드 시 proxy 준비 비용까지 없다는 뜻도 아니다."
+    },
+    {
+      "id": "selection_policy",
+      "status": "APPLIED_SOURCE",
+      "topic": "전체 배치 원본을 무조건 지우지 않고 선택된 placement만 대체",
+      "facts": {
+        "mustBeTrue": [
+          "MeshLodEnabled",
+          "source materials",
+          "FINAL material view",
+          "cutscene lease",
+          "prepared package"
+        ],
+        "mustBeFalse": [
+          "sceneEnvironmentReplaced",
+          "active MapPBR",
+          "surface binding collection",
+          "frustum bypass/diagnostics"
+        ],
+        "ownership": "Candidate -> Prepare_StaticProxyVisibleSources + shader binding -> Selected -> ColorProxySuppressed; late failure draws original LOD0 subset"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 476,
+          "endLine": 484,
+          "function": "Prepare_ColorProxySelection policy gates",
+          "excerpt": "    rejectGate(!camera, Engine::EProfilerCounter::MapLowGeometryNoCameraBatches);\n    rejectGate(!game.Get_RenderOptimizationSettings().MeshLodEnabled, Engine::EProfilerCounter::MapLowGeometryMeshLodDisabledBatches);\n    rejectGate(game.Is_SceneEnvironmentReplaced(), Engine::EProfilerCounter::MapLowGeometryEnvironmentReplacedBatches);\n    rejectGate(!settings.bUseSourceMaterials, Engine::EProfilerCounter::MapLowGeometrySourceMaterialsDisabledBatches);\n    rejectGate(settings.eDebugView != Engine::MATERIAL_DEBUG_VIEW::FINAL, Engine::EProfilerCounter::MapLowGeometryDebugViewBatches);\n    rejectGate(settings.MapPBR.Is_Active(game.Get_CurrentLevelID()), Engine::EProfilerCounter::MapLowGeometryMapPbrBatches);\n    rejectGate(CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive(), Engine::EProfilerCounter::MapLowGeometryBindingCollectionBatches);\n    rejectGate(m_FrustumCulling.bypass || m_FrustumCulling.diagnostics, Engine::EProfilerCounter::MapLowGeometryFrustumOverrideBatches);\n    if (!allowed) { Reset_ColorProxySelection(); return; }"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 555,
+          "endLine": 575,
+          "function": "preflight before original suppression",
+          "excerpt": "    // 원본 active mask를 내리기 전에 IB와 모든 shader binding을 준비한다.\n    // 실패하면 이전 저폴리 선택도 해제하여 기존 CPU/GPU 원본 경로로 복귀한다.\n    if (proxy.Model->Prepare_StaticProxyVisibleSources(proxy.Candidate) != S_OK ||\n        (!proxy.Candidate.empty() &&\n            (FAILED(CMapAssetRenderUtils::Bind_CameraCullSnapshot(proxy.Shader, *camera)) ||\n             FAILED(game.Bind_CamPosition(proxy.Shader, \"g_vCamPosition\")) ||\n             FAILED(CMapStaticProxyBaker::Bind_Replacement(proxy.Shader, proxy.Model, m_pModelCom)) ||\n             FAILED(proxy.Shader->Begin(4u + CMapAssetRenderUtils::Select_Pass(m_RenderProfile, m_bMirrored))))))\n    {\n        counters.Add(Engine::EProfilerCounter::MapLowGeometryPreflightFailedBatches);\n        Reset_ColorProxySelection();\n        proxy.Frame = m_FrameState->frameNumber; proxy.CameraRevision = camera->revision;\n        return;\n    }\n    const bool changed = proxy.Candidate != proxy.Selected;\n    if (changed)\n    {\n        for (uint32_t slot : proxy.Selected) m_Instances[slot].ColorProxySuppressed = false;\n        for (uint32_t slot : proxy.Candidate) m_Instances[slot].ColorProxySuppressed = true;\n        proxy.Selected.swap(proxy.Candidate);\n        m_bVisibleInstancesDirty = true; m_bFinalCameraPrepared = false;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 591,
+          "endLine": 591,
+          "function": "Render_ColorProxy",
+          "excerpt": "HRESULT CMapStaticBatchObject::Render_ColorProxy()"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 637,
+          "endLine": 637,
+          "function": "Render_ColorProxyFallback",
+          "excerpt": "HRESULT CMapStaticBatchObject::Render_ColorProxyFallback(const MAP_CAMERA_CULL_SNAPSHOT* camera)"
+        }
+      ],
+      "evidence": [],
+      "limits": "성공 draw는 실제 제출 근거이며 최종 픽셀 가시성이나 전체 장면의 절감량을 직접 뜻하지 않는다."
+    },
+    {
+      "id": "hiz_original_role",
+      "status": "APPLIED_SOURCE",
+      "topic": "선택된 원본만 HiZ depth에서 제외하고 나머지 원본 occluder 유지",
+      "facts": {
+        "filter": "instance.ColorProxySuppressed in both descriptor and Render_VisibilityDepth original-instance filtering"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 847,
+          "endLine": 871,
+          "function": "Try_GetVisibilityDepthDesc",
+          "excerpt": "bool_t CMapStaticBatchObject::Try_GetVisibilityDepthDesc(STATIC_OCCLUSION_DESC& output) const\n{\n    output = {};\n    // 일부 slot만 저폴리여도 남은 원본의 가림자 역할은 유지한다.\n    // descriptor와 실제 depth draw가 같은 suppression 조건을 사용해야 한다.\n    auto& game = CGameInstance::Get();\n    if (!m_FrameState || !m_pModelCom || !m_pShaderCom || m_Instances.empty() ||\n        game.Is_SceneEnvironmentReplaced() || !game.Get_MaterialRenderSettings().bUseSourceMaterials ||\n        CMapAssetRenderUtils::Is_SurfaceBindingCollectionActive() || m_FrustumCulling.bypass ||\n        m_FrustumCulling.diagnostics || m_RenderProfile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED ||\n        m_RenderProfile.opacity != 1.f || !m_iStaticShadowRevision) return false;\n    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();\n    const auto* cameraPosition = game.Get_CamPosition();\n    if (!camera || !cameraPosition) return false;\n    const auto& settings = game.Get_MapVisibilitySettings();\n    // GPU는 CPU visible payload를 만들지 않을 수 있다. 저작 visible/suppress와 현재\n    // HLOD claim만 읽고, 거리 제거 자체가 불가능한 근거리 원본만 depth 제공자로 삼는다.\n    // 화면 크기 문턱이나 GPU hysteresis와 무관하게 반드시 색상 draw에 남는 범위다.\n    const auto accepts = [&](const FMapStaticInstance& instance)\n    {\n        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed ||\n            instance.ColorProxySuppressed ||\n            !(instance.WorldBoundsRadius > 0.f) || !std::isfinite(instance.WorldBoundsRadius)) return false;\n        const float values[] = { instance.WorldBoundsCenter.x, instance.WorldBoundsCenter.y,\n            instance.WorldBoundsCenter.z, cameraPosition->x, cameraPosition->y, cameraPosition->z };"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 922,
+          "endLine": 938,
+          "function": "Render_VisibilityDepth",
+          "excerpt": "HRESULT CMapStaticBatchObject::Render_VisibilityDepth(uint32_t triangleBudget, uint32_t& drawnTriangles)\n{\n    drawnTriangles = 0u;\n    STATIC_OCCLUSION_DESC descriptor{};\n    if (!triangleBudget || !Try_GetVisibilityDepthDesc(descriptor)) return S_FALSE;\n    auto& game = CGameInstance::Get();\n    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();\n    const auto* cameraPosition = game.Get_CamPosition();\n    if (!camera || !cameraPosition) return S_FALSE;\n    const auto& settings = game.Get_MapVisibilitySettings();\n    const auto accepts = [&](const FMapStaticInstance& instance)\n    {\n        if (!instance.Visible || instance.Suppressed || instance.CameraPreviewSuppressed ||\n            instance.ColorProxySuppressed ||\n            !(instance.WorldBoundsRadius > 0.f) || !std::isfinite(instance.WorldBoundsRadius)) return false;\n        const float values[] = { instance.WorldBoundsCenter.x, instance.WorldBoundsCenter.y,\n            instance.WorldBoundsCenter.z, cameraPosition->x, cameraPosition->y, cameraPosition->z };"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/source-applied-20261015-020547/application.json"
+      ],
+      "limits": "low proxy 자체에 새로운 GPU occlusion 경로를 추가한 수정이 아니다. 전체 장면에서의 occlusion 비용 효과는 미측정이다."
+    },
+    {
+      "id": "fresh_user_capture",
+      "status": "APPLIED_AND_ACTUAL_DRAW_OBSERVED_BEFORE_G44",
+      "topic": "사용자 JSON 2개에서 기존 저폴리 제출 성공 확인",
+      "facts": {
+        "captures": [
+          {
+            "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\Bern_CutScene_20261015_140215_622_frame1122_18456_0.json",
+            "bytes": 206809959,
+            "sha256": "b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c",
+            "matchesAnalyzedSha256": true,
+            "unchangedDuringHash": true,
+            "analysis": "out/BernCapture20261015/afternoon-analysis/Bern_CutScene_20261015_140215_622_frame1122_18456_0-analysis.json",
+            "observed": {
+              "file": "Bern_CutScene_20261015_140215_622_frame1122_18456_0.json",
+              "sha256": "b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c",
+              "freshnessPassed": true,
+              "frames": 1122,
+              "gpuValidFrames": 1118,
+              "gpuPendingFrames": 4,
+              "seconds": 28.4766096,
+              "leaseActiveFrames": 1122,
+              "metadataViewportAtExportOnly": [
+                1198.0,
+                718.0
+              ],
+              "cpuMsMedian": 19.306649999999998,
+              "cpuMsP95": 58.18024500000002,
+              "gpuMsMedian": 19.416816,
+              "frameIntervalMsMedian": 19.4606,
+              "fpsFromMedianInterval": 51.385877105536316,
+              "fpsFromMeanInterval": 39.38317889552899,
+              "fpsRangeFromObservedIntervals": [
+                7.732935344927581,
+                95.70019044337899
+              ],
+              "VSmedian": 1799259.5,
+              "VSmax": 6820320,
+              "IAVerticesMedian": 3912750.0,
+              "cpuKnownIndicesMedian": 3631596.0,
+              "topmostPassVsPercent": {
+                "Render.Shadow": 0.0,
+                "Render.Portraits": 0.0,
+                "Render.NonBlend": 96.2466208077571,
+                "Render.SSAO": 0.00035350611065963436,
+                "Render.Lights": 0.03826213545500987,
+                "Render.Blend": 3.2770519208341264,
+                "Render.UI": 0.02464424531736306
+              },
+              "unassignedVsPercent": 0.41306738452574976,
+              "lowDrawsMean": 3.3467023172905526,
+              "lowDrawsRange": [
+                0,
+                19
+              ],
+              "selectedNonzeroFrames": 732,
+              "lowSubmittedIndicesMean": 12158.288770053476,
+              "lowToCpuKnownIndicesMeanPercent": 0.18852559210636693,
+              "lowToCpuKnownIndicesRatioOfSumsPercent": 0.27412096480249437,
+              "lowFallbackDrawsTotal": 0,
+              "lowLateFailuresTotal": 0,
+              "lowPreflightFailuresTotal": 0,
+              "preparationHeldBatches": {
+                "totalBatches": 18550,
+                "supportedBatches": 60,
+                "preparedBatches": 37,
+                "rejectedBatches": 23,
+                "failedBatches": 0,
+                "droppedFailures": 0
+              },
+              "preparationReasonsAtExport": {
+                "replacement.static_material_identity_mismatch": 4,
+                "replacement.batch_mirrored": 13,
+                "replacement.placement_transform": 6
+              },
+              "meanLowGates": {
+                "mapLowGeometryTestedInstances": 19.377005347593585,
+                "mapLowGeometryDistanceRejectedInstances": 13.296791443850267,
+                "mapLowGeometryPixelRejectedInstances": 1.4527629233511588,
+                "mapLowGeometryFrustumRejectedInstances": 1.1167557932263814,
+                "mapLowGeometryDepthRejectedInstances": 0.15151515151515152,
+                "mapLowGeometrySelectedInstances": 3.359180035650624
+              },
+              "meshDetailAvailable": false,
+              "wholeFrameVsEqualsHudNotVerified": true,
+              "memory": {
+                "uniqueSamples": 28,
+                "privateCommitMedianGiB": 13.392704010009766,
+                "workingSetMedianGiB": 2.7344532012939453,
+                "systemFreeCommitMinimumGiB": 0.9722175598144531,
+                "localGpuUsageMaximumGiB": 2.7776107788085938,
+                "localGpuBudgetMinimumGiB": 5.03125
+              },
+              "meanNativeHlodIndicesSavedWithinReportedSource": 4895.754010695186,
+              "meanExistingLodIndicesSavedWithinReportedSource": 175322.77540106955
+            },
+            "headerKeys": [
+              "schema",
+              "measurementSemantics",
+              "metadata",
+              "captureWindow",
+              "summary",
+              "movementCoverage",
+              "movementSamples",
+              "droppedCpuScopes",
+              "droppedGpuFrames",
+              "droppedGpuScopes",
+              "droppedModelAnimationSamples",
+              "gpuQueriesSupported",
+              "gpuScopesSupported",
+              "mainThreadId",
+              "ticksPerSecond",
+              "scopeNames"
+            ],
+            "cutsceneGeometryHeader": null,
+            "firstFrame": {
+              "frameNumber": 1,
+              "counterKeys": [
+                "mapLowGeometryLeaseActive",
+                "mapLowGeometryUnsupportedBatches",
+                "mapLowGeometrySupportedBatches",
+                "mapLowGeometryPreparedBatches",
+                "mapLowGeometryPreparationRejectedBatches",
+                "mapLowGeometryPreparationFailedBatches",
+                "mapLowGeometryPreparationReportFailures",
+                "mapLowGeometryVisitedBatches",
+                "mapLowGeometryBindingDisabledBatches",
+                "mapLowGeometryNoCameraBatches",
+                "mapLowGeometryMeshLodDisabledBatches",
+                "mapLowGeometryEnvironmentReplacedBatches",
+                "mapLowGeometrySourceMaterialsDisabledBatches",
+                "mapLowGeometryDebugViewBatches",
+                "mapLowGeometryMapPbrBatches",
+                "mapLowGeometryBindingCollectionBatches",
+                "mapLowGeometryFrustumOverrideBatches",
+                "mapLowGeometryInvalidCameraBatches",
+                "mapLowGeometryTestedInstances",
+                "mapLowGeometryVisibilityRejectedInstances",
+                "mapLowGeometryDistanceRejectedInstances",
+                "mapLowGeometryDepthRejectedInstances",
+                "mapLowGeometryPixelRejectedInstances",
+                "mapLowGeometryFrustumRejectedInstances",
+                "mapLowGeometryCandidateInstances",
+                "mapLowGeometryPreflightFailedBatches",
+                "mapLowGeometrySelectedInstances",
+                "mapLowGeometryDrawCalls",
+                "mapLowGeometrySubmittedIndices",
+                "mapLowGeometryLateFailures",
+                "mapLowGeometryFallbackDrawCalls",
+                "mapLowGeometryFallbackIndices"
+              ],
+              "meshDrawCount": 0,
+              "pipelineFields": [
+                "iaVertices",
+                "iaPrimitives",
+                "vsInvocations",
+                "gsInvocations",
+                "gsPrimitives",
+                "clipperInvocations",
+                "clipperPrimitives",
+                "psInvocations",
+                "hsInvocations",
+                "dsInvocations",
+                "csInvocations"
+              ]
+            }
+          },
+          {
+            "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ProfilerCaptures\\Bern_CutScene_20261015_140227_980_frame1468_18456_1.json",
+            "bytes": 38840073,
+            "sha256": "a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57",
+            "matchesAnalyzedSha256": true,
+            "unchangedDuringHash": true,
+            "analysis": "out/BernCapture20261015/afternoon-analysis/Bern_CutScene_20261015_140227_980_frame1468_18456_1-analysis.json",
+            "observed": {
+              "file": "Bern_CutScene_20261015_140227_980_frame1468_18456_1.json",
+              "sha256": "a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57",
+              "freshnessPassed": true,
+              "frames": 120,
+              "gpuValidFrames": 116,
+              "gpuPendingFrames": 4,
+              "seconds": 6.5284047,
+              "leaseActiveFrames": 120,
+              "metadataViewportAtExportOnly": [
+                1198.0,
+                718.0
+              ],
+              "cpuMsMedian": 51.658500000000004,
+              "cpuMsP95": 70.188705,
+              "gpuMsMedian": 52.53032,
+              "frameIntervalMsMedian": 51.9674,
+              "fpsFromMedianInterval": 19.242833006846602,
+              "fpsFromMeanInterval": 18.3173802291926,
+              "fpsRangeFromObservedIntervals": [
+                13.265432008691512,
+                30.08378333659241
+              ],
+              "VSmedian": 5312514.5,
+              "VSmax": 6569137,
+              "IAVerticesMedian": 11267097.0,
+              "cpuKnownIndicesMedian": 9348138.0,
+              "topmostPassVsPercent": {
+                "Render.Shadow": 0.0,
+                "Render.Portraits": 0.0,
+                "Render.NonBlend": 96.94486537589736,
+                "Render.SSAO": 0.00015155933083243345,
+                "Render.Lights": 0.032590482312794995,
+                "Render.Blend": 2.822888731200043,
+                "Render.UI": 0.010559504411963164
+              },
+              "unassignedVsPercent": 0.18894434684700404,
+              "lowDrawsMean": 16.075,
+              "lowDrawsRange": [
+                8,
+                19
+              ],
+              "selectedNonzeroFrames": 120,
+              "lowSubmittedIndicesMean": 58262.4,
+              "lowToCpuKnownIndicesMeanPercent": 0.6187778428159646,
+              "lowToCpuKnownIndicesRatioOfSumsPercent": 0.6172168536461307,
+              "lowFallbackDrawsTotal": 0,
+              "lowLateFailuresTotal": 0,
+              "lowPreflightFailuresTotal": 0,
+              "preparationHeldBatches": {
+                "totalBatches": 18550,
+                "supportedBatches": 60,
+                "preparedBatches": 37,
+                "rejectedBatches": 23,
+                "failedBatches": 0,
+                "droppedFailures": 0
+              },
+              "preparationReasonsAtExport": {
+                "replacement.static_material_identity_mismatch": 4,
+                "replacement.batch_mirrored": 13,
+                "replacement.placement_transform": 6
+              },
+              "meanLowGates": {
+                "mapLowGeometryTestedInstances": 27.283333333333335,
+                "mapLowGeometryDistanceRejectedInstances": 8.025,
+                "mapLowGeometryPixelRejectedInstances": 0.975,
+                "mapLowGeometryFrustumRejectedInstances": 2.2083333333333335,
+                "mapLowGeometryDepthRejectedInstances": 0.0,
+                "mapLowGeometrySelectedInstances": 16.075
+              },
+              "meshDetailAvailable": false,
+              "wholeFrameVsEqualsHudNotVerified": true,
+              "memory": {
+                "uniqueSamples": 7,
+                "privateCommitMedianGiB": 13.467277526855469,
+                "workingSetMedianGiB": 2.8494415283203125,
+                "systemFreeCommitMinimumGiB": 1.0390815734863281,
+                "localGpuUsageMaximumGiB": 2.790813446044922,
+                "localGpuBudgetMinimumGiB": 5.03125
+              },
+              "meanNativeHlodIndicesSavedWithinReportedSource": 23530.75,
+              "meanExistingLodIndicesSavedWithinReportedSource": 525871.0
+            },
+            "headerKeys": [
+              "schema",
+              "measurementSemantics",
+              "metadata",
+              "captureWindow",
+              "summary",
+              "movementCoverage",
+              "movementSamples",
+              "droppedCpuScopes",
+              "droppedGpuFrames",
+              "droppedGpuScopes",
+              "droppedModelAnimationSamples",
+              "gpuQueriesSupported",
+              "gpuScopesSupported",
+              "mainThreadId",
+              "ticksPerSecond",
+              "scopeNames"
+            ],
+            "cutsceneGeometryHeader": null,
+            "firstFrame": {
+              "frameNumber": 1349,
+              "counterKeys": [
+                "mapLowGeometryLeaseActive",
+                "mapLowGeometryUnsupportedBatches",
+                "mapLowGeometrySupportedBatches",
+                "mapLowGeometryPreparedBatches",
+                "mapLowGeometryPreparationRejectedBatches",
+                "mapLowGeometryPreparationFailedBatches",
+                "mapLowGeometryPreparationReportFailures",
+                "mapLowGeometryVisitedBatches",
+                "mapLowGeometryBindingDisabledBatches",
+                "mapLowGeometryNoCameraBatches",
+                "mapLowGeometryMeshLodDisabledBatches",
+                "mapLowGeometryEnvironmentReplacedBatches",
+                "mapLowGeometrySourceMaterialsDisabledBatches",
+                "mapLowGeometryDebugViewBatches",
+                "mapLowGeometryMapPbrBatches",
+                "mapLowGeometryBindingCollectionBatches",
+                "mapLowGeometryFrustumOverrideBatches",
+                "mapLowGeometryInvalidCameraBatches",
+                "mapLowGeometryTestedInstances",
+                "mapLowGeometryVisibilityRejectedInstances",
+                "mapLowGeometryDistanceRejectedInstances",
+                "mapLowGeometryDepthRejectedInstances",
+                "mapLowGeometryPixelRejectedInstances",
+                "mapLowGeometryFrustumRejectedInstances",
+                "mapLowGeometryCandidateInstances",
+                "mapLowGeometryPreflightFailedBatches",
+                "mapLowGeometrySelectedInstances",
+                "mapLowGeometryDrawCalls",
+                "mapLowGeometrySubmittedIndices",
+                "mapLowGeometryLateFailures",
+                "mapLowGeometryFallbackDrawCalls",
+                "mapLowGeometryFallbackIndices"
+              ],
+              "meshDrawCount": 0,
+              "pipelineFields": [
+                "iaVertices",
+                "iaPrimitives",
+                "vsInvocations",
+                "gsInvocations",
+                "gsPrimitives",
+                "clipperInvocations",
+                "clipperPrimitives",
+                "psInvocations",
+                "hsInvocations",
+                "dsInvocations",
+                "csInvocations"
+              ]
+            }
+          }
+        ],
+        "fieldPaths": [
+          "frames[].counters.mapLowGeometryLeaseActive",
+          "frames[].counters.mapLowGeometryDrawCalls",
+          "frames[].counters.mapLowGeometrySubmittedIndices",
+          "frames[].counters.mapLowGeometryLateFailures",
+          "frames[].counters.mapLowGeometryPreflightFailedBatches",
+          "frames[].counters.mapLowGeometryFallbackDrawCalls",
+          "metadata.lowGeometryPreparation",
+          "frames[].pipeline.vsInvocations",
+          "frames[].frameIntervalMs"
+        ]
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 610,
+          "endLine": 611,
+          "function": "successful draw counters",
+          "excerpt": "            profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometryDrawCalls);\n            profiler->Add_Counter(Engine::EProfilerCounter::MapLowGeometrySubmittedIndices, proxy.SelectedIndexCount);"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerCaptureIO.cpp",
+          "line": 135,
+          "endLine": 166,
+          "function": "CounterNames low geometry JSON keys",
+          "excerpt": "            \"mapLowGeometryLeaseActive\",\n            \"mapLowGeometryUnsupportedBatches\",\n            \"mapLowGeometrySupportedBatches\",\n            \"mapLowGeometryPreparedBatches\",\n            \"mapLowGeometryPreparationRejectedBatches\",\n            \"mapLowGeometryPreparationFailedBatches\",\n            \"mapLowGeometryPreparationReportFailures\",\n            \"mapLowGeometryVisitedBatches\",\n            \"mapLowGeometryBindingDisabledBatches\",\n            \"mapLowGeometryNoCameraBatches\",\n            \"mapLowGeometryMeshLodDisabledBatches\",\n            \"mapLowGeometryEnvironmentReplacedBatches\",\n            \"mapLowGeometrySourceMaterialsDisabledBatches\",\n            \"mapLowGeometryDebugViewBatches\",\n            \"mapLowGeometryMapPbrBatches\",\n            \"mapLowGeometryBindingCollectionBatches\",\n            \"mapLowGeometryFrustumOverrideBatches\",\n            \"mapLowGeometryInvalidCameraBatches\",\n            \"mapLowGeometryTestedInstances\",\n            \"mapLowGeometryVisibilityRejectedInstances\",\n            \"mapLowGeometryDistanceRejectedInstances\",\n            \"mapLowGeometryDepthRejectedInstances\",\n            \"mapLowGeometryPixelRejectedInstances\",\n            \"mapLowGeometryFrustumRejectedInstances\",\n            \"mapLowGeometryCandidateInstances\",\n            \"mapLowGeometryPreflightFailedBatches\",\n            \"mapLowGeometrySelectedInstances\",\n            \"mapLowGeometryDrawCalls\",\n            \"mapLowGeometrySubmittedIndices\",\n            \"mapLowGeometryLateFailures\",\n            \"mapLowGeometryFallbackDrawCalls\",\n            \"mapLowGeometryFallbackIndices\","
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerCaptureIO.cpp",
+          "line": 436,
+          "endLine": 436,
+          "function": "WriteLowGeometryPreparation",
+          "excerpt": "    void WriteLowGeometryPreparation(std::ostream& stream, const Client::FProfilerCaptureContext& context)"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/afternoon-analysis/summary.json"
+      ],
+      "limits": "동일 PID의 다른 시간 창이며 서로 A/B가 아니다. 낮은 proxy 제출 비율은 절감률이 아니다. 전체프레임 pipeline VS를 HUD 비동기 geometry frame과 동일하다고 확인한 자료도 아니다."
+    },
+    {
+      "id": "capture_missing_detail",
+      "status": "NOT_RECORDED",
+      "topic": "최근 두 파일에 거리/mesh 상세 기록 없음",
+      "facts": {
+        "bernCutsceneGeometryPresent": [
+          false,
+          false
+        ],
+        "meshDetailAvailable": [
+          false,
+          false
+        ],
+        "slowWindowNonBlendVsPercent": 96.94486537589736,
+        "assetCostRankingPossible": false
+      },
+      "source": [],
+      "evidence": [
+        "out/BernCapture20261015/afternoon-analysis/summary.json"
+      ],
+      "limits": "저장 실패나 특정 UI 분기 원인까지 확정한 것은 아니다. 이 파일만으로 가장 비싼 mesh/placement 순위 또는 거리별 vertex 절감을 추정하지 않는다."
+    },
+    {
+      "id": "native_subset_measurement",
+      "status": "GPU_MEASURED_62_SUBSET_G43",
+      "topic": "기존 좁은 규칙 vs 현재 설치한 70m/1200 규칙의 GPU 실측",
+      "facts": {
+        "placements": 62,
+        "batches": 60,
+        "viewport": [
+          1920,
+          1080
+        ],
+        "validations": [
+          {
+            "path": "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-installed-001/sweep-cameras-results/validation.json",
+            "structuralChecksPassed": true,
+            "cameraCount": 10,
+            "caseCount": 31,
+            "allFinalGeometryQueriesValid": true,
+            "allGpuTimestampIntervalsComplete": true,
+            "gameFpsMeasured": false,
+            "wholeGameOneEighthMeasured": false
+          },
+          {
+            "path": "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-70m-001/sweep-cameras-results/validation.json",
+            "structuralChecksPassed": true,
+            "cameraCount": 10,
+            "caseCount": 31,
+            "allFinalGeometryQueriesValid": true,
+            "allGpuTimestampIntervalsComplete": true,
+            "gameFpsMeasured": false,
+            "wholeGameOneEighthMeasured": false
+          }
+        ],
+        "allOffRawImagesIdentical": true,
+        "allCameraAndSettingsEqual": true,
+        "table": [
+          {
+            "cameraId": "authored-00s",
+            "cueSeconds": 0,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 445695,
+              "engineIndices": 1081890,
+              "mapIndices": 1081854,
+              "mapDraws": 260,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 366201,
+              "engineIndices": 904962,
+              "mapIndices": 904926,
+              "mapDraws": 214,
+              "lowGeometryIndices": 34560,
+              "lowGeometryDraws": 10,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 242225,
+              "engineIndices": 620544,
+              "mapIndices": 620508,
+              "mapDraws": 145,
+              "lowGeometryIndices": 87168,
+              "lowGeometryDraws": 23,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.456522958525449,
+            "oldOnVsReductionFraction": 0.3385463174595372,
+            "selectedInstances": [
+              10,
+              24
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-02s",
+            "cueSeconds": 2,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 332568,
+              "engineIndices": 815862,
+              "mapIndices": 815826,
+              "mapDraws": 187,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 277131,
+              "engineIndices": 692574,
+              "mapIndices": 692538,
+              "mapDraws": 156,
+              "lowGeometryIndices": 24192,
+              "lowGeometryDraws": 7,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 188564,
+              "engineIndices": 489624,
+              "mapIndices": 489588,
+              "mapDraws": 104,
+              "lowGeometryIndices": 61824,
+              "lowGeometryDraws": 17,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.4330061821943182,
+            "oldOnVsReductionFraction": 0.31958532246482707,
+            "selectedInstances": [
+              7,
+              17
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-04s",
+            "cueSeconds": 4,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 307676,
+              "engineIndices": 760614,
+              "mapIndices": 760578,
+              "mapDraws": 173,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 299657,
+              "engineIndices": 742734,
+              "mapIndices": 742698,
+              "mapDraws": 168,
+              "lowGeometryIndices": 3456,
+              "lowGeometryDraws": 1,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 186274,
+              "engineIndices": 481740,
+              "mapIndices": 481704,
+              "mapDraws": 101,
+              "lowGeometryIndices": 51072,
+              "lowGeometryDraws": 14,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.39457741260286794,
+            "oldOnVsReductionFraction": 0.37837594316168155,
+            "selectedInstances": [
+              1,
+              14
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-06s",
+            "cueSeconds": 6,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 127010,
+              "engineIndices": 324126,
+              "mapIndices": 324090,
+              "mapDraws": 60,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 127010,
+              "engineIndices": 324126,
+              "mapIndices": 324090,
+              "mapDraws": 60,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 99144,
+              "engineIndices": 258198,
+              "mapIndices": 258162,
+              "mapDraws": 43,
+              "lowGeometryIndices": 11136,
+              "lowGeometryDraws": 3,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.21940004724037476,
+            "oldOnVsReductionFraction": 0.21940004724037476,
+            "selectedInstances": [
+              0,
+              3
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-08s",
+            "cueSeconds": 8,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 101225,
+              "engineIndices": 264756,
+              "mapIndices": 264720,
+              "mapDraws": 42,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 101225,
+              "engineIndices": 264756,
+              "mapIndices": 264720,
+              "mapDraws": 42,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 101225,
+              "engineIndices": 264756,
+              "mapIndices": 264720,
+              "mapDraws": 42,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.0,
+            "oldOnVsReductionFraction": 0.0,
+            "selectedInstances": [
+              0,
+              0
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-10s",
+            "cueSeconds": 10,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 280486,
+              "engineIndices": 710400,
+              "mapIndices": 710364,
+              "mapDraws": 157,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 280486,
+              "engineIndices": 710400,
+              "mapIndices": 710364,
+              "mapDraws": 157,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 263505,
+              "engineIndices": 671394,
+              "mapIndices": 671358,
+              "mapDraws": 147,
+              "lowGeometryIndices": 6912,
+              "lowGeometryDraws": 2,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.060541346092140125,
+            "oldOnVsReductionFraction": 0.060541346092140125,
+            "selectedInstances": [
+              0,
+              2
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-12s",
+            "cueSeconds": 12,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 210652,
+              "engineIndices": 553086,
+              "mapIndices": 553050,
+              "mapDraws": 109,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 210652,
+              "engineIndices": 553086,
+              "mapIndices": 553050,
+              "mapDraws": 109,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 210652,
+              "engineIndices": 553086,
+              "mapIndices": 553050,
+              "mapDraws": 109,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.0,
+            "oldOnVsReductionFraction": 0.0,
+            "selectedInstances": [
+              0,
+              0
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-14s",
+            "cueSeconds": 14,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 214234,
+              "engineIndices": 554928,
+              "mapIndices": 554892,
+              "mapDraws": 117,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 214234,
+              "engineIndices": 554928,
+              "mapIndices": 554892,
+              "mapDraws": 117,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 197253,
+              "engineIndices": 515922,
+              "mapIndices": 515886,
+              "mapDraws": 107,
+              "lowGeometryIndices": 6912,
+              "lowGeometryDraws": 2,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.0792637956626866,
+            "oldOnVsReductionFraction": 0.0792637956626866,
+            "selectedInstances": [
+              0,
+              2
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "authored-15.999s",
+            "cueSeconds": 15.999,
+            "cueSecondsKnown": true,
+            "off": {
+              "vsInvocations": 98908,
+              "engineIndices": 259692,
+              "mapIndices": 259656,
+              "mapDraws": 52,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 98908,
+              "engineIndices": 259692,
+              "mapIndices": 259656,
+              "mapDraws": 52,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 98908,
+              "engineIndices": 259692,
+              "mapIndices": 259656,
+              "mapDraws": 52,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.0,
+            "oldOnVsReductionFraction": 0.0,
+            "selectedInstances": [
+              0,
+              0
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          },
+          {
+            "cameraId": "export-20261015-011643",
+            "cueSeconds": null,
+            "cueSecondsKnown": false,
+            "off": {
+              "vsInvocations": 141795,
+              "engineIndices": 353994,
+              "mapIndices": 353958,
+              "mapDraws": 80,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "oldNarrowLimitsOn": {
+              "vsInvocations": 141795,
+              "engineIndices": 353994,
+              "mapIndices": 353958,
+              "mapDraws": 80,
+              "lowGeometryIndices": 0,
+              "lowGeometryDraws": 0,
+              "fallbackDraws": 0
+            },
+            "installed70m1200On": {
+              "vsInvocations": 106820,
+              "engineIndices": 273804,
+              "mapIndices": 273768,
+              "mapDraws": 58,
+              "lowGeometryIndices": 14592,
+              "lowGeometryDraws": 4,
+              "fallbackDraws": 0
+            },
+            "offVsReductionFraction": 0.2466589089883282,
+            "oldOnVsReductionFraction": 0.2466589089883282,
+            "selectedInstances": [
+              0,
+              4
+            ],
+            "preparedInstances": [
+              39,
+              39
+            ]
+          }
+        ]
+      },
+      "source": [],
+      "evidence": [
+        "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-subset-70m-001/sweep-cameras-results/installed-vs-candidate.json"
+      ],
+      "limits": "Release003 기반 map-only subset이다. 원본 전체장면/배우/sky/local lights/UI/physics가 없고 dt=0이다. 기하값은 최종 프레임, GPU timestamp만 별도16프레임. G44 미러 지원 효과/게임FPS/전체1/8의 증거가 아니다."
+    },
+    {
+      "id": "mirror_uniform",
+      "status": "APPLIED_SOURCE_CPU_VERIFIED_GPU_UNMEASURED",
+      "topic": "G44 균일 미러 9개 지원 확대",
+      "facts": {
+        "appliedFiles": [
+          {
+            "path": "Client/Private/MapStaticBatchObject.cpp",
+            "currentSha256": "43c453482eb63826d6ed9bfbaef80ecdb41914b65ffbc0269bfb9411b96a5590",
+            "appliedSha256": "43c453482eb63826d6ed9bfbaef80ecdb41914b65ffbc0269bfb9411b96a5590",
+            "matchesAppliedBytes": true
+          },
+          {
+            "path": "Client/Private/MapStaticProxyBaker.cpp",
+            "currentSha256": "13db1aa03867eb26eb6be0ae82afc46dd89ee27fb9dd3ba6bae130d0c5828132",
+            "appliedSha256": "13db1aa03867eb26eb6be0ae82afc46dd89ee27fb9dd3ba6bae130d0c5828132",
+            "matchesAppliedBytes": true
+          },
+          {
+            "path": "Client/Public/ProfilerTool.h",
+            "currentSha256": "64e58d55b7190d46d69e0fe4445da7a5fe59a1f4cb2ae8cb69ce6107b4be0758",
+            "appliedSha256": "64e58d55b7190d46d69e0fe4445da7a5fe59a1f4cb2ae8cb69ce6107b4be0758",
+            "matchesAppliedBytes": true
+          },
+          {
+            "path": "Client/Private/ProfilerTool.cpp",
+            "currentSha256": "126882d9b4991ecb83750cc41b2d517c48741eef1ba255a3628fe2199837edcd",
+            "appliedSha256": "126882d9b4991ecb83750cc41b2d517c48741eef1ba255a3628fe2199837edcd",
+            "matchesAppliedBytes": true
+          },
+          {
+            "path": "Client/Private/ProfilerTool_Cutscene.inl",
+            "currentSha256": "8f7ce55cca8b03797a957732336ff9247a9b7ba81f86a368c01ec8a123a6c29b",
+            "appliedSha256": "8f7ce55cca8b03797a957732336ff9247a9b7ba81f86a368c01ec8a123a6c29b",
+            "matchesAppliedBytes": true
+          }
+        ],
+        "priorPreparedPlacements": 39,
+        "currentPreparationNecessaryCondition": 48,
+        "additionalPlacementIds": [
+          "12004096279152657927",
+          "10644889773625113073",
+          "12697647147388242309",
+          "16751776443657153528",
+          "12214887972310026126",
+          "11903135793964546489",
+          "10948472424694321865",
+          "17933579730913984129",
+          "15769354873469798296"
+        ],
+        "predicate": {
+          "checks": 179,
+          "failures": 0,
+          "actualMatrices": 62,
+          "newMirroredPlacements": 9,
+          "oldTransformAccepted": 43,
+          "newTransformAccepted": 53,
+          "scope": "extracted CPU helper/cull/sign snippet only; no product or GPU execution"
+        },
+        "nativeStarted": false,
+        "gpuMeasurementsProduced": false,
+        "admission": {
+          "schema": "lostark.out.mirror-admission.v1",
+          "variant": "HISTORICAL_RELEASE003_NOT_CURRENT_PRODUCT",
+          "runtime": "frozen-release003",
+          "cameraSet": "baseline-three-1920.json",
+          "utc": "2026-10-15T05:34:21.2588399Z",
+          "requiredFreeCommitGiB": 8,
+          "observedFreeCommitGiB": 6.924282073974609,
+          "observedAvailablePhysicalGiB": 3.906078338623047,
+          "accepted": false,
+          "nativeStarted": false,
+          "retryAllowed": false
+        }
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+          "line": 367,
+          "endLine": 372,
+          "function": "Prepare_ColorProxy mirror blanket rejection removed",
+          "excerpt": "    if (!m_FrameState || !m_pModelCom || m_Instances.empty()) return fail(\"replacement.batch_source_missing\", S_FALSE);\n    // 반사된 winding은 기존 Select_Pass와 SharedFront가 처리한다. World/역전치는\n    // source record가 그대로 소유하며 baker가 균일 직교 affine 변환만 허용한다.\n    if (m_RenderProfile.opacity != 1.f) return fail(\"replacement.batch_opacity\", S_FALSE);\n    if (!baker.Has_Replacement(m_AssetId, &error))\n        return error.empty() ? fail(\"replacement.asset_unsupported\", S_FALSE) : S_FALSE;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 361,
+          "endLine": 380,
+          "function": "ReplacementSignedUniformAffine",
+          "excerpt": "    bool ReplacementSignedUniformAffine(const VTXMESHINSTANCE& instance)\n    {\n        // 공유 atlas의 local T/B/N은 균일 직교 변환에서 원본 VS의 정규화와 같은 방향을\n        // 유지한다. 반사는 기존 cull pass가 처리하지만 비균일 배율/shear는 이 계약 밖이다.\n        const auto& world = instance.World;\n        for (size_t row = 0u; row < 4u; ++row)\n            for (size_t column = 0u; column < 4u; ++column)\n                if (!std::isfinite(world.m[row][column])) return false;\n        if (world._14 != 0.f || world._24 != 0.f || world._34 != 0.f || world._44 != 1.f) return false;\n        const auto matrix = XMLoadFloat4x4(&world);\n        const float determinant = XMVectorGetX(XMMatrixDeterminant(matrix));\n        if (!std::isfinite(determinant) || std::abs(determinant) <= 1.e-6f) return false;\n        float lengths[3];\n        for (uint32_t i = 0; i < 3; ++i) lengths[i] = XMVectorGetX(XMVector3Length(matrix.r[i]));\n        const float maximum = (std::max)({ lengths[0], lengths[1], lengths[2] });\n        if (!std::isfinite(maximum) || maximum <= 0) return false;\n        for (uint32_t i = 0; i < 3; ++i)\n            if (std::abs(lengths[i] - maximum) > maximum * 1.e-4f ||\n                std::abs(XMVectorGetX(XMVector3Dot(matrix.r[i], matrix.r[(i + 1) % 3]))) > maximum * maximum * 1.e-4f) return false;\n        return true;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 704,
+          "endLine": 705,
+          "function": "Prepare_Replacement transform guard",
+          "excerpt": "        for (const auto& placement : sources)\n            if (placement.model != originalModel.get() || !ReplacementSignedUniformAffine(placement.instance)) return reject(\"replacement.placement_transform:placement=\" + std::to_string(placement.sourceId));"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ShaderFiles\\Shader_VtxMeshMapProxy.hlsl",
+          "line": 384,
+          "endLine": 384,
+          "function": "SharedFront",
+          "excerpt": "    pass SharedFront"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/source-g44-applied-20261015-142456/application.json",
+        "out/BernCapture20261015/mirrored-uniform-candidate/predicate-result.json",
+        "out/BernMirrorProbe20261015/prepared-result.json"
+      ],
+      "limits": "39→48은 원본62행의 CPU 자격 필요조건이다. 실제 새 prepared48/selected9/추가VS 감소를 측정한 것이 아니다. 사용자 두 캡처의 mirror13 거절은 이 수정 전 기록이다."
+    },
+    {
+      "id": "remaining_rejections",
+      "status": "REJECTED_BY_CURRENT_CONTRACT",
+      "topic": "비균일 9개·재질 변형 5개는 계속 원본 유지",
+      "facts": {
+        "nonuniformPlacements": 9,
+        "materialVariantPlacements": 5,
+        "oldNativeRejectionBatches": {
+          "batch_mirrored": 13,
+          "placement_transform": 6,
+          "static_material_identity_mismatch": 4
+        },
+        "newCountsUnit": "placements, not old rejection batch counters",
+        "nonuniformBasisCounterexampleMaxBinormalDegrees": 18.56
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 377,
+          "endLine": 379,
+          "function": "uniform orthogonal basis guard",
+          "excerpt": "        for (uint32_t i = 0; i < 3; ++i)\n            if (std::abs(lengths[i] - maximum) > maximum * 1.e-4f ||\n                std::abs(XMVectorGetX(XMVector3Dot(matrix.r[i], matrix.r[(i + 1) % 3]))) > maximum * maximum * 1.e-4f) return false;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+          "line": 651,
+          "endLine": 651,
+          "function": "static material SHA identity guard",
+          "excerpt": "        if (!ReplacementIdentity(*originalModel, asset, materialIdentity) || Hex(materialIdentity) != ReplacementText(source, \"staticMaterialSha256\")) return reject(\"replacement.static_material_identity_mismatch\");"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+          "line": 478,
+          "endLine": 478,
+          "function": "same determinant sign cohort",
+          "excerpt": "            if (sourceIndex == 0u) mirrored = determinant < 0.f;"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/mirrored-uniform-candidate/cpu-audit.json",
+        "out/BernCapture20261015/unprepared-ovr-material-audit.json"
+      ],
+      "limits": "거리/픽셀 문턱을 더 완화해도 준비 전 계약 거절은 해소되지 않는다. 원본 재질을 임의 변경하지 않았다."
+    },
+    {
+      "id": "distance_save",
+      "status": "APPLIED_SOURCE_CPU_VERIFIED_REAL_UI_UNMEASURED",
+      "topic": "일반 JSON Save에 보관 거리 표본 보존·drain·완료 확인 연결",
+      "facts": {
+        "stateChecks": 55,
+        "serializerCheckGroups": 13,
+        "drainTimeoutSeconds": 2,
+        "worker": "existing single exporter + immutable shared_ptr<const>",
+        "failure": "retain completed samples; explicit retry"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool.cpp",
+          "line": 756,
+          "endLine": 762,
+          "function": "Request_Save",
+          "excerpt": "void Client::CProfilerTool::Request_Save(Engine::CProfiler& profiler)\n{\n    // 거리 기록이 있으면 같은 writer로 묶어 저장하고, 없으면 기존 일반 저장을 유지한다.\n    if (Request_CutsceneSave())\n    {\n        return;\n    }"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool_Cutscene.inl",
+          "line": 138,
+          "endLine": 138,
+          "function": "Request_CutsceneSave",
+          "excerpt": "bool Client::CProfilerTool::Request_CutsceneSave() try"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool_Cutscene.inl",
+          "line": 263,
+          "endLine": 263,
+          "function": "Update_CutsceneCapture",
+          "excerpt": "void Client::CProfilerTool::Update_CutsceneCapture() try"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool_Cutscene.inl",
+          "line": 236,
+          "endLine": 236,
+          "function": "Finish_CutsceneSave",
+          "excerpt": "void Client::CProfilerTool::Finish_CutsceneSave(const FProfilerCaptureSaveResult& result) noexcept"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\ProfilerTool.cpp",
+          "line": 927,
+          "endLine": 935,
+          "function": "Update_SaveState",
+          "excerpt": "void Client::CProfilerTool::Update_SaveState()\n{\n    Update_CutsceneCapture();\n    FProfilerCaptureSaveResult saveResult;\n    if (!m_Exporter.Poll(saveResult)) return;\n    // BeginSave는 시작일 뿐이다. 같은 worker의 실제 commit 결과로 거리 상태를 갱신한다.\n    Finish_CutsceneSave(saveResult);\n    m_strCaptureStatus = saveResult.Succeeded ?\n        \"Saved \" + Capture_PathLabel(saveResult.OutputPath) + \"\\n\" + m_strSavingCoverage : saveResult.Error;"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/source-g44-applied-20261015-142456/application.json",
+        "out/BernCapture20261015/distance-save-candidate/test-results.json"
+      ],
+      "limits": "CPU double/serializer 검증과 제품 빌드만 확인했다. 수정 후 실제 UI 거리 기록·비동기 디스크 성공 새 캡처는 아직 없다. 보관 Bern 표본과 현재 rawframes/export metadata는 서로 다른 시간 범위일 수 있다."
+    },
+    {
+      "id": "existing_lod_hlod_atlas",
+      "status": "APPLIED_DISTINCT_MECHANISMS",
+      "topic": "기존 LOD/HLOD와 same-index atlas, 새 low geometry의 차이",
+      "facts": {
+        "meshLOD": "원본 VB 유지 + 속성/경계 보존 simplifier로 파생 IB 생성, 화면오차로 선택",
+        "nativeHLOD": "source별 local geometry 단순화 후 청크 제출; LockBorder 및 원본 속성 경계 유지",
+        "xatlasProxy": "UV chart/재질 결합이며 mesh.indexCount == original source indexCount 강제",
+        "suppliedLowGeometry": "완성된 저폴리 VB/IB를 별도로 제공하므로 xatlas same-index 경로와 다름",
+        "freshCaptureMeanNativeHlodSavedIndices": [
+          4895.754010695186,
+          23530.75
+        ],
+        "freshCaptureMeanMeshLodSavedIndices": [
+          175322.77540106955,
+          525871.0
+        ]
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\StaticMeshLod.cpp",
+          "line": 291,
+          "endLine": 291,
+          "function": "CStaticMeshLod::Create original vertices retained",
+          "excerpt": "            // simplifier는 원본 정점과 mesh 경계를 유지하며 인덱스만 줄인다."
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\StaticMeshLod.cpp",
+          "line": 336,
+          "endLine": 339,
+          "function": "meshopt_simplifyWithAttributes",
+          "excerpt": "                const size_t count = meshopt_simplifyWithAttributes(reduced.data(), indices.data(), indices.size(),\n                    &vertices[0].vPosition.x, vertices.size(), sizeof(VTXMESH),\n                    attributes[0].data(), sizeof(attributes[0]), weights, attributeCount, nullptr,\n                    target, preserveAttributes ? attributeErrors[step] : errors[step], meshopt_SimplifyLockBorder, &error);"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticCluster.inl",
+          "line": 401,
+          "endLine": 418,
+          "function": "source-wise native HLOD simplification",
+          "excerpt": "            reducedRanges.resize(sources.size()); farIndices.reserve(merged.indices.size());\n            for (size_t source = 0u; source < sources.size(); ++source)\n            {\n                const uint32_t base = firstVertices[source], count = indexCounts[source], vertices = vertexCounts[source];\n                vector<uint32_t> local(count), reduced(count);\n                for (size_t i = 0u; i < count; ++i) local[i] = merged.indices[firstIndices[source] + i] - base;\n                float error = 0.f;\n                const size_t target = (static_cast<size_t>(count * options.targetRatio) / 3u) * 3u;\n                const size_t result = meshopt_simplifyWithAttributes(reduced.data(), local.data(), count,\n                    &worldPositions[base].x, vertices, sizeof(float3_t), attributes[base].data(), sizeof(attributes[0]),\n                    weights, attributeCount, locks.data() + base, (std::max)(size_t(3u), target),\n                    options.maximumWorldError, meshopt_SimplifyLockBorder | meshopt_SimplifyErrorAbsolute, &error);\n                const bool valid = result > 0u && result % 3u == 0u && result < count &&\n                    std::isfinite(error) && error >= 0.f && error <= options.maximumWorldError * 1.001f &&\n                    std::all_of(reduced.begin(), reduced.begin() + result, [&](uint32_t index) { return index < vertices; });\n                // 축약 불가 source도 전체 far API에서는 원본을 유지한다.\n                // 가시 source claim은 index strict 감소 검사로 이 범위를 거절한다.\n                const size_t selected = valid ? result : count;"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+          "line": 307,
+          "endLine": 328,
+          "function": "xatlas proxy layout",
+          "excerpt": "            std::unique_ptr<xatlas::Atlas, void(*)(xatlas::Atlas*)> atlas(xatlas::Create(), xatlas::Destroy);\n            if (!atlas) return E_OUTOFMEMORY;\n            for (size_t source = 0u; source < sources.size(); ++source)\n            {\n                xatlas::MeshDecl decl;\n                decl.vertexPositionData = worldPositions.data() + firstVertices[source];\n                decl.vertexPositionStride = sizeof(float3_t); decl.vertexCount = vertexCounts[source];\n                decl.indexData = originalIndices.data() + storage->ranges[source].firstIndex;\n                decl.indexCount = storage->ranges[source].indexCount; decl.indexFormat = xatlas::IndexFormat::UInt32;\n                decl.indexOffset = -static_cast<int32_t>(firstVertices[source]);\n                if (xatlas::AddMesh(atlas.get(), decl, static_cast<uint32_t>(sources.size())) != xatlas::AddMeshError::Success) return E_FAIL;\n            }\n            xatlas::PackOptions packing;\n            packing.resolution = options.atlasResolution; packing.texelsPerUnit = options.texelsPerUnit;\n            packing.padding = options.padding; packing.bilinear = true; packing.blockAlign = true;\n            xatlas::Generate(atlas.get(), xatlas::ChartOptions{}, packing);\n            if (atlas->atlasCount != 1u || atlas->meshCount != sources.size() ||\n                atlas->width != options.atlasResolution || atlas->height != options.atlasResolution) return S_FALSE;\n            for (size_t source = 0u; source < sources.size(); ++source)\n            {\n                const auto& mesh = atlas->meshes[source];\n                if (!mesh.vertexCount || mesh.indexCount != storage->ranges[source].indexCount ||"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+          "line": 381,
+          "endLine": 386,
+          "function": "supplied low geometry overload",
+          "excerpt": "// Client package reader가 hash/재질 호환성 검증 뒤 호출한다. 원본 CModel을 다시 decode하거나\n// source mesh별 UV 경계를 복원하면 축소된 VB/IB가 다시 늘어나므로, 완성된 low geometry만 복사한다.\n// source 범위 하나는 placement 전체이며, 원본 표시와 proxy 선택의 원자성은 Client가 소유한다.\nHRESULT CModel::Create_StaticProxy(const STATIC_PROXY_GEOMETRY& geometry,\n    std::span<const STATIC_PROXY_PLACEMENT_SOURCE> sources,\n    const STATIC_PROXY_OPTIONS& options, shared_ptr<CModel>& output, STATIC_PROXY_STATS& stats)"
+        }
+      ],
+      "evidence": [
+        "out/BernCapture20261015/afternoon-analysis/summary.json"
+      ],
+      "limits": "HLOD 전체가 index를 못 줄인다는 뜻은 아니다. same-index atlas 경로만 독립 기하 감소가 없으며, counter의 source 내 saved 값을 전체 장면 절감률로 확대하지 않는다."
+    },
+    {
+      "id": "mip_quality",
+      "status": "APPLIED_INDEPENDENT_TEXTURE_SAMPLING",
+      "topic": "텍스처 mip 품질은 vertex/index 감소 기능이 아님",
+      "facts": {
+        "mechanism": "surface sampler MinLOD 변경/선택",
+        "doesNotDo": "VB/IB 단순화나 draw 수 감축"
+      },
+      "source": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Shader.cpp",
+          "line": 495,
+          "endLine": 499,
+          "function": "Stage_TextureQualitySamplers",
+          "excerpt": "\t\t\tfor (uint32_t mip = 1u; mip < 4u; ++mip)\n\t\t\t{\n\t\t\t\tauto desc = original;\n\t\t\t\tdesc.MinLOD = std::min(desc.MaxLOD, std::max(desc.MinLOD, static_cast<float>(mip)));\n\t\t\t\tresult = m_pDevice->CreateSamplerState(&desc, staged.Levels[mip].GetAddressOf());"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Shader.cpp",
+          "line": 514,
+          "endLine": 524,
+          "function": "Apply_TextureQuality",
+          "excerpt": "HRESULT CShader::Apply_TextureQuality(uint32_t iMinMip)\n{\n\tif (iMinMip >= 4u)\n\t\treturn E_INVALIDARG;\n\tauto& bindings = *m_pBindings;\n\tif (bindings.iAppliedTextureMinMip == iMinMip)\n\t\treturn S_OK;\n\tfor (size_t i = 0u; i < bindings.TextureQualitySamplers.size(); ++i)\n\t{\n\t\tauto& sampler = bindings.TextureQualitySamplers[i];\n\t\tconst HRESULT result = sampler.pVariable->SetSampler(0u, sampler.Levels[iMinMip].Get());"
+        }
+      ],
+      "evidence": [],
+      "limits": "질감이 흐려져도 geometry 병목이 같으면 FPS 이득이 없을 수 있다. 이것만으로 텍스처 품질 기능 오류나 성능 향상을 확정하지 않는다. 사용자 렌더 옵션은 변경하지 않았다."
+    },
+    {
+      "id": "atlas512",
+      "status": "CANDIDATE_NOT_BAKED_NOT_INSTALLED",
+      "topic": "512 atlas 표면 품질 후보",
+      "facts": {
+        "status": "NOT_BAKED_PRELAUNCH_MEMORY_GUARD",
+        "nativeProcessStarted": false,
+        "commandExitCode": 1,
+        "reason": "Less than 8 GiB free commit before bake",
+        "minimumStartFreeCommitBytes": 8589934592,
+        "followUpMemoryObservation": {
+          "freeVirtualMemoryKiB": 6084880,
+          "freePhysicalMemoryKiB": 699152,
+          "timing": "Read immediately after the guard rejected launch; not claimed as the exact guard sample"
+        },
+        "frozenInputVerification": {
+          "status": "PASS",
+          "files": 702
+        },
+        "scriptParse": {
+          "python": "PASS",
+          "powershell": "PASS"
+        },
+        "geometryChanges": 0,
+        "productFilesWritten": 0,
+        "qualityPass": false,
+        "followUp": "No further GPU attempt in this turn. Keep the prepared candidate; do not lower the guard or install it."
+      },
+      "source": [],
+      "evidence": [
+        "out/BernCapture20261015/atlas512-candidate/preflight.json"
+      ],
+      "limits": "제품은256이며512는 입력/runner 준비만 완료. geometry VB/IB 변화0이므로 새 기하 감소 방식이 아니다. 품질 보완 가능성도 아직 측정하지 않았다."
+    },
+    {
+      "id": "whole_scene_target",
+      "status": "NOT_MEASURED_NOT_ACHIEVED",
+      "topic": "전체 베른1/8·기본카메라FPS·G44 추가GPU 감소는 미완료",
+      "facts": {
+        "fullMapAttempt": {
+          "result": "NOT_MEASURED_MEMORY_GUARD",
+          "guardReason": "free_commit_below_floor",
+          "scope": "Full declared Product Bern map scope, attempted authored0 plus export camera",
+          "sourceAndInputPostcheck": "PASS",
+          "nativePids": [
+            29508
+          ],
+          "lowestFreeCommitGiB": 1.4158439636230469,
+          "elapsedSeconds": 51.8756429,
+          "geometryMeasurementAvailable": false,
+          "subsetResultsDoNotEstablishWholeSceneReduction": true
+        },
+        "nativeSubsetWholeGameOneEighthMeasured": false,
+        "g44NativeStarted": false,
+        "freshCaptureDefaultCameraFrames": 0
+      },
+      "source": [],
+      "evidence": [
+        "out/BernCapture20261015/full-scene-probe/runtimes/diagnostic-fullmap-70m-001/bounded-attempt-result.json"
+      ],
+      "limits": "전체 맵 로드가 첫 draw 전에 메모리 guard로 중단됐다. subset 감소율이나 사용자 개선 관찰을 전체1/8 달성으로 표시하지 않는다."
+    },
+    {
+      "id": "product_builds",
+      "status": "PRODUCT_BUILD_PASS_RECORDED",
+      "topic": "G44 반영 뒤 Release/Debug Product 빌드 성공 기록",
+      "facts": {
+        "builds": [
+          {
+            "path": "out/BuildPipeline/runs/20261015T052636567Z-release-product.json",
+            "configuration": "Release",
+            "profile": "Product",
+            "result": "PASS",
+            "skippedBuild": false,
+            "missingRuntimeInputs": [],
+            "invalidRuntimeInputs": [],
+            "runtimeDataCheckCount": 42
+          },
+          {
+            "path": "out/BuildPipeline/runs/20261015T052753112Z-debug-product.json",
+            "configuration": "Debug",
+            "profile": "Product",
+            "result": "PASS",
+            "skippedBuild": false,
+            "missingRuntimeInputs": [],
+            "invalidRuntimeInputs": [],
+            "runtimeDataCheckCount": 42
+          }
+        ],
+        "currentG44FiveSourceFilesMatchApplicationReceipt": true
+      },
+      "source": [],
+      "evidence": [
+        "out/BuildPipeline/runs/20261015T052636567Z-release-product.json",
+        "out/BuildPipeline/runs/20261015T052753112Z-debug-product.json"
+      ],
+      "limits": "실제 BuildPipeline 영수증의 PASS다. 이번 읽기 전용 비교는 전체 소스 fingerprint/모든 EXE-DLL 현재성을 새로 검증한 것이 아니며 이후 무관한 main 병합의 빌드 검증을 대신하지 않는다. 기존 warning이0이라는 뜻도 아니다."
+    }
+  ],
+  "statusLegend": {
+    "APPLIED": "현재 소스 또는 Resources에서 확인",
+    "GPU_MEASURED": "명시한 범위의 과거 실제GPU검증",
+    "CPU_VERIFIED": "순수CPU/추출helper 검증",
+    "UNMEASURED": "실제 측정 없음",
+    "REJECTED": "현재 원본 유지 계약",
+    "CANDIDATE": "out 후보, 제품 미설치"
+  }
+}

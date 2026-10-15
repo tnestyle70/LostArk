@@ -1,0 +1,19 @@
+노란 HUD / F7 / native probe 지표 계약 — 2026-10-15 읽기 전용 확인
+
+1. 노란 Vtx(VS)는 Get_GeometryStats().VSInvocations다. Update/Render 전체의 GPU vertex shader 실행 수이며 맵만 또는 고유 정점 수가 아니다. Idx는 Engine이 계측한 직접 indexed 제출 + 실제 GPU indirect args를 회수한 합계다. 두 값 모두 여러 패스/인스턴스의 반복 제출을 포함한다. TK/ImGui 등 미계측 indexed 호출은 Idx에 포함되지 않지만 VS 쿼리에는 포함된다.
+HUD는 가장 최근 완료된 GPU geometry 프레임을 보여준다. 최소 4프레임 지연이며 GPU -NF가 실제 차이다. FPS는 현재 CPU frame delta의 역수를 0.1 가중치로 평활한 값이라 GPU 수치와 같은 시점 또는 GPU ms의 단순 역수가 아니다.
+
+2. 일반 F7 frames[].pipeline.vsInvocations는 별도의 D3D query지만 HUD와 같은 전체 Update/Render draw 범위를 계측한다. HUD가 맵 전용이고 JSON이 전체라서 다르다는 설명은 틀리다. 서로 다른 프레임/구간, 카메라, 설정을 먼저 맞춰야 한다.
+G44의 bernCutsceneGeometry.cutsceneSamples[].geometry.vsInvocations와 totalIndices는 HUD가 쓰는 바로 그 Geometry query를 정확한 geometryFrameNumber로 회수한다. Capture를 켜면 geometry.captureFrameNumber로 일반 frames[].frameNumber와 연결된다. 표본의 map.view/projection/viewport/cameraPosition과 cueSeconds도 저장된다. resolved/vertexValid/indexValid를 확인하고 null을 0으로 계산하지 않는다.
+0~250m 설정은 거리 source 목록의 필터이며 전체 HUD geometry 합계를 자르지 않는다. mapDraws는 정적 맵 color 제출이며 전체 프레임과 범위가 다르다. vertexCount/VB 수나 indirect upper bound를 VS 실측으로 대신하지 않는다.
+
+3. 과거1,799,259.5와5,312,514.5는 각각1122프레임(유효1118),120프레임(유효116)의 전체 구간 중앙값이다. 각각28.4766096초,6.5284047초 구간이며 사용자가80만/50만을 읽은 특정 프레임과 일치한다고 확인된 값이 아니다. 그때 JSON에는 거리/카메라 표본과 HUD geometry history가 없어 특정 초반 구도를 대응할 수 없다. 따라서 이 중앙값으로 사용자의 관찰을 부정하거나80만→50만의 인과를 확정하지 않는다. 같은 조건이면 단순 산술은약30만/37.5%감소지만 아직 해당 쌍의 실측 확정은 아니다.
+
+4. 최소 재기록 경로: Release에서 베른 입장 컷신이 끝난 상태 → F7 → 수집(Capture) ON → 베른 컷신 거리 / 실제 geometry 기록(100ms,0~250m) → 컷신 재생 + 거리 기록 → 실제 재생 약5초 후 기록 종료 + 저장 → GPU 결과 회수 뒤 실제 저장 완료 경로 확인.
+F1 Start를 먼저 누를 필요가 없다. 기록 버튼이 재생을 요청한다. 기록 종료는 컷신 카메라를 중단하지 않는다. F7를 닫아도 기록은 계속되며 다시 열어 중지할 수 있다. playback rate는0.5라 실제5초는 cueSeconds 약2.5초다. 동일 구간은 cueSeconds와 view/projection으로 맞춘다. 현재 일반 JSON 저장도 보관된 거리 기록이 있으면 종료/회수 후 함께 저장하지만, 기록을 자동 시작하지는 않는다.
+
+5. 현재 Release UI에는 새 low proxy만 OFF/ON하는 스위치, 컷신 pause/seek, 같은 고정 카메라의 low proxy 단독 연속ABBA가 없다. F1 Bern Entrance Camera는 재생과 FOV만 제공한다. Optimization Benchmark의 화면 오차 LOD A/B는 기존 LOD와 새 proxy를 함께 바꾸므로 새 proxy 단독효과로 해석하면 안 된다. ABBA는 고정 카메라 전용이고 움직이는 컷신은 조건이 바뀐다. 기존 실험에는 원래 화면으로 복귀가 있지만 이 제약을 없애지는 않는다.
+
+6. product-full-scene native probe도 동일 Geometry API로 VS/Idx를 읽지만 실행 장면은 고정 카메라의 맵 전용 offscreen이다. 실제 Client의 배우/하늘/지역 조명/UI/음향/물리와 Present가 없다. 따라서 그 VS는 해당 하네스의 실제 GPU 실행 수이며 실제 Client HUD 값과 직접 동일시할 수 없다. renderFps도16회 제출과 GPU 완료 대기의 wall throughput이며 HUD FPS가 아니다. 하네스는 low lease만 독립 변경 가능하나 현재 Release UI에 이 제어가 있는 것은 아니다.
+
+확인 범위: 소스와 기존 요약만 읽음. 빌드·제품 수정·앱/UI/GPU 실행·새 성능 측정 없음. 정확한 경로/행 및 소스SHA는 동명JSON sourceEvidence에 포함했다.

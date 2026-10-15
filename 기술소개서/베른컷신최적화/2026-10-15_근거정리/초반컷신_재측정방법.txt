@@ -1,0 +1,19 @@
+초반 컷신 HUD 수치 재측정 — 최신 Release가 이미 빌드되어 있어 재빌드 불필요
+
+1. 평소 방식으로 Server에 연결한 Release Client를 실행해 베른에 들어간다.
+   실행 파일: C:\Users\tnest\Desktop\LostArk\Client\Bin\Release\Client.exe
+   기존 Server 시작 바로가기/작업 디렉터리 계약을 사용한다. 여기서는 앱을 자동 실행하지 않았다.
+2. 입장 컷신이 끝난 뒤 F7을 연다. 수집(Capture)도 켜고 이름은 Bern_Early_Current 등으로 정한다.
+   '베른 컷신 거리 / 실제 geometry 기록'의 간격100ms, 거리0~250m를 사용한다.
+3. '컷신 재생 + 거리 기록'을 누른다. '진행 중 컷신 거리 기록'이면 첫 컷신이 끝날 때까지 기다린다.
+4. 실제 시간 약5초 후 '기록 종료 + 저장'을 누르고, GPU 회수와 '컷신 JSON 저장 완료'를 기다린다.
+   현재 재생속도0.5에서는 실제5초가 cue 약2.5초다. cue0~5초가 필요하면 실제약10초를 기록한다.
+   명시적인 전체구간 근거가 필요하면 컷신 종료까지 자동기록해도 된다. 저장 중 EXE를 종료하지 않는다.
+5. 생성 파일 이름의 '-bern-distance'와 JSON 내부 bernCutsceneGeometry를 확인한다.
+   기본 저장 폴더: Client/Bin/ProfilerCaptures. 일반 Capture/JSON Save만 누르는 것과 구분한다.
+
+이 기록으로 현재 화면의 약50만 Vtx가 어느 cue/카메라/geometry frame에서 나오는지 확인할 수 있다.
+현재 파일 하나만으로 과거80만과의 개선율을 확정하지 않는다. 동일 해상도/FOV/렌더링 설정을 유지한
+전후 쌍을 비교해야 한다. 임의로 mip·SSAO·FXAA·노출·안개 설정을 바꾸지 않는다.
+현재 F1의 Mesh LOD 비교는 여러 LOD 경로를 함께 바꾸므로 저폴리 단독 A/B라고 부르지 않는다.
+움직이는 컷신에서 일반 ABBA 버튼만 연속 실행해도 같은 카메라가 자동 보장되는 것은 아니다.

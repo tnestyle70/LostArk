@@ -1992,3 +1992,38 @@ XML18개 구문 검사, conflict marker 및 고확신 비밀키 패턴 검사를
 무관한 코드·문서 전체의 공백을 재작성하지 않았다. 검증 근거는
 `out/BernCapture20261015/git-integration/validation.json`과 `staged-whitespace-findings.json`이다.
 <!-- G44_CAPTURE_AND_MIRROR_20261015_END -->
+
+
+<!-- G45_EVIDENCE_AUDIT_20261015 -->
+## G45 — 적용 상태·HUD 지표와 기술소개 이미지 근거 정리
+
+기준 main은 Effect/Collider anchor PR #542가 병합된 `92169ebe1`이다. 관련 소스와 G44 적용
+5파일의 receipt SHA, 설치된70m/1200px index·manifest 및 참조81파일, 실제 사용자 JSON2개의
+SHA를 대조했다. 제품 C++·저작 데이터·Resources를 추가 변경하지 않았다.
+
+검증된 기하 감소는 G43 성탑62개 부분 장면의 동일 카메라 결과다. 0초 VS445,695→242,225
+(45.65%↓), 엔진 제출 Idx1,081,890→620,544(42.64%↓)이며 전체 장면이나 게임 FPS의 감소율이
+아니다. 실제 사용자 캡처에서도 저폴리 draw0~19/느린 구간8~19와 fallback0을 확인했다.
+G44 균일 미러9개는 CPU 준비 필요조건을 확장했으나 추가 GPU 감소량은 아직 미측정이다.
+
+HUD Vtx는 Geometry query의 전체 GPU VS이며 일반 F7 pipeline query와 전체 Update→Render
+구간을 공유한다. HUD를 맵만, 일반 JSON을 전체 장면이라고 설명하지 않는다. 관측 frame/cue/
+camera와 지연 완료·통계 집계가 다를 수 있다. 사용자가 관측한80만→50만에 대응하는 같은
+카메라의 저장 표본 쌍은 확인하지 못했다. 37.5%를 검증된 개선율로 보고하지 않는다.
+거리 JSON은 같은 Geometry query의 frame을 기록하므로 후속 재측정의 정본으로 사용한다.
+
+새 실행 전 메모리 검사는 free commit5.189907GiB로8GiB 기준 미달, physical1.705193GiB였다.
+native를 시작하지 않았고 guard를 낮추거나 사용자 앱을 종료하지 않았다. 과거 전체맵은
+실제 로드 중 메모리 하한에서 첫 draw 전에 중단됐으므로 두 사건을 구분한다.
+
+최신 main Product Release `20261015T094035032Z-release-product.json`, Debug
+`20261015T094639831Z-debug-product.json` 모두 PASS. 각 빌드 전후 fingerprint는 각각
+`ffdd693bccc60b8fa062f6e8339bd6b8fdb7603f3138b18beb215207f042ad63`,
+`b67a0428b7dfa02d494e82a67d205caa0576aee882e1119b3214e28faf1647b5`로 동일했다.
+기존 인코딩/DirectXTK PDB warning은 남으며, UI/실제 게임 동작 확인을 뜻하지 않는다.
+
+`기술소개서/베른컷신최적화/2026-10-15_근거정리`에 PNG14개(원본12개+데이터 도표2개),
+원자료·SHA·코드 행 증거와 적용/미적용 안내를 정리하고 Interview 첨부이미지 경로에도 같은
+bytes로 복사했다. 과거 offscreen16-frame FPS 그림은 게임 FPS 증거에서 제외했다.
+도표 수치·PNG SHA와 복사 동일성을 독립 검토했고 전체1/8·기본 카메라 통제 FPS·G44 GPU
+추가 개선·실제 F7 UI 저장 재열기는 미완료로 유지한다.

@@ -1,0 +1,120 @@
+{
+  "schema": "bern.evidence.delivery.v1",
+  "sourceMain": "92169ebe11bc05daa1242bc3a8d2229858b3f35e",
+  "newGameplayCapture": false,
+  "originalImagesModified": false,
+  "images": [
+    {
+      "file": "01_동일카메라_실측기하/bern-subset-measured-4views-applied.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\bern-subset-measured-4views-applied.png",
+      "sha256": "13ee65c8206776b9ac9cc2124004d12c40e3e4d39dc7bf60652c1c2da302d052",
+      "kind": "unchanged_original",
+      "category": "실측 기하",
+      "caption": "대표 그림. 62개 성탑의 동일 카메라 4뷰 × OFF / 이전 ON / 적용 70m ON. GPU VS·제출 Idx 실측. 게임 FPS는 포함하지 않음."
+    },
+    {
+      "file": "01_동일카메라_실측기하/native-crop-00s.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\native-crop-00s.png",
+      "sha256": "85c9bb603178454245f59f7d5d06fb0dbed3674bf7d9aac6017010c062b77d91",
+      "kind": "unchanged_original",
+      "category": "실측 기하",
+      "caption": "0초 원본 해상도 품질 비교. 윤곽과 지붕 표면 차이를 함께 공개."
+    },
+    {
+      "file": "01_동일카메라_실측기하/native-crop-04s.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\native-crop-04s.png",
+      "sha256": "484bb195c688b9eb23ba20f56668a3738a73d7a894d416addd98edee17f89ef6",
+      "kind": "unchanged_original",
+      "category": "실측 기하",
+      "caption": "4초 원본 해상도 품질 비교."
+    },
+    {
+      "file": "01_동일카메라_실측기하/native-crop-export.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\native-crop-export.png",
+      "sha256": "6cb0dd1719b224528bf5e3467901c9c52598fbb12e1a573fc2b9f5b1027dbfdc",
+      "kind": "unchanged_original",
+      "category": "실측 기하",
+      "caption": "저장 카메라 품질 비교. 해당 카메라의 컷신 cue 시간은 미상."
+    },
+    {
+      "file": "01_동일카메라_실측기하/10개카메라_GPU_VS_Idx.png",
+      "sha256": "0a4a694b67d6c76405e4f90133984c89eeb3060457791d0f3bcb01d3a7d13efa",
+      "kind": "data_plot",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\2026-10-15_성탑62개_실측\\installed-vs-candidate.json",
+      "category": "실측 기하",
+      "caption": "10개 카메라 전체 수치. 개선되지 않은 8·12·15.999초도 포함. 게임 FPS나 전체 장면 결과가 아님."
+    },
+    {
+      "file": "02_실제게임_F7통계/FPS_VS_Idx_실제캡처통계.png",
+      "sha256": "f81ebc8d2987ac18ef02fab7958fc449e5ed7665fc8b9167c3d0d3436ec9cd8b",
+      "kind": "data_plot",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\afternoon-analysis\\summary.json",
+      "category": "실제 게임 진단",
+      "caption": "실제 사용자 F7 JSON에서 계산한 FPS·VS·Idx 통계. 서로 다른 구간이므로 개선율 산출 금지. 화면 캡처가 아닌 데이터 도표."
+    },
+    {
+      "file": "03_구현원리_보조자료/성기둥2종_GPU_기하감소_검증중.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\02_새기하_단일모델_검증중\\성기둥2종_GPU_기하감소_검증중.png",
+      "sha256": "1a7f5af0f928f6e57ad527e84ac145397afc2d45773596a2af912776d0f997a0",
+      "kind": "unchanged_original",
+      "category": "구현 원리",
+      "caption": "단일 모델 VB/IB 감소 원리. position-only / cull-none 실험; 전체 게임 성능 아님."
+    },
+    {
+      "file": "03_구현원리_보조자료/실제기하감소와_UV좌표보정_2종.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\04_최종조명_품질검토중\\실제기하감소와_UV좌표보정_2종.png",
+      "sha256": "4ed759293f2512edf883944f24fc7312282465e68ab4ca28d0f7cd4c8bef4ee3",
+      "kind": "unchanged_original",
+      "category": "구현 원리",
+      "caption": "UV 보정과 원본 RNM/static shadow 보존 과정. 픽셀 완전 일치 주장이 아님."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-00-start.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-00-start.png",
+      "sha256": "db627db0aad3b9e71d809d6b22920f91643e4deb54ba807f951864b9cc428483",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 1/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-01.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-01.png",
+      "sha256": "878d2ffab8a1f79de16f4343747d26e4645237c14792e3a259b234777cddd59b",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 2/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-02.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-02.png",
+      "sha256": "82e881c74cfe67fc6af9453fd23da0b37ddbf0aa52dd8a83723391ef42931723",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 3/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-03.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-03.png",
+      "sha256": "619268f3b07805febe599395ce235572e74ae59b9f0dd829948dea367990721c",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 4/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-04.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-04.png",
+      "sha256": "a55aae8b02703a63a88b62bb26b6dcaa569a916b1ce5b8cc281725b46e846ed2",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 5/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    },
+    {
+      "file": "90_과거실험_FPS는게임수치아님/mip0-mesh1-hlod1-cue-05-end.png",
+      "source": "C:\\Users\\tnest\\Desktop\\LostArk\\기술소개서\\베른컷신최적화\\01_개선전_기준과_기존설정비교\\mip0-mesh1-hlod1-cue-05-end.png",
+      "sha256": "e135abbab5e6aad672c9067a25ee0fb23e34b931c46a418dbaef1cf041a072da",
+      "kind": "unchanged_original",
+      "category": "과거 조사",
+      "caption": "과거 조사 6/6. 그림의 FPS는 16-frame offscreen 처리율. 현재 적용 성과·실제 게임 FPS 근거로 사용하지 않음."
+    }
+  ]
+}

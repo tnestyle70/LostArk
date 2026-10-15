@@ -1,0 +1,211 @@
+{
+  "schema": "lostark.out.afternoon-summary.v1",
+  "captures": [
+    {
+      "file": "Bern_CutScene_20261015_140215_622_frame1122_18456_0.json",
+      "sha256": "b47c07a92d6872bc7fa4bb7a6c02ee62f028e8967003e44e806e6f39783b376c",
+      "freshnessPassed": true,
+      "frames": 1122,
+      "gpuValidFrames": 1118,
+      "gpuPendingFrames": 4,
+      "seconds": 28.4766096,
+      "leaseActiveFrames": 1122,
+      "metadataViewportAtExportOnly": [
+        1198.0,
+        718.0
+      ],
+      "cpuMsMedian": 19.306649999999998,
+      "cpuMsP95": 58.18024500000002,
+      "gpuMsMedian": 19.416816,
+      "frameIntervalMsMedian": 19.4606,
+      "fpsFromMedianInterval": 51.385877105536316,
+      "fpsFromMeanInterval": 39.38317889552899,
+      "fpsRangeFromObservedIntervals": [
+        7.732935344927581,
+        95.70019044337899
+      ],
+      "VSmedian": 1799259.5,
+      "VSmax": 6820320,
+      "IAVerticesMedian": 3912750.0,
+      "cpuKnownIndicesMedian": 3631596.0,
+      "topmostPassVsPercent": {
+        "Render.Shadow": 0.0,
+        "Render.Portraits": 0.0,
+        "Render.NonBlend": 96.2466208077571,
+        "Render.SSAO": 0.00035350611065963436,
+        "Render.Lights": 0.03826213545500987,
+        "Render.Blend": 3.2770519208341264,
+        "Render.UI": 0.02464424531736306
+      },
+      "unassignedVsPercent": 0.41306738452574976,
+      "lowDrawsMean": 3.3467023172905526,
+      "lowDrawsRange": [
+        0,
+        19
+      ],
+      "selectedNonzeroFrames": 732,
+      "lowSubmittedIndicesMean": 12158.288770053476,
+      "lowToCpuKnownIndicesMeanPercent": 0.18852559210636693,
+      "lowToCpuKnownIndicesRatioOfSumsPercent": 0.27412096480249437,
+      "lowFallbackDrawsTotal": 0,
+      "lowLateFailuresTotal": 0,
+      "lowPreflightFailuresTotal": 0,
+      "preparationHeldBatches": {
+        "totalBatches": 18550,
+        "supportedBatches": 60,
+        "preparedBatches": 37,
+        "rejectedBatches": 23,
+        "failedBatches": 0,
+        "droppedFailures": 0
+      },
+      "preparationReasonsAtExport": {
+        "replacement.static_material_identity_mismatch": 4,
+        "replacement.batch_mirrored": 13,
+        "replacement.placement_transform": 6
+      },
+      "meanLowGates": {
+        "mapLowGeometryTestedInstances": 19.377005347593585,
+        "mapLowGeometryDistanceRejectedInstances": 13.296791443850267,
+        "mapLowGeometryPixelRejectedInstances": 1.4527629233511588,
+        "mapLowGeometryFrustumRejectedInstances": 1.1167557932263814,
+        "mapLowGeometryDepthRejectedInstances": 0.15151515151515152,
+        "mapLowGeometrySelectedInstances": 3.359180035650624
+      },
+      "meshDetailAvailable": false,
+      "wholeFrameVsEqualsHudNotVerified": true,
+      "memory": {
+        "uniqueSamples": 28,
+        "privateCommitMedianGiB": 13.392704010009766,
+        "workingSetMedianGiB": 2.7344532012939453,
+        "systemFreeCommitMinimumGiB": 0.9722175598144531,
+        "localGpuUsageMaximumGiB": 2.7776107788085938,
+        "localGpuBudgetMinimumGiB": 5.03125
+      },
+      "meanNativeHlodIndicesSavedWithinReportedSource": 4895.754010695186,
+      "meanExistingLodIndicesSavedWithinReportedSource": 175322.77540106955
+    },
+    {
+      "file": "Bern_CutScene_20261015_140227_980_frame1468_18456_1.json",
+      "sha256": "a52db88e3b519e726b020960db38ec46a64cca599992e4c83dd5d06f4aa70c57",
+      "freshnessPassed": true,
+      "frames": 120,
+      "gpuValidFrames": 116,
+      "gpuPendingFrames": 4,
+      "seconds": 6.5284047,
+      "leaseActiveFrames": 120,
+      "metadataViewportAtExportOnly": [
+        1198.0,
+        718.0
+      ],
+      "cpuMsMedian": 51.658500000000004,
+      "cpuMsP95": 70.188705,
+      "gpuMsMedian": 52.53032,
+      "frameIntervalMsMedian": 51.9674,
+      "fpsFromMedianInterval": 19.242833006846602,
+      "fpsFromMeanInterval": 18.3173802291926,
+      "fpsRangeFromObservedIntervals": [
+        13.265432008691512,
+        30.08378333659241
+      ],
+      "VSmedian": 5312514.5,
+      "VSmax": 6569137,
+      "IAVerticesMedian": 11267097.0,
+      "cpuKnownIndicesMedian": 9348138.0,
+      "topmostPassVsPercent": {
+        "Render.Shadow": 0.0,
+        "Render.Portraits": 0.0,
+        "Render.NonBlend": 96.94486537589736,
+        "Render.SSAO": 0.00015155933083243345,
+        "Render.Lights": 0.032590482312794995,
+        "Render.Blend": 2.822888731200043,
+        "Render.UI": 0.010559504411963164
+      },
+      "unassignedVsPercent": 0.18894434684700404,
+      "lowDrawsMean": 16.075,
+      "lowDrawsRange": [
+        8,
+        19
+      ],
+      "selectedNonzeroFrames": 120,
+      "lowSubmittedIndicesMean": 58262.4,
+      "lowToCpuKnownIndicesMeanPercent": 0.6187778428159646,
+      "lowToCpuKnownIndicesRatioOfSumsPercent": 0.6172168536461307,
+      "lowFallbackDrawsTotal": 0,
+      "lowLateFailuresTotal": 0,
+      "lowPreflightFailuresTotal": 0,
+      "preparationHeldBatches": {
+        "totalBatches": 18550,
+        "supportedBatches": 60,
+        "preparedBatches": 37,
+        "rejectedBatches": 23,
+        "failedBatches": 0,
+        "droppedFailures": 0
+      },
+      "preparationReasonsAtExport": {
+        "replacement.static_material_identity_mismatch": 4,
+        "replacement.batch_mirrored": 13,
+        "replacement.placement_transform": 6
+      },
+      "meanLowGates": {
+        "mapLowGeometryTestedInstances": 27.283333333333335,
+        "mapLowGeometryDistanceRejectedInstances": 8.025,
+        "mapLowGeometryPixelRejectedInstances": 0.975,
+        "mapLowGeometryFrustumRejectedInstances": 2.2083333333333335,
+        "mapLowGeometryDepthRejectedInstances": 0.0,
+        "mapLowGeometrySelectedInstances": 16.075
+      },
+      "meshDetailAvailable": false,
+      "wholeFrameVsEqualsHudNotVerified": true,
+      "memory": {
+        "uniqueSamples": 7,
+        "privateCommitMedianGiB": 13.467277526855469,
+        "workingSetMedianGiB": 2.8494415283203125,
+        "systemFreeCommitMinimumGiB": 1.0390815734863281,
+        "localGpuUsageMaximumGiB": 2.790813446044922,
+        "localGpuBudgetMinimumGiB": 5.03125
+      },
+      "meanNativeHlodIndicesSavedWithinReportedSource": 23530.75,
+      "meanExistingLodIndicesSavedWithinReportedSource": 525871.0
+    }
+  ],
+  "rankedCandidates": [
+    {
+      "rank": 1,
+      "candidate": "Reduce repeated opaque map batch/material submission work and unnecessary frame rebuilds",
+      "evidence": "Slow window CPU Map.Batch.Render 20.779ms contains Material 14.656ms; 4,191.8 CMesh submissions/frame, opaque CPU34.606ms and GPU interval28.097ms. NonBlend owns96.945% of measured VS.",
+      "savings": "No FPS estimate: CPU work overlaps GPU and material time is nested in render. Review state reuse/draw consolidation preserving material/visibility ownership."
+    },
+    {
+      "rank": 2,
+      "candidate": "Expand verified low geometry coverage to safely supported signed-uniform mirrored placements",
+      "evidence": "Current stable holdings60supported,37prepared,23rejected:13mirrored+6transform+4material. Current prepared selection and draw succeed, no late/fallback/preflight errors.",
+      "savings": "Nine placement support proposal is bounded to its actual source draws; captures have no mesh or placement draw IDs, so added VS savings cannot be calculated here. Preserve70m1200 and actual materials."
+    },
+    {
+      "rank": 3,
+      "candidate": "Reduce repeated visibility preparation/active-upload CPU work without changing visible results",
+      "evidence": "Slow window FinalCameraSubmission8.410ms, GpuScene.Prepare5.519ms including ActiveUpload2.946ms. These are nested/inclusive where applicable. CPU MOC2.326ms saves only13,095 reported indices/frame in this window.",
+      "savings": "Investigate reuse/skipping unchanged payloads and correct occluder budgets. Do not disable visibility based on this accounting alone."
+    },
+    {
+      "rank": 4,
+      "candidate": "Lower residency/working memory overhead",
+      "evidence": "Process private commit13.39–13.47GiB median; system free commit minimum0.97–1.04GiB, working set2.7–2.85GiB. GPU local usage~2.8GiB below5.03GiB budget.",
+      "savings": "Memory pressure is confirmed, but page faults/stall attribution are not recorded; do not assert paging caused the slow frame."
+    },
+    {
+      "rank": 5,
+      "candidate": "Atlas512 quality and SSAO tuning are not the primary geometry reduction path",
+      "evidence": "SSAO mean1.23/1.63ms versus opaque GPU9.63/28.10ms;512 atlas changes quality/memory rather than source triangle counts.",
+      "savings": "Rendering options remain user-owned; no automatic changes proposed or performed."
+    }
+  ],
+  "limits": [
+    "Both windows are lease-active, so no default-camera baseline exists here. Captures differ in pose/window and are not an A/B benchmark.",
+    "1198x718 is sampled at export only; prior1920x1080 probe measurements cannot be compared directly.",
+    "No distance samples or meshDraw detail were saved. No top asset/mesh claim can be made from these files.",
+    "Full-frame GPU VS is valid pipeline invocation count; ordinary capture has no separate geometry HUD history to compare its frame/latency.",
+    "Low submitted index ratio is remaining proxy CPU-known work, not percentage saved. IndirectUpperBound is not actual geometry.",
+    "Render.BeginFrame long GPU interval is clear/prepare timing with pipelineValid=false and0issued draw counters; do not call it vertex work or GPU utilization."
+  ]
+}

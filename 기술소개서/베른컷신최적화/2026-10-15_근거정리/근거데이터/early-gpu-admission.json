@@ -1,0 +1,14 @@
+{
+  "schema": "bern.early-gpu-admission.v1",
+  "utc": "2026-10-15T09:52:11.8873068Z",
+  "requestedScope": "early Bern cutscene: match HUD VS and completed Engine index queries at the same camera",
+  "requiredFreeCommitGiB": 8,
+  "observedFreeCommitGiB": 5.189907073974609,
+  "observedAvailablePhysicalGiB": 1.7051925659179688,
+  "accepted": false,
+  "nativeStarted": false,
+  "guardLowered": false,
+  "productOrUserProcessesStopped": false,
+  "state": "NOT_STARTED_MEMORY_PRECHECK_FAILED",
+  "previous62SubsetIsNot800kTo500kProof": true
+}
