@@ -1,0 +1,549 @@
+{
+  "schema": "lostark.bern-g42-build-delivery",
+  "formatVersion": 1,
+  "verifiedUtc": "2026-10-14T14:18:44.545631+00:00",
+  "release": {
+    "configuration": "Release",
+    "result": "PASS",
+    "receipt": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261014T140648402Z-release-product.json",
+      "bytes": 49214,
+      "sha256": "af291a5089cb17a18fb3b92d43a6cd993556f69659e050d4f9b1dbbaa8972cc8",
+      "lastWriteUtc": "2026-10-14T14:06:48.415113+00:00",
+      "lastWriteLocal": "2026-10-14T23:06:48.415113+09:00"
+    },
+    "startedUtc": "2026-10-14T14:06:24.8950904Z",
+    "projects": {
+      "Engine": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:25.1131395Z",
+        "completedUtc": "2026-10-14T14:06:26.4748405Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140625040Z-Engine-Release.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140625040Z-Engine-Release.log"
+        },
+        "elapsedMs": 928,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\x64\\Release",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Release"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      },
+      "Shared": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:26.4896571Z",
+        "completedUtc": "2026-10-14T14:06:27.0370752Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140626483Z-Shared-Release.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140626483Z-Shared-Release.log"
+        },
+        "elapsedMs": 479,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Intermediate\\x64\\Release",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Bin\\Release"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      },
+      "Server": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:27.0652451Z",
+        "completedUtc": "2026-10-14T14:06:44.1724266Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140627039Z-Server-Release.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140627039Z-Server-Release.log"
+        },
+        "elapsedMs": 16699,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Release",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Release"
+          ],
+          "objectWrites": 1,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 1,
+          "changedPaths": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Release\\Server.exe",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Release\\ServerGameplayContractTests_KoukuSupportSurface.obj"
+          ],
+          "removedPaths": []
+        }
+      },
+      "Client": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:44.2247223Z",
+        "completedUtc": "2026-10-14T14:06:47.4409511Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140644175Z-Client-Release.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\20261014T140644175Z-Client-Release.log"
+        },
+        "elapsedMs": 1818,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\x64\\Release",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      }
+    },
+    "runtimeDataChecks": 42,
+    "binaries": [
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Client.exe",
+        "bytes": 19526144,
+        "sha256": "f41e1db732d240efc9665dde1b9b86909b92a6b80868abce984a306da6ac3b00",
+        "lastWriteUtc": "2026-10-14T13:53:46.984231+00:00",
+        "lastWriteLocal": "2026-10-14T22:53:46.984231+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Release\\Engine.dll",
+        "bytes": 3347968,
+        "sha256": "872583b0da11d57fc9d4679acf0a1da78e15e511f02757e14bdef938d5c2194d",
+        "lastWriteUtc": "2026-10-14T12:57:36.640374+00:00",
+        "lastWriteLocal": "2026-10-14T21:57:36.640374+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Engine.dll",
+        "bytes": 3347968,
+        "sha256": "872583b0da11d57fc9d4679acf0a1da78e15e511f02757e14bdef938d5c2194d",
+        "lastWriteUtc": "2026-10-14T12:57:36.640374+00:00",
+        "lastWriteLocal": "2026-10-14T21:57:36.640374+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Release\\Server.exe",
+        "bytes": 5926912,
+        "sha256": "ad3cde7fa81f48f3ff31ae669eecc7a0435c4343f37a062de7fdb861343276a8",
+        "lastWriteUtc": "2026-10-14T14:06:43.519780+00:00",
+        "lastWriteLocal": "2026-10-14T23:06:43.519780+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Shader_VtxMeshMapProxy.cso",
+        "bytes": 141629,
+        "sha256": "12ef8138682887c21f6d679fbf3321bac334ec3c70791e567b23c26ae51390b3",
+        "lastWriteUtc": "2026-10-14T11:42:08.815282+00:00",
+        "lastWriteLocal": "2026-10-14T20:42:08.815282+09:00"
+      }
+    ],
+    "warningScope": "PASS does not assert zero compiler warnings.",
+    "sourceStability": {
+      "buildExit": 0,
+      "sourceStableDuringBuild": true,
+      "sourceInputSha256": "8fb07abf283151a405544b770ae167d15c20edf853eca9cef8a8f6c8fc97974e",
+      "definitionSha256": "e8e0b5fad483171af69eb6c0af5c0f06ccc34e0675d0e9e46dbf084e9d58a4fe",
+      "sourceInputCount": 2369,
+      "completedUtc": "2026-10-14T14:06:49.9835884Z",
+      "evidence": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\source-before.json",
+          "bytes": 829037,
+          "sha256": "bcc0f39d679cab1757480930d5fe01751b1faff3201671c61330a73887e9be3d",
+          "lastWriteUtc": "2026-10-14T14:06:24.357079+00:00",
+          "lastWriteLocal": "2026-10-14T23:06:24.357079+09:00"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\source-after.json",
+          "bytes": 829037,
+          "sha256": "bcc0f39d679cab1757480930d5fe01751b1faff3201671c61330a73887e9be3d",
+          "lastWriteUtc": "2026-10-14T14:06:49.983588+00:00",
+          "lastWriteLocal": "2026-10-14T23:06:49.983588+09:00"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-release\\source-stability.json",
+          "bytes": 287,
+          "sha256": "773f85050e88b6af9a2bbe54d5a77093278a5c1e161093692ec78d09a3b8ae16",
+          "lastWriteUtc": "2026-10-14T14:06:49.983588+00:00",
+          "lastWriteLocal": "2026-10-14T23:06:49.983588+09:00"
+        }
+      ],
+      "currentFullSourceFingerprintRecomputedByFinalizer": false,
+      "scope": "Official source-before/source-after evidence brackets this exact Product receipt; historical build stability."
+    }
+  },
+  "debug": {
+    "configuration": "Debug",
+    "result": "PASS",
+    "receipt": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BuildPipeline\\runs\\20261014T140709351Z-debug-product.json",
+      "bytes": 49124,
+      "sha256": "79b201cc83d4e6ffb2d8cf8bed28b8e83b26122af695b248f458cde642a8862b",
+      "lastWriteUtc": "2026-10-14T14:07:09.368931+00:00",
+      "lastWriteLocal": "2026-10-14T23:07:09.368931+09:00"
+    },
+    "startedUtc": "2026-10-14T14:06:53.1674706Z",
+    "projects": {
+      "Engine": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:53.3824999Z",
+        "completedUtc": "2026-10-14T14:06:54.5352306Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140653301Z-Engine-Debug.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140653301Z-Engine-Debug.log"
+        },
+        "elapsedMs": 738,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\x64\\Debug",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Debug"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      },
+      "Shared": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:54.5486155Z",
+        "completedUtc": "2026-10-14T14:06:55.0450307Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140654542Z-Shared-Debug.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140654542Z-Shared-Debug.log"
+        },
+        "elapsedMs": 449,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Intermediate\\x64\\Debug",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Bin\\Debug"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      },
+      "Server": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:06:55.0833052Z",
+        "completedUtc": "2026-10-14T14:07:04.9669094Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140655060Z-Server-Debug.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140655060Z-Server-Debug.log"
+        },
+        "elapsedMs": 9461,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug"
+          ],
+          "objectWrites": 1,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 1,
+          "changedPaths": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug\\Server.exe",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug\\ServerGameplayContractTests_KoukuSupportSurface.obj"
+          ],
+          "removedPaths": []
+        }
+      },
+      "Client": {
+        "result": "PASS",
+        "startedUtc": "2026-10-14T14:07:04.9934453Z",
+        "completedUtc": "2026-10-14T14:07:08.3029643Z",
+        "logs": {
+          "binaryLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140704968Z-Client-Debug.binlog",
+          "diagnosticLog": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140704968Z-Client-Debug.log"
+        },
+        "elapsedMs": 1860,
+        "outputChanges": {
+          "measurement": "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+          "directories": [
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\x64\\Debug",
+            "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug"
+          ],
+          "objectWrites": 0,
+          "precompiledHeaderWrites": 0,
+          "shaderWrites": 0,
+          "binaryWrites": 0,
+          "changedPaths": [],
+          "removedPaths": []
+        }
+      }
+    },
+    "runtimeDataChecks": 42,
+    "binaries": [
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Client.exe",
+        "bytes": 85805056,
+        "sha256": "5b58a33cdf0c48b0391c448199ca1105406f347ced2c02f94e577a7980f6876c",
+        "lastWriteUtc": "2026-10-14T14:05:04.963176+00:00",
+        "lastWriteLocal": "2026-10-14T23:05:04.963176+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Debug\\Engine.dll",
+        "bytes": 9204736,
+        "sha256": "5b8cfb3e55ebd29d1d28bf7ee616556950da142561349438e2e0b3717844cfd4",
+        "lastWriteUtc": "2026-10-14T12:58:30.042094+00:00",
+        "lastWriteLocal": "2026-10-14T21:58:30.042094+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Engine.dll",
+        "bytes": 9204736,
+        "sha256": "5b8cfb3e55ebd29d1d28bf7ee616556950da142561349438e2e0b3717844cfd4",
+        "lastWriteUtc": "2026-10-14T12:58:30.042094+00:00",
+        "lastWriteLocal": "2026-10-14T21:58:30.042094+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug\\Server.exe",
+        "bytes": 23976448,
+        "sha256": "66b27dd2e458d25bbe93379c90684bc63fcd17a9371824189c115635dae57789",
+        "lastWriteUtc": "2026-10-14T14:07:04.193962+00:00",
+        "lastWriteLocal": "2026-10-14T23:07:04.193962+09:00"
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Shader_VtxMeshMapProxy.cso",
+        "bytes": 141629,
+        "sha256": "12ef8138682887c21f6d679fbf3321bac334ec3c70791e567b23c26ae51390b3",
+        "lastWriteUtc": "2026-10-14T12:59:50.893221+00:00",
+        "lastWriteLocal": "2026-10-14T21:59:50.893221+09:00"
+      }
+    ],
+    "warningScope": "PASS does not assert zero compiler warnings.",
+    "sourceStability": {
+      "buildExit": 0,
+      "sourceStableDuringBuild": true,
+      "sourceInputSha256": "c79fc03a42c5afcf137d53d06fb9d8b81a82fd977d106bdf03b9902cedb81004",
+      "definitionSha256": "3dd4058f169f4d153c220dec53ef1c3e1ec2412b0b751bd9ed69443f6ecee7fa",
+      "sourceInputCount": 2369,
+      "completedUtc": "2026-10-14T14:07:11.0731759Z",
+      "evidence": [
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\source-before.json",
+          "bytes": 829021,
+          "sha256": "4afe9ed3b66c800502e1fce6fcc5773dba3cb1851e9c06c43ffb0c5d38a85215",
+          "lastWriteUtc": "2026-10-14T14:06:52.688808+00:00",
+          "lastWriteLocal": "2026-10-14T23:06:52.688808+09:00"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\source-after.json",
+          "bytes": 829021,
+          "sha256": "4afe9ed3b66c800502e1fce6fcc5773dba3cb1851e9c06c43ffb0c5d38a85215",
+          "lastWriteUtc": "2026-10-14T14:07:11.073176+00:00",
+          "lastWriteLocal": "2026-10-14T23:07:11.073176+09:00"
+        },
+        {
+          "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\source-stability.json",
+          "bytes": 287,
+          "sha256": "a03a9dbdd22e2ea9105b9c99bb1ee830062506ee615443088ebfeccecf5e47e3",
+          "lastWriteUtc": "2026-10-14T14:07:11.073176+00:00",
+          "lastWriteLocal": "2026-10-14T23:07:11.073176+09:00"
+        }
+      ],
+      "currentFullSourceFingerprintRecomputedByFinalizer": false,
+      "scope": "Official source-before/source-after evidence brackets this exact Product receipt; historical build stability."
+    }
+  },
+  "verifiedSources": [
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\ShaderFiles\\Shader_VtxMeshMapProxy.hlsl",
+      "bytes": 20602,
+      "sha256": "a65cfb1702fd1a6d5bd68bcaf9715f3eb20a8f48cd1ea687c431441006283d59",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00",
+      "relativePath": "Client/Bin/ShaderFiles/Shader_VtxMeshMapProxy.hlsl",
+      "expectedSha256": "a65cfb1702fd1a6d5bd68bcaf9715f3eb20a8f48cd1ea687c431441006283d59"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\Level_Bern.cpp",
+      "bytes": 81671,
+      "sha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165",
+      "lastWriteUtc": "2026-10-14T11:12:03.685962+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.685962+09:00",
+      "relativePath": "Client/Private/Level_Bern.cpp",
+      "expectedSha256": "caeb33a6ab7a5aed718574f7d59b014a053dad1ae820818bbeb2c7b0560fd165"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapGpuScene.cpp",
+      "bytes": 26036,
+      "sha256": "9cd7354ab9ee43a4494a2acacdd1cfe0085358c7a88dd83a81b768c4409b2a27",
+      "lastWriteUtc": "2026-10-14T11:12:03.685962+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.685962+09:00",
+      "relativePath": "Client/Private/MapGpuScene.cpp",
+      "expectedSha256": "9cd7354ab9ee43a4494a2acacdd1cfe0085358c7a88dd83a81b768c4409b2a27"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapPlacementRuntime.cpp",
+      "bytes": 77231,
+      "sha256": "b8206c499ece95a9d78966cdfdb5b597e0ce6201776013a9a26a074a09e45373",
+      "lastWriteUtc": "2026-10-14T11:12:03.685962+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.685962+09:00",
+      "relativePath": "Client/Private/MapPlacementRuntime.cpp",
+      "expectedSha256": "b8206c499ece95a9d78966cdfdb5b597e0ce6201776013a9a26a074a09e45373"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticBatchObject.cpp",
+      "bytes": 127307,
+      "sha256": "94b4116ae2a7a932ab978d2fbe609971f9ee144a20314e5548d7e725c71cbf1f",
+      "lastWriteUtc": "2026-10-14T11:31:33.620014+00:00",
+      "lastWriteLocal": "2026-10-14T20:31:33.620014+09:00",
+      "relativePath": "Client/Private/MapStaticBatchObject.cpp",
+      "expectedSha256": "94b4116ae2a7a932ab978d2fbe609971f9ee144a20314e5548d7e725c71cbf1f"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Private\\MapStaticProxyBaker.cpp",
+      "bytes": 50559,
+      "sha256": "a48d00a4dfdf86e79836fc9d7fe9fee83e7790645d6f773e3a36de628cc8a646",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00",
+      "relativePath": "Client/Private/MapStaticProxyBaker.cpp",
+      "expectedSha256": "a48d00a4dfdf86e79836fc9d7fe9fee83e7790645d6f773e3a36de628cc8a646"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Public\\MapPlacementRuntime.h",
+      "bytes": 15288,
+      "sha256": "b73ef67470099b873542755fdb46e70be14e7fbf552d308e1915a0f58dead1c2",
+      "lastWriteUtc": "2026-10-14T11:12:03.685962+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.685962+09:00",
+      "relativePath": "Client/Public/MapPlacementRuntime.h",
+      "expectedSha256": "b73ef67470099b873542755fdb46e70be14e7fbf552d308e1915a0f58dead1c2"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Public\\MapStaticBatchObject.h",
+      "bytes": 14690,
+      "sha256": "03723a653566baf1362845015d394059d30d60fc277538e03cee3aca2ad80931",
+      "lastWriteUtc": "2026-10-14T11:12:03.685962+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.685962+09:00",
+      "relativePath": "Client/Public/MapStaticBatchObject.h",
+      "expectedSha256": "03723a653566baf1362845015d394059d30d60fc277538e03cee3aca2ad80931"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Public\\MapStaticProxyBaker.h",
+      "bytes": 2516,
+      "sha256": "95e34b852272e3e04991c07895ca5d64e06bdff68082bdc6154b077ac9c8f5c3",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00",
+      "relativePath": "Client/Public/MapStaticProxyBaker.h",
+      "expectedSha256": "95e34b852272e3e04991c07895ca5d64e06bdff68082bdc6154b077ac9c8f5c3"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Material.cpp",
+      "bytes": 84260,
+      "sha256": "50a76dc7dedcabccc2b0d8b35147f339357eea8eaa3d58357d2523d005485212",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00",
+      "relativePath": "Engine/Private/Material.cpp",
+      "expectedSha256": "50a76dc7dedcabccc2b0d8b35147f339357eea8eaa3d58357d2523d005485212"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Private\\Model_StaticProxy.inl",
+      "bytes": 45519,
+      "sha256": "4fa78a577c7cb4c85147195ff5196a0a91707b992a196cdb3e5da0b14fa57d6b",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00",
+      "relativePath": "Engine/Private/Model_StaticProxy.inl",
+      "expectedSha256": "4fa78a577c7cb4c85147195ff5196a0a91707b992a196cdb3e5da0b14fa57d6b"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Public\\Model.h",
+      "bytes": 35364,
+      "sha256": "3420705aa53d22c2617f1ca28d22ff48270b56f5e8ab7f80bd1e3f69131a7769",
+      "lastWriteUtc": "2026-10-14T12:56:19.304479+00:00",
+      "lastWriteLocal": "2026-10-14T21:56:19.304479+09:00",
+      "relativePath": "Engine/Public/Model.h",
+      "expectedSha256": "3420705aa53d22c2617f1ca28d22ff48270b56f5e8ab7f80bd1e3f69131a7769",
+      "verifiedInstalledHeader": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\EngineSDK\\Inc\\Model.h",
+        "bytes": 35364,
+        "sha256": "3420705aa53d22c2617f1ca28d22ff48270b56f5e8ab7f80bd1e3f69131a7769",
+        "lastWriteUtc": "2026-10-14T12:56:19.304479+00:00",
+        "lastWriteLocal": "2026-10-14T21:56:19.304479+09:00"
+      }
+    }
+  ],
+  "sourceApplications": [
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\application.json",
+      "bytes": 3484,
+      "sha256": "2092e4d393a022684410fbae4755b23afc144c4fa3f7301724c57b320eca3a39",
+      "lastWriteUtc": "2026-10-14T11:12:03.694985+00:00",
+      "lastWriteLocal": "2026-10-14T20:12:03.694985+09:00"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\fallback-lod0\\application.json",
+      "bytes": 447,
+      "sha256": "036e20422fbca2147f4af4b259b8908f7d9cc347cd988984340f5a99621d3bce",
+      "lastWriteUtc": "2026-10-14T11:31:33.622015+00:00",
+      "lastWriteLocal": "2026-10-14T20:31:33.622015+09:00"
+    },
+    {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\model-header-utf8-bom\\application.json",
+      "bytes": 1160,
+      "sha256": "e391af61065124ffa2ebe7c83ea9b3acb5c5100cef2cc9af871c86907f6ce872",
+      "lastWriteUtc": "2026-10-14T12:56:19.306482+00:00",
+      "lastWriteLocal": "2026-10-14T21:56:19.306482+09:00",
+      "verifiedSourceBackup": {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\model-header-utf8-bom\\applications\\20261014T125619Z-8e6f22b2\\Model.h.before",
+        "bytes": 35361,
+        "sha256": "0e9b1b91dd721d0022c481c4ec9ee19c8ed0b4bd87cc364e6f855cb839b31c2c",
+        "lastWriteUtc": "2026-10-14T12:56:19.287771+00:00",
+        "lastWriteLocal": "2026-10-14T21:56:19.287771+09:00"
+      }
+    }
+  ],
+  "proof": {
+    "native": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-native-candidate\\package-proof\\validation.json",
+      "bytes": 30337,
+      "sha256": "8f421e9438dc0a640f79c706a27ab06ca28b2b2d68ad39738d655a4d87a88174",
+      "lastWriteUtc": "2026-10-14T11:37:55.752595+00:00",
+      "lastWriteLocal": "2026-10-14T20:37:55.752595+09:00"
+    },
+    "lifecycle": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-batch-proof\\integration-result.json",
+      "bytes": 13286,
+      "sha256": "27dced104474c15a231c29150a98dc43600add748d463d9c6804aedd36cb6b23",
+      "lastWriteUtc": "2026-10-14T11:44:51.311597+00:00",
+      "lastWriteLocal": "2026-10-14T20:44:51.311597+09:00"
+    },
+    "installation": {
+      "path": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\resource-installation.json",
+      "bytes": 5655,
+      "sha256": "37401a2d26ca5a332b1b41f8729a4de03dcb6a96d1d528776f95b863f3399ddd",
+      "lastWriteUtc": "2026-10-14T11:43:36.762044+00:00",
+      "lastWriteLocal": "2026-10-14T20:43:36.762044+09:00"
+    },
+    "nativeConditions": 24,
+    "independentPixelCameraPairs": 18,
+    "cullConditionsWithoutIndependentPixelComparison": 6,
+    "lifecycleChecks": 6869,
+    "lifecycleExitCode": 0,
+    "wholeSceneOneEighthEstablished": false,
+    "basicCameraGameFpsValidated": false,
+    "clientUiValidated": false
+  },
+  "wholeSceneOneEighthEstablished": false,
+  "basicCameraGameFpsValidated": false,
+  "clientUiValidated": false,
+  "scope": "Product build and evidence delivery; no whole-scene or game-FPS completion claim."
+}

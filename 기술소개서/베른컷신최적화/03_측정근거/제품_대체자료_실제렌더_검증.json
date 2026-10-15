@@ -1,0 +1,943 @@
+{
+  "passed": true,
+  "scope": "Actual CModel loaded from original catalog -> Prepare_Replacement -> 9 atlas CModel -> visible source selection -> Bind_Replacement -> native passes 4/5/6 -> actual CRenderer. Isolated asset; whole-map goal and neighboring occlusion not established.",
+  "replacementIndexSha256": "98b3f52e95e003c43ee5265e158b7f5143dc8a8168aee35abd9fe2d9e8ceca5f",
+  "packageManifests": [
+    {
+      "file": "Map/Derived/Bern/Pillar06/manifest.json",
+      "sha256": "e900d4a12a345f2ba59940a05a64be1d63e9fd7c06759d35a3b6e67bb803de41"
+    },
+    {
+      "file": "Map/Derived/Bern/Pillar07/manifest.json",
+      "sha256": "91c55509902b51d046890c2d04b4fb5e40edcbefb3ddb5349c4387f12c1824c1"
+    }
+  ],
+  "candidateSourceManifestSha256": "fa4c1c16539294c7d3c5b2f73bc2fa00627cdd2f2c4341548403f1f6d8dea94f",
+  "engineDllSha256": "b0a508c95c4a7b3e972d9c3e79085c9b2c7720b1d030c5bf65f0686d8d837bdc",
+  "staticMeshLodObject": {
+    "source": "Engine/Default/x64/Release/StaticMeshLod.obj",
+    "copy": "out/BernGeometryProxy20261014/product-native-candidate/package-proof/StaticMeshLod.product.obj",
+    "beforeSha256": "6A920F557BF69D6B0C832E6439230EE3D85C63AD8C2E479C2FDF93D3DD7F3AAE",
+    "afterSha256": "6A920F557BF69D6B0C832E6439230EE3D85C63AD8C2E479C2FDF93D3DD7F3AAE",
+    "copySha256": "6A920F557BF69D6B0C832E6439230EE3D85C63AD8C2E479C2FDF93D3DD7F3AAE"
+  },
+  "proxyShaderSha256": "12ef8138682887c21f6d679fbf3321bac334ec3c70791e567b23c26ae51390b3",
+  "originalShaderSha256": "fa64a095c0a62d2072b897f9193b5b0352bcbd727b631469320829195b23739e",
+  "sourceInputs": "Separate out/BG42R hardlinks were read only; Derived packages were actual copies. Product Resources were not changed.",
+  "rawCounterScope": "Pipeline statistics enclose CRenderer, including the same fullscreen pass overhead; no FPS claim.",
+  "gateScope": "PILLAR06 near second placement remains excluded by measured diameter/distance gate despite successful resource sharing.",
+  "records": [
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-00-start",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6482229
+        },
+        "low": {
+          "id": "cue-00-start-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6481762
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 1766,
+      "lowPixels": 1762,
+      "silhouetteIoU": 0.9966044142614601,
+      "commonRGBMeanByteError": 10.784024228657959,
+      "commonRGBP95ByteError": 52.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-01",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-01-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-01-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-02",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-02-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-02-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-03",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-03-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-03-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-04",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-04-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-04-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-05-end",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-05-end-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-05-end-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-00-start-cull1",
+      "shaderPass": 5,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull1-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6482228
+        },
+        "low": {
+          "id": "cue-00-start-cull1-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6481763
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 1766,
+      "lowPixels": 1762,
+      "silhouetteIoU": 0.9966044142614601,
+      "commonRGBMeanByteError": 6.051675184554231,
+      "commonRGBP95ByteError": 27.0
+    },
+    {
+      "model": "pillar06",
+      "caseId": "source-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+      "cameraId": "cue-00-start-cull2",
+      "shaderPass": 6,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull2-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6484457
+        },
+        "low": {
+          "id": "cue-00-start-cull2-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6482952
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 1766,
+      "lowPixels": 1762,
+      "silhouetteIoU": 0.9966044142614601,
+      "commonRGBMeanByteError": 10.806360022714367,
+      "commonRGBP95ByteError": 52.0
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-00-start",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6521288
+        },
+        "low": {
+          "id": "cue-00-start-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6512327
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 32155,
+      "lowPixels": 32168,
+      "silhouetteIoU": 0.9961209036742801,
+      "commonRGBMeanByteError": 14.806473721922801,
+      "commonRGBP95ByteError": 72.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-01",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-01-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6530183
+        },
+        "low": {
+          "id": "cue-01-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6519325
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 39093,
+      "lowPixels": 39100,
+      "silhouetteIoU": 0.9963490604575164,
+      "commonRGBMeanByteError": 14.993773222293402,
+      "commonRGBP95ByteError": 72.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-02",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-02-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6548985
+        },
+        "low": {
+          "id": "cue-02-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6533157
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 52936,
+      "lowPixels": 52930,
+      "silhouetteIoU": 0.9958900493948192,
+      "commonRGBMeanByteError": 16.390744106214346,
+      "commonRGBP95ByteError": 77.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-03",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-03-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6576716
+        },
+        "low": {
+          "id": "cue-03-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6546667
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 66262,
+      "lowPixels": 66321,
+      "silhouetteIoU": 0.9947792071014819,
+      "commonRGBMeanByteError": 22.528121439446647,
+      "commonRGBP95ByteError": 93.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-04",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-04-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6572045
+        },
+        "low": {
+          "id": "cue-04-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6546888
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 66329,
+      "lowPixels": 66461,
+      "silhouetteIoU": 0.9926470588235294,
+      "commonRGBMeanByteError": 20.274446963970775,
+      "commonRGBP95ByteError": 88.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-05-end",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-05-end-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6627768
+        },
+        "low": {
+          "id": "cue-05-end-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6592245
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 110654,
+      "lowPixels": 110713,
+      "silhouetteIoU": 0.9952140172511694,
+      "commonRGBMeanByteError": 17.272938590930224,
+      "commonRGBP95ByteError": 79.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-00-start-cull1",
+      "shaderPass": 5,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull1-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6521133
+        },
+        "low": {
+          "id": "cue-00-start-cull1-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6512327
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 32155,
+      "lowPixels": 32168,
+      "silhouetteIoU": 0.9961209036742801,
+      "commonRGBMeanByteError": 5.780855062982232,
+      "commonRGBP95ByteError": 42.0
+    },
+    {
+      "model": "pillar06",
+      "caseId": "different-rnm-placement",
+      "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_301DEA1EF1A1",
+      "cameraId": "cue-00-start-cull2",
+      "shaderPass": 6,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull2-source",
+          "drawCalls": 7,
+          "iaVertices": 33846,
+          "vsInvocations": 12895,
+          "psInvocations": 6561728
+        },
+        "low": {
+          "id": "cue-00-start-cull2-low",
+          "drawCalls": 1,
+          "iaVertices": 3876,
+          "vsInvocations": 1247,
+          "psInvocations": 6535243
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 32155,
+      "lowPixels": 32168,
+      "silhouetteIoU": 0.9961209036742801,
+      "commonRGBMeanByteError": 14.808477938045838,
+      "commonRGBP95ByteError": 72.0
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-00-start",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6486985
+        },
+        "low": {
+          "id": "cue-00-start-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6485632
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 5566,
+      "lowPixels": 5621,
+      "silhouetteIoU": 0.9842142603760199,
+      "commonRGBMeanByteError": 4.518952363789271,
+      "commonRGBP95ByteError": 15.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-01",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-01-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6487851
+        },
+        "low": {
+          "id": "cue-01-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6486276
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 6222,
+      "lowPixels": 6259,
+      "silhouetteIoU": 0.9886870618228171,
+      "commonRGBMeanByteError": 4.565243083534784,
+      "commonRGBP95ByteError": 15.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-02",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-02-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6489342
+        },
+        "low": {
+          "id": "cue-02-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6487532
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 7447,
+      "lowPixels": 7516,
+      "silhouetteIoU": 0.9863268286207354,
+      "commonRGBMeanByteError": 4.704531179901301,
+      "commonRGBP95ByteError": 16.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-03",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-03-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6491892
+        },
+        "low": {
+          "id": "cue-03-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6489561
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 9471,
+      "lowPixels": 9536,
+      "silhouetteIoU": 0.9877640660949593,
+      "commonRGBMeanByteError": 5.033033350979355,
+      "commonRGBP95ByteError": 17.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-04",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-04-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6494450
+        },
+        "low": {
+          "id": "cue-04-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6491550
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 11431,
+      "lowPixels": 11509,
+      "silhouetteIoU": 0.9866632025634364,
+      "commonRGBMeanByteError": 5.114456245062758,
+      "commonRGBP95ByteError": 17.0,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-05-end",
+      "shaderPass": 4,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-05-end-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6480000
+        },
+        "low": {
+          "id": "cue-05-end-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6480000
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "silhouetteIoU": null,
+      "sourceVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      },
+      "lowVsIndependentNativeProof": {
+        "changedPixelCount": 0,
+        "maximumChannelError": 0,
+        "meanChannelError": 0.0
+      }
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-00-start-cull1",
+      "shaderPass": 5,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull1-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6486963
+        },
+        "low": {
+          "id": "cue-00-start-cull1-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6485632
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 5563,
+      "lowPixels": 5621,
+      "silhouetteIoU": 0.983682156793189,
+      "commonRGBMeanByteError": 2.109328044236086,
+      "commonRGBP95ByteError": 8.0
+    },
+    {
+      "model": "pillar07",
+      "caseId": "source-placement",
+      "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_F64C23A9B12F",
+      "cameraId": "cue-00-start-cull2",
+      "shaderPass": 6,
+      "prepareResult": "S_OK",
+      "unsupportedMaterialRejectedAndOutputsPreserved": true,
+      "rawWholeRendererCounters": {
+        "source": {
+          "id": "cue-00-start-cull2-source",
+          "drawCalls": 6,
+          "iaVertices": 31140,
+          "vsInvocations": 11874,
+          "psInvocations": 6493948
+        },
+        "low": {
+          "id": "cue-00-start-cull2-low",
+          "drawCalls": 1,
+          "iaVertices": 3492,
+          "vsInvocations": 1078,
+          "psInvocations": 6485888
+        }
+      },
+      "countPass": true,
+      "sourcePixels": 5566,
+      "lowPixels": 5621,
+      "silhouetteIoU": 0.9842142603760199,
+      "commonRGBMeanByteError": 4.5393764642277885,
+      "commonRGBP95ByteError": 15.0
+    }
+  ]
+}

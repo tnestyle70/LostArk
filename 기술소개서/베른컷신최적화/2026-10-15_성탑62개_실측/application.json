@@ -1,0 +1,41 @@
+{
+  "state": "APPLIED_VERIFIED",
+  "evidence": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernCapture20261015\\validated-limits-review.json",
+  "evidenceSha256": "78a53cfe9a01d66012ebb27bef008e0aa2eb2ee575177351b7b7f417ec11cff1",
+  "files": [
+    {
+      "path": "Map/Derived/Bern/Pillar06/manifest.json",
+      "beforeSha256": "e900d4a12a345f2ba59940a05a64be1d63e9fd7c06759d35a3b6e67bb803de41",
+      "afterSha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf",
+      "beforeLimits": {
+        "maximumProjectedDiameterPixels": 202,
+        "minimumSurfaceDistanceMetres": 121.6
+      },
+      "afterLimits": {
+        "maximumProjectedDiameterPixels": 1200.0,
+        "minimumSurfaceDistanceMetres": 70.0
+      }
+    },
+    {
+      "path": "Map/Derived/Bern/Pillar07/manifest.json",
+      "beforeSha256": "91c55509902b51d046890c2d04b4fb5e40edcbefb3ddb5349c4387f12c1824c1",
+      "afterSha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0",
+      "beforeLimits": {
+        "maximumProjectedDiameterPixels": 553,
+        "minimumSurfaceDistanceMetres": 82.6
+      },
+      "afterLimits": {
+        "maximumProjectedDiameterPixels": 1200.0,
+        "minimumSurfaceDistanceMetres": 70.0
+      }
+    },
+    {
+      "path": "Map/Derived/Bern/ReplacementIndex.json",
+      "beforeSha256": "98b3f52e95e003c43ee5265e158b7f5143dc8a8168aee35abd9fe2d9e8ceca5f",
+      "afterSha256": "da690814b7987956266bc734ecf59d4959408e59e87a9f40a58c6ab32da0442b",
+      "beforeLimits": null,
+      "afterLimits": null
+    }
+  ],
+  "completedUtc": "2026-10-15T02:52:07.220137+00:00"
+}

@@ -1,0 +1,32 @@
+{
+  "caseCount": 98,
+  "regularSettingsCameraCases": 96,
+  "allGeometryQueriesValid": true,
+  "allIndirectArgumentsResolved": true,
+  "allRequestedSettingsMatch": true,
+  "allRawImageSizesValid": true,
+  "atlasEnabled": false,
+  "driftStart": {
+    "geometryFrame": 24,
+    "vsInvocations": 7793748,
+    "engineIndices": 17573211,
+    "mapIndices": 16464603,
+    "mapDraws": 6441,
+    "renderFps": 13.1625687477,
+    "renderMilliseconds": 75.9730125
+  },
+  "driftEnd": {
+    "geometryFrame": 2740,
+    "vsInvocations": 7793748,
+    "engineIndices": 17573211,
+    "mapIndices": 16464603,
+    "mapDraws": 6441,
+    "renderFps": 17.4705408465,
+    "renderMilliseconds": 57.2392125
+  },
+  "driftGeometryExactMatch": true,
+  "driftImageExactMatch": true,
+  "driftStartMatchesOriginalBaselineImage": true,
+  "driftFpsRatioEndOverStart": 1.3272896181114167,
+  "fpsCaveat": "Short 16-frame fixed-camera map-only offscreen throughput, not Client FPS. Timing noise and clock/warmup/order effects must be considered; do not claim general settings speedups from these values alone."
+}

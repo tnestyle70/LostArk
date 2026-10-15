@@ -1,0 +1,168 @@
+﻿{
+    "capturedUtc":  "2026-10-15T02:49:29.4369908Z",
+    "scope":  "Read-only current source fingerprint and exact installed output bytes; no build, app execution, publication or product edits.",
+    "fingerprintImplementation":  "Tools/Build/BuildDomainPipeline.psm1/Get-BuildProductSourceFingerprint",
+    "configurations":  [
+                           {
+                               "configuration":  "Release",
+                               "comparisonRun":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\bern-geometry-final-20261015-release-003",
+                               "expectedSourceInputSha256":  "055f532de64a1f16e0bd50901bce35cc9e2aa1e268e7201aa449d5d5cc0944c5",
+                               "currentSourceInputSha256":  "055f532de64a1f16e0bd50901bce35cc9e2aa1e268e7201aa449d5d5cc0944c5",
+                               "expectedDefinitionSha256":  "e8e0b5fad483171af69eb6c0af5c0f06ccc34e0675d0e9e46dbf084e9d58a4fe",
+                               "currentDefinitionSha256":  "e8e0b5fad483171af69eb6c0af5c0f06ccc34e0675d0e9e46dbf084e9d58a4fe",
+                               "sourceMatches":  true,
+                               "sourceInputCount":  2371,
+                               "sourceDifferences":  [
+
+                                                     ],
+                               "binaryFileCount":  270,
+                               "binaryMismatches":  [
+
+                                                    ],
+                               "principalOutputs":  [
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Client.exe",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "fdb2a15601e27baeafaa1e357f022783bf8b3cdc0377bc57ac2218c9490023d5",
+                                                            "currentSha256":  "fdb2a15601e27baeafaa1e357f022783bf8b3cdc0377bc57ac2218c9490023d5",
+                                                            "expectedBytes":  19539968,
+                                                            "currentBytes":  19539968,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Release\\Engine.dll",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "d3bc8e8753caadde2dac891f6112ea5c4cbbf0f7f2a6723762d4eef29c5da294",
+                                                            "currentSha256":  "d3bc8e8753caadde2dac891f6112ea5c4cbbf0f7f2a6723762d4eef29c5da294",
+                                                            "expectedBytes":  3348480,
+                                                            "currentBytes":  3348480,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Release\\Server.exe",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "ad3cde7fa81f48f3ff31ae669eecc7a0435c4343f37a062de7fdb861343276a8",
+                                                            "currentSha256":  "ad3cde7fa81f48f3ff31ae669eecc7a0435c4343f37a062de7fdb861343276a8",
+                                                            "expectedBytes":  5926912,
+                                                            "currentBytes":  5926912,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Release\\Engine.dll",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "d3bc8e8753caadde2dac891f6112ea5c4cbbf0f7f2a6723762d4eef29c5da294",
+                                                            "currentSha256":  "d3bc8e8753caadde2dac891f6112ea5c4cbbf0f7f2a6723762d4eef29c5da294",
+                                                            "expectedBytes":  3348480,
+                                                            "currentBytes":  3348480,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        }
+                                                    ]
+                           },
+                           {
+                               "configuration":  "Debug",
+                               "comparisonRun":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\bern-geometry-final-20261015-debug-002",
+                               "expectedSourceInputSha256":  "cb0dc098b28403af9b2a09864c7a640852834d672cc4cfd53971867ccb4daf68",
+                               "currentSourceInputSha256":  "cb0dc098b28403af9b2a09864c7a640852834d672cc4cfd53971867ccb4daf68",
+                               "expectedDefinitionSha256":  "3dd4058f169f4d153c220dec53ef1c3e1ec2412b0b751bd9ed69443f6ecee7fa",
+                               "currentDefinitionSha256":  "3dd4058f169f4d153c220dec53ef1c3e1ec2412b0b751bd9ed69443f6ecee7fa",
+                               "sourceMatches":  true,
+                               "sourceInputCount":  2371,
+                               "sourceDifferences":  [
+
+                                                     ],
+                               "binaryFileCount":  270,
+                               "binaryMismatches":  [
+
+                                                    ],
+                               "principalOutputs":  [
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Client.exe",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "bc234709f4b9c77b55c73b2158074c8bc808728faa4d5ac09c4d744cdbb90c97",
+                                                            "currentSha256":  "bc234709f4b9c77b55c73b2158074c8bc808728faa4d5ac09c4d744cdbb90c97",
+                                                            "expectedBytes":  85843456,
+                                                            "currentBytes":  85843456,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Debug\\Engine.dll",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "47ea652627eed94576df25b58b08ee85cd42c4c0f22300cdae450a0549b426b7",
+                                                            "currentSha256":  "47ea652627eed94576df25b58b08ee85cd42c4c0f22300cdae450a0549b426b7",
+                                                            "expectedBytes":  9205760,
+                                                            "currentBytes":  9205760,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug\\Server.exe",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "66b27dd2e458d25bbe93379c90684bc63fcd17a9371824189c115635dae57789",
+                                                            "currentSha256":  "66b27dd2e458d25bbe93379c90684bc63fcd17a9371824189c115635dae57789",
+                                                            "expectedBytes":  23976448,
+                                                            "currentBytes":  23976448,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        },
+                                                        {
+                                                            "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug\\Engine.dll",
+                                                            "exists":  true,
+                                                            "expectedSha256":  "47ea652627eed94576df25b58b08ee85cd42c4c0f22300cdae450a0549b426b7",
+                                                            "currentSha256":  "47ea652627eed94576df25b58b08ee85cd42c4c0f22300cdae450a0549b426b7",
+                                                            "expectedBytes":  9205760,
+                                                            "currentBytes":  9205760,
+                                                            "stableDuringRead":  true,
+                                                            "matches":  true
+                                                        }
+                                                    ]
+                           }
+                       ],
+    "projectEntries":  [
+                           {
+                               "project":  "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\Engine.vcxproj",
+                               "entryCount":  224,
+                               "missing":  [
+
+                                           ],
+                               "unresolved":  [
+
+                                              ]
+                           },
+                           {
+                               "project":  "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Default\\Shared.vcxproj",
+                               "entryCount":  29,
+                               "missing":  [
+
+                                           ],
+                               "unresolved":  [
+
+                                              ]
+                           },
+                           {
+                               "project":  "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Default\\Server.vcxproj",
+                               "entryCount":  156,
+                               "missing":  [
+
+                                           ],
+                               "unresolved":  [
+
+                                              ]
+                           },
+                           {
+                               "project":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\Client.vcxproj",
+                               "entryCount":  961,
+                               "missing":  [
+
+                                           ],
+                               "unresolved":  [
+
+                                              ]
+                           }
+                       ],
+    "currentNoDrift":  true
+}

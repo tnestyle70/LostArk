@@ -1,0 +1,250 @@
+{
+  "topic": "LostArk Profiler 기술소개서 조사",
+  "date": "2026-10-10",
+  "evidenceScope": "실제 소스·대응 PLAN/RESULT·기존 저장 JSON 읽기. Client/Server/UI 실행 및 새 벤치마크 없음.",
+  "keyMessage": "Profiler(관찰), optimization(일 감소), benchmark(조건 통제)를 나누어 설명한다. 손으로 전부 다시 쓰기보다 작은 profiler를 독립 구현하고 실제 frame 귀속·누락·복원 불변식을 설명하는 것이 이해 증거다.",
+  "slides": [
+    {
+      "title": "Profiler는 프레임의 어디를 보는가",
+      "bullets": [
+        "Client loop → Engine CProfiler → Client ProfilerTool → CaptureIO → JSON 분석",
+        "CPU QPC 구간·GPU timestamp·작업량 counter를 별도 측정",
+        "F7은 창 표시, Capture는 수집 상태; Debug/Release 모두 지원"
+      ],
+      "notes": "Client.cpp의 Begin_Frame→Update→Render→End_Frame 뒤 FPS 제한. End_Frame은 CPU 끝 tick 뒤에 history·GPU 회수를 수행하므로 bookkeeping과 프레임 외부 대기는 다음 gap에 나타날 수 있다. 이 구현은 계측형 profiler이며 모든 함수 자동 sampling이나 deadlock detector가 아니다.",
+      "sources": [
+        "Client/Default/Client.cpp:374",
+        "Engine/Private/Profiler.cpp:103",
+        "Client/Private/MainApp.cpp:11328",
+        "Client/Private/ProfilerTool.cpp:915"
+      ]
+    },
+    {
+      "title": "CPU 시간: 계층과 스레드, 수명을 함께 저장",
+      "bullets": [
+        "RAII scope → TLS stack → mutex 보호 완료 큐 → 종료 프레임 history",
+        "NameId·ThreadId·Depth·QPC begin/end + CaptureEpoch",
+        "Inclusive에는 자식 포함; Self는 자식을 한 번 차감"
+      ],
+      "notes": "QPC elapsed는 연산뿐 아니라 lock/I/O/driver 대기도 포함한다. worker의 긴 scope는 완료한 프레임에 귀속되므로 main CPU 시간에 더할 수 없다. Reset 이전 시작 표본은 capture epoch 검사로 버리며 mutex 획득 후에도 재확인한다. TLS fixed array를 쓴 이유는 코드 주석에 명시: 모든 driver/FMOD/PhysX thread에 동적 TLS 초기화와 Debug STL proxy allocation을 유발하지 않기 위함. SelfComplete=false는 dropped 또는 frame 경계를 넘은 scope가 있을 때 전체 선택 창에 적용한다.",
+      "sources": [
+        "Engine/Private/Profiler.cpp:46",
+        "Engine/Private/Profiler.cpp:294",
+        "Engine/Private/Profiler.cpp:316",
+        "Engine/Private/Profiler.cpp:781",
+        "Engine/Public/Profiler.h:630"
+      ]
+    },
+    {
+      "title": "GPU 시간: 결과를 기다리면 측정이 게임을 바꾼다",
+      "bullets": [
+        "8 query slots, 최소 4 loop frame 뒤 DONOTFLUSH 회수",
+        "Timestamp + Disjoint + Pipeline Statistics",
+        "원래 제출 FrameNumber에 연결; Pending/Disjoint/Dropped/Error는 0ms 아님"
+      ],
+      "notes": "query 객체는 초기화 시 미리 만든다. slot이 pending이면 덮어쓰지 않고 새 측정을 Dropped 처리한다. capture OFF에도 poll frame이 증가하고 End_Frame은 잔여 query를 회수한다. GPU elapsed=(end-begin)*1000/Frequency. immediate context main만 query 조작. per-frame 최대128 GPU scope와 최대8 pipeline scope. GPU interval에는 CPU 제출 공백이 섞일 수 있고 GPU busy%나 ALU 수가 아니다. PSInvocations 역시 픽셀 셰이더 호출량이지 명령어 수나 최종 픽셀 수가 아니다.",
+      "sources": [
+        "Engine/Private/Profiler.cpp:1061",
+        "Engine/Private/Profiler.cpp:1119",
+        "Engine/Private/Profiler.cpp:1176",
+        "Engine/Private/Renderer.cpp:890"
+      ]
+    },
+    {
+      "title": "프레임 수치의 분모를 먼저 맞춘다",
+      "bullets": [
+        "Interval[N] = PreviousCpuFrameMs[N] + Gap[N]",
+        "CPU/GPU·parent/child·worker 시간은 겹치므로 합산 금지",
+        "GPU pass 집계는 유효·scope 완전 frame만 사용"
+      ],
+      "notes": "현재 CPU frame은 N의 실행이고 interval은 Begin(N-1)→Begin(N)이다. 첫 interval0은 이전 시작점 없음이므로 제외. 완전한 GPU frame에서 미실행 pass는0으로 집계할 수 있으나 미측정 Pending frame은 제외한다. FPS=1000/평균 interval을 사용하고 순간FPS 산술평균과 구분. nearest-rank p95는 raw JSON/Engine/Python 경로, benchmark 요약은 선형보간 p95여서 소표본 수치는 다를 수 있다.",
+      "sources": [
+        "Engine/Public/Profiler.h:301",
+        "Engine/Private/Profiler.cpp:884",
+        "Client/Private/ProfilerCaptureIO.cpp:206",
+        "Client/Private/RenderingBenchmark.cpp:487"
+      ]
+    },
+    {
+      "title": "관찰 비용도 예산을 가진다",
+      "bullets": [
+        "CPU raw 8192/frame·TLS64 depth·history1200 frame",
+        "long operation≥8ms 256개; detail opt-in·mesh detail512",
+        "고정 Work enum·counter와 1Hz memory 관측"
+      ],
+      "notes": "main root/pass 샘플을 살리기 위해8192예산 중 pass1024/root128 reserve를 둔다. fixed work는 메인 전용이며 raw detail 없이 inclusive 경과와 calls 누적, allocation/name/lock이 없는 경로다. 상세 scope 비활성과 sample drop은 다르다. memory는 process private commit/working set, system commit/available, DXGI local/nonlocal을 구분하고 validity/age를 저장한다. 같은 메모리 poll을 공유하는 frame을 독립 측정으로 세지 않는다. bounded history가 모든 메모리가 엄격히 고정이라는 뜻은 아님: global name registry는 reset 뒤도 ID를 유지하며 동적 이름 남발에 주의.",
+      "sources": [
+        "Engine/Private/Profiler.cpp:15",
+        "Engine/Private/Profiler.cpp:440",
+        "Engine/Private/Profiler.cpp:214",
+        "Engine/Public/Profiler.h:407",
+        "Engine/Private/Profiler.cpp:1016"
+      ]
+    },
+    {
+      "title": "캡처는 재현 가능한 증거 묶음",
+      "bullets": [
+        "main에서 immutable Snapshot 복사 → 단일 writer thread",
+        "v3: metadata + captureWindow + summary + names + frames",
+        "temporary file → rename; 취소와 bounded join"
+      ],
+      "notes": "Save_Json은 frame/raw scope/GPU status/work/counter/memory/draw등을 저장한다. snapshot 복사는 main 비용이고 JSON serialization과 큰 vector 해제는 worker. snapshot 뒤 완료한 GPU query는 이미 저장된 snapshot을 바꾸지 못한다. captureWindow saved/retained/excluded/evicted를 먼저 확인. metadata의 camera/level/options는 저장 시점 관측이며 전체 과거 frame 조건 보증이 아니다. exporter는 동시1개, 종료 cooperative cancel+CancelSynchronousIo+5초 bounded wait, 초과시 process fail-fast한다.",
+      "sources": [
+        "Engine/Private/Profiler.cpp:636",
+        "Client/Private/ProfilerTool.cpp:724",
+        "Client/Private/ProfilerCaptureIO.cpp:449",
+        "Client/Private/ProfilerCaptureIO.cpp:798",
+        "Client/Private/ProfilerCaptureIO.cpp:821"
+      ]
+    },
+    {
+      "title": "최적화의 효과: A1 → B1 → B2 → A2",
+      "bullets": [
+        "12 runtime 항목에서 한 변수 OFF/ON",
+        "warmup→sample→GPU tail→raw 저장→다음 단계",
+        "camera/build/adapter/viewport/타 옵션·실효값 검사"
+      ],
+      "notes": "최소2 warmup(기본60),10~900sample, GPU pending tail최대64frame. 단계 raw최대64MiB, raw4개 저장 성공 전 유효 ABBA 이득으로 제시하지 않는다. condition 변경/외부 ownership 변화/취소에서 소유한 설정만 복원한다. cache setter는 실제 delta에만 호출해 ON cache를 매frame 무효화하지 않는다. NPC/효과 시계의 결정적 replay나 OS cold cache까지 보장하지 않는다. worker대상0·cachehit·실제 완료량을 보고 성능 주장. runtime instancing OFF는 count1 draw 비교이며 map생성/partition/asset정렬을 옛 구조로 되돌리지 않는다.",
+      "sources": [
+        "Client/Private/RenderingBenchmark.cpp:703",
+        "Client/Private/RenderingBenchmark.cpp:973",
+        "Client/Private/RenderingBenchmark.cpp:1087",
+        "Client/Private/RenderingBenchmark.cpp:1137",
+        "Client/Private/RenderingBenchmark.cpp:1245",
+        ".md/GB/10-05/2026-10-05_RENDERING_OPTIMIZATION_AB_RESULT.md"
+      ]
+    },
+    {
+      "title": "실제 저장본으로 검증할 수 있는 것",
+      "bullets": [
+        "2026-10-07 raw: 390 CPU frames / 386 GPU valid / 4 pending",
+        "Debug·AMD840M·1920×1080·D3D debug layer ON",
+        "측정 예시는 현재 Release 개선율과 분리"
+      ],
+      "notes": "직접 JSON parse로 확인. CPU mean392.941706ms,p95 740.9111; interval389개 mean395.040692ms,p95 743.5795; GPU386개 mean393.845483ms,p95 743.12124. saved/retained390,excluded/evicted0. 혼합 저장창과 저장시점 metadata이므로 특정 장면 성능/현재RTX4050/최적화 전후 개선 주장 금지. 총13개 기존 JSON 중10-07의8개는 같은PID3504 누적캡처이며 독립8회실험 아님. BenchmarkCaptures폴더 현재 없음. 설계 구현·컴파일 fixture는 실제 사용자GPU A/B run과 구분.",
+      "sources": [
+        "Client/Bin/ProfilerCaptures/profiler_20261007_112004_306_frame390_3504_7.json",
+        ".md/GB/10-09/2026-10-09_PROFILER_CALL_FLOW_STUDY.md"
+      ]
+    }
+  ],
+  "dataStructures": [
+    {
+      "structure": "TLS fixed array64",
+      "complexity": "push/pop O(1)",
+      "tradeoff": "bounded nesting; no automatic dynamic TLS allocation for every process thread",
+      "evidence": "Engine/Private/Profiler.cpp:46"
+    },
+    {
+      "structure": "interned name vector + unordered_map + thread cache512",
+      "complexity": "expected O(1) lookup, string hashing O(name length); miss mutex/allocation",
+      "tradeoff": "compact samples, stable name IDs; dynamic global names still grow",
+      "evidence": "Engine/Private/Profiler.cpp:1016"
+    },
+    {
+      "structure": "completed scopes vector + history deque",
+      "complexity": "amortized O(1) append/move/evict; snapshot O(selected data)",
+      "tradeoff": "history1200 bounded, evicted CPU buffer recycled; copying holds mutex",
+      "evidence": "Engine/Private/Profiler.cpp:636,1293"
+    },
+    {
+      "structure": "CPU self reduction stack + dense ByName",
+      "complexity": "scope push/pop total O(S), thread lookup worst O(S*T), output sort O(A log A)",
+      "tradeoff": "uses completion order, avoids sorting every raw frame; incomplete self conservatively unavailable",
+      "evidence": "Engine/Private/Profiler.cpp:781"
+    },
+    {
+      "structure": "GPU query ring8",
+      "complexity": "constant8 slot scan; nested self worst O(G²),G≤128; original history search O(H),H≤1200",
+      "tradeoff": "no explicit GPU wait, bounded work but delayed/dropped data",
+      "evidence": "Engine/Private/Profiler.cpp:1176"
+    },
+    {
+      "structure": "GPU p95 map+vectors",
+      "complexity": "O(S log P + P*F log F) rough bound",
+      "tradeoff": "same-name per-frame sum before percentile, consistent valid-frame denominator",
+      "evidence": "Engine/Private/Profiler.cpp:884"
+    }
+  ],
+  "breakpoints": [
+    {
+      "where": "Client/Default/Client.cpp:377",
+      "inspect": [
+        "Begin/End order",
+        "CpuFrameMs vs FrameIntervalMs",
+        "Limit_FrameRate after End"
+      ],
+      "question": "FPS 제한을 추가하면 CPU interval과 gap중 어디가 늘어날까?"
+    },
+    {
+      "where": "Engine/Private/Profiler.cpp:316",
+      "inspect": [
+        "token",
+        "t_OpenScopes.Count",
+        "open.Depth",
+        "CaptureEpoch",
+        "sample.ThreadId",
+        "pending size"
+      ],
+      "question": "worker scope가 frame을 넘거나 reset 사이를 넘으면 어디에 귀속/제외될까?"
+    },
+    {
+      "where": "Engine/Private/Profiler.cpp:1125",
+      "inspect": [
+        "frameNumber%8",
+        "slot.Pending",
+        "SubmittedPollFrame",
+        "GpuStatus"
+      ],
+      "question": "slot재사용 때 이전GPU가 미완료면 왜 덮어쓰면 안 될까?"
+    },
+    {
+      "where": "Engine/Private/Profiler.cpp:1193",
+      "inspect": [
+        "GetData HRESULT S_OK/S_FALSE",
+        "disjoint.Disjoint/Frequency",
+        "slot.FrameNumber",
+        "GpuLatencyFrames"
+      ],
+      "question": "Pending을0ms로 평균내면 어떤 bias가 생길까?"
+    },
+    {
+      "where": "Client/Private/ProfilerTool.cpp:729",
+      "inspect": [
+        "snapshot.FrameNumbers",
+        "CaptureWindow",
+        "pending count",
+        "Context metadata"
+      ],
+      "question": "복사 이후 GPU완료는 저장본에 들어갈까?"
+    },
+    {
+      "where": "Client/Private/RenderingBenchmark.cpp:1245",
+      "inspect": [
+        "m_iStartFrame",
+        "m_iTargetFrames",
+        "expectedA/B",
+        "commonConditions",
+        "rawEvidenceReady"
+      ],
+      "question": "왜 첫interval은 제외하고 raw저장 이후 다음warmup을 시작할까?"
+    }
+  ],
+  "learningExercises": [
+    "소스 닫고 ScopeSample/Frame/Status 세 계약부터 설계; QPC RAII와 nested scope를 작은 console프로그램에 구현. 성공조건 조기return에도 닫힘, parent12 child8+3일때 self1.",
+    "두 worker+main의 TLSstack/완료큐 구현. reset epoch 뒤 도착한 이전scope가 새 history에 섞이지 않게 테스트. 이를 source와 비교해 설계 차이를 설명.",
+    "실제D3D부터 시작하지 말고 query backend mock으로 ring8/latency4/Pending/Disjoint/Dropped/frame귀속 불변식 구현. 이후 작은DX11 sample에 timestamp연결.",
+    "미니ABBA측정기를 1개boolean 변수와 exact frame window로 구현. 조건변경·취소·raw저장실패에서 비교무효/소유값복원 검증.",
+    "자기 이해 판정: 설계그림 작성→결과 예측→breakpoint관찰→새요구 변경→실패원인 설명. 전체제품 암기복사는 요구하지 않음."
+  ],
+  "inferenceLabels": {
+    "documented": "bounded collection, async no-wait GPU, CPU/GPU denominator semantics, save immutable snapshot, ownership restoration are explicitly described in code comments and PLAN/RESULT.",
+    "codeInterpretation": "복잡도 표와 다른 대안 대비 효용의 일반화는 현재 자료구조/분기에서 도출한 해석; 당시 개발자의 모든 의도를 증명하는 것은 아님."
+  },
+  "documentationDrift": [
+    "Tools/Profiler/README.md '현재 F7 Debug 전용'은 최신 MainApp/AGENTS/10-07 결과와 충돌. 현재 Debug/Release F7로 설명.",
+    "10-05 PLAN Release F7 미노출은 당시 목표;10-07 변경 이후 현재 계약 아님."
+  ],
+  "reusableExistingStudy": ".md/GB/10-09/2026-10-09_PROFILER_CALL_FLOW_STUDY.md",
+  "reusableCommentedSource": "Study/CodeWalkthrough/Reference/Engine/Public/Profiler.h; Study/CodeWalkthrough/Reference/Engine/Private/Profiler.cpp"
+}

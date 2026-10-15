@@ -1,0 +1,171 @@
+{
+  "applied": true,
+  "proof": "out\\BernGeometryProxy20261014\\product-native-candidate\\package-proof\\validation.json",
+  "proofSha256": "8f421e9438dc0a640f79c706a27ab06ca28b2b2d68ad39738d655a4d87a88174",
+  "indexSha256": "98b3f52e95e003c43ee5265e158b7f5143dc8a8168aee35abd9fe2d9e8ceca5f",
+  "files": [
+    {
+      "relativePath": "Pillar06/atlas-0.bin",
+      "sha256": "9141f2c29fcde261c4657a6b39d074b96772ed8349eac7ea468d55011d73d1a2",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-1.bin",
+      "sha256": "86b458931f9235705e46e1fa8545adceb0f30cf7ff16f6935c5c48efb41f4ec5",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-2.bin",
+      "sha256": "2c4b3876bc66dfeb0555ba420ed3f81aed1b29f13e8521f82d1abeda796f5e3e",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-3.bin",
+      "sha256": "321b0ca33b94f59caca45ceae7a6496cbfdba346900efde2aa63a9490b9662d5",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-4.bin",
+      "sha256": "e373d1a40c60500d8836e555e30bbbc86b28431009ce9ac8bca94f3686ab8fdd",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-5.bin",
+      "sha256": "7cdd3638392a17cc22790039e94f46635fb04d11a2c03b0e4be0d8ed131cba77",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-6.bin",
+      "sha256": "de7c2a8cf0252610cec7f7c96462baa8af2ac602e598ef75599c6c9e1dec98b5",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-7.bin",
+      "sha256": "73455189375e3e3e16710f1d9d36f226d3831c6552f0c1951f0a046f4f44710f",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/atlas-8.bin",
+      "sha256": "a74b4867e174e4dd676ce00078ed2d2bb7fee3d399643ce31f6dac25d06c561f",
+      "bytes": 1048576,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/evidence.json",
+      "sha256": "37d6fc78f47c89b4a6bfdb739fcea69491abb8f7755fa10e4fe27504794afe50",
+      "bytes": 12365,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/low-vtxmesh.bin",
+      "sha256": "294da23de36ddcc8f7aba485cfc99f210cb36bc0ccec8ecd9ae29d18f154ed10",
+      "bytes": 82020,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/manifest.json",
+      "sha256": "e900d4a12a345f2ba59940a05a64be1d63e9fd7c06759d35a3b6e67bb803de41",
+      "bytes": 12133,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar06/render-indices.bin",
+      "sha256": "66a4445c12d187534101138335cec2675b622430c7f3296ac0d866281c6cb7b4",
+      "bytes": 15372,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-0.bin",
+      "sha256": "00b25c6cbf911643dd9d3345e8ca993dbcdfb334674cc5f484d9ba2b8b6089e8",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-1.bin",
+      "sha256": "0bce9543de24c0a2b2fede161e77aec3227ab2f6d90316a9de2f34898c07b0a8",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-2.bin",
+      "sha256": "4141ad3434ffd47168e5a98df54abc72dd0713b880e4069547fd7bd1a6ccccfe",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-3.bin",
+      "sha256": "bf15ba1cadf4a12d5a6b4da55baaad671c495f7007a1c602b2d92eb0c41ddec8",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-4.bin",
+      "sha256": "b48976c08c87a2adf6a4b5271def9dff89b3109f4860d6abd4c18d2a01a8a57c",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-5.bin",
+      "sha256": "4a273425ccff03102d9e6ec4d7240327521d4834bc7a886005e95c25ea3a2580",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-6.bin",
+      "sha256": "77db0d7e99f4e563c570499489211822cb0b427c48720bb793d826a25608889c",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-7.bin",
+      "sha256": "600c5f01ca666fccca023dc7969a0ea4a33967dcb8466a8cb1c00ad37887128f",
+      "bytes": 524288,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/atlas-8.bin",
+      "sha256": "5267edb08de4166e1446542fab3d9cbac3cb0eef0b2fd9fc2b0137be5a5a962d",
+      "bytes": 1048576,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/evidence.json",
+      "sha256": "2a0afd953fd7c431af8a34a8b1f1793a509f6e8ac4ee70eacf8a59a46c3495bd",
+      "bytes": 8493,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/low-vtxmesh.bin",
+      "sha256": "cd278246c02c76b9d31aaf00af54543afe676055524c309b861d7eb6cd16a8ba",
+      "bytes": 71532,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/manifest.json",
+      "sha256": "91c55509902b51d046890c2d04b4fb5e40edcbefb3ddb5349c4387f12c1824c1",
+      "bytes": 11218,
+      "existed": false
+    },
+    {
+      "relativePath": "Pillar07/render-indices.bin",
+      "sha256": "b69c7c6de1492bc1a0b7798702064d5d643919eb8e04f4cb8499f3a1dc231ae9",
+      "bytes": 13836,
+      "existed": false
+    },
+    {
+      "relativePath": "ReplacementIndex.json",
+      "sha256": "98b3f52e95e003c43ee5265e158b7f5143dc8a8168aee35abd9fe2d9e8ceca5f",
+      "bytes": 4741,
+      "existed": false
+    }
+  ],
+  "timeUtc": "2026-10-14T11:43:36.703686+00:00"
+}
