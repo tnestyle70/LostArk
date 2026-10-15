@@ -1,13 +1,10 @@
 #include "RepairWindowView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "ItemCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
@@ -286,7 +283,7 @@ void Client::CRepairWindowView::Update_Buttons()
 		if (Router.Is_Clicked(
 			fCloseX, fCloseY, fCloseWidth, fCloseHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			Close();
 		}
 	}

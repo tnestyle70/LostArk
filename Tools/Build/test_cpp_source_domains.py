@@ -100,5 +100,86 @@ class CppSourceDomainTests(unittest.TestCase):
             sys.modules.pop('source_domain_effect_guard', None)
 
 
+class CppFunctionBoundsTests(unittest.TestCase):
+    def test_template_return_type_comma_precedes_the_parameter_list(self):
+        signature = 'std::unordered_map<std::string, f32_t>\n\tCollectModelClipSourceDurationSeconds('
+        body = '{ return durations; }'
+        source = signature + 'const Model& model);\n' + signature + 'const Model& model) ' + body
+        self.assertEqual(cpp_function_body(source, signature), body)
+
+    def test_empty_braced_default_is_not_a_definition_body(self):
+        signature = 'ResolveEffectV2Binding('
+        declaration = 'const Binding* ' + signature + 'const Snapshot&, std::string_view id = {});'
+        body = '{ return BuildEffectV2BindingStableId(snapshot, id); }'
+        definition = 'const Binding* ' + signature + 'const Snapshot& snapshot, std::string_view id = {}) ' + body
+        source = declaration + '\nvoid Other() {}\n' + definition
+        self.assertEqual(cpp_function_body(source, signature), body)
+        self.assertEqual(cpp_function_definition(source, signature), definition[definition.index(signature):])
+
+    def test_nested_braced_arguments_and_lambda_defaults_stay_in_signature(self):
+        signature = 'void Wanted('
+        parameters = '(Rows rows = {{1, 2}, {3, 4}}, Factory factory = []() { return Item{4}; })'
+        body = '{ Consume(rows, factory()); }'
+        source = 'void Wanted' + parameters + ';\nvoid Wanted' + parameters + ' ' + body
+        self.assertEqual(cpp_function_body(source, signature), body)
+        self.assertEqual(cpp_function_definition(source, signature), 'void Wanted' + parameters + ' ' + body)
+
+    def test_signature_text_in_comments_or_literals_is_not_a_definition(self):
+        signature = 'Wanted('
+        body = '{ return value; }'
+        source = '''// Wanted() { wrong(); }
+/* Wanted() { wrong(); } */
+const char* quoted = "Wanted() { wrong(); }";
+const char* raw = u8R"tag(Wanted() { wrong(); })tag";
+int Wanted(int value = 3) ''' + body
+        self.assertEqual(cpp_function_body(source, signature), body)
+
+    def test_signature_literals_comments_and_noexcept_do_not_supply_body_brace(self):
+        signature = 'auto Wanted('
+        parameters = '''const char* text = "} ; {", char brace = '{',
+    const char* raw = R"limit( ) ; {} Wanted( )limit",
+    int count = 4 /* ) { ; */) const noexcept(noexcept(Probe{})) -> Result'''
+        body = '{ return Result{text, brace, count}; }'
+        source = signature + parameters + ' // { ; }\n' + body
+        self.assertEqual(cpp_function_body(source, signature), body)
+
+    def test_raw_literal_prefixes_keep_internal_quotes_and_signature_text_masked(self):
+        body = '{ return actual; }'
+        for prefix in ('R', 'u8R', 'uR', 'UR', 'LR'):
+            with self.subTest(prefix=prefix):
+                source = ('auto raw = ' + prefix + '"tag(a " } " Wanted() {)tag";\n'
+                          'int Wanted() ' + body)
+                self.assertEqual(cpp_function_body(source, 'Wanted('), body)
+
+    def test_calls_and_declarations_are_skipped_before_definition(self):
+        signature = 'Wanted('
+        body = '{ return ready; }'
+        source = '''int Wanted(Rows rows = {});
+void Caller() {
+    Wanted({});
+    if (Wanted({}) && ready) { wrong(); }
+    Consume(Wanted({}), [] { wrong(); });
+    const auto result = Wanted({}) ? Item{1} : Item{2};
+}
+int Wanted(Rows ready) ''' + body
+        self.assertEqual(cpp_function_body(source, signature), body)
+
+    def test_body_offsets_preserve_escaped_literals_comments_and_digit_separators(self):
+        signature = 'void Wanted()'
+        body = r'''{ auto quote = "escaped \" }"; char c = '\'';
+    auto count = 1'000 + 0xFF'00;
+    /* } */ // }
+    auto raw = R"tag({ })tag"; }'''
+        source = signature + ' ' + body + '\nvoid Later() {}'
+        self.assertEqual(cpp_function_body(source, signature), body)
+        self.assertEqual(cpp_function_definition(source, signature), signature + ' ' + body)
+
+    def test_missing_definition_and_unterminated_body_fail(self):
+        for source in ('void Wanted(Rows rows = {});\nvoid Other() {}',
+                       'void Caller() { Wanted({}); }', 'void Wanted() {'):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                cpp_function_body(source, 'Wanted(')
+
+
 if __name__ == '__main__':
     unittest.main()

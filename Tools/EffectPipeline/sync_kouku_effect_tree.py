@@ -11,12 +11,15 @@ import collections
 import hashlib
 import json
 import re
-import xml.etree.ElementTree as ET
 from pathlib import Path
+import sys
 
 from install_kouku_effect_library import replace_root_value
 
 ROOT = Path(__file__).resolve().parents[2]
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 TREE = ROOT / 'Data/Effects/EffectResourceTree.json'
 CATALOG = ROOT / 'Data/Effects/EffectCatalog.json'
 COMPOSITIONS = (
@@ -116,29 +119,8 @@ def commit_library(writes, inputs):
 
 
 def stage_project_metadata(inputs):
-    staged = []
-    namespace = '{http://schemas.microsoft.com/developer/msbuild/2003}'
-    for suffix in ('', '.filters'):
-        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        before = path.read_bytes()
-        text = before.decode('utf8')
-        existing = {row.attrib['Include'].replace('\\', '/').lower()
-                    for row in ET.fromstring(text).iter(namespace + 'None') if 'Include' in row.attrib}
-        newline = '\r\n' if '\r\n' in text else '\n'
-        rows = []
-        for source in inputs:
-            include = '..\\..\\' + str(source.relative_to(ROOT)).replace('/', '\\')
-            if include.replace('\\', '/').lower() in existing:
-                continue
-            rows.append('    <None Include="' + include + '">' +
-                        ('<Filter>96.DataFiles</Filter>' if suffix else '') + '</None>')
-        if rows:
-            prefix, closing, tail = text.rpartition('</Project>')
-            assert closing and not tail.strip(), 'Invalid project XML ending'
-            text = prefix + '  <ItemGroup>' + newline + newline.join(rows) + newline + '  </ItemGroup>' + newline + closing + tail
-            ET.fromstring(text)
-        staged.append((path, before, text.encode('utf8')))
-    return staged
+    # 외부 소비자는 이 함수의 후보 tuple을 기존 freshness/원자 교체 과정에 합친다.
+    return stage_data_solution(ROOT, inputs)
 
 
 def composition_uses():

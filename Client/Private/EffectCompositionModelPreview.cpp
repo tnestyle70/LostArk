@@ -4,7 +4,7 @@
 #include "Effect_DocumentCodec.h"
 #include "Npc.h"
 #include "KoukuSaydonPresentationPlayer.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "ProjectDataRoot.h"
 
 #include <algorithm>
@@ -272,7 +272,7 @@ bool Has_SourcePropCandidate(const std::string& text, const EFFECT_DOCUMENT_DESC
 bool Load_SavedPropSequences(const KOUKU_SAYDON_COMPOSITION_DOCUMENT& document,
     std::shared_ptr<CWorldSequenceDocument>& sequences, std::string& status)
 {
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level)
     { status = "Enter the KoukuSaydon arena before previewing saved WORLD props."; return false; }
     const auto& area = document.strAreaId;

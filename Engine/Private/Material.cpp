@@ -1,14 +1,8 @@
-#include "Material.h"
+﻿#include "Material.h"
 #include <memory>
-#pragma push_macro("new")
-#undef new
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
-#pragma push_macro("new")
-#undef new
 #include "DirectXTK/DDSTextureLoader.h"
 #include "DirectXTK/WICTextureLoader.h"
-#pragma pop_macro("new")
 
 #include <mutex>
 #include <unordered_map>
@@ -247,10 +241,7 @@ namespace
 		return pDevice->CreateShaderResourceView(texture.Get(), nullptr, &pSRV);
 	}
 
-	/* Base colour and emissive textures are authored in sRGB, while lighting runs
-	   in linear space and the post pass owns the only gamma encode. Decoding them
-	   on load keeps that contract. Normal, specular, ORM and mask textures carry
-	   data instead of colour, so they stay linear. */
+	/* 조명은 선형 공간에서 계산하므로 aiTextureType_DIFFUSE·EMISSIVE만 sRGB로 읽고, normal·specular·ORM·BASE_COLOR mask는 데이터 값으로 읽는다. 감마 인코딩은 후처리가 맡는다. */
 	bool_t IsColorTextureSlot(aiTextureType type)
 	{
 		return aiTextureType_DIFFUSE == type ||
@@ -288,9 +279,7 @@ namespace
         const filesystem::path& path, bool_t srgb,
         ComPtr<ID3D11ShaderResourceView>& view, bool_t forceLinear = false)
     {
-        // Attempts/hits/new SRVs describe this shared-material path, not all
-        // texture allocations or resident memory. Worker events land in the
-        // active observed frame, so a request and its completion may differ.
+        // 이 공유 재질 경로의 요청·cache hit·새 SRV만 계측한다. worker 완료는 요청과 다른 관측 프레임에 기록될 수 있다.
         auto* profiler = CGameInstance::Get().Get_Profiler();
         if (profiler) profiler->Add_Counter(Engine::EProfilerCounter::TextureRequests);
         if (path.empty()) return E_INVALIDARG;
@@ -320,8 +309,7 @@ namespace
             if (found != cache.end()) entry = found->second;
             else
             {
-                // Only idle entries can be inspected or removed under the map
-                // lock. An active loader owns an additional strong reference.
+                // map 잠금 안에서는 유휴 항목만 검사·삭제한다. 로딩 중인 항목은 loader의 추가 공유 참조가 유지한다.
                 if ((++insertions % 256u) == 0u)
                     std::erase_if(cache, [](const auto& pair) {
                         if (pair.second.use_count() != 1) return false;
@@ -513,8 +501,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 			aiTextureType_AMBIENT_OCCLUSION, m_Textures)))
 		return E_FAIL;
 
-	/* The colour mask samples as data, not colour: aiTextureType_BASE_COLOR
-	is outside IsColorTextureSlot, so it loads without the sRGB flag. */
+	/* 색상 mask는 데이터다. IsColorTextureSlot에 없는 BASE_COLOR 슬롯은 sRGB 변환 없이 읽는다. */
 	if (FAILED(AddTexture(m_pDevice, m_SharedTextureViews, material.colorMaskPath,
 		aiTextureType_BASE_COLOR, m_Textures)))
 		return E_FAIL;
@@ -525,11 +512,15 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
 		material.colorMaskPath == material.diffusePath;
 	m_AuthoredColorTint = m_ColorTint;
 	m_Surface = material.surface;
-    if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED)
+    // low proxy 패키지의 원본 파일 freshness는 BG/overlay의 재질 입력을 모두 추적한다.
+    // 경로 수집은 원본 재질 적격 승인이 아니므로 Can_BakeStaticProxy의 엄격 BG 조건은 유지한다.
+    if (m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_BG_OPAQUE_MASKED ||
+        m_Surface.family == MODEL_SURFACE_FAMILY::SOURCE_OVERLAY_OPAQUE)
     {
         for (const auto* path : { &material.diffusePath, &material.normalPath,
             &material.specularPath, &material.emissivePath, &material.surfaceDiffusePath,
             &material.surfaceNormalPath, &material.surfaceSpecularPath, &material.detailNormalPath,
+            &material.overlayDiffusePath, &material.overlayNormalPath,
             &material.surfaceEmissivePath, &material.bakedAveragePath,
             &material.bakedDirectionalPath, &material.staticShadowPath })
         {
@@ -568,8 +559,7 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
         {
             if (FAILED(load((source.layerMask & (1u << i)) != 0u, paths.diffuse[i], source.diffuseSRGB[i], m_SourceLandscapeDiffuse[i])) ||
                 FAILED(load((source.normalMask & (1u << i)) != 0u, paths.normal[i], false, m_SourceLandscapeNormal[i]))) return E_FAIL;
-            // Existing surface diagnostics retain a valid diffuse view; the
-            // painted evaluator reads the complete selected layer set below.
+            // 기존 진단용 diffuse view를 유지하고, painted 계산에는 아래에서 선택한 전체 layer를 전달한다.
             if (!m_SurfaceDiffuse && m_SourceLandscapeDiffuse[i]) m_SurfaceDiffuse = m_SourceLandscapeDiffuse[i];
         }
         for (uint32_t i = 0u; i < SOURCE_LANDSCAPE_WEIGHTMAP_COUNT; ++i)
@@ -773,6 +763,8 @@ HRESULT CMaterial::Initialize(const MODEL_MATERIAL_DATA& material)
             if (average.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D ||
                 directional.ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D) return E_INVALIDARG;
         }
+        // 재질이 지정한 저장 cube와 2D BRDF lookup을 linear SRV로 읽는다. native 경로의 별도 lookup은 R16G16_UNORM인지 검사한다.
+        // 이 초기화는 적분표나 cube mip을 생성하지 않는다. 샘플 좌표·RGBM 복호화는 MapMaterialSurface가 담당한다.
         if (m_Surface.hasEnvironmentCube)
         {
             if (FAILED(LoadSharedTexture(m_pDevice, m_SharedTextureViews, material.environmentCubePath, false, m_EnvironmentCube, true)) ||
@@ -819,7 +811,7 @@ bool_t CMaterial::Has_Texture(aiTextureType eType, uint32_t iTextureIndex) const
 
 namespace
 {
-	/* One key per (slot, index) pair; the index is small in every shipped material. */
+	/* slot과 index 쌍을 하나의 조회 key로 묶는다. */
 	constexpr uint32_t Texture_OverrideKey(
 		const aiTextureType eType, const uint32_t iTextureIndex)
 	{
@@ -856,8 +848,7 @@ bool_t CMaterial::Set_SourceCharacterConstants(
 	{
 		return false;
 	}
-	/* The same bound the loader holds these to. A slider that produced a NaN would otherwise
-	spread through the whole lighting row rather than showing up as one wrong value. */
+	/* loader와 같은 범위로 제한해 편집 중 NaN이 조명 행 전체로 전파되지 않게 한다. */
 	for (const auto* constants : { &parameters.baseConstants, &parameters.lightConstants })
 		for (const auto& value : *constants)
 			for (const f32_t scalar : { value.x, value.y, value.z, value.w })
@@ -917,8 +908,7 @@ HRESULT CMaterial::Bind_Material(shared_ptr<class CShader> pShader, const char_t
 {
 	if (eType >= AI_TEXTURE_TYPE_MAX)
 		return E_FAIL;
-	/* An override may exist for a slot the authored material left empty -- a face that never
-	shipped a decal still has to be able to wear one. */
+	/* 원본에 비어 있던 슬롯에도 override를 허용해 decal이 없던 얼굴에 새 decal을 적용한다. */
 	if (const auto found = m_TextureOverrides.find(Texture_OverrideKey(eType, iTextureIndex));
 		found != m_TextureOverrides.end())
 	{
@@ -935,8 +925,7 @@ HRESULT CMaterial::Bind_Material(shared_ptr<class CShader> pShader, const char_t
 
 	if (aiTextureType_DIFFUSE == eType)
 	{
-		/* Shared shader instances must not inherit the previous surface program.
-		   Shaders without this optional contract simply reject the variable. */
+		/* 공유 shader에 이전 surface program이 남지 않게 초기화한다. 해당 선택 변수가 없는 shader는 설정을 거부한다. */
 		const uint32_t disabled = 0u;
 		pShader->Bind_RawValue("g_SurfaceProgram", &disabled, sizeof(disabled));
         pShader->Bind_RawValue("g_SourceCharacterProgram", &disabled, sizeof(disabled));
@@ -950,18 +939,16 @@ HRESULT CMaterial::Bind_Material(shared_ptr<class CShader> pShader, const char_t
 
 namespace
 {
-    // Populated only by actual mesh draws on the rendering thread. Keeping a
-    // shared reference until light accumulation finishes also closes teardown.
+    // 렌더 스레드의 실제 mesh draw가 등록한다. 조명 누적이 끝날 때까지 공유 참조로 재질을 유지한다.
     thread_local std::vector<std::shared_ptr<CMaterial>> g_SourceCharacterFrame;
     struct SOURCE_CHARACTER_ROW final
     {
-        // Keep aliases alive too: CModel uses shared ownership for copy-on-write.
+        // CModel의 쓰기 시 복제 경로가 공유하는 별칭도 살아 있게 보관한다.
         std::shared_ptr<CMaterial> Material;
         uint32_t Row;
     };
     thread_local std::unordered_map<const CMaterial*, SOURCE_CHARACTER_ROW> g_SourceCharacterRows;
-    // The row lives in the R32_FLOAT depth target, not an eight-bit material index.
-    // Every positive integer through 2^24 is exactly representable there.
+    // 행 번호는 R32_FLOAT depth target에 저장한다. 양의 정수는 2^24까지 정확히 표현된다.
     constexpr uint32_t SOURCE_CHARACTER_MAX_EXACT_ROW =
         1u << std::numeric_limits<float>::digits;
     static_assert(std::numeric_limits<float>::is_iec559 && std::numeric_limits<float>::digits == 24);
@@ -980,6 +967,7 @@ uint32_t CMaterial::Get_SourceCharacterFrameCount()
     return static_cast<uint32_t>(g_SourceCharacterFrame.size());
 }
 
+// 저장 descriptor의 program·상수·texture register와 현재 scene cube를 해당 pass에 연결한다. 일부 map/native 표면도 같은 SourceCharacter ABI를 쓴다.
 HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
     bool lightPass, uint32_t row)
 {
@@ -1023,7 +1011,7 @@ HRESULT CMaterial::Bind_SourceCharacterInputs(shared_ptr<CShader> shader,
     for (uint32_t index = 0u; index < SOURCE_CHARACTER_TEXTURE_COUNT; ++index)
     {
         if ((mask & (1u << index)) == 0u) continue;
-        /* A creation choice repaints the register on the clone; the authored view stays put. */
+        /* 생성 화면의 선택은 복제본 register에 적용하고 저작 원본 view는 보존한다. */
         const auto repainted = m_SourceCharacterTextureOverrides.find(index);
         if (FAILED(shader->Bind_Texture(textureNames[index],
             repainted != m_SourceCharacterTextureOverrides.end() ?
@@ -1043,8 +1031,7 @@ HRESULT CMaterial::Bind_SourceCharacter(shared_ptr<CShader> shader)
     if (found != g_SourceCharacterRows.end())
         return Bind_SourceCharacterInputs(shader, false, found->second.Row);
 
-    // Deferred rows identify light inputs, not a particular material instance.
-    // The base pass still binds this material's own constants and textures.
+    // deferred 행은 조명 입력을 식별한다. base pass는 각 재질의 상수·텍스처를 별도로 바인딩한다.
     const auto sameLightInputs = [&](const CMaterial& other)
     {
         const auto& source = m_Surface.sourceCharacter;
@@ -1361,10 +1348,7 @@ bool_t CMaterial::Can_BatchStaticLightingWith(const CMaterial& other, bool_t sta
         !SameStaticLightingValue(m_Surface, other.m_Surface) ||
         !SameStaticLightingValue(m_ColorTint, other.m_ColorTint) ||
         !SameStaticLightingValue(m_vDiffuseTint, other.m_vDiffuseTint)) return false;
-    // Cluster source-BG passes bind typed diffuse/normal/specular/reflection
-    // after the legacy reset (MapAssetRenderUtils::Bind_Material). They cannot
-    // sample unused WModel fallback textures. Ordinary banks keep strict legacy
-    // identity; cluster admission additionally requires opaque typed diffuse.
+    // cluster source-BG는 기존 reset 뒤 typed 표면 텍스처를 바인딩한다. 미사용 WModel fallback은 읽지 않으며 cluster 허용에는 불투명 typed diffuse도 필요하다.
     if (staticCluster && ((m_Surface.sourceBgFlags & 64u) != 0u ||
         !m_SurfaceDiffuse || !other.m_SurfaceDiffuse ||
         m_Textures[aiTextureType_DIFFUSE].empty() ||
@@ -1427,8 +1411,7 @@ bool_t CMaterial::Can_BakeStaticProxy() const
         (s.hasEmissive && s.emissiveIntensity != 0.f && s.sourceBgFlicker != 0u && s.emissiveFlickerSpeed != 0.f) ||
         (s.hasBakedLighting && (!m_BakedAverage || !m_BakedDirectional)) ||
         (s.hasStaticShadow && !m_StaticShadow)) return false;
-    // R11G11B10 stores positive HDR indirect. Extrapolated saturation can
-    // create negative diffuse radiance, so those source materials stay live.
+    // R11G11B10은 양의 HDR 간접광을 담는다. 채도 외삽으로 음수가 생길 수 있는 원본 재질은 실시간 계산을 유지한다.
     if (!std::isfinite(s.diffuseSaturation) || s.diffuseSaturation < 0.f || s.diffuseSaturation > 1.f ||
         !std::isfinite(s.diffuseBrightness) || s.diffuseBrightness < 0.f ||
         !std::isfinite(s.specularPower) || s.specularPower < 0.f || s.specularPower > 65504.f ||
@@ -1460,8 +1443,7 @@ HRESULT CMaterial::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
     }
     const uint32_t disabled = 0u;
     if (FAILED(shader->Bind_RawValue("g_MapLightingBankSize", &disabled, sizeof(disabled)))) return E_FAIL;
-    // The small-prefix pass references only these three-slot arrays; ordinary
-    // and eight-slot passes retain their original resource binding footprint.
+    // 짧은 prefix pass에만 3슬롯 배열을 사용하고 일반·8슬롯 pass의 바인딩 범위는 유지한다.
     const bool smallBank = !staticCluster && materials.size() < 4u;
     const uint32_t capacity = smallBank ? 3u : 8u;
     if (FAILED(shader->Bind_Textures(smallBank ? "g_MapBakedAverageSmallBank" : "g_MapBakedAverageBank",
@@ -1476,6 +1458,7 @@ HRESULT CMaterial::Bind_StaticLightingBank(const shared_ptr<CShader>& shader,
     return result;
 }
 
+// 표면의 baked texture와 환경 cube/BRDF 쌍을 바인딩한다. native 간접광은 재질 지원과 scene 선택이 모두 참일 때 쓰며 이전 쌍도 별도 보존한다.
 HRESULT CMaterial::Bind_SurfaceLighting(shared_ptr<CShader> shader)
 {
     if (!shader) return E_INVALIDARG;
@@ -1505,7 +1488,7 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
             (void)pShader->Bind_RawValue(name, &zero, sizeof(zero));
     }
 	const ComPtr<ID3D11ShaderResourceView>* texture = nullptr;
-	/* The surface program reads slot 0 of the same type, so one override covers both paths. */
+	/* surface program도 같은 타입의 slot 0을 읽으므로 하나의 override를 두 경로에 적용한다. */
 	if (const auto found = m_TextureOverrides.find(Texture_OverrideKey(eType, 0u));
 		found != m_TextureOverrides.end())
 	{
@@ -1521,15 +1504,12 @@ HRESULT CMaterial::Bind_SurfaceTexture(shared_ptr<CShader> pShader,
 	case aiTextureType_UNKNOWN: texture = std::addressof(m_SurfaceORM); break;
 	case aiTextureType_EMISSIVE: texture = std::addressof(m_SurfaceEmissive); break;
     case aiTextureType_TRANSMISSION: texture = std::addressof(m_SourceFoliageMask); break;
-    // Surface-only roles, separate from the legacy color-mask texture array.
+    // surface 전용 역할이며 기존 color-mask 텍스처 배열과 구분한다.
     case aiTextureType_BASE_COLOR: texture = std::addressof(m_SurfaceOverlayDiffuse); break;
     case aiTextureType_NORMAL_CAMERA: texture = std::addressof(m_SurfaceOverlayNormal); break;
 	default: return E_INVALIDARG;
 	}
-	// The material owns the SRV throughout this call; borrowing avoids a
-	// redundant COM AddRef/Release for every surface texture of every draw.
-	// ComPtr::operator& resets the owner through ComPtrRef; borrow its C++
-	// object address with std::addressof so the material keeps its SRV.
+	// 재질이 소유한 SRV를 호출 중 차용한다. ComPtr::operator&의 소유 참조 초기화를 피하려고 std::addressof로 C++ 객체 주소를 얻는다.
 	return texture && *texture ? pShader->Bind_Texture(pConstantName, *texture) : E_FAIL;
 }
 

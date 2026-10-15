@@ -1594,13 +1594,13 @@ foreach ($boss in @($bossDocument.bosses)) {
 	}
 }
 $koukuBossProfiles = @($bossDocument.bosses | Where-Object {
-	[string]$_.archetypeId -ceq 'BOSS_KAKULSAYDON_G1_KOUKU'
+	[string]$_.archetypeId -ceq 'BOSS_KOUKUSAYDON_G1_KOUKU'
 })
 if ($koukuBossProfiles.Count -ne 1) {
 	throw 'KoukuSaydon Gate 1 requires exactly one boss profile.'
 }
 $koukuBossProfile = $koukuBossProfiles[0]
-if ([string]$koukuBossProfile.encounterId -cne 'ENCOUNTER_KAKULSAYDON_G1' -or
+if ([string]$koukuBossProfile.encounterId -cne 'ENCOUNTER_KOUKUSAYDON_G1' -or
 	[string]$koukuBossProfile.phasePolicy.kind -cne 'AUTHORED_PATTERN_EVENT' -or
 	@($koukuBossProfile.armorPlates).Count -ne 0) {
 	throw 'KoukuSaydon animation-audition identity, phase policy, or part contract is invalid.'
@@ -1733,12 +1733,12 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 		throw 'Boss body model admission scale is out of range.'
 	}
 	$isWeaponlessKouku = [string]$presentationBoss.archetypeId -ceq
-		'BOSS_KAKULSAYDON_G1_KOUKU'
+		'BOSS_KOUKUSAYDON_G1_KOUKU'
 	# Every KoukuSaydon arena boss shares the Gate 1 audition body contract: an
 	# embedded body with an optional socketed weapon. Only the original Gate 1
 	# Kouku row keeps its exact-value admission below.
 	$isKoukuSaydonFamily = [string]$presentationBoss.archetypeId -clike
-		'BOSS_KAKULSAYDON_*'
+		'BOSS_KOUKUSAYDON_*'
 	if ($isKoukuSaydonFamily) {
 		# The body contract also admits the one implemented, level-owned Albion visual.
 		# Other combat-object joins require their own Server and Client consumer.
@@ -1762,9 +1762,9 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 		if ($null -ne $presentationBoss.weaponModel -or
 			$null -ne $presentationBoss.weaponModelPreScale -or
 			[string]$presentationBoss.clientPresentationId -cne
-				'boss.kakulsaydon.g1.kouku.client.v1' -or
+				'boss.koukusaydon.g1.kouku.client.v1' -or
 			[string]$presentationBoss.serverProfileId -cne
-				'boss.kakulsaydon.g1.kouku.server.v1') {
+				'boss.koukusaydon.g1.kouku.server.v1') {
 			throw 'The KoukuSaydon presentation must keep its unverified weapon model nullable.'
 		}
 		if ([string]$presentationBoss.bodyModel -cne
@@ -1782,9 +1782,9 @@ foreach ($presentationBoss in @($bossCatalogDocument.bosses)) {
 	}
 	elseif ($isKoukuSaydonFamily) {
 		if ([string]$presentationBoss.clientPresentationId -cnotlike
-				'boss.kakulsaydon.*.client.v1' -or
+				'boss.koukusaydon.*.client.v1' -or
 			[string]$presentationBoss.serverProfileId -cnotlike
-				'boss.kakulsaydon.*.server.v1' -or
+				'boss.koukusaydon.*.server.v1' -or
 			[string]$presentationBoss.bodyModel -cnotlike
 				'Character/KoukuSaton/*.wmodel' -or
 			@($presentationBoss.armorModels).Count -ne 0 -or

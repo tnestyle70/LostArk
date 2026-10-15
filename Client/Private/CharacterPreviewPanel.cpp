@@ -10,7 +10,7 @@
 #include "CompositionAnimationResource.h"
 #include "GameInstance.h"
 #include "Level_ValtanArena.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "KoukuSaydonPresentationAssetService.h"
 #include "Model.h"
 #include "Npc.h"
@@ -35,20 +35,20 @@ namespace
 	const char* Resolve_KoukuPreviewArchetype(const std::string_view asset)
 	{
 #ifdef _DEBUG
-		if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+		if (const auto* arena = Client::CLevel_KoukuSaydonArena::Get_Active())
 		{
 			const auto gate = arena->Get_ActiveDebugGate();
-			const auto& gates = Client::CLevel_KakulSaydonArena::Get_DebugGates();
+			const auto& gates = Client::CLevel_KoukuSaydonArena::Get_DebugGates();
 			if (gate < gates.size() && nullptr != gates[gate].pHudFocusArchetypeId)
 				if (const auto* boss = Client::CActorCatalog::Find_Boss(gates[gate].pHudFocusArchetypeId))
 					if (std::filesystem::path(boss->bodyModel).stem().string() == asset)
 						return gates[gate].pHudFocusArchetypeId;
 		}
 #endif
-		if (asset == "MN_RPCT_00") return "BOSS_KAKULSAYDON_G1_SAYDON";
-		if (asset == "MN_RPCT_06") return "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
-		if (asset == "MN_RPCZ_00") return "BOSS_KAKULSAYDON_G2_KOUKU";
-		if (asset == "MN_RPCT_05") return "BOSS_KAKULSAYDON_G3_SAYDON";
+		if (asset == "MN_RPCT_00") return "BOSS_KOUKUSAYDON_G1_SAYDON";
+		if (asset == "MN_RPCT_06") return "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
+		if (asset == "MN_RPCZ_00") return "BOSS_KOUKUSAYDON_G2_KOUKU";
+		if (asset == "MN_RPCT_05") return "BOSS_KOUKUSAYDON_G3_SAYDON";
 		return nullptr;
 	}
 
@@ -62,7 +62,7 @@ namespace
 			boss->bodyModelPreScale <= 0.f || asset->fPreviewScale <= 0.f) return fallback;
 		f32_t liveMultiplier = 1.f;
 #ifdef _DEBUG
-		if (const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active())
+		if (const auto* arena = Client::CLevel_KoukuSaydonArena::Get_Active())
 			if (const auto npc = arena->Debug_FindArenaBossNpc(archetype))
 				liveMultiplier = npc->Get_DebugPresentationScale();
 #endif
@@ -79,9 +79,9 @@ namespace
 			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(
 				position, yawDegrees, status);
 		}
-		else if (currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA))
+		else if (currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA))
 		{
-			const auto* arena = Client::CLevel_KakulSaydonArena::Get_Active();
+			const auto* arena = Client::CLevel_KoukuSaydonArena::Get_Active();
 			if (nullptr != arena) return arena->Try_Get_AuthoringPreviewPlacement(position, status);
 		}
 		status = "active raid arena placement owner is unavailable";
@@ -218,7 +218,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 	{
 		const bool_t raidCompositionPreview =
 			(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-			 currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
+			 currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) &&
 			Is_CompositionAnimationTargetAsset(strAnimationAssetName);
 		if (!raidCompositionPreview) return true;
 
@@ -368,7 +368,7 @@ void Client::CCharacterPreviewPanel::Synchronize_PreviewWeapon()
 	if (nullptr == bodyRoot || !bodyModel->Has_Bone(socket)) return;
 	matrix_t weaponLocal = XMMatrixIdentity();
 #ifdef _DEBUG
-	if (const auto* arena = CLevel_KakulSaydonArena::Get_Active())
+	if (const auto* arena = CLevel_KoukuSaydonArena::Get_Active())
 		if (const auto npc = arena->Debug_FindArenaBossNpc(archetype))
 		{
 			const f32_t scale = npc->Get_DebugWeaponScale();
@@ -460,7 +460,7 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		CGameInstance::Get().Get_CurrentLevelID();
 	const bool_t bRaidCompositionPreview =
 		(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
-		 currentLevel == ETOUI(LEVEL::KAKULSAYDON_ARENA)) &&
+		 currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) &&
 		nullptr != asset.pAssetName && (Is_CompositionAnimationTargetAsset(asset.pAssetName) ||
 		std::string_view(asset.pAssetName).starts_with("Vehicle_"));
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&

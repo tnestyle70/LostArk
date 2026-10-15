@@ -765,18 +765,18 @@ void LostArk::Server::CServerGameplayContractRunner::Run_RevisionProtocol(TESTS&
 				return true;
 			};
 			const std::string koukuSourcePrefix =
-				"PATTERNSOURCE\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_1\t";
+				"PATTERNSOURCE\tENCOUNTER_KOUKUSAYDON_G1\tKOUKUSAYDON_G1_PATTERN_1\t";
 			std::string zeroSourceText = bootstrapText;
 			const bool zeroSourceReady = zeroSourceAction(zeroSourceText, koukuSourcePrefix);
 			const auto zeroSourceCatalog = zeroSourceReady ?
 				loadBootstrapVariant(L"kouku-source-action-zero", zeroSourceText) : nullptr;
 			const auto* zeroSourcePatterns = nullptr == zeroSourceCatalog ? nullptr :
-				zeroSourceCatalog->Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+				zeroSourceCatalog->Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
 			const bool preservedZero = nullptr != zeroSourcePatterns &&
 				std::any_of(zeroSourcePatterns->begin(), zeroSourcePatterns->end(),
 					[](const BOSS_PATTERN_DEFINITION& pattern)
 					{
-						return pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_1" &&
+						return pattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_1" &&
 							0u == pattern.iSourcePrimaryActionId;
 					});
 			std::string duplicateZeroText = zeroSourceText;

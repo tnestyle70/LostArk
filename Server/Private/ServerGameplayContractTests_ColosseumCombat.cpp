@@ -126,7 +126,7 @@ namespace
             {
                 CAST blocked;
                 if (guard == 1) blocked.context.eWorldId = WORLD_ID::VALTAN_ARENA;
-                if (guard == 2) blocked.context.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+                if (guard == 2) blocked.context.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
                 if (guard == 3) blocked.context.eWorldId = WORLD_ID::BERN;
                 if (guard == 4) blocked.context.bMatchActive = false;
                 if (guard == 5) blocked.context.iMatchId = 0u;

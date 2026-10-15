@@ -39,7 +39,7 @@ void LostArk::Server::CGameRoom::Handle_ReturnToBern(
 		if (!m_bValtanRaidCleared && !Is_RaidClearTestModeEnabled())
 			return;
 	}
-	else if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId)
+	else if (WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId)
 	{
 		if (0u == Gate_Count() || 0u == (m_GateProgress.iClearedMask & (1u << (Gate_Count() - 1u))))
 			return;
@@ -471,7 +471,7 @@ void LostArk::Server::CGameRoom::Handle_DebugWorldPlayback(
 		const bool waterpangDebug = m_eWorldId == WORLD_ID::MAHARAKA &&
 			Find_MaharakaWaterpangDebugKind(request.strTargetId, waterpangKind);
 		if (request.eWorldId != m_eWorldId || (!waterpangDebug &&
-			m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
+			m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA && m_eWorldId != WORLD_ID::VALTAN_ARENA))
 			return Result::WRONG_WORLD;
 		const auto playerId = m_PlayerIdBySessionId.find(sessionId);
 		if (playerId == m_PlayerIdBySessionId.end()) return Result::INVALID_PLAYER;
@@ -538,11 +538,11 @@ LostArk::Shared::DEBUG_WORLD_PLAYBACK_RESULT LostArk::Server::CGameRoom::Apply_D
 	(void)sessionId; (void)request;
 	return Result::DISABLED;
 #else
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.eWorldId != m_eWorldId)
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || request.eWorldId != m_eWorldId)
 		return Result::WRONG_WORLD;
 	CPacketWriter validation;
 	if (request.eOperation != DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER || !Write_Message(validation, request) ||
-		!request.strTargetId.starts_with("KAKULSAYDON_G1_PATTERN_") ||
+		!request.strTargetId.starts_with("KOUKUSAYDON_G1_PATTERN_") ||
 		!request.strOccurrenceId.starts_with(request.strTargetId + ".")) return Result::INVALID_TARGET;
 	const auto requesterId = m_PlayerIdBySessionId.find(sessionId);
 	const auto requester = requesterId == m_PlayerIdBySessionId.end() ? m_Players.end() : m_Players.find(requesterId->second);
@@ -609,7 +609,7 @@ bool LostArk::Server::CGameRoom::Broadcast_WorldSequencePlay(
 
 	// A published raid entry replaces its first World-only cutscene with the
 	// complete authored Sequence. All other world playback keeps its own path.
-	if (m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
+	if (m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA &&
 		(operation == WORLD_SEQUENCE_OPERATION::PLAY || operation == WORLD_SEQUENCE_OPERATION::REPLAY))
 	{
 		const auto* gate = m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1");
@@ -986,7 +986,7 @@ void LostArk::Server::CGameRoom::Close_RaidEntryVote(
 		const bool islandEntry = proposal.eTarget == RAID_ENTRY_TARGET::MAHARAKA;
 		const bool islandReturn = proposal.eTarget == RAID_ENTRY_TARGET::MAHARAKA_RETURN;
 		const WORLD_ID targetWorld = islandEntry ? WORLD_ID::MAHARAKA : islandReturn ? WORLD_ID::BERN :
-			(proposal.eTarget == RAID_ENTRY_TARGET::KAKULSAYDON ? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA);
+			(proposal.eTarget == RAID_ENTRY_TARGET::KOUKUSAYDON ? WORLD_ID::KOUKUSAYDON_ARENA : WORLD_ID::VALTAN_ARENA);
 		const auto* dock = (islandEntry || islandReturn) ? Find_Placement(proposal.strNpcPlacementId) : nullptr;
 		const auto leader = proposal.Voters.empty() ? m_Players.end() : m_Players.find(proposal.Voters.front());
 		const bool dockValid = !(islandEntry || islandReturn) ||
@@ -1085,12 +1085,12 @@ bool LostArk::Server::CGameRoom::Transfer_PartyTo(
          (m_iColosseumMatchId && m_eColosseumPhase == COLOSSEUM_MATCH_PHASE::FINISHED &&
           spawnPlacementOverrideId == "npc.bern.25184_1.2")) && raidReturnNpcPlacementId.empty();
     const bool returning = target.m_eWorldId == WORLD_ID::BERN &&
-        (m_eWorldId == WORLD_ID::VALTAN_ARENA || m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA);
+        (m_eWorldId == WORLD_ID::VALTAN_ARENA || m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA);
 	const bool singleDeparture = returning || colosseumSquareHole;
 	const bool islandTransfer = (m_eWorldId == WORLD_ID::BERN && target.m_eWorldId == WORLD_ID::MAHARAKA) ||
 		(m_eWorldId == WORLD_ID::MAHARAKA && target.m_eWorldId == WORLD_ID::BERN);
     const bool entering = m_eWorldId == WORLD_ID::BERN &&
-        (target.m_eWorldId == WORLD_ID::VALTAN_ARENA || target.m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA);
+        (target.m_eWorldId == WORLD_ID::VALTAN_ARENA || target.m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA);
 	if (!m_isReady || !target.m_isReady || (!entering && !singleDeparture && !islandTransfer) ||
 		leaderFirstSessionIds.empty() || leaderFirstSessionIds.size() > MAX_PARTY_MEMBERS || (singleDeparture && leaderFirstSessionIds.size() != 1u))
 		return reject(PARTY_TRANSFER_RESULT::REJECTED_ADMISSION_FAILED, "invalid party transfer world/batch");
@@ -1420,7 +1420,7 @@ void LostArk::Server::CGameRoom::Handle_SpawnWorldEntity(
 		Send_WorldEntitySpawnResult(session, request.strPlacementId, WORLD_ENTITY_SPAWN_RESULT::REJECTED, INVALID_NET_ENTITY_ID);
 		return;
 	}
-	const bool koukuGateWorld = WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId;
+	const bool koukuGateWorld = WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId;
     const bool valtanWorld = WORLD_ID::VALTAN_ARENA == m_eWorldId;
 	const bool debugSpawnWorld =
 		WORLD_ID::CHARACTER_SELECT_ARENA == m_eWorldId || koukuGateWorld || valtanWorld;

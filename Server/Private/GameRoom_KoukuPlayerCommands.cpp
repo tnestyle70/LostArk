@@ -35,7 +35,7 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 	return;
 #else
 	using namespace LostArk::Shared;
-	if (request.strPlacementId == "player.spawn.kakul.party01")
+	if (request.strPlacementId == "player.spawn.kouku.party01")
 	{
 		const auto session = Find_Session(sessionId);
 		if (!session) return;
@@ -54,8 +54,8 @@ void LostArk::Server::CGameRoom::Handle_DebugTeleportToPlacement(
 			session->Request_Close();
 		return;
 	}
-	constexpr const char* STAGE_WAYPOINT_PREFIX = "stage.kakul.";
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	constexpr const char* STAGE_WAYPOINT_PREFIX = "stage.kouku.";
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		0u == request.iRequestSequence ||
 		0u != request.strPlacementId.rfind(STAGE_WAYPOINT_PREFIX, 0u))
 	{
@@ -109,7 +109,7 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoFill(
 	using namespace LostArk::Shared;
 	/* The board only exists in the Kouku arena, and only a session that owns
 	a player in this room may paint it. */
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		request.eWorldId != m_eWorldId ||
 		m_PlayerIdBySessionId.end() == m_PlayerIdBySessionId.find(sessionId))
 	{
@@ -133,7 +133,7 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoBomb(
 	using namespace LostArk::Shared;
 	/* Same admission as the board fill: the Kouku arena only, and only a
 	session that owns a living player in this room. */
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		request.eWorldId != m_eWorldId)
 	{
 		return;
@@ -163,7 +163,7 @@ void LostArk::Server::CGameRoom::Handle_DebugBingoHammer(
 {
 #ifdef _DEBUG
 	using namespace LostArk::Shared;
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId ||
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId ||
 		request.eWorldId != m_eWorldId ||
 		m_PlayerIdBySessionId.end() == m_PlayerIdBySessionId.find(sessionId))
 	{
@@ -263,7 +263,7 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
 {
     using namespace LostArk::Shared;
     const auto settings = trigger.BingoBoardSettings.value_or(BOSS_BINGO_BOARD_SETTINGS{});
-    if (owner.strArchetypeId != "BOSS_KAKULSAYDON_BINGO_SAYDON" || !trigger.iDurationMs ||
+    if (owner.strArchetypeId != "BOSS_KOUKUSAYDON_BINGO_SAYDON" || !trigger.iDurationMs ||
         trigger.iDurationMs > 600000u || !trigger.BingoHammerHalfExtentsM || !settings.Is_Valid()) return;
     const auto epoch = Is_KoukuRaidRunning() ? m_KoukuRaid.State.iRunEpoch : m_KoukuSaydonPatternAudition.iRoomAuditionEpoch;
     if (!epoch) return;
@@ -300,7 +300,7 @@ void LostArk::Server::CGameRoom::Begin_KoukuBingoDuration(const SERVER_WORLD_ENT
 void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
 {
 	using namespace LostArk::Shared;
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId)
 		return;
 
     auto& duration = m_KoukuBingoDuration;
@@ -340,7 +340,7 @@ void LostArk::Server::CGameRoom::Update_KoukuBingo(const std::uint32_t tick)
             duration.iNextHammerTick = Add_ServerTicksSkippingReservedZero(tick, CKoukuSaydonLogicRuntime::Ticks_FromMs(KOUKU_BINGO_HAMMER_INTERVAL_MS));
         }
         const auto* catalog = Resolve_KoukuProductCatalog();
-        const auto* madness = catalog ? catalog->Find_KoukuMadnessPolicy("ENCOUNTER_KAKULSAYDON_G1") : nullptr;
+        const auto* madness = catalog ? catalog->Find_KoukuMadnessPolicy("ENCOUNTER_KOUKUSAYDON_G1") : nullptr;
         if (activeWindow && Has_ReachedServerTick(tick, duration.iNextMadnessTick))
         {
             for (auto* player : alive)
@@ -724,7 +724,7 @@ LostArk::Server::CGameRoom::Apply_DebugKoukuHudMode(
 		return result;
 	}
 #ifndef _DEBUG
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA ||
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA ||
 		(KOUKU_HUD_MODE::NONE != request.eMode && KOUKU_HUD_MODE::MARIO != request.eMode &&
 		 KOUKU_HUD_MODE::MAZE != request.eMode))
 	{
@@ -790,7 +790,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 {
 	using namespace LostArk::Shared;
 	const BOSS_ENCOUNTER_MADNESS_POLICY* policy =
-		WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId ?
+		WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId ?
 			m_GameplayCatalog.Active().Find_KoukuMadnessPolicy(
 				std::string(KOUKUSAYDON_G1_ENCOUNTER_ID)) :
 			nullptr;
@@ -803,7 +803,7 @@ void LostArk::Server::CGameRoom::Update_KoukuPlayerModes(
 	}
 	CKoukuSaydonLogicRuntime::Update_PlayerModes(
 		m_Players, ledger, policy, serverTick);
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId) return;
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId) return;
 	bool mazeExpired = false;
 	for (auto& [id, player] : m_Players)
 	{
@@ -843,10 +843,10 @@ void LostArk::Server::CGameRoom::Apply_KoukuGateEntryCard(
 	SERVER_PLAYER& player, const SERVER_WORLD_ENTITY& boss)
 {
 	using namespace LostArk::Shared;
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId)
 		return;
-	if ("BOSS_KAKULSAYDON_G1_KOUKU" != boss.strArchetypeId &&
-		"BOSS_KAKULSAYDON_G1_SAYDON" != boss.strArchetypeId)
+	if ("BOSS_KOUKUSAYDON_G1_KOUKU" != boss.strArchetypeId &&
+		"BOSS_KOUKUSAYDON_G1_SAYDON" != boss.strArchetypeId)
 	{ player.Clear_KoukuAssignedCard(); return; }
 	std::uint8_t used = 0u;
 	for (const auto& [id, other] : m_Players)
@@ -983,13 +983,13 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 	using namespace LostArk::Shared;
 	S2C_DEBUG_TELEPORT_TO_POSITION_RESULT result{};
 	result.iRequestSequence = requestSequence; result.eWorldId = m_eWorldId;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA)
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA)
 	{ result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_WRONG_WORLD; return result; }
 	if (requestSequence != 0u && requestSequence == player.LastDebugTeleportResult.iRequestSequence)
 		return player.LastDebugTeleportResult;
 	if (!Is_NewerSequence(requestSequence, player.LastDebugTeleportResult.iRequestSequence))
 	{ result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_STALE_SEQUENCE; return result; }
-	const auto* spawn = Find_Placement("player.spawn.kakul.party01");
+	const auto* spawn = Find_Placement("player.spawn.kouku.party01");
 	if (!spawn || spawn->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN || !spawn->isEnabled)
 	{ result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_INVALID_POSITION; return result; }
 	// Keep this room's world, ground sampler, log and build-specific wave policy.
@@ -1006,7 +1006,7 @@ LostArk::Server::CGameRoom::Apply_DebugReturnToKoukuStart(SERVER_PLAYER& player,
 	if (!triggers.Initialize(m_WorldBootstrap.Get_Placements(), status))
 	{ m_strStatus = status; result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED; return result; }
 	C2S_DEBUG_TELEPORT_TO_POSITION placement{};
-	placement.iRequestSequence = requestSequence; placement.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	placement.iRequestSequence = requestSequence; placement.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 	placement.fPositionX = spawn->fPositionX; placement.fPositionY = spawn->fPositionY; placement.fPositionZ = spawn->fPositionZ;
 	result = Apply_DebugTeleportToPosition(player, placement);
 	if (result.eResult != DEBUG_TELEPORT_RESULT::ACCEPTED) return result;
@@ -1108,7 +1108,7 @@ LostArk::Server::CGameRoom::Apply_DebugTeleportToPosition(
 	result.iRequestSequence = request.iRequestSequence;
 	result.eWorldId = m_eWorldId;
 #ifndef _DEBUG
-	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA)
+	if (m_eWorldId != WORLD_ID::VALTAN_ARENA && m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA)
 	{
 		result.eResult = DEBUG_TELEPORT_RESULT::REJECTED_DISABLED;
 		return result;
@@ -1287,7 +1287,7 @@ void LostArk::Server::CGameRoom::Reset_MarioStageObjects(const std::uint8_t stag
 
 void LostArk::Server::CGameRoom::Cleanup_EmptyMarioStages()
 {
-	if (m_eWorldId != LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA) return;
+	if (m_eWorldId != LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA) return;
 	for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
 	{
 		const bool occupied = std::any_of(m_Players.begin(), m_Players.end(), [stage](const auto& pair) {
@@ -1310,7 +1310,7 @@ void LostArk::Server::CGameRoom::Reset_MarioContactAction(SERVER_PLAYER& player)
 bool LostArk::Server::CGameRoom::Enter_MarioFromPattern(SERVER_PLAYER& player, const std::uint8_t stage)
 {
 	using namespace LostArk::Shared;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || stage < 1u || stage > 4u ||
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || stage < 1u || stage > 4u ||
 		!CKoukuSaydonLogicRuntime::Can_EnterMarioEntry(player)) return false;
 	const auto* intro = Find_Placement("Mario" + std::to_string(stage) + "_Intro");
 	SERVER_NAV_POINT ground;
@@ -1340,7 +1340,7 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 	using namespace LostArk::Shared;
 	// Keep the stage and return pin during descent; death, not fall start,
 	// releases Mario. A dead return never completes the minigame successfully.
-	if (WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId && player.iMarioStage <= 4u &&
+	if (WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId && player.iMarioStage <= 4u &&
 		(player.iMarioStage > 0u || player.MarioReturnPosition.has_value()))
 	{
 		if (PLAYER_ACTION_STATE::FALLING == player.eAction && player.iCurrentHp) return;
@@ -1370,7 +1370,7 @@ void LostArk::Server::CGameRoom::Update_MarioControlState(SERVER_PLAYER& player)
 			return;
 		}
 	}
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || player.iMarioStage > 4u ||
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || player.iMarioStage > 4u ||
 		0u == player.iCurrentHp || PLAYER_ACTION_STATE::DEAD == player.eAction ||
 		PLAYER_ACTION_STATE::FALLING == player.eAction)
 	{
@@ -1459,7 +1459,7 @@ bool LostArk::Server::CGameRoom::Resolve_MarioReturnDestination(
 	if (player.MarioReturnPosition) position = *player.MarioReturnPosition;
 	else
 	{
-		const auto* gate3 = Find_Placement("stage.kakul.sl05");
+		const auto* gate3 = Find_Placement("stage.kouku.sl05");
 		if (!gate3 || gate3->eKind != WORLD_BOOTSTRAP_KIND::PLAYER_SPAWN) return false;
 		position = { gate3->fPositionX, gate3->fPositionY, gate3->fPositionZ };
 	}
@@ -1495,7 +1495,7 @@ LostArk::Shared::S2C_MARIO_RETURN_RESULT LostArk::Server::CGameRoom::Apply_Mario
 	S2C_MARIO_RETURN_RESULT result{};
 	result.iClientSequence = request.iClientSequence;
 	result.eWorldId = m_eWorldId;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || request.eWorldId != m_eWorldId)
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || request.eWorldId != m_eWorldId)
 	{ result.eResult = MARIO_RETURN_RESULT::REJECTED_WRONG_WORLD; return result; }
 	const auto& previous = player.LastMarioReturnResult;
 	if (request.iClientSequence && request.iClientSequence == previous.iClientSequence) return previous;
@@ -1562,7 +1562,7 @@ void LostArk::Server::CGameRoom::Handle_MarioMove(
 		return;
 	SERVER_PLAYER& player = found->second;
 	const bool stop = MARIO_DIRECTION::STOP == request.eDirection;
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId ||
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId ||
 		!Is_NewerSequence(request.iClientSequence, player.iLastMarioMoveSequence) ||
 		(!stop && MARIO_DIRECTION::LEFT != request.eDirection && MARIO_DIRECTION::RIGHT != request.eDirection))
 		return;
@@ -1665,7 +1665,7 @@ LostArk::Server::CGameRoom::Apply_DebugMarioJump(
 		return result;
 	}
 #endif
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId || request.eWorldId != m_eWorldId)
 	{
 		result.eResult = DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD;
 		return result;

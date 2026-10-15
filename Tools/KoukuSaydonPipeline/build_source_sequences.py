@@ -12,7 +12,6 @@ import json
 import math
 import shlex
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -22,6 +21,9 @@ import bake_reflected_static_props as reflected
 from build_gate2_intro_backdrops import reduced_indices
 
 ROOT = base.ROOT
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 sys.path.insert(0, str(ROOT / 'Tools/ModelAssetConverter'))
 from apply_world_object_material_source import assign_material_source, assign_map_material_source, inherit_material_source
 OUT = ROOT / 'out/KoukuSourceSequenceRestore20260912'
@@ -62,26 +64,8 @@ def merge(document, key, identity, additions):
 
 
 def project_registration(effect_paths):
-    """Stage only missing None items, preserving project bytes and user edits."""
-    outputs=[]
-    includes=sorted('..\\..\\'+p.relative_to(ROOT).as_posix().replace('/','\\') for p in effect_paths)
-    for suffix in ('','.filters'):
-        path=ROOT/('Client/Default/Client.vcxproj'+suffix)
-        before=path.read_bytes();bom=before.startswith(b'\xef\xbb\xbf')
-        text=before.decode('utf-8-sig');newline='\r\n' if '\r\n' in text else '\n'
-        missing=[value for value in includes if 'Include="'+value+'"' not in text]
-        rows=[]
-        for value in missing:
-            rows.append('    <None Include="'+value+'"'+('>' if suffix else ' />'))
-            if suffix:rows+=['      <Filter>96.DataFiles</Filter>','    </None>']
-        if rows:
-            head,tail=text.rsplit('</Project>',1)
-            assert not tail.strip()
-            text=head+newline.join(['  <ItemGroup>']+rows+['  </ItemGroup>','</Project>'])+tail
-        ET.fromstring(text)
-        after=(b'\xef\xbb\xbf' if bom else b'')+text.encode('utf-8')
-        outputs.append((path,before,after))
-    return outputs
+    """솔루션 Data 링크 후보를 만들어 기존 설치의 baseline 검사에 합친다."""
+    return stage_data_solution(ROOT, effect_paths)
 
 
 def resource(identity, label, kind, asset, duration, resource_kind=''):
@@ -151,7 +135,7 @@ def bake(config, rows, group, source, label):
     clip = config['prefix'] + '.' + label.lower()
     model = base.read_bake_model(base.RESOURCES / source, rows, group, clip)
     duration = config['duration']-config['start']
-    donor_asset = f'Map/KakulSaydon/SourceSequences/{config["prefix"]}/{label}/{label}.wmodel'
+    donor_asset = f'Map/KoukuSaydon/SourceSequences/{config["prefix"]}/{label}/{label}.wmodel'
     canonical = DONOR_TO_BODY.get(donor_asset)
     destination = ((OUT / 'CharacterClipDonors') if canonical else base.RESOURCES) / donor_asset
     if canonical:
@@ -346,7 +330,7 @@ def main():
         if previous:
             world['worldId']=previous['worldId']
         else:
-            world['worldId']='kakulsaydon.g1.world.'+str(docs['composition']['nextWorldOrdinal'])
+            world['worldId']='koukusaydon.g1.world.'+str(docs['composition']['nextWorldOrdinal'])
             docs['composition']['nextWorldOrdinal']+=1
         merge(docs['composition'],'worlds','worldId',[world])
     output_files = {}
@@ -380,9 +364,9 @@ def main():
         rows = scene_rows(c)
         shots = base.make_cameras(rows, c['matinee'], c['data'], c['duration'], c['prefix'], c['name'], c['start'])
         merge(docs['cameras'], 'shots', 'shotId', [s for _, _, s in shots])
-        pid = 'KAKULSAYDON_G1_PATTERN_'+str(c['id'])
+        pid = 'KOUKUSAYDON_G1_PATTERN_'+str(c['id'])
         p = dict(patternId=pid, actorProfileId='MN_RPCT_05' if c['gate'] != 'GATE2' else 'MN_RPCZ_00',
-                 gateId=c['gate'], targetBossPlacementId='boss.kakulsaydon.'+dict(GATE1='g1.saydon',GATE2='g2.kouku',GATE3='g3.saydon')[c['gate']],
+                 gateId=c['gate'], targetBossPlacementId='boss.koukusaydon.'+dict(GATE1='g1.saydon',GATE2='g2.kouku',GATE3='g3.saydon')[c['gate']],
                  displayName=c['name'], authoringStatus='DRAFT', category='MECHANIC', enterCombatOnFinish=c['combat'],
                  nextStageOrdinal=2, nextAnimationOrdinal=1, nextLogicOccurrenceOrdinal=1,
                  nextSummonOccurrenceOrdinal=1, nextWorldOccurrenceOrdinal=1, nextSceneProfileOccurrenceOrdinal=1,
@@ -392,11 +376,11 @@ def main():
                  resetBossToSpawn=False, presentationOccurrences=[])
         if c['id'] in (4,7):
             prior=next((row for row in docs['composition']['sceneProfiles']
-                        if row['renderingProfileId']=='scene.kakulsaydon.g1.base.v1'),None)
-            profile_id=prior['sceneProfileId'] if prior else 'kakulsaydon.g1.sceneprofile.'+str(docs['composition']['nextSceneProfileOrdinal'])
+                        if row['renderingProfileId']=='scene.koukusaydon.g1.base.v1'),None)
+            profile_id=prior['sceneProfileId'] if prior else 'koukusaydon.g1.sceneprofile.'+str(docs['composition']['nextSceneProfileOrdinal'])
             if not prior:docs['composition']['nextSceneProfileOrdinal']+=1
             profile=dict(sceneProfileId=profile_id,displayName='입장_기본환경',
-                         renderingProfileId='scene.kakulsaydon.g1.base.v1')
+                         renderingProfileId='scene.koukusaydon.g1.base.v1')
             merge(docs['composition'],'sceneProfiles','sceneProfileId',[profile])
             p['sceneProfileOccurrences']=[dict(occurrenceId=pid+'.sceneprofile.1',
                 sceneProfileId=profile['sceneProfileId'],startMs=0,durationMs=c['duration']-c['start'],blendMs=0)]
@@ -463,7 +447,7 @@ def main():
                               cameraShots=len(shots),worldActors=len(actor_specs),staticActors=static_count,
                               sourceStaticFailures=failures))
     docs['composition']['nextPatternOrdinal'] = max(8,docs['composition']['nextPatternOrdinal'])
-    entry = next(p for p in docs['composition']['patterns'] if p['patternId']=='KAKULSAYDON_G1_PATTERN_3')
+    entry = next(p for p in docs['composition']['patterns'] if p['patternId']=='KOUKUSAYDON_G1_PATTERN_3')
     entry['enterCombatOnFinish'] = True
     intro_effects=[]
     add_effects(dict(id=3,scene='SCENE04A',name=entry['displayName'],start=0,duration=27000),entry,intro_effects)

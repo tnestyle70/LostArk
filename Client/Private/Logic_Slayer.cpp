@@ -1,22 +1,18 @@
-#include "Logic_Slayer.h"
+﻿#include "Logic_Slayer.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* One greatsword. Unlike gn_f and sp, the wr_f rig uses the LanceMaster
-	family of socket names -- b_weapon_rhand / b_weapon_lhand, with no b_wp_*
-	at all. The socket name has to be read off each class's own rig: one the rig
-	lacks fails silently, since Get_BoneMatrix returns identity and the body's
-	0.0001 preTransform never reaches the weapon. */
+	// 대검을 본체의 b_weapon_rhand에 붙인다. 다른 직업의 소켓 이름을 공통으로 가정하지 않는다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
 		  TEXT("Prototype_Component_Model_Slayer_Weapon"), "b_weapon_rhand" },
 	};
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before the weapon tags. */
+	// Part tag 순서로 본체→장비→무기 갱신 순서를 유지한다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_Slayer_Arm"),
@@ -36,25 +32,15 @@ namespace
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
-	/* The cook lays this body out 0 hair / 1 face / 2 eye_ao / 3 eye /
-	4 upper / 5 base_body / 6 arm / 7 lower, so everything below the head is
-	hidden and the armour draws it instead.
-
-	Note the order is NOT the same as the other classes -- hair comes first here
-	and face second, where Artist runs face, eye_ao, eye, hair. These bits are
-	read off the cooked model every time, never copied from another class, and
-	re-cooking the body with different content invalidates them. */
+	// 장비가 덮는 본체 submesh 4·5·6·7을 숨긴다. 이 mask는 해당 Model의 mesh 순서에 의존한다.
 	constexpr uint32_t COVERED_BY_ARMOUR =
 		(1u << 4) | (1u << 5) | (1u << 6) | (1u << 7);
 
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. 0 is pc_wr_f_01_hair. */
-	/* Kept at zero on purpose: this class has no cooked hair sets, so nothing can take
-	over from the body's own hair. Put the bit back (pc_wr_f_01_hair is submesh 0) once its
-	hairstyle sets exist and it gets a hair part like the other classes. */
+	// 본체 머리카락은 0번 submesh지만 별도의 hair 숨김 비트는 지정하지 않는다.
+	// BAKED_HAIR가 0이므로 이 spec의 hair mask로 본체 머리를 숨기지 않는다.
 	constexpr uint32_t BAKED_HAIR = 0u;
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_Slayer>();
@@ -63,6 +49,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_Slayer::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -71,7 +58,8 @@ void CLogic_Slayer::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// catalog가 extern으로 참조하는 프로세스 수명의 직업 설정이다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_Slayer =
 {
 	"Slayer",
@@ -82,10 +70,7 @@ const CHARACTER_SPEC Spec_Slayer =
 	COVERED_BY_ARMOUR,
 	BAKED_HAIR,
 
-	/* Item 1016002 is this class's default weapon and names WP_WWBK_03. That
-	package also holds wp_wwbk_03_sk_bk, an 11-bone variant with its own
-	4-sequence animset; the plain single-bone mesh is the one the table points
-	at, so it is cooked static like the other weapons. */
+	// 대검 Part는 static mesh 셰이더를 사용하고 본체의 소켓 행렬로 배치된다.
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,
 	static_cast<uint32_t>(size(Weapons)),
@@ -93,9 +78,7 @@ const CHARACTER_SPEC Spec_Slayer =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
-	FBX takes are "<armature>_<action>" and the armature is named "wbk", so
-	every clip carries that prefix. */
+	// CHARACTER_ANIM 순서에 wbk 계열 clip 이름을 대응시킨다.
 	{
 		"wbk_idle_battle_1",
 		"wbk_run_battle_1",
@@ -105,7 +88,7 @@ const CHARACTER_SPEC Spec_Slayer =
 		"wbk_knockdown_land",
 		"wbk_down",
 		"wbk_standup_1",
-		/* No Esther animation set is attached for this class yet. */
+		// 이 spec에는 ESTHER_CAST clip을 지정하지 않았다.
 		nullptr,
 		nullptr, // CUSTOMIZING_IDLE
 		"wbk_abn_fear_1",

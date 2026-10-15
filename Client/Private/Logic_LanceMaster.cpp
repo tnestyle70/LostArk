@@ -1,9 +1,11 @@
-#include "Logic_LanceMaster.h"
+﻿#include "Logic_LanceMaster.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
+	// 같은 오른손 소켓에 장창/단창 Part를 두고 각각 요구 stance를 지정한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
@@ -14,8 +16,7 @@ namespace
 		  LostArk::Shared::PLAYER_STANCE_ID::LANCE_MASTER_SHORT_SPEAR },
 	};
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before "Part_90_Weapon_R". */	
+	// tag 순서로 Part_00_Body 다음에 장비, 그 뒤에 무기가 갱신된다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_LanceMaster_Arm"),
@@ -33,43 +34,22 @@ namespace
 		{ TEXT("Part_10_Equip_Upper"),    TEXT("Prototype_Component_Model_LanceMaster_Upper"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
-		/* The hairstyle is a part, not something the body draws: character creation
-		picks one and swaps this out for it. CharacterCatalog owns this default model;
-		CustomizingHairstyles names the same starting visual set without reordering saved indices. */
+		// 머리카락은 별도 HEAD Part로 제공한다. 외형 설정의 저장 index를 이 목록에서 재정렬하지 않는다.
 		{ TEXT("Part_10_Equip_Hair"),     TEXT("Prototype_Component_Model_LanceMaster_Hair"),
 		  0u, false, EQUIPMENT_SLOT_KIND::DEFAULT,
 		  EQUIPMENT_PRESENTATION_SLOT::HEAD },
 	};
 
-	/* The armour carries its own exposed skin, so the bare arm, torso and legs
-	underneath must not be drawn. Submesh order comes from the cook:
-	0 arm / 1 upper / 2 lower / 3 face / 4 eyelashes / 5 eye / 6 scalp cap / 7 hair.
-	Re-cooking the body with different content invalidates these bits. */
+	// 장비와 겹치는 arm·upper·lower인 본체 submesh 0·1·2를 숨긴다.
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 0) | (1u << 1) | (1u << 2);
 
-	/* The cook merged a head-wide cap rigged to bip001-head and the bangs into the eye
-	submesh because the source section shares the eye material. Its extra UVs are a single
-	constant, so source program 5 sampled one texel and drew it as a flat eye-coloured
-	shell over the head. split_constant_uv_submesh_tail.py gave it submesh 6 of its own so
-	this bit can take it without hiding the eyeballs with it. */
+	// 눈 mesh에서 분리한 scalp cap은 6번이다. 이 비트만 숨겨 눈 자체는 유지한다.
 	constexpr uint32_t EYE_SUBMESH_SCALP_CAP = (1u << 6);
 
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. 7 is pc_ft_08_hair. */
+	// 별도 HEAD 표현과 겹치는 본체 7번 hair mesh를 숨길 때 쓰는 mask다.
 	constexpr uint32_t BAKED_HAIR = (1u << 7);
 
-	/* The rig keys only each chain's first bone and the original game solves
-	the rest at runtime -- the same contract as the Warlord chains. The two
-	upper_cloth chains are the long front and back battle-skirt drapes, the six
-	upper_skirt chains are short two-link flaps around the hip, the four
-	b_upper_pelat chains are the Upper armour's own hanging tassets -- by skin
-	weight the largest cloth on the piece -- and the b_hair_fr/fl tufts are the
-	bangs the helmet mesh itself skins. The long b_hair00/01 chains stay
-	unlisted: no shipped mesh references them while the helmet is worn.
-
-	The drapes hang between and behind the legs with no collision yet, so they
-	run stiffer than the Warlord cape to keep them out of the thighs. */
+	// 긴 천·짧은 치마·앞머리 체인에 서로 다른 solver 계수를 전달한다. 대상은 아래 BoneChains 목록이다.
 	constexpr f32_t DRAPE_STIFFNESS = 0.04f;
 	constexpr f32_t DRAPE_DAMPING = 0.6f;
 	constexpr f32_t DRAPE_GRAVITY = 16.f;
@@ -122,9 +102,7 @@ namespace
 		{ "b_hair_fl_01", 2u, BANGS_STIFFNESS, BANGS_DAMPING,
 		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
 
-		/* The back hair and the belt tail. They are in this body's own 224-bone palette but
-		were never solved, so they stayed rigid while the front bangs beside them moved.
-		b_add_hair01_b's links are numbered from 11, which is the rig's own numbering. */
+		// 뒷머리와 허리 장식도 solver에 포함한다. b_add_hair01_b는 골격 이름대로 11부터 시작한다.
 		{ "b_hair00_b_01", 5u, BANGS_STIFFNESS, BANGS_DAMPING,
 		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 40.0f },
 		{ "b_hair01_b_01", 4u, BANGS_STIFFNESS, BANGS_DAMPING,
@@ -135,6 +113,7 @@ namespace
 		  BANGS_GRAVITY, BANGS_MAX_DISPLACEMENT, BANGS_WIND_RESPONSE, 30.0f },
 	};
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_LanceMaster>();
@@ -143,6 +122,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_LanceMaster::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -151,7 +131,8 @@ void CLogic_LanceMaster::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// catalog가 extern으로 참조할 프로세스 수명의 직업 설정이다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_LanceMaster =
 {
 	"LanceMaster",
@@ -169,9 +150,7 @@ const CHARACTER_SPEC Spec_LanceMaster =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP,
-	ESTHER_CAST -- FBX takes are "<armature>_<action>", so the clips carry the
-	"flm_" prefix. The cast clip comes from the attached Esther animation set. */
+	// CHARACTER_ANIM 순서에 flm 계열 기본·에스더 clip을 대응시킨다.
 	{
 		"flm_idle_battle_1",
 		"flm_run_battle_1",
@@ -182,11 +161,10 @@ const CHARACTER_SPEC Spec_LanceMaster =
 		"flm_down",
 		"flm_standup_1",
 		"flm_act_estherskill_1",
-		/* Attached CustomizingAnimSet clip; the retail character-creation pose. */
+		// 캐릭터 생성 화면에서 사용할 idle clip이다.
 		"idle_charactercustomizing_1",
 		"flm_abn_fear_1",
-		/* Square-hole song: the family PSA act_music_loop_1 appended to the body cook
-		(append_psa_clip_to_wmodel.py --name), named like the other body clips. */
+		// 스퀘어홀 노래 상태에 사용할 body clip이다.
 		"flm_act_music_loop_1",
 	},
 

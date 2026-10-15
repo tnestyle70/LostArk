@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 
 import unittest
 from pathlib import Path
@@ -34,7 +38,7 @@ class ActionCompositionEffectInvocationContractTests(unittest.TestCase):
         cls.balance_cpp = BALANCE_CPP.read_text(encoding="utf-8")
         cls.authoring_h = AUTHORING_H.read_text(encoding="utf-8")
         cls.authoring_cpp = AUTHORING_CPP.read_text(encoding="utf-8")
-        cls.workbench = WORKBENCH_CPP.read_text(encoding="utf-8")
+        cls.workbench = read_source_text(WORKBENCH_CPP, encoding="utf-8")
 
     def test_explicit_typed_apis_preserve_broad_stage_inventory_boundary(self) -> None:
         for token in (

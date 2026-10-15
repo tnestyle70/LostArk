@@ -244,8 +244,8 @@ def prepare(output=OUT):
     write(output / 'native-world.json', native_world)
     composition_references = []
     for relative, pattern_id in (
-            ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KAKULSAYDON_G1_PATTERN_97'),
-            ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KAKULSAYDON_G1_PATTERN_10')):
+            ('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json', 'KOUKUSAYDON_G1_PATTERN_97'),
+            ('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json', 'KOUKUSAYDON_G1_PATTERN_10')):
         composition = read(ROOT / relative)
         pattern = next(p for p in composition['patterns'] if p['patternId'] == pattern_id)
         worlds = {w['worldId']: w for w in composition['worlds']}

@@ -1,3 +1,5 @@
+﻿// v1 Boss/Arena descriptor의 관계를 검사하는 reader다. 실제 보스 패턴 편집 문서나 Server 실행 catalog와 구분한다.
+// 현재 Load_Pair의 직접 호출은 BossToolTests에서 확인되며 이 파일이 gameplay를 실행하지 않는다.
 #include "BossCompositionDocument.h"
 
 #include "DataJson.h"
@@ -16,6 +18,7 @@ namespace
 {
 	using namespace Client;
 
+	// 두 descriptor의 schema, 형식과 입력 크기를 제한한다. 트랙 시계의 단위는 ms다.
 	constexpr std::string_view BOSS_SCHEMA = "lostark.boss-composition";
 	constexpr std::string_view ARENA_SCHEMA = "lostark.arena-sequencer";
 	constexpr uint32_t FORMAT_VERSION = 1u;
@@ -26,6 +29,7 @@ namespace
 	constexpr size_t MAX_TRACKS = 8192u;
 	constexpr uint32_t MAX_DURATION_MS = 3'600'000u;
 
+	// 필수 키와 JSON 타입을 함께 확인한다. 반환 포인터는 입력 JSON이 소유하며 호출 중에만 차용한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char_t* name,
@@ -35,6 +39,7 @@ namespace
 		return nullptr != value && value->Get_Type() == type ? value : nullptr;
 	}
 
+	// 정확히 일치하는 키 집합을 요구하여 누락과 알 수 없는 추가 필드를 거절한다.
 	bool_t Has_ExactRequiredProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> required)
@@ -48,6 +53,7 @@ namespace
 			});
 	}
 
+	// 필수 키는 모두 요구하고 선택 키만 생략을 허용한다. 목록에 없는 키는 거절한다.
 	bool_t Has_RequiredAndOptionalProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> required,
@@ -76,6 +82,7 @@ namespace
 		return true;
 	}
 
+	// 정수 토큰의 유한한 범위 값을 성공할 때만 출력한다. 값이 정수여도 실수 표기의 JSON 토큰은 거절한다.
 	bool_t Read_U32(
 		const DATA_JSON_VALUE* value,
 		uint32_t& outValue,
@@ -94,6 +101,7 @@ namespace
 		return true;
 	}
 
+	// ID의 ASCII 문자와 byte 길이를 검사한다. 저장소 경로의 안전성은 별도 함수가 확인한다.
 	bool_t Is_StableId(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 255u)
@@ -108,6 +116,7 @@ namespace
 			});
 	}
 
+	// 원본 파일 역할은 대문자로 시작하고 대문자, 숫자와 밑줄만 사용한다.
 	bool_t Is_SourceRole(const std::string_view value)
 	{
 		if (value.empty() || value.size() > 127u ||
@@ -124,6 +133,7 @@ namespace
 			});
 	}
 
+	// 표시 문자열의 길이와 제어 문자를 검사한다. 탭은 허용하며 UTF-8 전체 검증을 수행하지는 않는다.
 	bool_t Is_DisplayText(const std::string_view value)
 	{
 		return !value.empty() && value.size() <= 1024u &&
@@ -134,6 +144,7 @@ namespace
 				});
 	}
 
+	// 선언된 해시의 소문자 16진수 형식을 확인한다. 원본 파일의 내용을 해시하지 않는다.
 	bool_t Is_LowerHexSha256(const std::string_view value)
 	{
 		return 64u == value.size() &&
@@ -145,6 +156,8 @@ namespace
 				});
 	}
 
+	// Data 상대 경로의 형식을 검사하고 프로젝트 Data 루트에서 실제 일반 파일이 존재하는지도 확인한다.
+	// 파일 내용의 schema나 선언된 기대 개수까지 읽는 함수는 아니다.
 	bool_t Is_RepositoryDataPath(const std::string_view value)
 	{
 		if (!value.starts_with("Data/") || value.size() > 1024u ||
@@ -172,6 +185,7 @@ namespace
 			std::filesystem::is_regular_file(resolved, error) && !error;
 	}
 
+	// 상태 문자열을 enum으로 읽는다. AUTHORITATIVE 문자열을 해석할 수 있어도 각 문서 Load는 이를 별도로 거절한다.
 	bool_t Parse_Status(
 		const DATA_JSON_VALUE* value,
 		COMPOSITION_SOURCE_STATUS& outStatus)
@@ -189,6 +203,7 @@ namespace
 		return true;
 	}
 
+	// 처음에 출력을 비우고 생략 또는 null은 빈 ID로 허용한다. 실패 시 출력 보존 계약이 아니므로 임시 문서에서 사용한다.
 	bool_t Read_OptionalStableId(
 		const DATA_JSON_VALUE* value,
 		std::string& outValue)
@@ -202,6 +217,8 @@ namespace
 		return true;
 	}
 
+	// 32 MiB 이하의 일반 파일을 읽고 JSON 객체인지 확인한다. 크기 확인 뒤 파일이 자라거나 줄어든 경우도 거절한다.
+	// 입력 문자열 할당 실패는 상태로 반환한다. JSON 출력은 임시 값으로 받아 상위 Load에서 실제 문서와 분리한다.
 	bool_t Read_Document(
 		const std::filesystem::path& path,
 		DATA_JSON_VALUE& outRoot,
@@ -255,6 +272,7 @@ namespace
 		return true;
 	}
 
+	// 원본 역할과 경로가 중복되지 않고 파일이 존재하는지 검사한다. 성공한 임시 목록만 outRows에 교체한다.
 	bool_t Parse_SourceDocuments(
 		const DATA_JSON_VALUE* rows,
 		std::vector<BOSS_COMPOSITION_SOURCE_DOCUMENT>& outRows,
@@ -296,6 +314,7 @@ namespace
 
 	using SOURCE_ROLE_PATH = std::pair<std::string_view, std::string_view>;
 
+	// descriptor가 정확한 역할과 경로의 집합을 선언했는지 확인한다. 목록 순서는 비교 조건이 아니다.
 	bool_t Has_ExactSourceClosure(
 		const std::vector<BOSS_COMPOSITION_SOURCE_DOCUMENT>& sources,
 		const std::initializer_list<SOURCE_ROLE_PATH> expected)
@@ -315,6 +334,7 @@ namespace
 			});
 	}
 
+	// 각 쿠크 프로필에 참조, 슬롯 binding과 pattern binding 세 파일이 정확한 역할로 연결되어야 한다.
 	bool_t Has_KoukuSaydonSourceClosure(
 		const std::vector<BOSS_COMPOSITION_SOURCE_DOCUMENT>& sources,
 		const std::vector<BOSS_COMPOSITION_REFERENCE_PROFILE>& profiles)
@@ -348,6 +368,8 @@ namespace
 		return true;
 	}
 
+	// 트랙 종류에 맞는 variant와 참조 ID를 함께 채운다. ACTOR_PATTERN은 소유 descriptor ID와 일치해야 한다.
+	// World와 Camera 참조의 실제 payload 내용은 여기서 읽지 않는다.
 	bool_t Parse_TrackPayload(
 		const std::string& kind,
 		const DATA_JSON_VALUE& payload,
@@ -400,12 +422,13 @@ namespace
 				bossId->Get_String(), patternId->Get_String() };
 			return true;
 		}
-		/* These adapters do not exist yet. Reject rows rather than accepting an
-		   untyped payload that a later runtime could interpret differently. */
+		// 위 세 종류 이외의 typed adapter는 지원하지 않는다. 해석하지 못한 payload를 그대로 받아들이지 않는다.
 		return false;
 	}
 }
 
+// 보스 descriptor를 임시 객체로 읽고 지원 identity별 계약을 검사한다. false 경로에서는 기존 멤버를 유지한다.
+// 원본 파일의 존재와 선언한 coverage 내부 합계는 확인하지만 실제 gameplay payload를 로드하거나 전체 내용을 재집계하지 않는다.
 bool_t Client::CBossCompositionDocument::Load(
 	const std::filesystem::path& path,
 	std::string& outStatus)
@@ -488,6 +511,7 @@ bool_t Client::CBossCompositionDocument::Load(
 	}
 	staged.m_Coverage.kind = coverageKind->Get_String();
 	staged.m_Coverage.expectedIdentitySha256 = identity->Get_String();
+	// 발탄은 SHADOW와 고정 원본 파일 목록을 요구한다. 선언한 패턴 개수는 descriptor 자체의 ID 색인 개수와 대조한다.
 	if ("boss.composition.valtan" == staged.m_CompositionId)
 	{
 		if (!Has_ExactRequiredProperties(*coverage,
@@ -525,7 +549,8 @@ bool_t Client::CBossCompositionDocument::Load(
 			return false;
 		}
 	}
-	else if ("boss.composition.kakulsaydon" == staged.m_CompositionId)
+	// 쿠크 v1 descriptor는 REFERENCE_ONLY이며 패턴 색인을 비워 둔다. 실제 제품 Composition과 같은 문서로 해석하지 않는다.
+	else if ("boss.composition.koukusaydon" == staged.m_CompositionId)
 	{
 		const DATA_JSON_VALUE* profiles = Required(
 			*coverage, "profiles", DATA_JSON_TYPE::ARRAY);
@@ -628,11 +653,13 @@ bool_t Client::CBossCompositionDocument::Load(
 	return true;
 }
 
+// 이 객체의 값을 초기 상태로 되돌린다. 저장소 파일을 변경하지 않는다.
 void Client::CBossCompositionDocument::Clear()
 {
 	*this = {};
 }
 
+// 패턴 색인의 원소를 차용해 반환한다. 없으면 nullptr이며 이후 Load나 Clear가 원소의 수명을 끝낼 수 있다.
 const Client::BOSS_COMPOSITION_PATTERN*
 Client::CBossCompositionDocument::Find_Pattern(
 	const std::string& patternId) const
@@ -645,18 +672,25 @@ Client::CBossCompositionDocument::Find_Pattern(
 	return m_Patterns.end() == found ? nullptr : &*found;
 }
 
+// 진단용 이름을 정적 문자열로 반환한다. 호출자는 반환 포인터를 해제하지 않는다.
 const char_t* Client::CBossCompositionDocument::Status_ToString(
 	const COMPOSITION_SOURCE_STATUS status)
 {
 	switch (status)
 	{
-	case COMPOSITION_SOURCE_STATUS::SHADOW: return "SHADOW";
-	case COMPOSITION_SOURCE_STATUS::REFERENCE_ONLY: return "REFERENCE_ONLY";
-	case COMPOSITION_SOURCE_STATUS::AUTHORITATIVE: return "AUTHORITATIVE";
-	default: return "?";
+	case COMPOSITION_SOURCE_STATUS::SHADOW:
+		return "SHADOW";
+	case COMPOSITION_SOURCE_STATUS::REFERENCE_ONLY:
+		return "REFERENCE_ONLY";
+	case COMPOSITION_SOURCE_STATUS::AUTHORITATIVE:
+		return "AUTHORITATIVE";
+	default:
+		return "?";
 	}
 }
 
+// 지원하는 아레나 SHADOW descriptor의 identity, 원본 목록과 트랙을 임시 객체에 읽는다.
+// false를 반환하는 경로에서는 이전 문서가 유지된다. 이 로드는 트랙 실행을 시작하지 않는다.
 bool_t Client::CArenaSequencerDocument::Load(
 	const std::filesystem::path& path,
 	std::string& outStatus)
@@ -717,11 +751,11 @@ bool_t Client::CArenaSequencerDocument::Load(
 		("arena.sequencer.valtan" == staged.m_SequencerId &&
 			("LV_LUT_HEARTRB_ED" != staged.m_AreaId ||
 			 "boss.composition.valtan" != staged.m_BossCompositionId)) ||
-		("arena.sequencer.kakulsaydon" == staged.m_SequencerId &&
+		("arena.sequencer.koukusaydon" == staged.m_SequencerId &&
 			("LV_LUT_MIDNIGHTC_ED" != staged.m_AreaId ||
-			 "boss.composition.kakulsaydon" != staged.m_BossCompositionId)) ||
+			 "boss.composition.koukusaydon" != staged.m_BossCompositionId)) ||
 		("arena.sequencer.valtan" != staged.m_SequencerId &&
-		 "arena.sequencer.kakulsaydon" != staged.m_SequencerId))
+		 "arena.sequencer.koukusaydon" != staged.m_SequencerId))
 	{
 		outStatus = "Arena Sequencer identity, Area, or Boss Composition link is invalid";
 		return false;
@@ -734,7 +768,7 @@ bool_t Client::CArenaSequencerDocument::Load(
 					{ "MAP_EFFECTS", "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.mapeffects.json" },
 					{ "MAP_LIGHTS", "Data/Maps/Authoring/LV_LUT_HEARTRB_ED/LV_LUT_HEARTRB_ED.maplights.json" },
 				})) ||
-		("arena.sequencer.kakulsaydon" == staged.m_SequencerId &&
+		("arena.sequencer.koukusaydon" == staged.m_SequencerId &&
 			Has_ExactSourceClosure(staged.m_SourceDocuments,
 				{
 					{ "BOSS_COMPOSITION", "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json" },
@@ -753,6 +787,7 @@ bool_t Client::CArenaSequencerDocument::Load(
 		return false;
 	}
 
+	// 트랙 ID는 중복을 거절하고 선택 종료 시각은 시작보다 크며 아레나 전체 길이 안에 있어야 한다.
 	std::unordered_set<std::string> trackIds;
 	for (const DATA_JSON_VALUE& trackValue : tracks->Get_Array())
 	{
@@ -802,11 +837,13 @@ bool_t Client::CArenaSequencerDocument::Load(
 	return true;
 }
 
+// 아레나 descriptor의 값만 비운다. 다른 도메인의 payload나 디스크 파일은 변경하지 않는다.
 void Client::CArenaSequencerDocument::Clear()
 {
 	*this = {};
 }
 
+// 지원 트랙 종류의 정적 표시 이름을 반환한다. enum 범위 밖의 값은 물음표로 표현한다.
 const char_t* Client::CArenaSequencerDocument::TrackKind_ToString(
 	const ARENA_SEQUENCER_TRACK_KIND kind)
 {
@@ -823,6 +860,8 @@ const char_t* Client::CArenaSequencerDocument::TrackKind_ToString(
 	}
 }
 
+// 계약 검증 호출자가 선택한 알려진 보스와 아레나 한 쌍만 읽는다. 무관한 다른 보스 파일은 실패 조건에 포함하지 않는다.
+// 임시 문서 둘의 identity와 Area 및 ACTOR_PATTERN 연결을 확인한 뒤에만 기존 목록을 교체한다.
 bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 	const std::string& compositionId,
 	const std::string& sequencerId,
@@ -837,8 +876,8 @@ bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 		bossRelativePath = L"Compositions/Bosses/Valtan.bosscomposition.json";
 		arenaRelativePath = L"Compositions/Sequences/ValtanArena.sequencer.json";
 	}
-	else if ("boss.composition.kakulsaydon" == compositionId &&
-		"arena.sequencer.kakulsaydon" == sequencerId)
+	else if ("boss.composition.koukusaydon" == compositionId &&
+		"arena.sequencer.koukusaydon" == sequencerId)
 	{
 		bossRelativePath =
 			L"Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json";
@@ -882,6 +921,7 @@ bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 			"Composition descriptor pair identity or Area link does not agree";
 		return false;
 	}
+	// actor 트랙은 같은 보스 descriptor의 패턴 색인으로 연결되어야 한다. World와 Camera의 내용 검증으로 확대하지 않는다.
 	for (const ARENA_SEQUENCER_TRACK& track : stagedArena.Get_Tracks())
 	{
 		if (ARENA_SEQUENCER_TRACK_KIND::ACTOR_PATTERN != track.kind)
@@ -896,6 +936,7 @@ bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 			return false;
 		}
 	}
+	// 두 목록을 먼저 준비하고 성공한 선택 쌍으로 기존 카탈로그를 교체한다. 이전 쌍에 누적해서 추가하지 않는다.
 	std::vector<CBossCompositionDocument> stagedBosses;
 	std::vector<CArenaSequencerDocument> stagedArenas;
 	stagedBosses.push_back(std::move(stagedBoss));
@@ -907,12 +948,14 @@ bool_t Client::CCompositionDocumentCatalog::Load_Pair(
 	return true;
 }
 
+// 소유한 두 문서 목록을 비운다. Find로 차용한 기존 원소 포인터는 더 이상 사용할 수 없다.
 void Client::CCompositionDocumentCatalog::Clear()
 {
 	m_BossDocuments.clear();
 	m_ArenaDocuments.clear();
 }
 
+// 현재 보유한 보스 문서를 stable ID로 선형 조회한다. 반환 원소의 수명은 카탈로그가 소유한다.
 const Client::CBossCompositionDocument*
 Client::CCompositionDocumentCatalog::Find_Boss(
 	const std::string& compositionId) const
@@ -925,6 +968,7 @@ Client::CCompositionDocumentCatalog::Find_Boss(
 	return m_BossDocuments.end() == found ? nullptr : &*found;
 }
 
+// 현재 보유한 아레나 문서를 stable ID로 선형 조회한다. 없으면 nullptr이며 호출자는 포인터를 해제하지 않는다.
 const Client::CArenaSequencerDocument*
 Client::CCompositionDocumentCatalog::Find_Arena(
 	const std::string& sequencerId) const

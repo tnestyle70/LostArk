@@ -107,7 +107,7 @@ def stage_authored_repair(evidence):
         for s in p['stages'] for a in s['animationOccurrences'] if a['profileId'] == 'MN_RPCT_07')
     source.write(evidence / 'pattern_template.json', dict(
         operation='CREATE_NEW_PATTERN_WITH_FRESH_STABLE_IDS', displayName='기분나빠 | 브레스',
-        actorProfileId='MN_RPCT_05', gateId='GATE3', targetBossPlacementId='boss.kakulsaydon.g3.saydon',
+        actorProfileId='MN_RPCT_05', gateId='GATE3', targetBossPlacementId='boss.koukusaydon.g3.saydon',
         category='MECHANIC', authoringStatus='DRAFT', resetBossToSpawn=False,
         stage=dict(stageKind='ACTIVE', durationMs=5167, animation=dict(profileId='MN_RPCT_07',
             sourceActionId=4219917, sourceStageId='stage-000', sourceSlotId='animation-000',
@@ -119,7 +119,7 @@ def stage_authored_repair(evidence):
             followBoss=False, debugRender=True, bone='', boneTarget='BODY', regionId='', cardSymbol='NONE',
             cardColor='NONE', anchorKind='BOSS', worldId='', logicOccurrenceId='', worldOccurrenceId=''),
         sourceBasis='Source SNAPSHOT_ROOT at notify 1.989096999 seconds; effect normalizes source +X to owner +Z once.',
-        existingPatternIdsUnchanged=[f'KAKULSAYDON_G1_PATTERN_{i}' for i in (44, 50, 51, 52, 53, 54, 55)],
+        existingPatternIdsUnchanged=[f'KOUKUSAYDON_G1_PATTERN_{i}' for i in (44, 50, 51, 52, 53, 54, 55)],
         compositionInputSha256=hashlib.sha256(composition_path.read_bytes()).hexdigest()))
     source.write(evidence / 'source_default_repairs.json', dict(repairs=repairs,
         cause='SERIALIZED_DISTRIBUTION_NONE_REPLACED_INHERITED_COOKED_FIELDS', sourceSystem=SYSTEM,
@@ -241,7 +241,7 @@ def stage_authored_duration(evidence, duration_ms=AUTHORED_DURATION_MS):
 
 def breath_model_preview():
     preview = source.source_model_preview(ACTION_SOURCE, 4219917, [0], 'GATE3',
-        'MN_RPCT_05', 'boss.kakulsaydon.g3.saydon')
+        'MN_RPCT_05', 'boss.koukusaydon.g3.saydon')
     assert len(preview['animations']) == 1
     animation = preview['animations'][0]
     assert animation['runtimeClip'] == 'rpct00_att_battle_31_01' and animation['playMs'] == 5167

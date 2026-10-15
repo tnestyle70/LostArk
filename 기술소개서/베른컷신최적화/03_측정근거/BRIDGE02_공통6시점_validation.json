@@ -1,0 +1,384 @@
+{
+  "scope": "Whole installed CModel versus new low geometry. Actual D3D11 pipeline query, position-only shader, cull none, no depth/material/scene/FPS equivalence.",
+  "adapter": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "nativeCModelSourceIndices": 3936,
+  "nativeCModelSourceVertices": 1162,
+  "nativeCModelSourceMeshes": 2,
+  "sourceMeshIndicesMatchOfflineParserExactly": true,
+  "sourcePositionMaximumErrorMeters": 4.749816753246705e-07,
+  "inputsUnchanged": true,
+  "runs": [
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-00-start",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 64134
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 50076
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 25039,
+      "candidatePixels": 25037,
+      "lostPixels": 35,
+      "gainedPixels": 33,
+      "silhouetteIoU": 0.9972878111040204,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-01",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 101061
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 78998
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 39469,
+      "candidatePixels": 39498,
+      "lostPixels": 53,
+      "gainedPixels": 82,
+      "silhouetteIoU": 0.9965866855452454,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-02",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 226166
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 176490
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 88367,
+      "candidatePixels": 88241,
+      "lostPixels": 244,
+      "gainedPixels": 118,
+      "silhouetteIoU": 0.9959089111148782,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-03",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 480119
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 397626
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 198264,
+      "candidatePixels": 198813,
+      "lostPixels": 248,
+      "gainedPixels": 797,
+      "silhouetteIoU": 0.9947503529068978,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-04",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-raw",
+      "cameraId": "cue-05-end",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 283261
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 166,
+        "psInvocations": 221964
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.11731448763250883,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 111486,
+      "candidatePixels": 110819,
+      "lostPixels": 1701,
+      "gainedPixels": 1034,
+      "silhouetteIoU": 0.975693210095983,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-00-start",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 64134
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 50076
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 25039,
+      "candidatePixels": 25037,
+      "lostPixels": 35,
+      "gainedPixels": 33,
+      "silhouetteIoU": 0.9972878111040204,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-01",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 101061
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 78998
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 39469,
+      "candidatePixels": 39498,
+      "lostPixels": 53,
+      "gainedPixels": 82,
+      "silhouetteIoU": 0.9965866855452454,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-02",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 226166
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 176490
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 88367,
+      "candidatePixels": 88241,
+      "lostPixels": 244,
+      "gainedPixels": 118,
+      "silhouetteIoU": 0.9959089111148782,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-03",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 480119
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 397626
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 198264,
+      "candidatePixels": 198813,
+      "lostPixels": 248,
+      "gainedPixels": 797,
+      "silhouetteIoU": 0.9947503529068978,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-04",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "bridge02-relief-fit-grid0001-cache",
+      "cameraId": "cue-05-end",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 2,
+        "iaVertices": 3936,
+        "iaPrimitives": 1312,
+        "vsInvocations": 1415,
+        "psInvocations": 283261
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 360,
+        "iaPrimitives": 120,
+        "vsInvocations": 134,
+        "psInvocations": 221964
+      },
+      "vertexCapacity": 134,
+      "indexRatio": 0.09146341463414634,
+      "vsRatio": 0.09469964664310954,
+      "actualIndexAndVsOneEighth": true,
+      "sourcePixels": 111486,
+      "candidatePixels": 110819,
+      "lostPixels": 1701,
+      "gainedPixels": 1034,
+      "silhouetteIoU": 0.975693210095983,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    }
+  ]
+}

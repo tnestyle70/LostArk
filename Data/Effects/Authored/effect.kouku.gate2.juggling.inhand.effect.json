@@ -13,7 +13,7 @@
   "sourceModelPreview": {
     "gateId": "GATE2",
     "actorProfileId": "MN_RPCZ_00",
-    "targetBossPlacementId": "boss.kakulsaydon.g2.kouku",
+    "targetBossPlacementId": "boss.koukusaydon.g2.kouku",
     "animations": [
       {
         "runtimeClip": "rpcz00_att_battle_4_01",

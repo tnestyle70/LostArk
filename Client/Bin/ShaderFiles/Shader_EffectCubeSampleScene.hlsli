@@ -1,6 +1,10 @@
 #ifndef EFFECT_CUBESAMPLE_SCENE_HLSLI
 #define EFFECT_CUBESAMPLE_SCENE_HLSLI
 #include "Shader_EffectSceneColorInput.hlsli"
+#include "Shader_EffectCubeColorResponse.hlsli"
+
+// 실제 CubeSample 분기가 쓴 RT2만 carrier가 보존한다. 픽셀 호출 사이에는 공유되지 않는다.
+static bool g_CubeSampleBloomWritten = false;
 
 float CubeSample_SourcePow(float value, float exponent)
 {
@@ -47,6 +51,9 @@ EFFECT_PS_OUT Shade_EffectCubeSampleScene(float2 meshUV,
     const float3 power2 = powerBase * powerBase;
     const float3 power5 = power2 * power2 * powerBase;
     const float3 refracted = lerp(5.f * power5, scene, facing);
+    // 가중된 Bloom을 C^5에 대입하지 않고, 현재 HDR 배경에서 정한 RGB 전달 계수를 쓴다.
+    float3 bloomTransmission = (5.f * power2 * power2 * grazing + facing) *
+        g_SourceVector0.rgb * g_SourceVector0.a * g_EmissiveIntensity;
     const float3 caustic = Sample_SourceTexture0(V.xy * 3.f).rgb *
         CubeSample_SourcePow(grazing, 7.f) * g_SourceScalars0.x;
     const float2 edgeUV = 2.f * (meshUV - 0.5f);
@@ -63,9 +70,7 @@ EFFECT_PS_OUT Shade_EffectCubeSampleScene(float2 meshUV,
     output.SceneColor.a = sourceAlpha;
     if (g_SourceScalars0.w > 0.f)
     {
-        // Opt-in only: all scene/bloom/black evaluations use the same actual
-        // HDR scene to choose transmission. Suppressed scene
-        // bloom is never reconstructed from that HDR sample.
+        // 보정된 색과 Bloom 전달은 같은 현재 HDR 배경에서 정한 계수를 소비한다.
         const float strength = saturate(g_SourceScalars0.w);
         const float3 actualScene = min(max(g_EffectSceneColorTexture.Sample(
             LinearClampUVSampler, sceneUV).rgb, 0.f), 60000.f);
@@ -85,6 +90,8 @@ EFFECT_PS_OUT Shade_EffectCubeSampleScene(float2 meshUV,
         const float3 particleChroma = particleRadiance / max(particlePeak, 1.e-4f);
         const float3 transmission = nativeTransmission * particleChroma *
             ((1.f - sceneWeight) + sceneWeight * bodyScale);
+        bloomTransmission = (1.f - strength) * bloomTransmission +
+            strength * transmission;
         const float3 nativeCaustic = caustic * g_SourceVector0.rgb *
             g_SourceVector0.a * g_EmissiveIntensity;
         // The source HDR particle color supplies the gold hue. This authored
@@ -95,8 +102,7 @@ EFFECT_PS_OUT Shade_EffectCubeSampleScene(float2 meshUV,
             g_SourceVector0.a * g_EmissiveIntensity * faceEmissionWeight;
         const float3 clearColor = scene * transmission + nativeCaustic +
             edge * particleColor.rgb * g_EmissiveIntensity + faceEmission;
-        // Weighted sum avoids cancellation against the legacy C^5 output at
-        // strength1. Only the opted-in contribution transports bloom linearly.
+        // strength1에서 큰 C^5 항끼리의 뺄셈 상쇄 없이 보정 색을 선택한다.
         output.SceneColor.rgb = (1.f - strength) * output.SceneColor.rgb +
             strength * clearColor;
         // Reduce unfiltered background leakage only on bright scenes. Preserve
@@ -107,6 +113,24 @@ EFFECT_PS_OUT Shade_EffectCubeSampleScene(float2 meshUV,
     output.Distortion = float4(0.f, 0.f, 0.f, 0.f);
     if (g_ColorClip > 0.f)
         clip(sourceAlpha - g_ColorClip);
+    // 기존 배경 Bloom은 한 번 전달하고, 재질 증폭으로 새로 생긴 bright-pass만
+    // 현재 문서 배율을 받는다. 항등 전달에서는 억제된 배경 Bloom이 되살아나지 않는다.
+    const float3 sceneBloom = g_EffectSceneBloomTexture.Sample(
+        LinearClampUVSampler, sceneUV).rgb;
+    const float3 newBloom = max(Extract_SceneBloom(output.SceneColor.rgb) -
+        bloomTransmission * Extract_SceneBloom(scene), 0.f);
+    const float bloomIntensity = clamp(g_fEffectBloomIntensity >= 0.f ?
+        g_fEffectBloomIntensity : g_fSceneBloomIntensity, 0.f, 16.f);
+    output.BloomContribution = float4(min(max(bloomTransmission * sceneBloom,
+        0.f) + newBloom * bloomIntensity, 60000.f), output.SceneColor.a);
+    g_CubeSampleBloomWritten = true;
+    // 저작한 면 발광과 coverage까지 목표에 포함해야 색 응답이 그 보정을 다시 지우지 않는다.
+    // Bloom은 위의 저작 HDR 에너지로 이미 계산했으며 이 단계는 RT0 RGB만 바꾼다.
+    [branch] if (g_CubeColorResponseEnabled != 0)
+        output.SceneColor.rgb = CubeColor_Resolve(output.SceneColor.rgb,
+            g_EffectSceneColorTexture.SampleLevel(LinearClampUVSampler,
+                pixelPosition / float2(width, height), 0.f).rgb,
+            output.SceneColor.a);
     return output;
 }
 

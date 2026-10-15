@@ -31,8 +31,8 @@ from typing import Any, Iterable
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AREA_ID = "LV_LUT_MIDNIGHTC_ED"
 COLLECTION_NAME = "KoukuSaton"
-WORLD_ID = "KAKULSAYDON_ARENA"
-CLIENT_LEVEL = "KAKULSAYDON_ARENA"
+WORLD_ID = "KOUKUSAYDON_ARENA"
+CLIENT_LEVEL = "KOUKUSAYDON_ARENA"
 
 RESOURCE_MODE = "resource-collection"
 GEOMETRY_MODE = "development-geometry-preview"
@@ -1068,10 +1068,10 @@ def _validate_product(
         (
             f"LEVEL::{CLIENT_LEVEL}",
             "CLIENT_LEVEL_KIND::PRODUCT",
-            '"raid.kakul-saydon.arena"',
+            '"raid.kouku-saydon.arena"',
             f'"{AREA_ID}"',
-            "CreateKakulSaydonArena",
-            "Ready_For_KakulSaydonArena",
+            "CreateKoukuSaydonArena",
+            "Ready_For_KoukuSaydonArena",
         ),
         stage,
         "client.level-registry",
@@ -1079,14 +1079,14 @@ def _validate_product(
     _require_text_tokens(
         root,
         Path("Client/Public/Loader.h"),
-        ("Ready_For_KakulSaydonArena",),
+        ("Ready_For_KoukuSaydonArena",),
         stage,
         "client.loader",
     )
     _require_text_tokens(
         root,
         Path("Client/Private/Loader.cpp"),
-        ("Ready_For_KakulSaydonArena", f"LEVEL::{CLIENT_LEVEL}"),
+        ("Ready_For_KoukuSaydonArena", f"LEVEL::{CLIENT_LEVEL}"),
         stage,
         "client.loader",
     )
@@ -1097,33 +1097,33 @@ def _validate_product(
         stage,
         "client.level-transition",
     )
-    level_header = Path("Client/Public/Level_KakulSaydonArena.h")
-    level_source = Path("Client/Private/Level_KakulSaydonArena.cpp")
+    level_header = Path("Client/Public/Level_KoukuSaydonArena.h")
+    level_source = Path("Client/Private/Level_KoukuSaydonArena.cpp")
     _require_text_tokens(
         root,
         level_header,
-        ("CLevel_KakulSaydonArena",),
+        ("CLevel_KoukuSaydonArena",),
         stage,
         "client.level-class",
     )
     _require_text_tokens(
         root,
         level_source,
-        ("CLevel_KakulSaydonArena", AREA_ID),
+        ("CLevel_KoukuSaydonArena", AREA_ID),
         stage,
         "client.level-class",
     )
     _require_text_tokens(
         root,
         Path("Client/Default/Client.vcxproj"),
-        ("Level_KakulSaydonArena.h", "Level_KakulSaydonArena.cpp"),
+        ("Level_KoukuSaydonArena.h", "Level_KoukuSaydonArena.cpp"),
         stage,
         "client.project",
     )
     _require_text_tokens(
         root,
         Path("Client/Default/Client.vcxproj.filters"),
-        ("Level_KakulSaydonArena.h", "Level_KakulSaydonArena.cpp"),
+        ("Level_KoukuSaydonArena.h", "Level_KoukuSaydonArena.cpp"),
         stage,
         "client.filters",
     )

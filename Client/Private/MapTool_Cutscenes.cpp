@@ -3,7 +3,7 @@
 #include "WorldSequenceToolPanel.h"
 #include "Camera_Free.h"
 #include "GameInstance.h"
-#include "KakulArenaHiddenPlacements.h"
+#include "KoukuArenaHiddenPlacements.h"
 #include "DeployPropObject.h"
 #include "ValtanCinematicCameraController.h"
 #include "WorldSequenceObject.h"
@@ -63,7 +63,7 @@ bool_t Client::CMapTool::Ensure_WorldObjectPrototype()
 	/* Raid Levels own this factory before any editor opens: Kouku registers
 	   it on activation and Valtan in its Loader rollback scope. Only isolated
 	   editor Levels need the Map Tool registration below. */
-	if (ETOUI(LEVEL::KAKULSAYDON_ARENA) == m_iAuthoringLevelIndex ||
+	if (ETOUI(LEVEL::KOUKUSAYDON_ARENA) == m_iAuthoringLevelIndex ||
 		ETOUI(LEVEL::VALTAN_ARENA) == m_iAuthoringLevelIndex)
 	{
 		m_bWorldObjectPrototypeReady = true;
@@ -455,7 +455,7 @@ void Client::CMapTool::Update_EditorCutscene(const f32_t fTimeDelta)
 		   starting frame is long. Advancing by that whole frame would skip
 		   most of the authored motion. */
 		m_fCutsceneSessionMs += (std::min)(fTimeDelta,
-			KAKUL_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
+			KOUKU_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
 		if (m_fCutsceneSessionMs >= static_cast<f32_t>(cutscene->durationMs))
 		{
 			/* Hold the last instant instead of restarting: the editor judges
@@ -683,7 +683,7 @@ void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
 		/* Culling boxes and other helpers are already invisible. Capture what
 		   each placement was before hiding so restoring cannot reveal
 		   something the Area never showed. */
-		for (const uint64_t placementId : KAKUL_ARENA_HIDDEN_PLACEMENT_IDS)
+		for (const uint64_t placementId : KOUKU_ARENA_HIDDEN_PLACEMENT_IDS)
 		{
 			const auto found = std::find_if(Authoring_Placements().begin(),
 				Authoring_Placements().end(),
@@ -736,12 +736,12 @@ void Client::CMapTool::Apply_CutsceneArenaVisibility(const bool_t hidden)
 
 bool_t Client::CMapTool::Is_CutsceneOriginalPlaying() const
 {
-	const size_t prefixLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	const size_t prefixLength = strlen(KOUKU_ORIGINAL_INSTANCE_PREFIX);
 	for (const WORLD_SEQUENCE_INSTANCE& instance :
 		m_ArenaRisePlayer.Get_Document().Get_Instances())
 	{
 		if (0 != instance.instanceId.compare(0, prefixLength,
-			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+			KOUKU_ORIGINAL_INSTANCE_PREFIX))
 		{
 			continue;
 		}
@@ -758,8 +758,8 @@ void Client::CMapTool::Hide_CutsceneSet()
 	for (PLACED_ENTRY& entry : Authoring_Placements())
 	{
 		const uint64_t placementId = entry.record.placementId;
-		if (placementId < KAKUL_CUTSCENE_SET_FIRST_ID ||
-			placementId >= KAKUL_CUTSCENE_SET_END_ID)
+		if (placementId < KOUKU_CUTSCENE_SET_FIRST_ID ||
+			placementId >= KOUKU_CUTSCENE_SET_END_ID)
 		{
 			continue;
 		}
@@ -800,7 +800,7 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 		   judged over and over without replaying the whole cutscene. */
 		m_ArenaRisePlayer.Set_Paused(true);
 		f32_t next = ((std::max)(m_fCutsceneScrubMs, m_fCutsceneLoopStartMs)) +
-			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
+			(std::min)(fTimeDelta, KOUKU_CUTSCENE_MAX_STEP_SECONDS) * 1000.f;
 		if (next >= m_fCutsceneLoopEndMs)
 			next = m_fCutsceneLoopStartMs;
 		m_fCutsceneScrubMs = next;
@@ -820,9 +820,9 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 		   dropped, and restarting it then would take its ending pose as the
 		   new baseline. */
 		Update_MarioSequenceLoop(
-			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
+			(std::min)(fTimeDelta, KOUKU_CUTSCENE_MAX_STEP_SECONDS), targets);
 		m_ArenaRisePlayer.Update(
-			(std::min)(fTimeDelta, KAKUL_CUTSCENE_MAX_STEP_SECONDS), targets);
+			(std::min)(fTimeDelta, KOUKU_CUTSCENE_MAX_STEP_SECONDS), targets);
 	}
 
 	/* The original recycles its cutscene props on the frame the unfold ends and
@@ -854,7 +854,7 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 	   visibility. */
 	if (m_fCutsceneBookHoldMs < 0.f)
 		return;
-	for (uint32_t index = 0; index < KAKUL_ARENA_RISE_INSTANCE_COUNT; ++index)
+	for (uint32_t index = 0; index < KOUKU_ARENA_RISE_INSTANCE_COUNT; ++index)
 	{
 		char instanceId[64] = {};
 		(void)snprintf(instanceId, sizeof(instanceId),
@@ -866,10 +866,10 @@ void Client::CMapTool::Update_CutsceneArenaRise(
 		}
 	}
 	m_fCutsceneBookHoldMs += (std::max)(0.f, fTimeDelta) * 1000.f;
-	if (m_fCutsceneBookHoldMs < KAKUL_BOOK_HOLD_AFTER_ARENA_MS)
+	if (m_fCutsceneBookHoldMs < KOUKU_BOOK_HOLD_AFTER_ARENA_MS)
 		return;
 	m_fCutsceneBookHoldMs = -1.f;
-	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KOUKU_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::DESPAWNED } }))
 	{
 		OutputDebugStringA(("[MapTool][CutsceneArena] book despawn failed: " +
@@ -891,7 +891,7 @@ bool_t Client::CMapTool::Play_CutsceneArenaRise()
 	}
 	if (!m_bArenaRiseAreaLoaded)
 	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		if (!m_ArenaRisePlayer.Load_Area(KOUKU_AREA_ID, targets))
 		{
 			m_Status = "Arena rise document load failed: " +
 				m_ArenaRisePlayer.Get_Status();
@@ -905,11 +905,11 @@ bool_t Client::CMapTool::Play_CutsceneArenaRise()
 	m_ArenaRisePlayer.Stop_All(targets);
 	size_t started = 0;
 	size_t rejected = 0;
-	Release_CutsceneBookPreview(KAKUL_BOOK_PLACEMENT_ID);
+	Release_CutsceneBookPreview(KOUKU_BOOK_PLACEMENT_ID);
 	/* The book carries its own covers and pages, so it is one asset. The arena
 	   spreads out of it once the unfold is under way. Restore it first: a
 	   previous run despawns it when the arena settles. */
-	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KOUKU_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::INTACT } }))
 	{
 		m_Status = "Arena rise could not restore the book: " +
@@ -917,11 +917,11 @@ bool_t Client::CMapTool::Play_CutsceneArenaRise()
 		return false;
 	}
 	m_fCutsceneBookHoldMs = 0.f;
-	if (m_ArenaRisePlayer.Play(KAKUL_BOOK_INSTANCE_ID, targets))
+	if (m_ArenaRisePlayer.Play(KOUKU_BOOK_INSTANCE_ID, targets))
 		++started;
 	else
 		++rejected;
-	for (uint32_t index = 0; index < KAKUL_ARENA_RISE_INSTANCE_COUNT; ++index)
+	for (uint32_t index = 0; index < KOUKU_ARENA_RISE_INSTANCE_COUNT; ++index)
 	{
 		char instanceId[64] = {};
 		(void)snprintf(instanceId, sizeof(instanceId),
@@ -950,7 +950,7 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 	}
 	if (!m_bArenaRiseAreaLoaded)
 	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		if (!m_ArenaRisePlayer.Load_Area(KOUKU_AREA_ID, targets))
 		{
 			m_Status = "Original cutscene document load failed: " +
 				m_ArenaRisePlayer.Get_Status();
@@ -959,11 +959,11 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 		m_bArenaRiseAreaLoaded = true;
 	}
 	m_ArenaRisePlayer.Stop_All(targets);
-	Release_CutsceneBookPreview(KAKUL_BOOK_PLACEMENT_ID);
+	Release_CutsceneBookPreview(KOUKU_BOOK_PLACEMENT_ID);
 	/* The replicated cutscene assembles on its own book, and the original
 	   keeps that book under the finished arena, so restore it and leave the
 	   arena_rise despawn timer disarmed. */
-	if (!Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+	if (!Authoring_Deploy().Set_States({ { KOUKU_BOOK_PLACEMENT_ID,
 		DEPLOY_PROP_STATE::INTACT } }))
 	{
 		m_Status = "Original cutscene could not restore the book: " +
@@ -972,12 +972,12 @@ bool_t Client::CMapTool::Play_CutsceneOriginalRise()
 	}
 	m_fCutsceneBookHoldMs = -1.f;
 	std::vector<std::string> instanceIds;
-	const size_t prefixLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	const size_t prefixLength = strlen(KOUKU_ORIGINAL_INSTANCE_PREFIX);
 	for (const WORLD_SEQUENCE_INSTANCE& instance :
 		m_ArenaRisePlayer.Get_Document().Get_Instances())
 	{
 		if (0 == instance.instanceId.compare(0, prefixLength,
-			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+			KOUKU_ORIGINAL_INSTANCE_PREFIX))
 		{
 			instanceIds.push_back(instance.instanceId);
 		}
@@ -1041,10 +1041,10 @@ bool_t Client::CMapTool::Ensure_ShotCutsceneClock(
 		return true;
 	/* The original cutscene owns prop and arena state besides its
 	   clock, so a shot bound to it still starts through that path. */
-	const size_t originalLength = strlen(KAKUL_ORIGINAL_INSTANCE_PREFIX);
+	const size_t originalLength = strlen(KOUKU_ORIGINAL_INSTANCE_PREFIX);
 	if (shot.sequenceInstanceId.size() >= originalLength &&
 		0 == shot.sequenceInstanceId.compare(0, originalLength,
-			KAKUL_ORIGINAL_INSTANCE_PREFIX))
+			KOUKU_ORIGINAL_INSTANCE_PREFIX))
 	{
 		return Play_CutsceneOriginalRise();
 	}
@@ -1142,7 +1142,7 @@ bool_t Client::CMapTool::Play_MarioIntro(const std::string& stageToken)
 	}
 	if (!m_bArenaRiseAreaLoaded)
 	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		if (!m_ArenaRisePlayer.Load_Area(KOUKU_AREA_ID, targets))
 		{
 			m_MarioWalkStatus = "Sequence document load failed: " +
 				m_ArenaRisePlayer.Get_Status();
@@ -1220,7 +1220,7 @@ bool_t Client::CMapTool::Toggle_MarioSequenceLoop()
 	}
 	if (!m_bArenaRiseAreaLoaded)
 	{
-		if (!m_ArenaRisePlayer.Load_Area(KAKUL_AREA_ID, targets))
+		if (!m_ArenaRisePlayer.Load_Area(KOUKU_AREA_ID, targets))
 		{
 			m_MarioWalkStatus = "Sequence document load failed: " +
 				m_ArenaRisePlayer.Get_Status();
@@ -1228,14 +1228,14 @@ bool_t Client::CMapTool::Toggle_MarioSequenceLoop()
 		}
 		m_bArenaRiseAreaLoaded = true;
 	}
-	const size_t prefixLength = strlen(KAKUL_MARIO_INSTANCE_PREFIX);
+	const size_t prefixLength = strlen(KOUKU_MARIO_INSTANCE_PREFIX);
 	m_MarioLoopInstanceIds.clear();
 	for (const WORLD_SEQUENCE_INSTANCE& instance :
 		m_ArenaRisePlayer.Get_Document().Get_Instances())
 	{
 		if (instance.instanceId.size() < prefixLength ||
 			0 != instance.instanceId.compare(0, prefixLength,
-				KAKUL_MARIO_INSTANCE_PREFIX))
+				KOUKU_MARIO_INSTANCE_PREFIX))
 		{
 			continue;
 		}
@@ -1307,7 +1307,7 @@ void Client::CMapTool::Update_MarioSequenceLoop(
 		}
 		const f32_t rewindAtMs =
 			static_cast<f32_t>(sequence->durationMs) -
-			KAKUL_MARIO_LOOP_REWIND_MARGIN_MS;
+			KOUKU_MARIO_LOOP_REWIND_MARGIN_MS;
 		if (elapsedMs + stepMs >= rewindAtMs)
 		{
 			/* Still active, so this rewinds the clock and keeps the baseline
@@ -1332,7 +1332,7 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 		"opens with these placements hidden. Authoring keeps them visible; this "
 		"toggle previews the hidden state without changing any saved document.");
 	ImGui::Text("Arena placements: %zu",
-		KAKUL_ARENA_HIDDEN_PLACEMENT_IDS.size());
+		KOUKU_ARENA_HIDDEN_PLACEMENT_IDS.size());
 	if (ImGui::Checkbox("Hide arena (cutscene start state)",
 		&m_bCutsceneArenaHidden))
 	{
@@ -1360,7 +1360,7 @@ void Client::CMapTool::Render_CutsceneArenaPreview()
 		targets.pDeployRuntime = &Authoring_Deploy();
 		m_ArenaRisePlayer.Stop_All(targets);
 		m_fCutsceneBookHoldMs = -1.f;
-		(void)Authoring_Deploy().Set_States({ { KAKUL_BOOK_PLACEMENT_ID,
+		(void)Authoring_Deploy().Set_States({ { KOUKU_BOOK_PLACEMENT_ID,
 			DEPLOY_PROP_STATE::DESPAWNED } });
 		if (m_bCutsceneOriginalRunning)
 		{

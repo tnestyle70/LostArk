@@ -49,7 +49,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	TESTS tests;
 	CWorldBootstrap bootstrap;
 	CServerNavigation navigation;
-	const bool ready = bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && navigation.Load("LV_LUT_MIDNIGHTC_ED");
+	const bool ready = bootstrap.Load(WORLD_ID::KOUKUSAYDON_ARENA) && navigation.Load("LV_LUT_MIDNIGHTC_ED");
 	tests.Require(ready && bootstrap.Get_CardMazeLanes().size() == 36u, "Load published maze and all 36 authoritative lanes");
 	if (!ready) { std::cout << bootstrap.Get_Status() << '\n'; return 1; }
 	// The maze floor follows the authored entrance height, below the standing cards.
@@ -80,7 +80,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		"Gate 2 default return destination is on published navigation");
 	for (const PLAYER_ID participants : { 1u, 2u, 4u })
 	{
-		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		tests.Require(room->Is_Ready(), "Actual maze room bootstrap and profiles load");
 		if (!room->Is_Ready()) { std::cout << room->Get_Status() << '\n'; return 1; }
 		auto& entrant = room->m_Players[1u];
@@ -117,14 +117,14 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
             return Read_Message(reader, decoded) && !reader.Get_RemainingSize();
         };
 		C2S_DEBUG_SET_KOUKU_HUD_MODE mode{};
-		mode.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; mode.iRequestSequence = 1u; mode.eMode = KOUKU_HUD_MODE::MAZE;
+		mode.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; mode.iRequestSequence = 1u; mode.eMode = KOUKU_HUD_MODE::MAZE;
 		const auto accepted = room->Apply_DebugKoukuHudMode(entrant, mode);
 		room->Update_KoukuPlayerModes(1u);
 		tests.Require(accepted.eResult == DEBUG_KOUKU_HUD_MODE_RESULT::ACCEPTED &&
 			entrant.eMadnessForm == PLAYER_MADNESS_FORM::NORMAL && entrant.eKoukuHudMode == KOUKU_HUD_MODE::MAZE,
 			"MAZE entry keeps the selected normal player body and enables Q slot");
 		C2S_INTERACTION_SLOT press{};
-		press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; press.iRequestSequence = 1u;
+		press.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; press.iRequestSequence = 1u;
 		press.eSlot = static_cast<INTERACTION_SLOT>(0u);
 		pressWire(press);
 		tests.Require(entrant.eAction == PLAYER_ACTION_STATE::INTERACTION, "Q reaches the actual interaction action handler");
@@ -484,7 +484,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 		players[4u].CardMaze.transferStartTick == 0u, "Reset removes run state and presentation clocks");
     // A tell is visible for two seconds before the same authored lane can reset progress.
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         for (PLAYER_ID id = 1u; id <= 2u; ++id)
         {
             auto participant = players.at(id);
@@ -524,7 +524,7 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	// Use the room's actual hammer, portal, blackout and return consumers for 1..4 participants.
 	for (PLAYER_ID count = 1u; count <= 4u; ++count)
 	{
-		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		for (PLAYER_ID id = 1u; id <= count; ++id)
 		{
 			auto participant = players.at(id);
@@ -641,8 +641,8 @@ int LostArk::Server::Run_ServerCardMazeContractTests()
 	}
 	// Card-rain soldiers use the same catalog bodies, but never become maze targets.
 	{
-		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
-		const auto* placement = room->Find_Placement("boss.kakulsaydon.g1.saydon");
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
+		const auto* placement = room->Find_Placement("boss.koukusaydon.g1.saydon");
 		tests.Require(room->Is_Ready() && placement, "Card rain uses the actual room and Saydon placement");
 		if (room->Is_Ready() && placement)
 		{

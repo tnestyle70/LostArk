@@ -228,7 +228,7 @@ function Invoke-ProductEffectShaderWarpProbe {
         Add-Failure "Product Effect shader WARP probe requires vswhere: $vswhere"
         return
     }
-    $installationPath = [string](@(& $vswhere -latest -products * `
+    $installationPath = [string](@(& $vswhere -latest -products * -prerelease `
         -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
         -property installationPath) | Select-Object -First 1)
     if ([string]::IsNullOrWhiteSpace($installationPath)) {

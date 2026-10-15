@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "GameplayCatalog.h"
 #include "GameRoom.h"
@@ -45,7 +45,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		pose is shared by gameplay state and the reliable spawn message. Each
 		root emits one hit-driven presentation pulse at 5000 ms and retires at
 		6200 ms; there is no second presentation-only pulse. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto groundRoarRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
 		CGameRoom& groundRoarRoom = *groundRoarRoomStorage;
 		const bool initializedGroundRoarRoom =
@@ -295,7 +295,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		   the recovery must not borrow Ground Roar's damaging rock volley. The
 		   preceding Ground Roar case retains the live object/pinned-definition
 		   contract for the pattern that still owns those objects. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto partBreakRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
 		CGameRoom& partBreakRoom = *partBreakRoomStorage;
 		const bool initializedPartBreakRoom =
@@ -771,7 +771,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanTimelines(TESTS& 
 		/* Phase-three portal charges and their visible runners start together at
 		the three authored radial vertices, wait 300 ms, and traverse the
 		radius-9 m triangle without navigation projection. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto portalRoomStorage = std::make_unique<CGameRoom>(LostArk::Shared::WORLD_ID::VALTAN_ARENA);
 		CGameRoom& portalRoom = *portalRoomStorage;
 		const bool initializedPortalRoom = portalRoom.Initialize_WorldEntities();

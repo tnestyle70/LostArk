@@ -123,7 +123,7 @@ void CGuideAITool::Refresh_References()
     m_NpcChoices={{"","No NPC anchor"}};m_PatternChoices.clear();m_SkillChoices.clear();m_NpcWorld=J::Null();
     std::string area,status;for(const auto& c:Field(Field(m_Document.Draft(),"catalog"),"categories").Get_Array())if(String(c,"categoryId")==m_Category)area=String(c,"areaId");
     if(!area.empty()&&CGuideAIDocument::Read(CProjectDataRoot::Resolve(std::filesystem::path("Worlds")/area/"Gameplay.world.json"),m_NpcWorld,status))for(const auto& p:Field(m_NpcWorld,"placements").Get_Array())if(String(p,"kind")=="npc")m_NpcChoices.emplace_back(String(p,"placementId"),String(p,"placementId"));
-    std::ifstream input(CProjectDataRoot::Get().parent_path()/"Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap");std::string line;while(std::getline(input,line))if(line.rfind("PATTERN\t",0)==0){std::istringstream cells(line);std::string tag,encounter,id;std::getline(cells,tag,'\t');std::getline(cells,encounter,'\t');std::getline(cells,id,'\t');if((m_Category=="valtan"&&encounter.find("VALTAN")!=std::string::npos)||(m_Category=="koukusaydon"&&encounter.find("KAKUL")!=std::string::npos))m_PatternChoices.emplace_back(id,id);}
+    std::ifstream input(CProjectDataRoot::Get().parent_path()/"Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap");std::string line;while(std::getline(input,line))if(line.rfind("PATTERN\t",0)==0){std::istringstream cells(line);std::string tag,encounter,id;std::getline(cells,tag,'\t');std::getline(cells,encounter,'\t');std::getline(cells,id,'\t');if((m_Category=="valtan"&&encounter.find("VALTAN")!=std::string::npos)||(m_Category=="koukusaydon"&&encounter.find("KOUKU")!=std::string::npos))m_PatternChoices.emplace_back(id,id);}
     J skillDoc;if(CGuideAIDocument::Read(CProjectDataRoot::Resolve("Balance/PlayerSkills.json"),skillDoc,status))for(const auto& s:Field(skillDoc,"skills").Get_Array())if(String(s,"characterClass")=="DIMENSIONMASTER"&&String(s,"skillKind")=="ACTIVE")m_SkillChoices.emplace_back(String(s,"inputSlot"),String(s,"inputSlot")+" / "+String(s,"displayName")+" / "+std::to_string(static_cast<uint32_t>(Number(s,"skillId"))));
 }
 void CGuideAITool::Import_BernStart()
@@ -292,7 +292,7 @@ void CGuideAITool::Render_Triggers(bool collidersOnly)
             ImGui::TextWrapped("이 이벤트는 콜라이더를 사용하지 않습니다. 공간 배치는 콜라이더 탭에서 편집하세요.");
             if (type == "BOSS_PATTERN_STARTED") Choose("Published pattern", event, "patternId", m_PatternChoices);
             else if (type == "HELP_COMMAND") Choose("Command", event, "commandId", Choices(Field(Field(m_Document.Draft(), "combat"), "commands").Get_Array(), "commandId", "displayName"));
-            else if (type == "RAID_RETURNED") Choose("Raid world", event, "raidWorldId", {{"VALTAN_ARENA", "Valtan"}, {"KAKULSAYDON_ARENA", "KoukuSaydon"}});
+            else if (type == "RAID_RETURNED") Choose("Raid world", event, "raidWorldId", {{"VALTAN_ARENA", "Valtan"}, {"KOUKUSAYDON_ARENA", "KoukuSaydon"}});
             else if (type == "WORLD_RETURNED") Choose("Returned world", event, "sourceWorldId", {{"MAHARAKA", "Maharaka"}, {"COLOSSEUM", "Colosseum"}});
         }
         if (!collidersOnly)

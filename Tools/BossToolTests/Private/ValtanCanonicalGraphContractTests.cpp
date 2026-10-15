@@ -47,6 +47,7 @@ const std::string& Client::CEffectCatalog::Get_Status()
 namespace
 {
 	using namespace Client;
+
 	constexpr const char* REQUESTED_PRODUCT_PATTERN_IDS[] = {
 		"VALTAN_HIGH_JUMP",
 		"VALTAN_SIX_PIZZA_106",

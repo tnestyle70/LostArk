@@ -916,6 +916,26 @@ HRESULT Client::CEffectDocumentRenderer::Bind_MaterialInputs(
 	}
 	if (bGenericCarrierShader && pShaderProgram->eCarrier == EFFECT_SHADER_CARRIER::MESH)
 	{
+		// 공유 shader의 이전 draw 상태가 다른 CubeSample 재질로 새지 않도록 매번 선택한다.
+		const auto& effectId = Get_StagedDocument().strEffectAssetId;
+		const auto& elementId = Element.strElementId;
+		const bool alphaOver = Material.eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_ONE_SIDED_DEPTH_READ ||
+			Material.eRenderProfile == EFFECT_RENDER_PROFILE::ALPHA_TWO_SIDED_DEPTH_READ;
+		const bool selectedCube = alphaOver && Resource.iSourceMaterialProfile == 42u &&
+			((effectId == "effect.dimensionmaster.skill.2050100.tuning.restore" &&
+			  elementId == "authored.source-particle.b4984eeabefb0fc93783ecda") ||
+			 (effectId == "effect.dimensionmaster.skill.2050180.tuning.restore" &&
+			  elementId == "authored.tuning.dimensionmaster.r.purple-glass-sequence") ||
+			 (effectId == "effect.dimensionmaster.skill.2050210.a1.full.restore" &&
+			  (elementId == "authored.composition.dimensionmaster.a.hit-1-purple-cube" ||
+			   elementId == "authored.composition.dimensionmaster.a.hit-2-purple-cube" ||
+			   elementId == "authored.composition.dimensionmaster.a.hit-3-purple-cube" ||
+			   elementId == "authored.composition.dimensionmaster.a.hit-4-purple-cube")));
+		const int32_t cubeColorResponse = selectedCube ? 1 : 0;
+		if (BindFailed(pShader->Bind_RawValue("g_CubeColorResponseEnabled",
+				&cubeColorResponse, sizeof(cubeColorResponse))) ||
+			(selectedCube && BindFailed(CGameInstance::Get().Bind_ActiveSceneColorTransform(pShader.get()))))
+			return Fail_RenderOperation("Cube color response binding failed.", hFirstBindFailure);
 		uint32_t iRingFillEnabled = 0u;
 		uint32_t iRingFillDirection = 0u;
 		uint32_t iRingFillInvert = 0u;

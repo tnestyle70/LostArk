@@ -1,13 +1,14 @@
-#pragma once
+﻿#pragma once
 
+// 진단 reason enum의 저장 표현을 16비트로 고정한다. 이 헤더는 wire 직렬화 형식을 정의하지 않는다.
 #include <cstdint>
+// reason 이름의 정적 문자열 literal을 복사/할당 없이 JSONL 기록자에게 전달한다.
 #include <string_view>
 
 namespace LostArk::Shared
 {
-	/* Log-schema values, not wire values. Keep append-only so JSONL captures
-	   from different builds remain comparable without changing the network
-	   protocol. */
+	// ClientSessionDiagnostic와 Server ClientSession의 로그 사유다. 패킷 wire ID가 아니므로 protocol version과 구분한다.
+	// JSONL 기록을 빌드 간 비교할 수 있도록 기존 값을 재배치하지 않고 뒤에 추가한다.
 	enum class SESSION_DIAGNOSTIC_REASON : std::uint16_t
 	{
 		NONE = 0,
@@ -64,17 +65,18 @@ namespace LostArk::Shared
 		END
 	};
 
+	// recovery/terminal 사유로 쓸 실제 항목만 허용한다. NONE은 일반 이벤트의 사유 없음이며 이 검사에서는 false다.
+	// ClientSessionDiagnostic의 Record_Recovery/Record_Terminal이 기록 가능한 사유인지 검사한다. reason 값만 읽고 공유 상태를 바꾸지 않는다.
 	[[nodiscard]]
-	constexpr bool Is_Known_SessionDiagnosticReason(
-		const SESSION_DIAGNOSTIC_REASON reason) noexcept
+	constexpr bool Is_Known_SessionDiagnosticReason(const SESSION_DIAGNOSTIC_REASON reason) noexcept
 	{
-		return SESSION_DIAGNOSTIC_REASON::NONE < reason &&
-			reason < SESSION_DIAGNOSTIC_REASON::END;
+		return SESSION_DIAGNOSTIC_REASON::NONE < reason && reason < SESSION_DIAGNOSTIC_REASON::END;
 	}
 
+	// JSONL 출력용 정적 literal view다. 할당하거나 caller 상태를 변경하지 않으며 알 수 없는 값은 공통 이름으로 반환한다.
+	// Client 진단 기록자와 Server ClientSession의 JSONL 출력이 호출한다. 반환 view는 정적 literal을 가리키므로 호출자 입력의 수명과 무관하다.
 	[[nodiscard]]
-	constexpr std::string_view To_SessionDiagnosticReasonName(
-		const SESSION_DIAGNOSTIC_REASON reason) noexcept
+	constexpr std::string_view To_SessionDiagnosticReasonName(const SESSION_DIAGNOSTIC_REASON reason) noexcept
 	{
 		switch (reason)
 		{

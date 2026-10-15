@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "EncounterPropRuntime.h"
 #include "GameplayCatalog.h"
@@ -45,7 +45,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanAudition(TESTS& t
 		that dropping straight onto a low bar crosses every threshold above it,
 		so this checks the single-crossing property against the real encounter
 		patterns rather than a synthetic pair. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID AUDITION_SESSION = 4242u;

@@ -66,7 +66,7 @@ def append_row(text, array, value):
 
 
 def resource_id(asset):
-    return 'kakulsaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20]
+    return 'koukusaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20]
 
 
 def stage_p78_card_playback(output):
@@ -78,9 +78,9 @@ def stage_p78_card_playback(output):
     before = PATH.read_bytes()
     text = before.decode('utf-8-sig')
     document = json.loads(text)
-    pattern_id = 'KAKULSAYDON_G1_PATTERN_78'
+    pattern_id = 'KOUKUSAYDON_G1_PATTERN_78'
     pattern = next(p for p in document['patterns'] if p['patternId'] == pattern_id)
-    old_logic = next(l for l in document['logics'] if l['logicId'] == 'kakulsaydon.g1.logic.73')
+    old_logic = next(l for l in document['logics'] if l['logicId'] == 'koukusaydon.g1.logic.73')
     resources = {r['resourceId']: r for r in document['presentationResources']}
     boxes = []
     for ordinal, suit in zip((9, 10, 11, 12), ('diamond', 'spade', 'clover', 'heart')):
@@ -100,7 +100,7 @@ def stage_p78_card_playback(output):
     occurrence_ordinal = pattern['nextLogicOccurrenceOrdinal']
     occurrences, definitions, mapping = [], [], []
     for index, (suit, box) in enumerate(boxes):
-        logic_id = 'kakulsaydon.g1.logic.' + str(logic_ordinal + index)
+        logic_id = 'koukusaydon.g1.logic.' + str(logic_ordinal + index)
         assert not any(row['logicId'] == logic_id for row in document['logics'])
         definition = dict(old_logic, logicId=logic_id, displayName='세이튼_카드맞추기_' + suit + '_추적',
             visualIds=[box['resourceId']], countPerWave=1, spawnIntervalMs=0, lifetimeMs=box['durationMs'],
@@ -176,7 +176,7 @@ def apply(install=False):
             assert resources[stem + suit]['durationMs'] == 1000
     updates = {}
     def pattern(n):
-        p = patterns[f'KAKULSAYDON_G1_PATTERN_{n}']
+        p = patterns[f'KOUKUSAYDON_G1_PATTERN_{n}']
         updates.setdefault(p['patternId'], {})
         return p
 
@@ -198,7 +198,7 @@ def apply(install=False):
     p = pattern(78)
     present(p, prefix + 'dice.diamond.explosion', 0, resources[prefix + 'dice.diamond.explosion']['durationMs'])
     present(p, prefix + 'emit', 6114, 1333)
-    logic = next(l for l in document['logics'] if l['logicId'] == 'kakulsaydon.g1.logic.73')
+    logic = next(l for l in document['logics'] if l['logicId'] == 'koukusaydon.g1.logic.73')
     assert logic.get('judgementKind', '') in ('', 'PURSUIT_PROJECTILES')
     fields = dict(judgementKind='PURSUIT_PROJECTILES', visualIds=[resource_id(prefix + suit) for suit in suits],
         contactVisualId=contact, speedMps=3, contactRadiusM=.5, spawnRadiusM=3,
@@ -218,7 +218,7 @@ def apply(install=False):
     spin_start, spin_end = spin_stages[0][0] + 700, spin_stages[-1][1]
     assert spin_end > spin_start
     ordinal = document['nextLogicOrdinal']
-    spinning_id = 'kakulsaydon.g1.logic.' + str(ordinal)
+    spinning_id = 'koukusaydon.g1.logic.' + str(ordinal)
     spin = dict(logicId=spinning_id, displayName='세이튼_회전카드_클립구간연속발사', logicType='DURATION',
         judgementKind='PURSUIT_PROJECTILES', visualIds=[resource_id('effect.kouku.card.spinning.' + suit) for suit in suits],
         contactVisualId=contact, speedMps=8, maxDistanceM=15, contactRadiusM=.4, spawnRadiusM=.2,

@@ -838,7 +838,7 @@ void Client::CMapTool::Render_WorldSequencePanel(const bool_t isAssetTest)
 		   KoukuSaydon placements by stable ID, so they only belong to that
 		   Area. Other arenas keep their own World Sequence document. */
 		const EDITOR_AREA_DESCRIPTOR* cutsceneArea = Get_ActiveEditorArea();
-		if (nullptr != cutsceneArea && cutsceneArea->areaId == KAKUL_AREA_ID)
+		if (nullptr != cutsceneArea && cutsceneArea->areaId == KOUKU_AREA_ID)
 		{
 			Render_CutsceneArenaPreview();
 			ImGui::Separator();
@@ -1009,7 +1009,7 @@ int Client::CMapTool::Debug_SequenceViewer(const std::string& areaId,
 		if (sequenceId == "world.sequence.instance.original_kouku")
 		{
 			for (const auto& instance : m_ArenaRisePlayer.Get_Document().Get_Instances())
-				if (instance.instanceId.starts_with(KAKUL_ORIGINAL_INSTANCE_PREFIX))
+				if (instance.instanceId.starts_with(KOUKU_ORIGINAL_INSTANCE_PREFIX))
 					m_ArenaRisePlayer.Stop_Instance(instance.instanceId, targets, true);
 			m_bCutsceneOriginalRunning = false;
 			Hide_CutsceneSet(); Apply_CutsceneArenaVisibility(false); End_CutsceneCameraTrack();

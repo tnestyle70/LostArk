@@ -93,7 +93,7 @@ persistent EffectRender project/cache.
 ## C++ edit and merge boundaries
 
 The four Product projects import `CppCompilation.props`. x64 Debug and Release
-build one project-local PCH from `CppStandardPch.h`; `/FI` supplies it before the
+build one project-local PCH from `PCH.h`; `/FI` supplies it before the
 source. The PCH contains stable standard-library headers only. Do not add
 `Engine_Defines.h`, gameplay types, authoring documents, or shader registries to
 it: changing such input would invalidate every PCH consumer. Optimized units
@@ -183,3 +183,16 @@ bridge K4 and separates whole-polygon near-coplanar counts from signed bevel/slo
 crossings. Without a camera log it reports `cameraDepthStatus="not_requested"`; geometry
 overlap is not a visual or GPU depth-test PASS. No new F1 capture panel is part of
 the initial frustum fix.
+
+## 솔루션 Data 탐색 목록
+
+저장소의 실제 `Data` 파일은 `Framework.sln` 직속 `Data` 솔루션 폴더에서 연다. 물리 하위 폴더와 같은 트리의 `SolutionItems` 상대 링크이며 Client 프로젝트에 중복 등록하지 않는다. `Client/Bin/DataFiles`와 `Server/Bin/DataFiles`는 별도의 게시 결과다.
+
+```powershell
+python Tools/Build/data_solution.py
+python Tools/Build/data_solution.py --check
+```
+
+첫 명령은 Git 추적·비무시 Data 파일의 탐색 목록을 갱신하고, 두 번째는 변경 없이 일치 여부를 검사한다. 잠금·임시 저장·백업 파일은 표시 대상에서 제외하고 실물은 그대로 보존한다. 파일 추가·삭제 뒤 실행하며 Visual Studio에서 외부 변경을 알리면 솔루션을 다시 로드한다. 데이터 내용·원본 경로·게시 결과를 바꾸거나 C++ 빌드·publisher·게임을 실행하는 명령이 아니다.
+
+기존 설치 도구는 `data_solution.stage_data_solution(root, paths)`로 새 Data 경로의 솔루션 변경 후보를 받아 자기 저장 transaction에 포함한다. 공용 함수는 직접 저장하지 않으며 호출 도구의 freshness·backup·rollback 경계를 유지한다.

@@ -154,13 +154,13 @@ int CServerGameplayContractRunner::Run_MaharakaAI()
                 "Each returning member restores its own ship and empty inventory without fresh grants");
         }
     }
-    for (const auto world : {WORLD_ID::MAHARAKA, WORLD_ID::VALTAN_ARENA, WORLD_ID::KAKULSAYDON_ARENA})
+    for (const auto world : {WORLD_ID::MAHARAKA, WORLD_ID::VALTAN_ARENA, WORLD_ID::KOUKUSAYDON_ARENA})
     {
         auto fallRoom = std::make_unique<CGameRoom>(world);
         SERVER_PLAYER falling; falling.iCurrentHp = falling.iMaximumHp = 100u;
         falling.fPositionX = MAHARAKA_WATERPANG_CANNON_X;
         falling.fPositionZ = MAHARAKA_WATERPANG_CANNON_Z; falling.fPositionY = 22.4f;
-        if (world == WORLD_ID::KAKULSAYDON_ARENA) falling.iMarioStage = 1u;
+        if (world == WORLD_ID::KOUKUSAYDON_ARENA) falling.iMarioStage = 1u;
         fallRoom->Begin_PlayerFall(falling, 0.f, 100u);
         const bool water = world == WORLD_ID::MAHARAKA;
         falling.bWaterpangFall = water;

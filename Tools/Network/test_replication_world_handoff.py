@@ -279,7 +279,7 @@ int main() {
     };
     run("economy_result_consumers", EconomyConsumer); run("upgrade_result_sequence_world_snapshot_timeout", UpgradeResultMatching);
     run("delayed_bern_to_valtan", [] { DelayedTransition(WORLD_ID::VALTAN_ARENA); });
-    run("delayed_bern_to_kouku", [] { DelayedTransition(WORLD_ID::KAKULSAYDON_ARENA); });
+    run("delayed_bern_to_kouku", [] { DelayedTransition(WORLD_ID::KOUKUSAYDON_ARENA); });
     run("same_world_new_generation", [] { DelayedTransition(WORLD_ID::BERN); });
     run("same_generation_normal_delivery", SameGeneration); run("reset_revokes_ownership", ResetInvalidates);
     run("disconnect_cleanup_precedes_guard", DisconnectedCleanup); run("handler_close_stops_generation_work", HandlerClose);

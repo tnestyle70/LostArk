@@ -24,7 +24,7 @@ namespace
 		CLAIM_CARD_MAZE_TELESCOPE  card maze strike volume (never fired by entry or G anyway)
 		VALTAN_ARENA spawn group   corridor waves (Stage_1, Stage_2, Stage_MiniBoss_Spawn)
 		VALTAN_ARENA encounter     boss start (Stage_Boss)
-		KAKULSAYDON_ARENA spawn group  start-area book waves (ids Book1_Monsters, Book2_Monsters)
+		KOUKUSAYDON_ARENA spawn group  start-area book waves (ids Book1_Monsters, Book2_Monsters)
 		BERN movePlayer            castle / library travel boxes (ids castle, castle.2, library, library.2)
 	   Everything the PLAYER does to move -- Mario crossings (jump down, climb, cross a gap),
 	   the Mario terminal exits, jump.*, the Valtan start box and the other Valtan movePlayer
@@ -44,7 +44,7 @@ namespace
 		{ LostArk::Shared::WORLD_ID::END, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::CLAIM_CARD_MAZE_TELESCOPE, nullptr },
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP, nullptr },
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_ENCOUNTER, nullptr },
-		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP, "Book" },
+		{ LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP, "Book" },
 		{ LostArk::Shared::WORLD_ID::BERN, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER, "castle" },
 		{ LostArk::Shared::WORLD_ID::BERN, LostArk::Server::WORLD_TRIGGER_ACTION_KIND::MOVE_PLAYER, "library" },
 	};
@@ -61,8 +61,8 @@ namespace
 	   spawn.valtan.stage03), Stage_Boss and every other box keep firing. */
 	constexpr LostArk::Server::WAVE_MONSTER_BUTTON_ROW WAVE_MONSTER_BUTTON_ROWS[] =
 	{
-		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1" },
-		{ LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2" },
+		{ LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1" },
+		{ LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2" },
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Stage_1", "spawn.valtan.stage01" },
 		{ LostArk::Shared::WORLD_ID::VALTAN_ARENA, LostArk::Shared::WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Stage_2", "spawn.valtan.stage03" },
 	};
@@ -714,7 +714,7 @@ void LostArk::Server::CServerTriggerSystem::Evaluate_Entries(
 					trigger.hasFired = true;
 				}
 			}
-            else if (LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA == m_eWorldId &&
+            else if (LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA == m_eWorldId &&
                 WORLD_TRIGGER_ACTION_KIND::PLAY_SEQUENCE == trigger.Definition.TriggerActions.front().eKind)
             {
                 // Raid admission may wait for another player's G-key transfer. A

@@ -1,0 +1,262 @@
+{
+  "schema": "BernNativeDecodeComparison.v1",
+  "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_35553B697979",
+  "placementId": "9883573481719620800",
+  "atlasMipCount": 4,
+  "basisEncoding": "original world float3 T/B/N; vector-space mip/filter; point family/flags",
+  "sourceCullPass": 0,
+  "sameCamera": true,
+  "sameD24Depth": true,
+  "sameProductGBufferFormats": true,
+  "candidateVsDrawsReduced": true,
+  "scope": "One actual placement: production SourceBG and SOURCE_OVERLAY_OPAQUE family-specific draws with all 8 native GBuffer targets, versus new low geometry with native material atlas, original TBN, per-texel family/flags and live view-dependent RNM specular. No whole-scene/FPS/product deployment claim.",
+  "qualityDecision": "Pending inspection; numerical geometric reduction is separate from native GBuffer fidelity.",
+  "runs": [
+    {
+      "cameraId": "cue-00-start",
+      "crop": [
+        44,
+        209,
+        88,
+        325
+      ],
+      "sourcePixels": 1766,
+      "lowPixels": 1762,
+      "commonPixels": 1761,
+      "visibleQualityEvidence": true,
+      "coverageIoU": 0.9966044142614601,
+      "missingSourcePixels": 5,
+      "addedLowPixels": 1,
+      "diffuseMeanAbsoluteLinearRGB": 0.014802682213485241,
+      "diffuseP95AbsoluteLinearRGB": 0.05882352590560913,
+      "normalAngleMeanDegrees": 11.91010570526123,
+      "normalAngleP95Degrees": 48.123043060302734,
+      "normalOver45DegreesFraction": 0.06303236797274275,
+      "indirectMeanAbsoluteLinearRGB": 0.008680504746735096,
+      "worldPositionMeanDistanceMeters": 0.040233444422483444,
+      "worldPositionP95DistanceMeters": 0.18624773621559143,
+      "sourceMaterialFlagsMatchFraction": 0.9119818285065304,
+      "materialProgramMarkerMatchFraction": 0.9818285065303805,
+      "sourceCounts": {
+        "id": "cue-00-start-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 2227
+      },
+      "lowCounts": {
+        "id": "cue-00-start-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 1762
+      },
+      "finiteGBuffer": true
+    },
+    {
+      "cameraId": "cue-01",
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "commonPixels": 0,
+      "visibleQualityEvidence": false,
+      "coverageIoU": null,
+      "missingSourcePixels": 0,
+      "addedLowPixels": 0,
+      "diffuseMeanAbsoluteLinearRGB": null,
+      "diffuseP95AbsoluteLinearRGB": null,
+      "normalAngleMeanDegrees": null,
+      "normalAngleP95Degrees": null,
+      "normalOver45DegreesFraction": null,
+      "indirectMeanAbsoluteLinearRGB": null,
+      "worldPositionMeanDistanceMeters": null,
+      "worldPositionP95DistanceMeters": null,
+      "sourceMaterialFlagsMatchFraction": null,
+      "materialProgramMarkerMatchFraction": null,
+      "sourceCounts": {
+        "id": "cue-01-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 0
+      },
+      "lowCounts": {
+        "id": "cue-01-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 0
+      },
+      "finiteGBuffer": true
+    },
+    {
+      "cameraId": "cue-02",
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "commonPixels": 0,
+      "visibleQualityEvidence": false,
+      "coverageIoU": null,
+      "missingSourcePixels": 0,
+      "addedLowPixels": 0,
+      "diffuseMeanAbsoluteLinearRGB": null,
+      "diffuseP95AbsoluteLinearRGB": null,
+      "normalAngleMeanDegrees": null,
+      "normalAngleP95Degrees": null,
+      "normalOver45DegreesFraction": null,
+      "indirectMeanAbsoluteLinearRGB": null,
+      "worldPositionMeanDistanceMeters": null,
+      "worldPositionP95DistanceMeters": null,
+      "sourceMaterialFlagsMatchFraction": null,
+      "materialProgramMarkerMatchFraction": null,
+      "sourceCounts": {
+        "id": "cue-02-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 0
+      },
+      "lowCounts": {
+        "id": "cue-02-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 0
+      },
+      "finiteGBuffer": true
+    },
+    {
+      "cameraId": "cue-03",
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "commonPixels": 0,
+      "visibleQualityEvidence": false,
+      "coverageIoU": null,
+      "missingSourcePixels": 0,
+      "addedLowPixels": 0,
+      "diffuseMeanAbsoluteLinearRGB": null,
+      "diffuseP95AbsoluteLinearRGB": null,
+      "normalAngleMeanDegrees": null,
+      "normalAngleP95Degrees": null,
+      "normalOver45DegreesFraction": null,
+      "indirectMeanAbsoluteLinearRGB": null,
+      "worldPositionMeanDistanceMeters": null,
+      "worldPositionP95DistanceMeters": null,
+      "sourceMaterialFlagsMatchFraction": null,
+      "materialProgramMarkerMatchFraction": null,
+      "sourceCounts": {
+        "id": "cue-03-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 0
+      },
+      "lowCounts": {
+        "id": "cue-03-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 0
+      },
+      "finiteGBuffer": true
+    },
+    {
+      "cameraId": "cue-04",
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "commonPixels": 0,
+      "visibleQualityEvidence": false,
+      "coverageIoU": null,
+      "missingSourcePixels": 0,
+      "addedLowPixels": 0,
+      "diffuseMeanAbsoluteLinearRGB": null,
+      "diffuseP95AbsoluteLinearRGB": null,
+      "normalAngleMeanDegrees": null,
+      "normalAngleP95Degrees": null,
+      "normalOver45DegreesFraction": null,
+      "indirectMeanAbsoluteLinearRGB": null,
+      "worldPositionMeanDistanceMeters": null,
+      "worldPositionP95DistanceMeters": null,
+      "sourceMaterialFlagsMatchFraction": null,
+      "materialProgramMarkerMatchFraction": null,
+      "sourceCounts": {
+        "id": "cue-04-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 0
+      },
+      "lowCounts": {
+        "id": "cue-04-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 0
+      },
+      "finiteGBuffer": true
+    },
+    {
+      "cameraId": "cue-05-end",
+      "crop": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "sourcePixels": 0,
+      "lowPixels": 0,
+      "commonPixels": 0,
+      "visibleQualityEvidence": false,
+      "coverageIoU": null,
+      "missingSourcePixels": 0,
+      "addedLowPixels": 0,
+      "diffuseMeanAbsoluteLinearRGB": null,
+      "diffuseP95AbsoluteLinearRGB": null,
+      "normalAngleMeanDegrees": null,
+      "normalAngleP95Degrees": null,
+      "normalOver45DegreesFraction": null,
+      "indirectMeanAbsoluteLinearRGB": null,
+      "worldPositionMeanDistanceMeters": null,
+      "worldPositionP95DistanceMeters": null,
+      "sourceMaterialFlagsMatchFraction": null,
+      "materialProgramMarkerMatchFraction": null,
+      "sourceCounts": {
+        "id": "cue-05-end-source",
+        "drawCalls": 7,
+        "iaVertices": 33810,
+        "vsInvocations": 12871,
+        "psInvocations": 0
+      },
+      "lowCounts": {
+        "id": "cue-05-end-low",
+        "drawCalls": 1,
+        "iaVertices": 3840,
+        "vsInvocations": 1223,
+        "psInvocations": 0
+      },
+      "finiteGBuffer": true
+    }
+  ]
+}

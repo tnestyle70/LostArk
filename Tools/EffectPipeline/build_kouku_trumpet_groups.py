@@ -38,7 +38,7 @@ def sample_source_socket(attachment):
              sr * cp * cy - cr * sp * sy, cr * cp * cy + sr * sp * sy), position)
 
     catalog = source.read(ROOT / 'Data/Actors/BossCatalog.json')
-    boss = next(b for b in catalog['bosses'] if b['archetypeId'] == 'BOSS_KAKULSAYDON_G1_SAYDON')
+    boss = next(b for b in catalog['bosses'] if b['archetypeId'] == 'BOSS_KOUKUSAYDON_G1_SAYDON')
     model_path = ROOT / 'Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
     clip = 'rpct00_att_battle_19_01_loop'
     model = pose.read_wmodel(model_path, animation_names={clip})

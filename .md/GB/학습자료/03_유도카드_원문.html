@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>유도 카드 · Winters</title>
+<style>
+  :root{
+    --ink:#14161a;
+    --hair:#c8ccd2;
+    --faint:#eef0f3;
+    --mono:"SFMono-Regular","Cascadia Mono","JetBrains Mono",Consolas,"Liberation Mono",monospace;
+    --kr:"Pretendard",-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#8a8f96;font-family:var(--kr);color:var(--ink);padding:16px}
+
+  .bar{max-width:210mm;margin:0 auto 16px;background:#fff;border:1px solid var(--ink);
+       padding:10px 14px;font:12px/1.5 var(--mono);display:flex;gap:16px;flex-wrap:wrap;
+       align-items:center;justify-content:space-between}
+  .bar b{font-weight:700}
+  .bar button{font:11px var(--mono);padding:5px 12px;border:1px solid var(--ink);
+              background:var(--ink);color:#fff;cursor:pointer;letter-spacing:.06em}
+
+  .sheet{width:210mm;height:297mm;margin:0 auto 16px;background:#fff;padding:8mm;
+         display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:0}
+
+  .card{border:.4px dashed var(--hair);padding:5mm 5.5mm;display:flex;flex-direction:column;overflow:hidden}
+
+  /* header */
+  .hd{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;
+      border-bottom:1.6px solid var(--ink);padding-bottom:2.2mm;margin-bottom:2.6mm}
+  .id{font:700 15px/1 var(--mono);letter-spacing:.06em}
+  .ttl{font:600 11.5px/1.35 var(--kr);margin-top:1.6mm}
+  .meta{font:9px/1.4 var(--mono);color:#5c636c;margin-top:.9mm;letter-spacing:.02em}
+
+  /* DIP switch — the signature */
+  .dip{display:flex;gap:1.1px;flex-shrink:0;border:1px solid var(--ink);padding:1.1px;background:#fff}
+  .dip i{width:5.4mm;height:5.4mm;display:flex;align-items:center;justify-content:center;
+         font:700 7px/1 var(--mono);background:#fff;color:var(--hair);font-style:normal}
+  .dip i.on{background:var(--ink);color:#fff}
+
+  /* slots */
+  .slot{margin-bottom:1.4mm}
+  .lab{font:700 8px/1.3 var(--mono);letter-spacing:.05em;display:flex;justify-content:space-between;gap:6px}
+  .lab s{font:400 7.5px/1.3 var(--kr);color:#5c636c;text-decoration:none;text-align:right}
+  .rule{border-bottom:.5px solid var(--hair);height:4.6mm}
+  .rule:first-of-type{margin-top:.8mm}
+
+  /* core cards */
+  .body{font:10px/1.55 var(--kr);flex:1}
+  .body p{margin-bottom:1.6mm}
+  .body code,.mono{font-family:var(--mono);font-size:9px}
+  .rows{width:100%;border-collapse:collapse;font-size:8.4px}
+  .rows td{border-bottom:.4px solid var(--faint);padding:1.15mm .6mm;vertical-align:top;line-height:1.35}
+  .rows td:first-child{font:700 8.6px var(--mono);width:8mm;white-space:nowrap}
+  .rows tr:last-child td{border-bottom:none}
+  .pre{font:8.6px/1.6 var(--mono);white-space:pre;background:var(--faint);padding:2mm;margin:1.4mm 0}
+  .note{font:8.4px/1.45 var(--kr);color:#5c636c;border-left:1.6px solid var(--ink);padding-left:2mm;margin-top:auto}
+  .big{font:700 12px/1.4 var(--kr);border-top:1.2px solid var(--ink);padding-top:1.8mm;margin-top:auto}
+
+  .ft{margin-top:auto;padding-top:1.6mm;border-top:.4px solid var(--faint);
+      font:7.5px/1 var(--mono);color:#98a0a9;display:flex;justify-content:space-between}
+
+  @page{size:A4;margin:0}
+  @media print{
+    body{background:#fff;padding:0}
+    .bar{display:none}
+    .sheet{margin:0;box-shadow:none;page-break-after:always}
+    .card{border-color:#e4e7ea}
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span><b>유도 카드</b> · A6 × 41 · 4-up A4 · 점선 따라 자름</span>
+  <span>좌표 카드는 비어 있는 게 정상. 채우는 게 일.</span>
+  <button onclick="window.print()">인쇄</button>
+</div>
+<div id="out"></div>
+
+<script>
+const AX = {
+  C1:["기준계","절대 표현은 없다","어떤 연산 ↔ 다른 연산"],
+  C2:["이동 > 계산","대역폭은 유한","지역성 ↔ 유연성"],
+  C3:["공유는 비싸다","코히런스는 비싸다","동기화 ↔ 중복·불균형"],
+  C4:["수명은 선언된다","관찰은 비싸다","예측가능성 ↔ 편의"],
+  C5:["이산화와 오차","연속은 예산 밖","정확도 ↔ 예산"],
+  C6:["가지치기","공간 > 예산","안전 ↔ 속도"],
+  C7:["권위와 정합성","진실은 하나","정합성 ↔ 지연·확장"]
+};
+const K = Object.keys(AX);
+const dip = on => `<div class="dip">${K.map(k=>`<i class="${on.includes(k)?'on':''}">${k[1]}</i>`).join("")}</div>`;
+const shape = on => on.map(k=>AX[k][2]).join(" / ");
+
+// ── 좌표 25 ──────────────────────────────────────────────
+const CO = [
+["W01","EntityHandle (index + generation)","ECS · UE weak ptr+serial → 수렴",["C4"]],
+["W02","Sparse Set ComponentStore","ECS · UObject/Mass archetype → 발산",["C2","C6"]],
+["W03","Chase-Lev work-stealing deque","Core · TaskGraph / Go GMP → 부분",["C3"]],
+["W04","Fiber 컨텍스트 스위치 (mov rsp)","Core · UE는 fiber를 안 쓴다 → 왜?",["C3","C4"]],
+["W05","Frame / Pool / Linear 할당자","Core · FMallocBinned / FMemStack → 수렴",["C4","C2"]],
+["W06","RHI 리소스–뷰 분리","RHI · FDynamicRHI → 수렴",["C1","C4"]],
+["W07","Clustered 라이트 할당","Renderer · Lumen → 발산",["C6","C3"]],
+["W08","G-buffer 레이아웃 + early-Z / Hi-Z","Renderer · Nanite visibility buffer → 발산",["C2","C6"]],
+["W09","좌표 변환 체인 + 투영 (w)","Renderer · 동일 → 수렴",["C1","C5"]],
+["W10","CSM 캐스케이드 분할","Renderer · Virtual Shadow Map → 발산",["C6","C5"]],
+["W11","TAA 지터 + 히스토리","Renderer · TSR → 부분",["C5"]],
+["W12","데이터 주도 컴포넌트 + 핫리로드","Gameplay · UPROPERTY/UHT/BP → 발산 ★협업",["C1","C4"]],
+["S01","30Hz 고정 결정론 틱","C&S · Property Replication → 발산",["C5","C7"]],
+["S02","IOCP 세션 / 링버퍼 / OVERLAPPED 수명","C&S · epoll / netpoller → 부분",["C3","C4"]],
+["S03","FlatBuffers 스냅샷 + 델타 + 양자화","C&S · Net serialization → 부분",["C1","C2"]],
+["S04","client prediction + reconciliation","C&S · 동일 개념 → 수렴",["C5","C7"]],
+["S05","per-player AOI 컬링","C&S · Relevancy/Priority → 수렴",["C6","C7"]],
+["S06","Go 4서비스 (auth/shop/LB/MM)","C&S · 아웃게임 — 대조 없음",["C7","C3"]],
+["S07","멱등성 키 + 조건부 UPDATE + outbox","C&S · PG MVCC",["C7","C4"]],
+["S08","Redis 싱글스레드 + ZSET / dual-write","C&S · 정합성",["C3","C7"]],
+["N01","alpha-beta + TT bound flag","Bot · Stockfish → 수렴",["C6"]],
+["N02","평가함수 — 모든 항이 같은 단위","Bot · Stockfish eval → 수렴",["C1","C6"]],
+["N03","self-play PPO + opponent pool","Bot · OpenAI Five → 부분",["C5"]],
+["N04","pybind11 브릿지 + Gymnasium wrapper","Bot · 경계 설계",["C1","C3"]],
+["N05","결정론 sim = rollout = replay = 안티치트","Bot · 1좌표 3용도",["C7","C5"]]
+];
+
+// ── spine 11 ─────────────────────────────────────────────
+const SP = [
+["D1","컴퓨터구조","6 챕터",["C2","C3","C5"],
+`전자는 유한 속도로 움직인다
+  → 계산은 싸지는데 이동은 안 싸진다
+     (Dennard 종료 + memory wall)
+    → 계층으로 숨긴다      → 메모리 계층
+    → 병렬로 우회한다      → SIMD/멀티코어/GPU
+      → 일관성 문제        → MESI/메모리모델
+      → 표현의 문제        → IEEE754/엔디안
+  → 명령 하나가 어떻게 도나 → 실행 모델
+  → 측정 없으면 추측       → 관측`],
+["D2","운영체제","7 챕터",["C3","C4"],
+`하드웨어는 하나, 프로그램은 여럿
+  → 시간을 나눈다   → 스케줄링 · 실행 단위
+  → 공간을 나눈다   → 가상 메모리
+  → 보호한다        → 커널 경계
+  → 나누면 공유가 생긴다 → 동기화
+  → 나누면 대화가 필요하다 → IPC
+  → I/O는 느리다    → I/O 모델`],
+["D3","윈도우 시스템 프로그래밍","6 챕터",["C4","C1"],
+`Windows 커널은 객체 지향이다
+  → 모든 게 오브젝트, 접근은 핸들 → 핸들
+  → 핸들은 수명이 있다 [C4]      → RAII
+  → 코드는 PE, 로더가 붙인다     → 모듈
+  → 호출은 스택 위에서 일어난다   → 스택/규약
+  → 데이터는 힙에서 산다         → 힙/할당자
+  → 그리고 언젠가 죽는다         → 크래시`],
+["D4","C++","8 챕터",["C4","C1"],
+`수명을 런타임에 관찰하지 않고
+프로그램 구조에 묶는다
+  → 이 공리 하나에서 전부가 유도된다
+    RAII · 소유권 · 이동 · 예외 안전
+    · 캐시 지역성 · zero-overhead
+  → GC는 이 공리를 거부한 것
+     그래서 그 대가(히칭)를 낸다`],
+["D5","컴파일러 · 링킹","5 챕터",["C1","C4"],
+`텍스트 → 기계어, 5단계
+  전처리 · 컴파일 · 어셈블 · 링크 · 로드
+  → 에러의 종류가 단계를 알려준다
+  → UB = 최적화 라이선스
+  → 링킹이 면접 최빈출`],
+["D6","자료구조 · 알고리즘","7 챕터",["C2","C6"],
+`점근이 아니라 캐시가 이긴다      [C2]
+탐색 공간은 항상 예산보다 크다   [C6]
+  → 두 문장이 전 챕터를 생성한다
+  ※ Sparse Set은 여기가 아니라 W02`],
+["D7","수학 · 물리","6 챕터",["C1","C5"],
+`게임 엔진은 거대한 미분·적분기다  [C5]
+모든 좌표는 어떤 기준계에 상대적  [C1]
+  → 변환 · 회전 · 적분기 · 충돌
+  → 오차 통제가 곧 설계`],
+["D8","그래픽스","7 챕터",["C1","C2","C5","C6"],
+`상태를 픽셀로 투사한다
+  → 기준계를 옮기고        [C1]
+  → 대역폭을 아끼고        [C2]
+  → 샘플링하고            [C5]
+  → 안 보이는 걸 버린다     [C6]
+  이 넷이 전 챕터를 생성한다`],
+["D9","네트워크 · 서버 · DB","8 챕터",["C7","C3","C2"],
+`여기 상태와 저기 상태를 일치시킨다
+  → 유한 채널로            [C2]
+  → 하나의 진실로          [C7]
+  → 공유는 최소로          [C3]
+  게임 넷코드도 DB도 같은 문제`],
+["D10","게임 AI · RL","6 챕터",["C6","C5"],
+`유한 예산에서 "지금 뭘 할까"를 푼다
+  → 안 볼 걸 버린다        [C6]
+  → 못 푸는 건 추정한다     [C5]
+  ※ 모방학습(IL)은 빈 노드 — 인정`],
+["D11","게임 엔진 종합","6 챕터",["C1","C2","C3","C4","C5","C6","C7"],
+`위 전부의 교집합.
+새 지식이 아니라 통합 좌표계.
+  → 7층 · 루프 · ECS · Job
+  · 리소스 · 툴/협업`]
+];
+
+// ── 렌더 ─────────────────────────────────────────────────
+const cards = [];
+
+// CORE 1 — 축
+cards.push(`<div class="card">
+<div class="hd"><div><div class="id">축</div><div class="ttl">생성기 7개</div>
+<div class="meta">외우지 말 것 · 유도에 쓸 것</div></div>${dip(K)}</div>
+<table class="rows">${K.map(k=>`<tr><td>${k}</td><td><b>${AX[k][0]}</b><br><span style="color:#5c636c">${AX[k][1]}</span></td></tr>`).join("")}</table>
+<div class="note">막히면 노드로 가지 말고 축으로 돌아간다. 축에서 노드가 안 나오면 그 노드는 암기로 들어온 것.</div>
+<div class="ft"><span>CORE 1/5</span><span>00 INDEX §1</span></div></div>`);
+
+// CORE 2 — tradeoff 생성기
+cards.push(`<div class="card">
+<div class="hd"><div><div class="id">⑤</div><div class="ttl">tradeoff 생성기</div>
+<div class="meta">축을 알면 형태가 결정된다</div></div>${dip(K)}</div>
+<div class="body" style="font-size:9px;margin-bottom:1.6mm">tradeoff는 취향이 아니라 <b>보존 법칙</b>. 둘 다 못 갖는 이유가 반드시 있고, <b>그 이유가 축</b>이다.</div>
+<table class="rows">${K.map(k=>`<tr><td>${k}</td><td>${AX[k][2]}</td></tr>`).join("")}</table>
+<div class="note">형태는 축이 준다. <b>내용은 네 결정에서만 나온다.</b> 숫자는 Tracy에서.</div>
+<div class="ft"><span>CORE 2/5</span><span>★</span></div></div>`);
+
+// CORE 3 — 5단계
+cards.push(`<div class="card">
+<div class="hd"><div><div class="id">3-A</div><div class="ttl">좌표 답안 · 인과 5칸 / 90초</div>
+<div class="meta">"이거 왜 이렇게 했어요?"</div></div></div>
+<table class="rows">
+<tr><td>①15s</td><td><b>문제</b> — 제약(숫자)부터. 기능으로 시작하면 실패</td></tr>
+<tr><td>②20s</td><td><b>순진한 해법의 실패</b> — 숫자 필수. 대안을 모르면 = 근거 없이 결정한 것</td></tr>
+<tr><td>③25s</td><td><b>메커니즘</b> — 숫자 필수. 코드 낭독이면 실패</td></tr>
+<tr><td>④15s</td><td><b>대조</b> — UE는 A로 푸는데 제약이 달라서 B. <b>base commit 접속점</b></td></tr>
+<tr><td>⑤15s</td><td><b>대가</b> — 뭘 잃었나 / 언제 이게 틀린 선택인가</td></tr>
+</table>
+<div class="note">⑤ 없으면 세일즈맨, 있으면 엔지니어. <b>⑤가 그 결정을 실제로 내렸다는 유일한 증거.</b></div>
+<div class="ft"><span>CORE 3/5</span><span>주력</span></div></div>`);
+
+// CORE 4 — 문제 정의
+cards.push(`<div class="card">
+<div class="hd"><div><div class="id">①=⑤</div><div class="ttl">문제 정의 규칙</div>
+<div class="meta">⑤가 안 나오면 ①로 돌아가라</div></div></div>
+<div class="pre">[제약·숫자] 안에 [목표]를 해야 하는데
+[순진한 해법]으로 하면 [측정값]
+  → 예산의 [  %]</div>
+<div class="body" style="font-size:9px">
+<p><b>예산 초과</b>로 정의 → 해법은 반드시 뭔가를 팔아서 예산을 산 것 → <b>판 게 자동으로 ⑤</b></p>
+<p><b>기능</b>으로 정의 → 판 게 없음 → ⑤가 안 나옴 → 짜내면 거짓말</p>
+</div>
+<div class="big">숫자가 없으면<br>그건 문제가 아니라 취향이다</div>
+<div class="ft"><span>CORE 4/5</span><span>★</span></div></div>`);
+
+// CORE 5 — 채점 · 간격
+cards.push(`<div class="card">
+<div class="hd"><div><div class="id">채점</div><div class="ttl">누가 뭘 채점하나 · 간격</div>
+<div class="meta">"그대로" 나오면 그게 실패</div></div></div>
+<table class="rows">
+<tr><td>숫자</td><td>정답지 — 여기까지만</td></tr>
+<tr><td>사슬</td><td><b>없음. 네 것이다</b></td></tr>
+<tr><td>버팀</td><td><b>반례</b> — "그럼 X 경우엔?"</td></tr>
+</table>
+<div class="pre">성공 → 간격 ×2.5 (1·3·7·18·45·90)
+부분 → 간격 유지
+실패 → 1일 리셋 + 막힌 축 기록</div>
+<div class="body" style="font-size:8.6px"><b>정답지에 없는 걸 말했으면 가점.</b> 일치율이 아니라 유도력.</div>
+<div class="note">좌표 실패 = 몰랐다가 아니라 <b>근거 없이 결정했다</b>. 지식 문제가 아니라 설계 부채.</div>
+<div class="ft"><span>CORE 5/5</span><span>02 §3</span></div></div>`);
+
+// SPINE
+SP.forEach((s,i)=>cards.push(`<div class="card">
+<div class="hd"><div><div class="id">${s[0]}</div><div class="ttl">${s[1]}</div>
+<div class="meta">${s[2]} · 챕터는 유도한다</div></div>${dip(s[3])}</div>
+<div class="pre" style="flex:1;background:#fff;padding:0;font-size:8.8px;line-height:1.75">${s[4]}</div>
+<div class="note">spine 4줄만 보고 챕터를 유도 → 그다음 대조. 챕터가 안 떠오르면 spine으로.</div>
+<div class="ft"><span>SPINE ${i+1}/11</span><span>01 트리</span></div></div>`));
+
+// 좌표
+CO.forEach((c,i)=>{
+  const slots=[["①","문제 · 제약과 숫자"],["②","순진한 해법의 실패 · 숫자"],
+               ["③","메커니즘 · 숫자"],["④","대조 · UE는? 경계는?"],["⑤","대가 · "+shape(c[3])]];
+  cards.push(`<div class="card">
+<div class="hd"><div><div class="id">${c[0]}</div><div class="ttl">${c[1]}</div>
+<div class="meta">${c[2]}</div></div>${dip(c[3])}</div>
+${slots.map(s=>`<div class="slot"><div class="lab"><span>${s[0]}</span><s>${s[1]}</s></div>
+<div class="rule"></div><div class="rule"></div></div>`).join("")}
+<div class="ft"><span>좌표 ${i+1}/25</span><span>${c[3].join(" ")}</span></div></div>`);
+});
+
+// 4-up
+let html="";
+for(let i=0;i<cards.length;i+=4){
+  html+=`<div class="sheet">${cards.slice(i,i+4).join("")}${
+    "<div class='card'></div>".repeat(Math.max(0,4-cards.slice(i,i+4).length))}</div>`;
+}
+document.getElementById("out").innerHTML=html;
+</script>
+</body>
+</html>

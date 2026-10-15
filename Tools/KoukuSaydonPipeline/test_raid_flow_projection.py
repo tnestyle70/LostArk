@@ -12,7 +12,7 @@ import project_kouku_saydon_composition as composition
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PREFIX = "KAKULSAYDON_G1_PATTERN_"
+PREFIX = "KOUKUSAYDON_G1_PATTERN_"
 
 
 def documents():
@@ -38,7 +38,7 @@ def bingo_documents():
         sequence["patterns"].append({"patternId": PREFIX + str(number), "gateId": "BINGO",
             "enterCombatOnFinish": combat, "durationMs": duration, "stages": [{"durationMs": duration}], "logicOccurrences": []})
     common = {"gateId": "BINGO", "authoringStatus": "PRODUCT", "actorProfileId": "MN_RPCT_07",
-              "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon"}
+              "targetBossPlacementId": "boss.koukusaydon.bingo.saydon"}
     action["patterns"].extend([dict(common, patternId="parent.bingo"),
         dict(common, patternId="special.bingo", patternOccurrences=[{"patternId": "child.bingo", "repeat": False}]),
         dict(common, patternId="child.bingo", logicOccurrences=[{"logicId": "detonate", "enabled": True}])])
@@ -164,7 +164,7 @@ class RaidProjectionTests(unittest.TestCase):
         flow = action["patternFlows"][-1]
         bingo = subject.project_raid_gates(action, sequence)[-1]
         self.assertEqual("BINGO", bingo["gateId"])
-        self.assertEqual("boss.kakulsaydon.bingo.saydon", bingo["primaryBossPlacementId"])
+        self.assertEqual("boss.koukusaydon.bingo.saydon", bingo["primaryBossPlacementId"])
         self.assertEqual((PREFIX + "10", 23333, []), (bingo["introPatternId"], bingo["introDurationMs"], bingo["arrivals"]))
         self.assertEqual(flow["entries"], bingo["entries"])
         self.assertEqual((PREFIX + "9", 51285), (bingo["clearPatternId"], bingo["clearDurationMs"]))
@@ -296,7 +296,7 @@ class RaidProjectionTests(unittest.TestCase):
         valid["raidGates"].append(subject.project_raid_gates(bingo_action, bingo_sequence)[-1])
         valid["patterns"].extend([{"patternId": "parent.bingo", "gateId": "BINGO"},
             {"patternId": "special.bingo", "gateId": "BINGO", "fixedTimeline": True,
-             "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon", "stages": [{"durationMs": 32628}],
+             "targetBossPlacementId": "boss.koukusaydon.bingo.saydon", "stages": [{"durationMs": 32628}],
              "mechanicTriggers": [{"kind": "BINGO_DETONATION"}]}])
         cases = [{"name": "valid", "accepted": True, "document": valid}]
         for name in ("absent_special", "missing_special", "wrong_gate", "no_detonation", "double_detonation", "ordinary_special"):

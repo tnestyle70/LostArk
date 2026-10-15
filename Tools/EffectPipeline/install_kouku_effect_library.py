@@ -9,9 +9,12 @@ import hashlib
 import json
 import re
 from pathlib import Path
-import xml.etree.ElementTree as ET
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 NAMES = {
     'staff.flame.full.restore': ('불뿜기', '불뿜기'),
     'doll.flame.full.restore': ('마리오', '기괴한 인형 양쪽 화염'),
@@ -105,7 +108,7 @@ def register(manifests, organization, output, install, library_only=False):
         return parent
     known = {r['effectAssetId']: r for r in catalog['effects']}
     resources = {r['assetId']: r for r in composition['presentationResources'] if r['kind'] == 'EFFECT'}
-    pattern = None if library_only else next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_32')
+    pattern = None if library_only else next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_32')
     if pattern is not None:
         assert pattern['gateId'] == 'GATE3' and '쇼타임' in pattern['displayName']
     additions = []
@@ -158,7 +161,7 @@ def register(manifests, organization, output, install, library_only=False):
             doc['displayName'] = name
             staged[path] = payload(doc)
         if asset not in resources:
-            resource = dict(resourceId='kakulsaydon.effect.' + identity(asset), displayName=name,
+            resource = dict(resourceId='koukusaydon.effect.' + identity(asset), displayName=name,
                 defaultAnchorKind=row.get('defaultAnchorKind', 'BOSS' if doc.get('sourceModelPreview') else 'MAP'), kind='EFFECT', assetId=asset,
                 resourceKind='V1_EFFECT', elementId='', durationMs=row['durationMs'], shape='BOX', colliderKind='GEOMETRY',
                 halfExtents=[1,1,1], radiusM=3, halfAngleDegrees=45)
@@ -208,22 +211,9 @@ def register(manifests, organization, output, install, library_only=False):
             assert json.loads(staged[composition_path]) == composition
         else:
             staged[composition_path] = payload(composition)
-    for suffix in ('', '.filters'):
-        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        snapshots[path] = path.read_bytes()
-        text = snapshots[path].decode('utf8')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        entries = []
-        for row in additions:
-            include = '..\\..\\' + row['path'].replace('/', '\\')
-            if 'Include="' + include + '"' in text: continue
-            entries.append('    <None Include="' + include + '">' + ('<Filter>96.DataFiles</Filter>' if suffix else '') + '</None>')
-        if entries:
-            prefix, closing, tail = text.rpartition('</Project>')
-            assert closing and not tail.strip()
-            text = prefix + '  <ItemGroup>' + newline + newline.join(entries) + newline + '  </ItemGroup>' + newline + closing + tail
-            ET.fromstring(text)
-            staged[path] = text.encode('utf8')
+    for path, before, after in stage_data_solution(ROOT, [ROOT / row['path'] for row in additions]):
+        snapshots[path] = before
+        staged[path] = after
     for path, before in snapshots.items():
         assert path.read_bytes() == before, f'Concurrent authoring edit: {path}'
     changed = []

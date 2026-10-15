@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
 #include "Gameplay/WorldCollisionContract.h"
@@ -281,7 +281,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 			2u == scheduledByGroup[0] + scheduledByGroup[1],
 			"Schedule exactly two Character Select callbacks in the first update");
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto resetRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& resetRoom = *resetRoomStorage;
 		SERVER_PLAYER resetPlayer{};
@@ -330,7 +330,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 				"spawn.character-select.monster"),
 			"Reset Character Select dynamic entities and spawn groups after the room becomes empty");
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto retirementRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& retirementRoom = *retirementRoomStorage;
 		ROOM_COMMAND queuedLeave{};
@@ -356,7 +356,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 			!retirementRoom.Enqueue(std::move(commandAfterSeal)),
 			"Retire a private Character Select arena only after queued leave work drains");
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto sharedRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
 		CGameRoom& sharedRoom = *sharedRoomStorage;
 		tests.Require(
@@ -365,7 +365,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 	}
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto raidRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& raidRoom = *raidRoomStorage;
 		const auto& placements = raidRoom.m_WorldBootstrap.Get_Placements();
@@ -954,7 +954,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SpawnGroups(TESTS& test
 	}
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		SERVER_WORLD_ENTITY boss{};
@@ -1269,8 +1269,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TEST
 	};
 	const WAVE_CASE cases[] =
 	{
-		{ WORLD_ID::KAKULSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1", 22u },
-		{ WORLD_ID::KAKULSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2", 15u },
+		{ WORLD_ID::KOUKUSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Book1_Monsters", "spawn.kouku.book1", 22u },
+		{ WORLD_ID::KOUKUSAYDON_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Book2_Monsters", "spawn.kouku.book2", 15u },
 		{ WORLD_ID::VALTAN_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_1, "Stage_1", "spawn.valtan.stage01", 10u },
 		{ WORLD_ID::VALTAN_ARENA, WAVE_MONSTER_BUTTON::NORMAL_MONSTER_2, "Stage_2", "spawn.valtan.stage03", 10u },
 	};
@@ -1415,7 +1415,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TEST
 	};
 	const std::string spawnGroupKind =
 		std::to_string(static_cast<int>(WORLD_TRIGGER_ACTION_KIND::ACTIVATE_SPAWN_GROUP)) + ":";
-	for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+	for (const WORLD_ID world : { WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 	{
 		auto roomStorage = std::make_unique<CGameRoom>(world);
 		CGameRoom& room = *roomStorage;
@@ -1569,7 +1569,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TEST
 	}
 
 	/* Buttons. The player waits at the world's first authored spawn, away from every wave box. */
-	for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+	for (const WORLD_ID world : { WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 	{
 		auto roomStorage = std::make_unique<CGameRoom>(world);
 		CGameRoom& room = *roomStorage;
@@ -1653,7 +1653,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WaveMonsterButtons(TEST
 				[](const SERVER_WORLD_ENTITY& entity) { return 94900u == entity.iNetEntityId || 94901u == entity.iNetEntityId; });
 		};
 		/* Refusals change nothing. */
-		const WORLD_ID otherWorld = WORLD_ID::VALTAN_ARENA == world ? WORLD_ID::KAKULSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
+		const WORLD_ID otherWorld = WORLD_ID::VALTAN_ARENA == world ? WORLD_ID::KOUKUSAYDON_ARENA : WORLD_ID::VALTAN_ARENA;
 		press(first->eButton, otherWorld);
 		press(WAVE_MONSTER_BUTTON::END, world);
 		{

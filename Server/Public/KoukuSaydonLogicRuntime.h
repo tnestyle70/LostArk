@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameplayCatalog.h"
 #include "ServerPlayer.h"
@@ -17,8 +17,7 @@
 namespace LostArk::Server
 {
 	class CServerCollisionSystem;
-	/* Per-player verdict inside one judgement window. NONE is "not answered
-	yet" for a continuous window and "not judged yet" for an end-tick window. */
+	/* 판정 window의 플레이어별 응답이다. NONE은 연속 window에서는 미응답, 종료 tick 판정에서는 아직 판정 전이다. */
 	enum class KOUKUSAYDON_LOGIC_ANSWER : std::uint8_t
 	{
 		NONE,
@@ -27,9 +26,7 @@ namespace LostArk::Server
 		TIMEOUT
 	};
 
-	/* Runtime state of one authored Logic window while its pattern runs. Ticks
-	are absolute Server ticks derived from the pattern start; the window itself
-	never re-reads the catalog after Build. */
+	/* Build가 패턴 시작 tick을 기준으로 만든 window 진행 상태다. Update가 저작 pattern과 이 상태를 함께 소비한다. */
 	struct KOUKUSAYDON_LOGIC_WINDOW_STATE final
 	{
 		std::uint32_t iWindowIndex = 0u;
@@ -43,7 +40,7 @@ namespace LostArk::Server
 		std::optional<BOSS_PATTERN_BOSS_MOTION> ChargeMotion;
 		std::set<std::pair<std::string, std::string>> AppliedWorldMotions;
 		std::set<std::string> ContactedWorldOccurrences;
-		// Exact WORLD owner of a periodic ball/doll contact; other damage keeps HP-based madness.
+		// 주기적으로 접촉하는 공·인형의 WORLD 소유자를 구분한다. 나머지 피해는 HP 기반 광기 증가를 따른다.
 		std::uint8_t iMadnessSource = 0u;
 		std::uint32_t iMadnessContactIntervalMs = 0u;
 		std::map<LostArk::Shared::PLAYER_ID, KOUKUSAYDON_LOGIC_ANSWER> Answers;
@@ -54,8 +51,7 @@ namespace LostArk::Server
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::NET_ENTITY_ID> BoundPlayers;
 	};
 
-	/* One authored presentation cue (world sequence or scene profile) waiting
-	for its Server tick. */
+	/* 예정된 Server tick을 기다리는 저작 world sequence·scene profile cue다. */
 	struct KOUKUSAYDON_LOGIC_CUE_STATE final
 	{
 		std::uint32_t iIndex = 0u;
@@ -78,8 +74,7 @@ namespace LostArk::Server
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Shared::COMBAT_OBJECT_ID> TrackingObjects;
 	};
 
-	/* Everything the room keeps for the Logic of the pattern occurrence it is
-	auditioning. Built when the pattern begins, discarded when it ends. */
+	/* 룸이 패턴 발생별로 소유하는 Logic 진행 기록이다. 패턴 시작 때 만들고 종료 때 버린다. */
 	struct KOUKUSAYDON_LOGIC_LEDGER final
 	{
 		std::string strPatternId;
@@ -94,13 +89,13 @@ namespace LostArk::Server
 		bool bBingoLineRewardApplied = false;
 		std::vector<std::uint32_t> ContactWindowOrder;
 		std::set<std::tuple<std::string, std::uint32_t, std::string>> ConsumedContactGroups;
-		// A lower-priority reaction cannot replace a card state already won in this pattern.
+		// 이번 패턴에서 먼저 적용된 높은 우선순위의 카드 상태를 낮은 우선순위 반응이 덮지 못하게 한다.
 		std::map<std::pair<std::string, std::string>, std::uint32_t> AppliedContactMotionPriorities;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> WorldSequences;
 		std::vector<KOUKUSAYDON_LOGIC_CUE_STATE> MechanicTriggers;
 		std::vector<KOUKUSAYDON_PLAYER_TARGET_WINDOW_STATE> PlayerTargetWindows;
 		bool bTrackingTargetReached = false;
-		// One snapshot of the entry roster: world X descending, then stable PlayerId.
+		// 입장 시 roster를 world X 내림차순, 동률이면 PlayerId 순으로 한 번 캡처한다.
 		bool bCardMazeEntryRosterCaptured = false;
 		std::vector<LostArk::Shared::PLAYER_ID> CardMazeEntryPlayers;
 		std::size_t iCardMazeNextHiddenPlayer = 0u;
@@ -133,9 +128,7 @@ namespace LostArk::Server
         std::uint32_t iWindowIndex = 0u;
     };
 
-	/* What one Update tick asks the room to do. The runtime touches players and
-	the boss directly; anything that reaches the wire or the audition slot list
-	is returned here so the room stays the only owner of those. */
+	/* Update가 룸에 요청하는 송신·후속 패턴·포획 결과다. 플레이어·보스 상태는 직접 갱신하지만 송신과 실행 목록 소유권은 룸에 둔다. */
 	struct KOUKUSAYDON_LOGIC_OUTPUT final
 	{
 		std::vector<KOUKUSAYDON_LOGIC_WORLD_PLAY> WorldSequencePlays;
@@ -143,16 +136,16 @@ namespace LostArk::Server
 		std::vector<std::string> FollowupPatternIds;
         std::vector<KOUKUSAYDON_LOGIC_CAPTURE_REQUEST> CaptureRequests;
 		bool bEndPatternEarly = false;
-		// Set only after an ending counter hit has committed its validated landing.
+		// 패턴을 끝내는 counter의 검증된 착지가 commit된 뒤에만 설정한다.
 		bool bCounterSuccessLanded = false;
 		bool bStaggerSuccess = false;
 		std::optional<bool> BingoLineCompletion;
 		std::string strStatus;
 	};
 
-	/* Judges the authored Logic windows of a running KoukuSaydon pattern on the
-	fixed Server clock and applies their typed RESULTs to players. It owns no
-	socket, no stage transition and no pattern selection. */
+	/* 고정 Server tick에서 저작 Logic의 RESULT를 판정·적용한다. */
+	// 쿠크 패턴의 Logic window와 Server tick을 비교해 플레이어·보스 상태와 룸에 돌려줄 결과를 계산한다.
+	// 발생별 진행 상태는 호출자가 넘기는 ledger에 보관하고, 송신·패턴 선택·stage 전환은 룸이 맡는다.
 	class CKoukuSaydonLogicRuntime final
 	{
 	public:
@@ -168,19 +161,18 @@ namespace LostArk::Server
 			std::uint8_t unavailableSymbols = 0u);
 
 		static bool Can_EnterMarioEntry(const SERVER_PLAYER& player) noexcept;
-		// A chain root or any ENTER_AREA window whose sole Success is MARIO_ENTER with regions.
+		// MARIO_ENTER만 성공 결과로 가진 영역 진입 window 또는 PATTERN_COMPLETION_COUNT chain root를 찾는다.
 		static bool Has_MarioEntry(const BOSS_PATTERN_DEFINITION& pattern) noexcept;
-		// First authored Mario entry result; nullptr when the pattern only enters through a chain root.
+		// 영역이 있는 첫 Mario 진입 결과를 반환한다. chain root만으로 진입하는 패턴이면 nullptr다.
 		static const BOSS_PATTERN_LOGIC_RESULT* Find_MarioEntryResult(const BOSS_PATTERN_DEFINITION& pattern) noexcept;
-		// Root geometry stays pinned while its completion-driven child patterns run.
-		// honorWindowEnd closes the portal at startMs + durationMs; chain roots stay open past it.
+		// 자식 패턴 실행 중에도 룸이 보관한 root 영역으로 검사한다. honorWindowEnd가 true일 때만 저작 종료 시각에 portal을 닫는다.
 		static bool Is_InsideMarioEntry(const BOSS_PATTERN_DEFINITION& root,
 			const SERVER_WORLD_ENTITY& anchor, const SERVER_PLAYER& player,
 			std::uint32_t elapsedTicks, bool honorWindowEnd = false, std::uint8_t* matchedStage = nullptr);
-		// Uses the same authored region transform and elliptic-sector boundary as contacts.
+		// 접촉 판정과 같은 저작 영역 변환과 타원 부채꼴 경계를 사용한다.
 		[[nodiscard]] static bool Is_PointInsideRegion(const BOSS_LOGIC_REGION& region,
 			const SERVER_WORLD_ENTITY& boss, float worldX, float worldZ) noexcept;
-		// Read-only projection of the exact active authoritative mechanic interval.
+		// 현재 권위 mechanic 구간을 읽어 snapshot의 gauge로 투영한다.
 		static void Project_MechanicGauge(const SERVER_WORLD_ENTITY& boss,
 			const BOSS_PATTERN_DEFINITION& pattern, const KOUKUSAYDON_LOGIC_LEDGER& ledger,
 			std::uint32_t serverTick, LostArk::Shared::BOSS_COMBAT_SNAPSHOT& snapshot);
@@ -189,8 +181,7 @@ namespace LostArk::Server
 			const SERVER_WORLD_ENTITY& boss,
 			std::uint32_t startTick,
 			KOUKUSAYDON_LOGIC_LEDGER& outLedger);
-		/* Ends every window without judging it: cards are taken back and the
-		shield is lowered. Used on abort, completion and room reset. */
+		/* 추가 판정 없이 ledger를 비우고 보스 방어·결과 및 이 발생이 소유한 플레이어 bind를 정리한다. */
 		static void Discard(
 			KOUKUSAYDON_LOGIC_LEDGER& ledger,
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -207,17 +198,14 @@ namespace LostArk::Server
 			KOUKUSAYDON_LOGIC_OUTPUT& outOutput,
 			const CServerNavigation* navigation = nullptr,
 			const CServerCollisionSystem* collision = nullptr);
-		/* One quick-slot press while the DANCE HUD is up. The slot is resolved
-		through the player's own replicated layout; the first answer wins. */
+		/* 플레이어에게 복제한 slot 배치로 DANCE 입력을 해석한다. 열린 window의 첫 응답만 기록한다. */
 		static bool Record_InteractionSlot(
 			KOUKUSAYDON_LOGIC_LEDGER& ledger,
 			const BOSS_PATTERN_DEFINITION& pattern,
 			const SERVER_PLAYER& player,
 			LostArk::Shared::INTERACTION_SLOT slot,
 			std::string& outStatus);
-		/* Recomputes every player's interaction HUD mode, slot layout, madness
-		maximum and clown expiry. The dance layout is dealt once per pattern
-		occurrence so the judgement and the HUD read the same shuffle. */
+		/* 플레이어 HUD·slot·광기 상한·광대 만료를 갱신한다. dance slot은 패턴 발생별 한 번 섞어 HUD와 판정이 같은 배치를 읽는다. */
 		static void Update_PlayerModes(
 			std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
 			const KOUKUSAYDON_LOGIC_LEDGER* pActiveLedger,
@@ -233,16 +221,13 @@ namespace LostArk::Server
 			std::uint32_t serverTick,
 			std::vector<LostArk::Shared::DAMAGE_EVENT>& outDamageEvents,
 			const std::array<float, 2u>* pContactCenter = nullptr, bool encounterWipe = true);
-		/* The gauge reached its maximum or a RESULT asked for it: the player
-		presents the clown body until the hold expires. durationMs 0 takes the
-		encounter policy hold. */
+		/* 살아 있는 일반 플레이어를 광대로 바꾼다. durationMs가 0이면 encounter 유지 시간, 없으면 기본 시간을 쓴다. */
 		static void Transform_ToClown(
 			SERVER_PLAYER& player,
 			const BOSS_ENCOUNTER_MADNESS_POLICY* pMadnessPolicy,
 			std::uint32_t serverTick,
 			std::uint32_t durationMs);
-		/* True when a hit from (sourceX, sourceZ) lands inside the boss's
-		raised shield arc. The caller reflects it instead of applying it. */
+		/* 공격 원점 방향이 활성 방패 각도 안이면 true다. 호출자는 원래 피해 대신 반사를 처리한다. */
 		[[nodiscard]] static bool Is_ShieldReflected(
 			const SERVER_WORLD_ENTITY& boss,
 			float sourceX,
@@ -304,13 +289,8 @@ namespace LostArk::Server
 		static bool Can_ReceiveSpatialContact(const SERVER_PLAYER& player) noexcept;
 	};
 
-	/* One card maze run: who claimed the telescope, the suit each hunter was
-	dealt and how many of that suit they have felled. It owns no entity and no
-	socket -- the room spawns, hits and despawns on its verdicts -- and it is
-	reset with the run, never by the roulette that shares the suit enum. */
-	/* Two 25-bit masks describe the visible board: white is the legacy wire
-	name for every skull, red is a permanent completed row/column subset.
-	A separate Server-only line mask records rewards already consumed. */
+	/* 룸이 소유하는 빙고 상태다. 폭탄·망치 단계와 보드 진행을 값으로 보관한다. */
+	/* 25비트 white는 모든 해골 칸, red는 완성된 행·열의 영구 칸이다. 보상 소비 여부는 별도 Server line mask로 관리한다. */
 	class CKoukuBingoRuntime final
 	{
 	public:
@@ -322,28 +302,20 @@ namespace LostArk::Server
 			m_Bombs = {};
 			m_Hammer = {};
 		}
-		/* Paints the given cells white, then promotes every line that is now
-		complete. Bits outside the board are ignored rather than refused so a
-		caller cannot half-apply a fill. */
+		/* 보드 안의 지정 칸을 채우고 완성된 행·열을 승격한다. 보드 밖 비트는 무시한다. */
 		void Fill(std::uint32_t cellMask) noexcept;
-		/* Toggle ordinary skulls in one blast, preserving red cells, then
-		promote completed rows/columns. The wire's white mask includes both
-		ordinary black skull tiles and permanent red tiles; diagonals do not promote. */
+		/* red 칸은 유지하고 폭발 범위의 나머지 해골 칸을 반전한 뒤 행·열을 승격한다. white에는 red도 포함하며 대각선은 승격하지 않는다. */
 		void Detonate(std::uint32_t cellMask) noexcept;
 		[[nodiscard]] std::uint32_t Get_WhiteMask() const noexcept { return m_iWhiteMask; }
 		[[nodiscard]] std::uint32_t Get_RedMask() const noexcept { return m_iRedMask; }
 		[[nodiscard]] std::uint32_t Count_CompletedRowsAndColumns() const noexcept;
 		[[nodiscard]] std::uint32_t Count_UnconsumedRowsAndColumns() const noexcept;
-		/* Consume exactly this many distinct red lines in stable row/column
-		order. Insufficient lines leave all reward and board state unchanged. */
+		/* 행·열의 고정 순서로 미소비 완성 줄을 count개 소비한다. count가 0이거나 줄이 부족하면 상태를 유지한다. */
 		bool Consume_CompletedRowsAndColumns(std::uint32_t count) noexcept;
-		/* True while this position stands on a completed line. The wipe attack
-		is the consumer; until then only the contract test asks. */
+		/* 해당 위치의 보드 칸이 완성된 red 줄에 속하는지 검사한다. 전멸 공격의 안전 구역 판정에 사용한다. */
 		[[nodiscard]] bool Is_Safe(float x, float z) const noexcept;
 
-		/* One bomb slot. The room owns player lookup, so the runtime keeps the
-		carrier's id and asks to be told where that carrier is when the mark
-		expires. */
+		/* 폭탄 slot은 운반자 ID와 예정 tick을 보관한다. 실제 플레이어 조회와 낙하 위치 결정은 룸이 담당한다. */
 		struct BOMB final
 		{
 			LostArk::Shared::BINGO_BOMB_PHASE ePhase =
@@ -353,37 +325,32 @@ namespace LostArk::Server
 			float fPositionX = 0.f;
 			float fPositionZ = 0.f;
 			std::uint32_t iDetonateTick = 0u;
-			// Invisible gap after the head mark; reserves this slot until ground spawn.
+			// 머리 표식이 사라진 뒤 지면 생성 전까지 slot을 예약하는 tick이다.
 			std::uint32_t iPlantTick = 0u;
 			std::uint32_t iMarkOrdinal = 0u;
-			// Capture per bomb: a later board window/configuration cannot retime pending phases.
+			// 폭탄마다 시간을 캡처해 뒤의 보드 설정 변경이 대기 중인 낙하·폭발을 바꾸지 못하게 한다.
 			std::uint32_t iDropDelayMs = LostArk::Shared::KOUKU_BINGO_BOMB_DROP_DELAY_MS;
 			std::uint32_t iFuseMs = LostArk::Shared::KOUKU_BINGO_BOMB_FUSE_MS;
 		};
 		using BOMB_SLOTS = std::array<BOMB,
 			static_cast<std::size_t>(LostArk::Shared::KOUKU_BINGO_MAX_BOMBS)>;
 
-		/* Marks a carrier if it has no live bomb and a slot is free. Returns
-		false rather than replacing an existing mark, so a double press cannot
-		restart someone else's clock. */
+		/* 운반자 ID가 유효하고 빈 slot이 있으면 표식한다. 같은 운반자의 MARKED가 이미 있으면 거절해 표식 시간을 재시작하지 않는다. */
 		bool Start_Bomb(LostArk::Shared::NET_ENTITY_ID carrier,
 			std::uint32_t detonateTick, std::uint32_t markOrdinal = 0u,
 			std::uint32_t dropDelayMs = LostArk::Shared::KOUKU_BINGO_BOMB_DROP_DELAY_MS,
 			std::uint32_t fuseMs = LostArk::Shared::KOUKU_BINGO_BOMB_FUSE_MS) noexcept;
-		/* Turns a MARKED slot into a PLANTED bomb at this position, burning
-		until the given tick. */
+		/* MARKED 또는 낙하 예약 slot을 지정 위치에 설치하고 fuseTick을 폭발 tick으로 저장한다. */
 		void Plant_Bomb(std::size_t slot, float x, float z,
 			std::uint32_t fuseTick) noexcept;
 		void Queue_BombPlant(std::size_t slot, float x, float z, std::uint32_t plantTick) noexcept;
 		void Clear_Bomb(std::size_t slot) noexcept;
 		[[nodiscard]] const BOMB_SLOTS& Get_Bombs() const noexcept { return m_Bombs; }
 
-		/* Starts the hammer on one anchor if none is running. The room rolls
-		the anchor, because the runtime owns no randomness. */
+		/* 망치가 없을 때 유효한 anchor와 시간으로 시작한다. anchor 선택은 룸이 맡는다. */
 		bool Start_Hammer(std::int32_t anchor, std::uint32_t startTick,
 			std::uint32_t endTick) noexcept;
-		/* Moves the hammer into its next phase, or clears it after the
-		sweep. Returns true while a hammer is still running. */
+		/* 도달한 종료 tick에 망치를 한 단계 전진시키고 마지막 단계 뒤에는 비운다. 망치가 남아 있으면 true다. */
 		bool Advance_Hammer(std::uint32_t tick) noexcept;
 		[[nodiscard]] const LostArk::Shared::BINGO_HAMMER_SNAPSHOT&
 			Get_Hammer() const noexcept { return m_Hammer; }
@@ -399,6 +366,7 @@ namespace LostArk::Server
 		LostArk::Shared::BINGO_HAMMER_SNAPSHOT m_Hammer{};
 	};
 
+	// 미로의 역할·문양·처치 진행과 대기 참가자를 소유한다. entity 생성·피격·제거와 송신은 룸이 담당한다.
 	class CKoukuCardMazeRuntime final
 	{
 	public:
@@ -429,32 +397,25 @@ namespace LostArk::Server
 
 		static constexpr std::uint8_t KILL_TARGET = 1u;
 		static constexpr std::uint32_t TARGETS_PER_SUIT = 1u;
-		/* Where in the hammer press the head lands, in 30 Hz ticks. Measured on
-		rpcz00p_project_tuned_hammer (75 ticks): the head is still winding up
-		behind the body until tick 27, comes over the top and reaches the ground
-		in front at tick 30, and rests there through tick 42. 12 was inside the
-		wind-up, so a swing counted before anything had been hit. */
+		/* 일반 망치의 피해 판정은 입력 후 30Hz 기준 30tick이다. Hammer_HitTickOffset은 interactionIndex 1에만 12tick을 적용한다. */
 		static constexpr std::uint32_t HAMMER_HIT_TICK_OFFSET = 30u;
 		static constexpr std::uint32_t Hammer_HitTickOffset(std::uint32_t interactionIndex) noexcept
 		{ return 1u == interactionIndex ? 12u : HAMMER_HIT_TICK_OFFSET; }
 		static constexpr float HAMMER_RANGE_M = 2.4f;
 		/* cos(60 degrees): the swing covers a 120 degree arc in front. */
 		static constexpr float HAMMER_HALF_ANGLE_COS = 0.5f;
-		/* Generic hammer input amount; the maze target hit adapter consumes all remaining HP. */
+		/* 일반 망치 입력 피해량이다. 미로 표적의 피격 adapter는 별도로 남은 HP 전부를 소비한다. */
 		static constexpr std::uint32_t HAMMER_RAW_DAMAGE = 100u;
-		/* The MAZE HUD's authored hammer id; maze targets reject other skill ids. */
+		/* MAZE HUD의 망치 skill ID다. 미로 표적은 다른 skill의 타격을 거절한다. */
 		static constexpr LostArk::Shared::SKILL_ID HAMMER_SKILL_ID = 56411u;
 		static constexpr const char* SPAWN_GROUP_TAG = "cardmaze.targets";
 		/* The box a hammer swing must reach to take the telescope. */
 		static constexpr const char* TELESCOPE_PLACEMENT_ID = "cardmaze.telescope";
-		/* Original triggers 2201/2202: one second after entry a clown box (NPC
-		480720) rises on the telescope, and only its destruction opens the
-		telescope. Its own group tag keeps the generic monster damage rules. */
+		/* 입장 30tick 뒤 망원경 위에 생성하는 광대 상자다. 별도 group으로 일반 몬스터 피해를 받고 파괴 뒤 망원경을 연다. */
 		static constexpr const char* CLOWN_BOX_ARCHETYPE_ID = "MONSTER_KOUKU_CLOWN_BOX";
 		static constexpr const char* CLOWN_BOX_SPAWN_GROUP_TAG = "cardmaze.clownbox";
 		static constexpr std::uint32_t CLOWN_BOX_SPAWN_DELAY_TICKS = 30u;
-		/* The CardMiro navigation region: 116 x 114 cells of 0.5 m, and the
-		centre cell the telescope stands on. */
+		/* CardMiro 영역의 world m 경계다. 0.5m 격자 116×114칸과 망원경 중심 좌표에 대응한다. */
 		static constexpr float MAZE_MIN_X = -24.97f;
 		static constexpr float MAZE_MAX_X = 33.03f;
 		static constexpr float MAZE_MIN_Z = 1323.35f;
@@ -468,8 +429,7 @@ namespace LostArk::Server
 
 		static const char* Archetype_ForSuit(LostArk::Shared::MECHANIC_CARD_SYMBOL suit) noexcept;
 
-		/* Chooses roles, suits and target positions for one claim. Nothing is
-		applied to players until Commit; a failed spawn calls Abort instead. */
+		/* 역할·문양·표적 위치를 대기 상태로 준비한다. spawn 성공 뒤 Commit이 플레이어에 적용하고 실패 시 Abort로 버린다. */
 		bool Plan(
 			LostArk::Shared::PLAYER_ID claimantId,
 			const std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -484,7 +444,7 @@ namespace LostArk::Server
 		[[nodiscard]] bool Is_Target(LostArk::Shared::NET_ENTITY_ID entityId) const noexcept;
 		/* A hammer hit the room already landed on a registered target. */
 		HIT_OUTCOME On_TargetHit(SERVER_PLAYER& hunter, const SERVER_WORLD_ENTITY& target, bool killed);
-		/* True when no hunter is left and the room must tear the run down. */
+		/* 진행 중인 사냥에서 문양을 가진 참가자가 모두 나갔으면 true를 반환해 룸의 종료 정리를 요청한다. */
 		bool Remove_Player(LostArk::Shared::PLAYER_ID playerId);
 		void Reset(std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players);
 		bool Can_Hit(const SERVER_PLAYER& player, LostArk::Shared::NET_ENTITY_ID targetId) const;

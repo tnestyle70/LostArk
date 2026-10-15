@@ -8,6 +8,9 @@ from pathlib import Path
 import argparse, base64, collections, copy, json, math, re, struct, sys
 
 ROOT = Path(__file__).resolve().parents[2]
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 sys.path.insert(0, str(ROOT / 'Tools/EffectPipeline'))
 sys.path.insert(0, str(ROOT / 'Tools/LevelPlacementExtractor'))
 sys.path.insert(0, str(ROOT / 'Tools/ModelAssetConverter'))
@@ -1301,17 +1304,11 @@ def install_documents(assets, candidates):
         text = text.replace(marker, ',' + newline + (',' + newline).join('    ' + r for r in rows) + marker)
         json.loads(text)
         catalog_path.write_bytes(text.encode('utf-8'))
-    for suffix, entry in (('', '    <None Include="{}"></None>'), ('.filters', '    <None Include="{}"><Filter>96.DataFiles</Filter></None>')):
-        project = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        text = project.read_text(encoding='utf-8-sig')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        items = [entry.format(f'..\\..\\Data\\Effects\\Authored\\{a}.effect.json') for a in assets
-                 if f'Data\\Effects\\Authored\\{a}.effect.json"' not in text]
-        if items:
-            prefix, marker, tail = text.rpartition('</Project>')
-            text = prefix + '  <ItemGroup>' + newline + newline.join(items) + newline + '  </ItemGroup>' + newline + marker + tail
-            raw = project.read_bytes()
-            project.write_bytes((b'\xef\xbb\xbf' if raw.startswith(b'\xef\xbb\xbf') else b'') + text.encode('utf-8'))
+    metadata_paths = [ROOT / 'Data/Effects/Authored' / (asset + '.effect.json') for asset in assets]
+    for path, before, after in stage_data_solution(ROOT, metadata_paths):
+        if before != after:
+            assert path.read_bytes() == before, f'Concurrent solution edit: {path}'
+            path.write_bytes(after)
 
 
 def write_skill_cues(evidence):

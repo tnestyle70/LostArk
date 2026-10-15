@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 15,
-  "sourceModelPreview": {"gateId": "GATE1", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.kakulsaydon.g1.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_21_02", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1333, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "GATE1", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.koukusaydon.g1.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_21_02", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1333, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.card.match.emit.full.restore",
   "displayName": "카드 출력 원본 전체",
   "bloomIntensity": 1.29999995,

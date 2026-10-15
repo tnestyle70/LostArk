@@ -51,7 +51,7 @@ void LostArk::Server::CGameRoom::Handle_KoukuRaidRequest(const SESSION_ID sessio
         send(rejection);
     };
     CPacketWriter shape;
-    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !Write_Message(shape, request)) { reject("Invalid raid request scope"); return; }
+    if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !Write_Message(shape, request)) { reject("Invalid raid request scope"); return; }
     const auto previous = m_KoukuRaidReceipts.find(sessionId);
     if (previous != m_KoukuRaidReceipts.end() && request.iRequestSequence <= previous->second.first.iRequestSequence)
     {
@@ -88,7 +88,7 @@ bool LostArk::Server::CGameRoom::Begin_KoukuRaidPreparation(const SESSION_ID ses
 {
     reason.clear(); CPacketWriter validation;
     if (!Write_Message(validation, request)) { reason = "Invalid raid request shape"; return false; }
-    if (request.eOperation != KOUKUSAYDON_RAID_OPERATION::START || m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA ||
+    if (request.eOperation != KOUKUSAYDON_RAID_OPERATION::START || m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA ||
         !m_PlayerIdBySessionId.contains(sessionId)) { reason = "Invalid raid START owner or scope"; return false; }
     const auto votedGate = m_GateProgress.eKind == GATE_PROGRESS_KIND::RESTART ?
         (std::max<std::uint8_t>)(m_GateProgress.iCurrentGate, 1u) : m_GateProgress.iCurrentGate + 1u;
@@ -498,14 +498,14 @@ void LostArk::Server::CGameRoom::Notify_KoukuRaidBossDeath(const SERVER_WORLD_EN
 {
     // Legacy F1 can create the authored G3 or Bingo boss without a raid epoch.
     // Reuse pinned resource admission before Encore or the final ending, respectively.
-    if (!Is_KoukuRaidRunning() && m_eWorldId == WORLD_ID::KAKULSAYDON_ARENA &&
-        (boss.strPlacementId == "boss.kakulsaydon.g3.saydon" || boss.strPlacementId == "boss.kakulsaydon.bingo.saydon") &&
+    if (!Is_KoukuRaidRunning() && m_eWorldId == WORLD_ID::KOUKUSAYDON_ARENA &&
+        (boss.strPlacementId == "boss.koukusaydon.g3.saydon" || boss.strPlacementId == "boss.koukusaydon.bingo.saydon") &&
         (boss.iCurrentHp == 0u || boss.eAction == SERVER_ENTITY_ACTION::DEAD) && !m_Players.empty())
     {
         auto product = m_GameplayCatalog.Get_ActiveGeneration();
         if (m_pKoukuPublishedProductGeneration && m_pKoukuPublishedProductGeneration->Has_SameNonKoukuGameplay(m_GameplayCatalog.Active()))
             product = m_pKoukuPublishedProductGeneration;
-        const bool bingoEnding = boss.strPlacementId == "boss.kakulsaydon.bingo.saydon";
+        const bool bingoEnding = boss.strPlacementId == "boss.koukusaydon.bingo.saydon";
         const std::string gateId = bingoEnding ? "BINGO" : "GATE3";
         const auto* gate = product ? product->Find_KoukuRaidGate(gateId) : nullptr;
         const auto* bingo = product ? product->Find_KoukuRaidGate("BINGO") : nullptr;

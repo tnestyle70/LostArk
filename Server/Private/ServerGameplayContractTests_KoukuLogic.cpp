@@ -103,7 +103,7 @@ namespace ServerGameplayContractDetail
 			const float x, const float z, const float radius, const bool hit,
 			const bool insideIsFail, const char* label)
 		{
-			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_OBJECT_CONTACT";
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KOUKUSAYDON_TEST_OBJECT_CONTACT";
 			auto window = makeWindow(); window.fTargetWorldX = x; window.fTargetWorldZ = z;
 			window.fTargetRadiusM = radius; window.bInsideIsFail = insideIsFail;
 			window.CardRegions.push_back(region); pattern.LogicWindows.push_back(window);
@@ -165,7 +165,7 @@ namespace ServerGameplayContractDetail
 		// quaternion-rotated WORLD motion, evaluated on the Server clock.
 		for (const bool testVisibility : { true, false })
 		{
-			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_OBJECT_WORLD_TRACK";
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KOUKUSAYDON_TEST_OBJECT_WORLD_TRACK";
 			auto window = makeWindow(); window.iStartMs = 200u; window.iDurationMs = 1300u;
 			window.fTargetWorldX = testVisibility ? 102.f : 112.2f;
 			window.fTargetWorldZ = testVisibility ? 205.f : 205.12132f; window.fTargetRadiusM = .25f;
@@ -202,7 +202,7 @@ namespace ServerGameplayContractDetail
 				"Object overlap samples WORLD translation, quaternion, scale, smooth clock and spawn anchor in XZ with no players");
 		}
 		{
-			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_POINT_BOUNDARY_PRESERVED";
+			BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KOUKUSAYDON_TEST_POINT_BOUNDARY_PRESERVED";
 			BOSS_PATTERN_LOGIC_WINDOW window{}; window.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
 			window.iDurationMs = 100u;
 			cone.fYawDegrees = 0.f; window.CardRegions.push_back(cone); pattern.LogicWindows.push_back(window);
@@ -280,7 +280,7 @@ namespace ServerGameplayContractDetail
 			boss->fPositionX = scenario == 2u ? -1.f : scenario == 3u ? 20.f : 0.f;
 			std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> events;
 			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
-			pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+			pattern.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
 			BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "contact.stage"; stage.strActionId = "contact.action";
 			stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
 			pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
@@ -330,7 +330,7 @@ namespace ServerGameplayContractDetail
 		using namespace LostArk::Shared;
 		using namespace LostArk::Server;
 		BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "placement.contract";
-		pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+		pattern.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
 		BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "placement.stage"; stage.strActionId = "placement.action";
 		stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
 		pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
@@ -414,7 +414,7 @@ namespace ServerGameplayContractDetail
 			boss->fYawDegrees = scenario == 2u ? 0.f : 90.f;
 			std::map<PLAYER_ID, SERVER_PLAYER> players; std::vector<DAMAGE_EVENT> events;
 			KOUKUSAYDON_LOGIC_LEDGER ledger; KOUKUSAYDON_LOGIC_OUTPUT output;
-			pattern.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
+			pattern.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1"; pattern.eSelection = BOSS_PATTERN_SELECTION::AUDITION_ONLY;
 			BOSS_PATTERN_STAGE_DEFINITION stage{}; stage.strStageId = "contact.stage"; stage.strActionId = "contact.action";
 			stage.eStageKind = BOSS_PATTERN_STAGE_KIND::ACTIVE; stage.iDurationMs = 1000u;
 			pattern.Stages.push_back(stage); pattern.iExpectedStageCount = 1u;
@@ -630,12 +630,12 @@ namespace ServerGameplayContractDetail
 
         // Exercise the installed P11 geometry, clock, three lethal contacts and
         // gaze results together instead of replacing its hazards with a 50-percent fixture.
-        const auto* definitions = catalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+        const auto* definitions = catalog.Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
         const BOSS_PATTERN_DEFINITION* published = nullptr;
         if (definitions) for (const auto& candidate : *definitions)
-            if (candidate.strPatternId == "KAKULSAYDON_G1_PATTERN_11") published = &candidate;
+            if (candidate.strPatternId == "KOUKUSAYDON_G1_PATTERN_11") published = &candidate;
         CWorldBootstrap bootstrap;
-        const bool loadedWorld = bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA);
+        const bool loadedWorld = bootstrap.Load(WORLD_ID::KOUKUSAYDON_ARENA);
         const WORLD_BOOTSTRAP_PLACEMENT* placement = nullptr;
         if (loadedWorld && published) for (const auto& candidate : bootstrap.Get_Placements())
             if (candidate.strPlacementId == published->strTargetBossPlacementId) placement = &candidate;
@@ -1010,8 +1010,8 @@ namespace ServerGameplayContractDetail
 		SERVER_WORLD_ENTITY logicBoss{};
 		logicBoss.iNetEntityId = 4242u;
 		logicBoss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		logicBoss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-		logicBoss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		logicBoss.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1";
+		logicBoss.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 		logicBoss.iCurrentHp = logicBoss.iMaximumHp = 100000u;
 		logicBoss.iPatternSequence = 7u;
 		logicBoss.fYawDegrees = 0.f;
@@ -1077,7 +1077,7 @@ namespace ServerGameplayContractDetail
 		}
 		{
 			BOSS_PATTERN_DEFINITION anchoredPattern{};
-			anchoredPattern.strPatternId = "KAKULSAYDON_TEST_ANCHORED_WORLD";
+			anchoredPattern.strPatternId = "KOUKUSAYDON_TEST_ANCHORED_WORLD";
 			BOSS_PATTERN_WORLD_SEQUENCE world{};
 			world.strInstanceId = "world.sequence.instance.8";
 			world.bAnchorBossSpawn = true;
@@ -1143,7 +1143,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_ROULETTE";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_ROULETTE";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "roulette.1";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
@@ -1192,7 +1192,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_CARD_REGIONS";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_CARD_REGIONS";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "regions.1";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::ROULETTE_CARD_MATCH;
@@ -1248,7 +1248,7 @@ namespace ServerGameplayContractDetail
 		for (const auto kind : { BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP, BOSS_PATTERN_LOGIC_KIND::ENTER_AREA })
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_COLLIDER_RESULT";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_COLLIDER_RESULT";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "geometry.1";
 			window.eKind = kind;
@@ -1295,7 +1295,7 @@ namespace ServerGameplayContractDetail
 		}
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_TWO_SHIELDS";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_TWO_SHIELDS";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "shield.pair";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
@@ -1343,7 +1343,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_CIRCLE_FAIL";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_CIRCLE_FAIL";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "circle.fail"; window.eKind = BOSS_PATTERN_LOGIC_KIND::AREA_OVERLAP;
 			window.bInsideIsFail = true; window.iDurationMs = 1000u;
@@ -1371,7 +1371,7 @@ namespace ServerGameplayContractDetail
 		}
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_ANIMATED_WORLD_TRIGGER";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_ANIMATED_WORLD_TRIGGER";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "world.trigger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
 			window.iStartMs = 200u; window.iDurationMs = 1300u;
@@ -1414,7 +1414,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			const auto checkSweep = [&](const bool hiddenGap, const bool expired, const bool clippedWindow) {
-				BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KAKULSAYDON_TEST_CENTERED_BLADE";
+				BOSS_PATTERN_DEFINITION pattern{}; pattern.strPatternId = "KOUKUSAYDON_TEST_CENTERED_BLADE";
 				BOSS_PATTERN_LOGIC_WINDOW window{}; window.strWindowId = "blade.damage";
 				window.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA;
 				window.iStartMs = clippedWindow ? 134u : 0u; window.iDurationMs = 500u;
@@ -1457,7 +1457,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_GAZE";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_GAZE";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "gaze.1";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::GAZE_REAL_BOSS;
@@ -1488,7 +1488,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_DANCE";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_DANCE";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "pose.1";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::POSE_INPUT;
@@ -1561,7 +1561,7 @@ namespace ServerGameplayContractDetail
 
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_STAGGER";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_STAGGER";
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			window.strWindowId = "stagger.1";
 			window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
@@ -1570,7 +1570,7 @@ namespace ServerGameplayContractDetail
 			window.iThreshold = 1000u;
 			window.fShieldArcDegrees = 90.f;
 			window.bEndsPatternOnSuccess = true;
-			window.OnSuccess.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KAKULSAYDON_TEST_GROGGY" });
+			window.OnSuccess.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, "KOUKUSAYDON_TEST_GROGGY" });
 			window.OnTimeout.push_back({ BOSS_PATTERN_LOGIC_RESULT_KIND::INSTANT_DEATH, 0u, 0u, {} });
 			pattern.LogicWindows.push_back(window);
 			std::map<PLAYER_ID, SERVER_PLAYER> players;
@@ -1598,7 +1598,7 @@ namespace ServerGameplayContractDetail
 			tests.Require(shieldRaised && belowThreshold && ledger.Windows.front().bClosed &&
 				!staggerBoss.bKoukuShieldActive && output.bEndPatternEarly && output.bStaggerSuccess &&
 				1u == output.FollowupPatternIds.size() &&
-				"KAKULSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
+				"KOUKUSAYDON_TEST_GROGGY" == output.FollowupPatternIds.front() &&
 				1000u == players.at(1u).iCurrentHp,
 				"Raise the frontal shield for the stagger window and hand the follow-up to the audition once independent stagger credit reaches the common threshold");
 
@@ -1669,7 +1669,7 @@ namespace ServerGameplayContractDetail
 		}
 		{
 			BOSS_PATTERN_DEFINITION pattern{};
-			pattern.strPatternId = "KAKULSAYDON_TEST_TRIGGERS";
+			pattern.strPatternId = "KOUKUSAYDON_TEST_TRIGGERS";
 			BOSS_PATTERN_MECHANIC_TRIGGER hud{};
 			hud.strTriggerId = "hud.mario";
 			hud.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::HUD_ENTER;
@@ -1685,7 +1685,7 @@ namespace ServerGameplayContractDetail
 			teleport.fTeleportX = -6.36f;
 			teleport.fTeleportY = 1.3f;
 			teleport.fTeleportZ = 937.92f;
-			teleport.strClonePatternId = "KAKULSAYDON_TEST_CLONE";
+			teleport.strClonePatternId = "KOUKUSAYDON_TEST_CLONE";
 			teleport.ClockHours = { 4u, 7u, 10u };
 			pattern.MechanicTriggers.push_back(teleport);
 			BOSS_PATTERN_MECHANIC_TRIGGER cross{};

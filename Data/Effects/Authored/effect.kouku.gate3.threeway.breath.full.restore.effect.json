@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.kakulsaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_14_01", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1667, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_14_02", "startOffsetMs": 1667, "sourceStartMs": 0, "playMs": 3167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.koukusaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_14_01", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1667, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}, {"runtimeClip": "rpct00_att_battle_14_02", "startOffsetMs": 1667, "sourceStartMs": 0, "playMs": 3167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.gate3.threeway.breath.full.restore",
   "displayName": "3관문_쿠크세이튼_3방향불뿜기",
   "bloomIntensity": 1.29999995,

@@ -1,10 +1,14 @@
-#pragma once
+﻿#pragma once
 
+//Client 소유 namespace를 여는 공용 매크로다.
+#include "Engine_Macro.h"
+
+//Server가 확정한 파티 이동 결과 코드를 읽는다.
 #include "Network/PacketMessages.h"
 
-namespace Client
-{
+NS_BEGIN(Client)
 
+//PartyInteractionView가 표시할 실패 문구다. 정적 문자열을 차용하며 미대응 코드는 nullptr다.
 inline const wchar_t* Get_PartyTransferFailureText(
 	LostArk::Shared::PARTY_TRANSFER_RESULT result)
 {
@@ -26,4 +30,4 @@ inline const wchar_t* Get_PartyTransferFailureText(
 	}
 }
 
-}
+NS_END

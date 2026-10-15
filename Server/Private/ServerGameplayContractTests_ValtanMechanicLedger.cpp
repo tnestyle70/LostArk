@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "BossCombatRuntime.h"
 #include "EncounterPropRuntime.h"
@@ -414,7 +414,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanMechanicLedger(TE
 		/* The stage edge the Brain reaches still has to reach the prop runtime.
 		This is the room-side half of the raise: the same pattern and stage the
 		previous test proved reachable, handed to the entry the room tick calls. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto pillarRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& pillarRoom = *pillarRoomStorage;
 		SERVER_WORLD_ENTITY stageBoss{};
@@ -789,7 +789,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanMechanicLedger(TE
 		by the dedicated room fixture above. Auxiliary authored slots stay intact. */
 		bool publishedTrashCounter = false;
 		bool trashCounterReachedGroggy = false;
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto trashSequenceRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& trashSequenceRoom = *trashSequenceRoomStorage;
 		automaticBoss.iNetEntityId = 19700u;

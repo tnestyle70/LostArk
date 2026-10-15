@@ -996,10 +996,10 @@ for ordinal, selection in enumerate(selections):
             if i in skip:continue
             if i in depthReconstruct:
                 raw,dst=depthReconstruct[i]
-                lines += [f'    // Native {i+1}-{i+4}: reconstructed view depth is supplied by the runtime adapter.',f'    {dst} = {raw};'];continue
+                lines += [f'    // Native {i+1}-{i+4}: use runtime view depth.',f'    {dst} = {raw};'];continue
             if i in depthPlans:
                 raw,reconstructionIndex,dst=depthPlans[i];a=ns['args'](ins.partition(' ')[2])
-                lines += [f'    // Native {i+1}: source device depth mapped to centimetre view depth; reconstruction at {reconstructionIndex+1}.','    '+raw+' = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, ('+operand(a[1])+').xy, 0.f).y * 100000.f;']
+                lines += [f'    // Native {i+1}: source depth -> runtime view cm; source reconstruction {reconstructionIndex+1}.','    '+raw+' = g_EffectSceneDepthTexture.SampleLevel(EffectSliceDepthSampler, ('+operand(a[1])+').xy, 0.f).y * 100000.f;']
                 adapt.append({'sourceInstructionStart':i+1,'sourceReconstructionStart':reconstructionIndex+1,'kind':'runtime-depth-y-times-100000-to-source-centimetres'});continue
             if ins.startswith('sample'):
                 op,_,tail=ins.partition(' ');a=ns['args'](tail);reg=int(re.search(r't(\d+)',a[2])[1])

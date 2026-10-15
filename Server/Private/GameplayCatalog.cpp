@@ -24,14 +24,12 @@
 
 namespace
 {
-	/* Mirror of the publisher's $maximumDamageRatePercent: a rate only one side
-	accepts would make Validate and Load disagree about the same document. */
+	/* publisher의 maximumDamageRatePercent와 같은 상한을 사용해 검증·로드의 허용 범위를 맞춘다. */
 	constexpr std::uint32_t MAXIMUM_DAMAGE_RATE_PERCENT = 100000u;
 	// Matches the publisher bound for the complete gameplay document.
 	constexpr std::uint32_t MAXIMUM_GAMEPLAY_BOOTSTRAP_ROWS =
 		LostArk::Shared::GAMEPLAY_BOOTSTRAP_MAX_ROWS;
-	/* The wire names one plate per bit, so a boss cannot wear more than the
-	snapshot can carry. The publisher rejects a larger authored count. */
+	/* snapshot은 bit마다 한 plate를 나타내므로 전송 가능한 bit 수 안으로 부위 개수를 제한한다. */
 	constexpr std::size_t MAXIMUM_BOSS_ARMOR_PLATES =
 		LostArk::Shared::MAX_WORLD_ENTITY_ARMOR_PLATES;
 
@@ -910,9 +908,7 @@ namespace
 				EXECUTE_GRABBED_PLAYERS != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				SUPPRESS_INTER_STEP_PURSUIT != kind &&
-			/* Silence is a deadline-latched player status. Its authored ENTER
-			   schedules the exact Server expiry and intentionally has no matching
-			   pattern-occurrence EXIT action. */
+			/* 침묵은 ENTER가 Server 만료 시각을 정하는 player 상태다. 같은 pattern occurrence의 EXIT로 해제하지 않는다. */
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
 				SET_PLAYER_SILENCE != kind &&
 			LostArk::Server::BOSS_PATTERN_STAGE_ACTION_KIND::
@@ -935,7 +931,7 @@ namespace
 					{ return stage.strActionId == branch.strNextActionId; });
 				if (next == pattern.Stages.end()) return false;
 				const auto& source = pattern.Stages[index];
-				// Only the authored Trash retry edges may loop until a landed counter.
+				// 아래 Trash의 명시적 재시도 edge만 순환을 허용한다.
 				if ((pattern.strPatternId == "VALTAN_TRASH" || pattern.strPatternId == "VALTAN_TRASH_CATCH_IF") &&
 					(source.strStageId == "RETRY_EXHAUSTED" || source.strStageId == "CATCH_SLAM" ||
 					 source.strStageId == "EXECUTE_TAIL") && next->strStageId == "RECHARGE_WAIT_02" &&
@@ -1230,8 +1226,7 @@ bool LostArk::Server::CGameplayCatalog::Parse_CancelWindows(
 			!ParseNumber(token.substr(colon + 1), window.iEndMs) ||
 			window.iEndMs <= window.iStartMs ||
 			window.iEndMs > limitMs ||
-			/* The publisher merges overlaps, so a window that does not start
-			after the previous one ends means the row was hand-edited. */
+			/* publisher가 겹친 구간을 합치므로 이전 종료 뒤에 시작하지 않는 구간은 거부한다. */
 			(!outWindows.empty() && window.iStartMs <= outWindows.back().iEndMs))
 		{
 			m_strStatus = "Skill cancel window is invalid";
@@ -1418,59 +1413,194 @@ bool LostArk::Server::CGameplayCatalog::Parse_SkillProjectile(
 	return true;
 }
 
+// GameRoom 초기화와 게시 데이터 재로드에서 사용하는 Catalog 로드 진입점이다.
+// 모든 검증은 임시 Catalog에서 수행하고, 성공한 경우에만 현재 데이터를 교체한다.
+// 실패하면 기존 게임 데이터는 유지하며 m_strStatus에 실패 사유를 남긴다.
 bool LostArk::Server::CGameplayCatalog::Load()
 {
+	// 데이터 경로를 먼저 확정한다.
+	// 경로를 찾지 못하면 현재 Catalog를 건드리지 않고 로드를 중단한다.
 	const std::filesystem::path dataRoot = Resolve_DataRoot();
+
 	if (dataRoot.empty())
 	{
 		m_strStatus = "Gameplay data root could not be resolved";
 		return false;
 	}
+
+	// 게시된 게임 데이터는 임시 Catalog에 읽는다.
+	// 이후 게시 확인서 검증이 실패해도 현재 사용 중인 정의가 바뀌지 않도록 한다.
 	CGameplayCatalog staged;
-	if (!staged.Load_BootstrapPath(dataRoot / L"Gameplay" / L"Gameplay.bootstrap", nullptr, nullptr))
-	{ m_strStatus = staged.Get_Status(); return false; }
-	const auto receiptPath = dataRoot / L"Gameplay" / L"NumericBalance.active.json";
+
+	if (!staged.Load_BootstrapPath(
+		dataRoot / L"Gameplay" / L"Gameplay.bootstrap",
+		nullptr,
+		nullptr))
+	{
+		m_strStatus = staged.Get_Status();
+		return false;
+	}
+
+	// 수치 밸런스 게시 확인서는 선택 입력이다.
+	// 파일이 없으면 bootstrap 로드 결과를 사용하지만,
+	// 존재 여부를 확인하는 과정 자체가 실패했다면 로드를 중단한다.
+	const auto receiptPath =
+		dataRoot / L"Gameplay" / L"NumericBalance.active.json";
+
 	std::error_code error;
 	const bool hasReceipt = std::filesystem::exists(receiptPath, error);
-	if (error) { m_strStatus = "Numeric balance receipt cannot be inspected"; return false; }
+
+	if (error)
+	{
+		m_strStatus = "Numeric balance receipt cannot be inspected";
+		return false;
+	}
+
 	if (hasReceipt)
 	{
-		// This bounded receipt is a publication identity, never a JSON gameplay fallback.
-		std::ifstream stream(receiptPath, std::ios::binary | std::ios::ate);
+		// 확인서는 게시된 데이터의 식별 정보를 담는다.
+		// Gameplay.bootstrap을 대신하는 게임 데이터로 읽지 않으며,
+		// 파싱 전에 크기가 1~2048바이트인지 확인한다.
+		std::ifstream stream(
+			receiptPath,
+			std::ios::binary | std::ios::ate);
+
 		if (!stream || stream.tellg() <= 0 || stream.tellg() > 2048)
-		{ m_strStatus = "Numeric balance receipt size is invalid"; return false; }
+		{
+			m_strStatus = "Numeric balance receipt size is invalid";
+			return false;
+		}
+
 		stream.seekg(0);
+
+		// 문자열 키와 문자열 값으로 이루어진 필드를 읽는다.
+		// 중복 키와 다섯 개를 초과하는 필드는 읽는 단계에서 거부한다.
 		std::map<std::string, std::string> fields;
 		char token = 0;
 		bool valid = bool(stream >> token) && token == '{';
+
 		while (valid)
 		{
-			std::string key, value;
+			std::string key;
+			std::string value;
+
+			// 키 뒤에 ':'가 있어야 해당 필드의 값을 읽을 수 있다.
 			stream >> std::ws;
-			if (stream.peek() != '"' || !(stream >> std::quoted(key) >> token) || token != ':') { valid = false; break; }
+
+			if (stream.peek() != '"' ||
+				!(stream >> std::quoted(key) >> token) ||
+				token != ':')
+			{
+				valid = false;
+				break;
+			}
+
 			stream >> std::ws;
-			if (stream.peek() != '"' || !(stream >> std::quoted(value)) || !fields.emplace(key, value).second || fields.size() > 5u)
-			{ valid = false; break; }
-			if (!(stream >> token)) { valid = false; break; }
-			if (token == '}') break;
-			if (token != ',') { valid = false; break; }
+
+			if (stream.peek() != '"' ||
+				!(stream >> std::quoted(value)) ||
+				!fields.emplace(key, value).second ||
+				fields.size() > 5u)
+			{
+				valid = false;
+				break;
+			}
+
+			// '}'이면 객체 읽기를 마치고, ','이면 다음 필드를 읽는다.
+			if (!(stream >> token))
+			{
+				valid = false;
+				break;
+			}
+
+			if (token == '}')
+			{
+				break;
+			}
+
+			if (token != ',')
+			{
+				valid = false;
+				break;
+			}
 		}
+
 		stream >> std::ws;
-		LostArk::Shared::GameplayDataRevision parent, expectedBootstrap, expectedNumeric, expectedNonNumeric, actualBootstrap, actualNumeric, actualNonNumeric;
+
+		const char* receiptMismatchStatus =
+			"Numeric balance receipt does not match the validated published bootstrap";
+
+		// 확인서 전체를 읽었는지와 지원하는 schema인지 확인한다.
+		// 형식 검증이 끝나기 전에는 필드 값을 revision으로 해석하지 않는다.
+		if (!valid ||
+			stream.peek() != std::char_traits<char>::eof() ||
+			fields.size() != 5u ||
+			fields["schema"] != "lostark.numeric-balance-active")
+		{
+			m_strStatus = receiptMismatchStatus;
+			return false;
+		}
+
+		// parent는 검증 성공 후 Catalog가 사용할 기준 revision이다.
+		// expected 값들은 확인서에 기록된 게시 데이터의 기대 해시다.
+		LostArk::Shared::GameplayDataRevision parent;
+
+		LostArk::Shared::GameplayDataRevision expectedBootstrap;
+		LostArk::Shared::GameplayDataRevision expectedNumeric;
+		LostArk::Shared::GameplayDataRevision expectedNonNumeric;
+
+		if (!LostArk::Shared::Try_Parse_GameplayDataRevision(
+				fields["parentGameplayRevision"], parent) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(
+				fields["bootstrapContentSha256"], expectedBootstrap) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(
+				fields["numericRevision"], expectedNumeric) ||
+			!LostArk::Shared::Try_Parse_GameplayDataRevision(
+				fields["nonNumericRowsSha256"], expectedNonNumeric))
+		{
+			m_strStatus = receiptMismatchStatus;
+			return false;
+		}
+
+		// 방금 로드한 bootstrap이 확인서에서 지정한 파일인지 먼저 확인한다.
+		if (staged.Get_ActiveRevision() != expectedBootstrap)
+		{
+			m_strStatus = receiptMismatchStatus;
+			return false;
+		}
+
+		// 임시 Catalog에서 실제 해시를 계산한다.
+		// 전체 bootstrap, 수치 항목, 비수치 구조를 각각 대조하여
+		// 서로 다른 게시 결과가 섞인 상태를 거부한다.
+		LostArk::Shared::GameplayDataRevision actualBootstrap;
+		LostArk::Shared::GameplayDataRevision actualNumeric;
+		LostArk::Shared::GameplayDataRevision actualNonNumeric;
+
 		std::vector<LostArk::Shared::BALANCE_NUMERIC_ENTRY> entries;
-		if (!valid || stream.peek() != std::char_traits<char>::eof() || fields.size() != 5u ||
-			fields["schema"] != "lostark.numeric-balance-active" ||
-			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["parentGameplayRevision"], parent) ||
-			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["bootstrapContentSha256"], expectedBootstrap) ||
-			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["numericRevision"], expectedNumeric) ||
-			!LostArk::Shared::Try_Parse_GameplayDataRevision(fields["nonNumericRowsSha256"], expectedNonNumeric) ||
-			staged.Get_ActiveRevision() != expectedBootstrap ||
-			!staged.Build_NumericBalanceReceiptHashes(actualBootstrap, actualNonNumeric, m_strStatus) ||
-			!staged.Build_NumericBalanceSnapshot(entries, actualNumeric, m_strStatus) ||
-			actualBootstrap != expectedBootstrap || actualNumeric != expectedNumeric || actualNonNumeric != expectedNonNumeric)
-		{ m_strStatus = "Numeric balance receipt does not match the validated published bootstrap"; return false; }
+
+		if (!staged.Build_NumericBalanceReceiptHashes(
+				actualBootstrap, actualNonNumeric, m_strStatus) ||
+			!staged.Build_NumericBalanceSnapshot(
+				entries, actualNumeric, m_strStatus))
+		{
+			m_strStatus = receiptMismatchStatus;
+			return false;
+		}
+
+		if (actualBootstrap != expectedBootstrap ||
+			actualNumeric != expectedNumeric ||
+			actualNonNumeric != expectedNonNumeric)
+		{
+			m_strStatus = receiptMismatchStatus;
+			return false;
+		}
+
+		// 게시 데이터의 일치가 확인된 뒤 기준 revision을 채택한다.
 		staged.m_ActiveRevision = parent;
 	}
+
+	// 현재 Catalog를 교체하는 지점은 여기 한 곳이다.
+	// 앞선 어느 단계에서 실패하더라도 기존 게임 데이터는 유지된다.
 	*this = std::move(staged);
 	return true;
 }
@@ -1511,8 +1641,7 @@ bool LostArk::Server::CGameplayCatalog::Load_PublishedKoukuProduct(
 		m_strStatus = "KoukuSaydon reload requires an admitted active baseline and published encounter";
 		return false;
 	}
-	// Retain the live process balance, even if another publisher has newer rows on disk.
-	// Reparse the joined rows to validate every encounter reference against that balance.
+	// 현재 process의 balance 행을 보존하고 게시 encounter 행만 결합해 참조를 다시 검증한다.
 	const std::string rows = activeGameplay.m_NonKoukuBootstrapRows +
 		published.m_KoukuBootstrapRows;
 	const std::string joined = "LOSTARK_GAMEPLAY_BOOTSTRAP\t" +
@@ -1531,8 +1660,7 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 		!expectedRowsRevision.Is_Valid() || !Calculate_GameplayDataRevision(rows, actualRevision) ||
 		actualRevision != expectedRowsRevision || activeGameplay.m_NonKoukuBootstrapRows.empty())
 	{ m_strStatus = "Kouku draft size, checksum, rows or active baseline is invalid"; return false; }
-	// The Client supplies only the encounter domain. Even otherwise valid player,
-	// balance or other-encounter rows may never cross this Debug admission boundary.
+	// Client draft는 해당 encounter domain만 교체한다. 유효한 형식이어도 player·balance·다른 encounter 행은 거부한다.
 	std::istringstream input(rows);
 	std::string line;
 	while (std::getline(input, line))
@@ -1542,7 +1670,7 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 		if (fields.size() < 2u)
 		{ m_strStatus = "Kouku draft contains an empty or malformed row"; return false; }
 		const auto kind = fields[0];
-		const bool encounterRow = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
+		const bool encounterRow = fields[1] == "ENCOUNTER_KOUKUSAYDON_G1" &&
 			(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
 			 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
 		const bool joinedRow = kind == "PATTERNTARGET" || kind == "PATTERNBUNDLE" ||
@@ -1560,8 +1688,7 @@ bool LostArk::Server::CGameplayCatalog::Load_DraftKoukuProduct(
 	{ m_strStatus = staged.Get_Status(); return false; }
 	if (!staged.Has_SameNonKoukuGameplay(activeGameplay))
 	{ m_strStatus = "Kouku draft cannot replace player/boss balance or another encounter"; return false; }
-	// A Sequence draft owns authored maximum/hold, but cannot replace the
-	// currently admitted Balance Test tuning with projector defaults.
+	// Sequence draft의 maximum·hold만 가져오고 현재 승인된 Balance Test 튜닝을 유지한다.
 	for (auto& [id, policy] : staged.m_KoukuMadnessPolicies)
 		if (const auto active = activeGameplay.m_KoukuMadnessPolicies.find(id);
 			active != activeGameplay.m_KoukuMadnessPolicies.end())
@@ -1782,7 +1909,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		m_ValtanPresentationGenerationId,
 		m_iKoukuSaydonProductSourceRevision,
 		m_KoukuMadnessPolicies };
-	// Keep the optional raid metadata under the same transactional load outcome.
+	// 선택적 raid metadata도 같은 load 성공·실패에 함께 반영한다.
 	struct RAID_ROLLBACK final
 	{
 		decltype(m_KoukuRaidGates)& target;
@@ -1790,8 +1917,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		bool& committed;
 		~RAID_ROLLBACK() { if (!committed) target = std::move(previous); }
 	} raidRollback{m_KoukuRaidGates, std::move(m_KoukuRaidGates), rollback.committed};
-	// Supplemental profiles must replace the previous generation together with
-	// its skills. A failed reload restores all lookup views, never partial rows.
+	// 보조 profile과 skill을 같은 세대로 교체한다. reload 실패 시 모든 조회 view를 복원한다.
 	struct PROFILE_ROLLBACK final
 	{
 		decltype(m_EmberProfiles)& embers;
@@ -1871,8 +1997,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	}
 
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillCombatTraitOwners;
-	/* Optional, unlike the combat traits above: only a skill the project has
-	actually retuned carries a row, so this set is never checked for coverage. */
+	/* 실제로 재조정한 skill만 갖는 선택적 행이므로 모든 skill의 포함을 요구하지 않는다. */
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillRootMotionScaleOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> skillTargetOwners;
 	std::unordered_set<LostArk::Shared::SKILL_ID> emberSkillOwners;
@@ -1897,8 +2022,8 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::uint32_t sourceRevision = 0u;
 			if (4u != fields.size() ||
-				"ENCOUNTER_KAKULSAYDON_G1" != fields[1] ||
-				"BOSS_KAKULSAYDON_G1_KOUKU" != fields[2] ||
+				"ENCOUNTER_KOUKUSAYDON_G1" != fields[1] ||
+				"BOSS_KOUKUSAYDON_G1_KOUKU" != fields[2] ||
 				0u != m_iKoukuSaydonProductSourceRevision ||
 				!ParseNumber(fields[3], sourceRevision) || 0u == sourceRevision)
 			{
@@ -1930,8 +2055,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		{
 			std::uint32_t ratePercent = 0;
 			DAMAGE_PROFILE profile{};
-			/* A row published before the original formula shipped carries the flat
-			percent alone; the coefficient/addend pair is appended after it. */
+			/* 이전 행은 고정 percent만 갖는다. coefficient·addend는 그 뒤에 추가된 선택 필드다. */
 			const bool hasFormula = 5u == fields.size() || 6u == fields.size() || 7u == fields.size();
 			const bool hasSpread = 6u == fields.size() || 7u == fields.size();
 			const bool hasBossHealthBars = 7u == fields.size();
@@ -2021,11 +2145,9 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				(LostArk::Shared::PLAYER_SKILL_KIND::ACTIVE == skill.eSkillKind &&
 					0u == skill.iCooldownMs) ||
 				0u == skill.iActionDurationMs ||
-				/* iHitTimeMs may be 0: a skill can land as the cast starts, so only
-					the upper bound below is a real constraint. */
+				/* 시전 시작과 동시에 맞을 수 있어 iHitTimeMs의 0은 허용하고 상한만 검사한다. */
 				skill.iHitTimeMs > skill.iActionDurationMs ||
-				/* Cost is bounded against the largest class pool after every row is
-					read: a single row cannot know which pool applies. */
+				/* 각 행에서는 적용할 class pool을 확정할 수 없어 전체 로드 뒤 최대 pool과 cost를 비교한다. */
 				!std::isfinite(skill.fMovementDistance) ||
 				!std::isfinite(skill.fMaximumRange) ||
 				skill.fMovementDistance < 0.f ||
@@ -2157,9 +2279,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				m_strStatus = "Player ember skill row is invalid";
 				return false;
 			}
-			/* Bounds against the socket pool and the owner's class wait for the
-			PLAYEREMBER row, which arrives after every skill: see the post-load
-			pass. */
+			/* 모든 skill 뒤의 PLAYEREMBER를 읽은 다음 socket pool·소유 class의 범위를 검증한다. */
 			const auto owner = m_Skills.find(ownerSkillId);
 			if (m_Skills.end() == owner ||
 				!emberSkillOwners.insert(ownerSkillId).second ||
@@ -2200,9 +2320,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 			const auto owner = m_Skills.find(ownerSkillId);
-			// Stages arrive after their skill and in order, so a row that names an
-			// unknown skill or skips an index is a corrupt bootstrap, not a
-			// tolerable gap.
+			// stage는 소유 skill 뒤에 순서대로 와야 한다. 알 수 없는 skill·건너뛴 index는 잘못된 bootstrap이다.
 			if (owner == m_Skills.end() ||
 				(LostArk::Shared::PLAYER_SKILL_KIND::COMBO !=
 					owner->second.eSkillKind &&
@@ -2246,9 +2364,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNSTAGEROOTMOTION" == fields[0])
 		{
-			/* The row sorts after every PATTERNSTAGE of the same encounter, so the
-			stage it names must already exist. An index past the end or a second
-			curve for one stage is a corrupt bootstrap, not a tolerable gap. */
+			/* 같은 encounter의 PATTERNSTAGE 뒤에 오는 curve다. 없는 stage나 한 stage의 중복 curve는 거부한다. */
 			std::uint32_t stageIndex = 0;
 			std::uint32_t sampleCount = 0;
 			if (6u != fields.size() ||
@@ -2303,8 +2419,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 			const auto owner = m_Skills.find(ownerSkillId);
-			// Stages arrive after their own SKILLCOMBOSTAGE rows, so an index
-			// past the end is a corrupt bootstrap rather than a tolerable gap.
+			// 소유 SKILLCOMBOSTAGE가 먼저 읽혔으므로 범위 밖 stage index는 거부한다.
 			if (owner == m_Skills.end() ||
 				stageIndex >= owner->second.ComboStages.size() ||
 				!owner->second.ComboStages[stageIndex].RootMotion.empty())
@@ -2570,8 +2685,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				m_strStatus = "Boss armour plate has no boss profile";
 				return false;
 			}
-			/* Dense and ordered so the index is a stable slot the client can
-			match to its own part order instead of a search. */
+			/* Client의 부위 순서와 대응하도록 빈 번호 없는 오름차순 index를 사용한다. */
 			if (plate.iPlateIndex != owner->second.ArmorPlates.size() ||
 				owner->second.ArmorPlates.size() >= MAXIMUM_BOSS_ARMOR_PLATES)
 			{
@@ -2673,8 +2787,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			definition.bExpireOnDistanceEnd = 0u != expireOnDistanceEnd;
 			const bool fixedArea = BOSS_COMBAT_OBJECT_KIND::FIXED_AREA ==
 				definition.eKind;
-			/* A fixed area is placed on a player, either the boss's single
-			pattern target or one per living raider for a volley. */
+			/* 고정 범위를 pattern의 단일 대상 또는 volley의 생존 player별 위치에 배치한다. */
 			const bool lockedOrigin =
 				BOSS_COMBAT_OBJECT_ORIGIN_POLICY::
 					LOCKED_TARGET_UNTIL_FIRST_PULSE == definition.eOriginPolicy ||
@@ -2968,9 +3081,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNBOSS" == fields[0])
 		{
-			/* One arena boss archetype that may run this KoukuSaydon pattern.
-			The row follows its PATTERN row; the boss itself is validated once
-			every BOSS row is known. */
+			/* 앞서 읽은 쿠크 pattern을 실행할 boss archetype이다. 모든 BOSS 행을 읽은 뒤 boss 자체도 검증한다. */
 			if (4u != fields.size() || !IsStableId(fields[1]) ||
 				!IsStableId(fields[2]) || !IsStableId(fields[3]))
 			{
@@ -2999,8 +3110,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNLOGIC" == fields[0])
 		{
-			/* One KoukuSaydon judgement window. Row order is the authored box
-			order; the outcome rows that follow reference it by windowId. */
+			/* 쿠크 판정 window의 행 순서가 저작 상자 순서다. 뒤따르는 outcome은 windowId로 연결한다. */
 			BOSS_PATTERN_LOGIC_WINDOW window{};
 			std::uint32_t windowIndex = 0u;
 			std::uint32_t endsPattern = 0u;
@@ -3467,7 +3577,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
             }
             else if (result.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER && fields.size() == 11u)
             {
-                // Optional 11th field: the authored Mario stage. Ten-field rows keep the live room counter.
+                // 선택적 11번째 필드는 저작 Mario stage다. 10필드 행은 현재 room의 stage counter를 사용한다.
                 std::uint32_t stage = 0u;
                 if (!ParseNumber(fields[10], stage) || stage < 1u || stage > 4u || result.iPercent || result.iDurationMs)
                 { m_strStatus = "Mario entry stage must be 1..4 without percent or duration"; return false; }
@@ -3987,8 +4097,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNTRACKMOVE" == fields[0])
 		{
-			/* Decorates an already loaded BOSS_TRACK_TARGET occurrence, so the row sorts
-			   after every PATTERNMECHANICTRIGGER and resolves it by stable ID. */
+			/* 모든 PATTERNMECHANICTRIGGER 뒤에서 기존 BOSS_TRACK_TARGET occurrence를 stable ID로 찾아 보완한다. */
 			float scale = 0.f;
 			if (fields.size() != 5u || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
 				!ParseNumber(fields[4], scale) || !std::isfinite(scale) || scale < .01f || scale > 10.f)
@@ -4005,7 +4114,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				trigger->eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET ||
 				trigger->fFollowSpeedScale != 0.f)
 			{ m_strStatus = "Boss tracking follow needs one unauthored BOSS_TRACK_TARGET trigger"; return false; }
-			// One moving owner per window: a charge already owns the body it overlaps.
+			// window 하나는 이동 owner 하나만 갖는다. charge가 이미 소유한 body에 다른 이동 owner를 겹치지 않는다.
 			for (const auto& window : pattern->LogicWindows)
 				if (window.fBossChargeDistanceM > 0.f &&
 					window.iStartMs < trigger->iStartMs + trigger->iDurationMs &&
@@ -4127,16 +4236,44 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 		else if (!fields.empty() && "PATTERNATTACKHIT" == fields[0])
 		{
+			// 게시된 한 행을 임시 공격 정의로 읽는다. 앞의 ID와 role/set/ordinal은
+			// 이 판정을 보관할 stage 또는 동적 trigger, 그 안의 배열 위치를 가리킨다.
+			// 허용된 필드 수를 먼저 검사하므로 뒤의 필드 접근은 이 범위 안에서만 한다.
 			LostArk::Shared::ATTACK_HIT_TEMPLATE hit;
 			std::uint32_t set = 0u, ordinal = 0u;
-			if ((fields.size() != 25u && fields.size() != 27u && fields.size() != 28u && fields.size() != 30u) || !IsStableId(fields[1]) || !IsStableId(fields[2]) || !IsStableId(fields[3]) ||
-				!ParseNumber(fields[5], set) || !ParseNumber(fields[6], ordinal) || set >= 32u || ordinal >= 32u)
-			{ m_strStatus = "Attack template header is invalid"; return false; }
-			hit.strHitId = fields[7]; hit.strTrigger = fields[8]; hit.strShape = fields[13];
-            hit.strNumericBalanceId = "H|" + std::string(fields[1]) + "|" + std::string(fields[2]) + "|" +
-                std::string(fields[3]) + "|" + std::string(fields[4]) + "|" + std::string(fields[5]) + "|" + std::string(fields[6]);
+			if ((fields.size() != 25u &&
+				 fields.size() != 27u &&
+				 fields.size() != 28u &&
+				 fields.size() != 30u) ||
+				!IsStableId(fields[1]) ||
+				!IsStableId(fields[2]) ||
+				!IsStableId(fields[3]) ||
+				!ParseNumber(fields[5], set) ||
+				!ParseNumber(fields[6], ordinal) ||
+				set >= 32u ||
+				ordinal >= 32u)
+			{
+				m_strStatus = "Attack template header is invalid";
+				return false;
+			}
 
-			hit.strDamageKind = fields[22]; if (fields[24] != "-") hit.strDamageProfileId = fields[24];
+			hit.strHitId = fields[7];
+			hit.strTrigger = fields[8];
+			hit.strShape = fields[13];
+			// 숫자 밸런스 조회용 키는 게시 행의 소유자와 순서로 만든다.
+			// 저작 ID를 새로 발급하거나 네트워크 ID로 사용하는 값은 아니다.
+			hit.strNumericBalanceId = "H|" + std::string(fields[1]) + "|" +
+				std::string(fields[2]) + "|" + std::string(fields[3]) + "|" +
+				std::string(fields[4]) + "|" + std::string(fields[5]) + "|" +
+				std::string(fields[6]);
+
+			hit.strDamageKind = fields[22];
+			if (fields[24] != "-")
+			{
+				hit.strDamageProfileId = fields[24];
+			}
+			// 여기서는 문자열을 수치로 변환한다. 시간(ms), 거리(m), 각도(degree)의
+			// 허용 범위와 shape/damage 조합은 소유자의 수명을 정한 뒤 공용 검증기로 검사한다.
 			if (!ParseNumber(fields[9], hit.iAtMs) ||
 				!ParseNumber(fields[10], hit.iEndMs) ||
 				!ParseNumber(fields[11], hit.iRepeatCount) ||
@@ -4150,56 +4287,156 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[20], hit.fOffsetRightM) ||
 				!ParseNumber(fields[21], hit.fYawOffsetDegrees) ||
 				!ParseNumber(fields[23], hit.iDamagePercent))
-			{ m_strStatus = "Attack template number is invalid"; return false; }
-			if (fields.size() >= 27u && (!ParseNumber(fields[25], hit.fRiseHeightM) || !ParseNumber(fields[26], hit.iPushMs)))
-			{ m_strStatus = "Attack template rise height or duration is invalid"; return false; }
-            if (fields.size() >= 28u && !ParseNumber(fields[27], hit.fPushRangeM))
-            { m_strStatus = "Attack template push range is invalid"; return false; }
-            if (fields.size() == 30u)
-            {
-                if (fields[28] != "0" && fields[28] != "1") { m_strStatus = "Attack forcePush is invalid"; return false; }
-                hit.ForcePush = fields[28] == "1"; hit.strPushDirection = fields[29];
-            }
+			{
+				m_strStatus = "Attack template number is invalid";
+				return false;
+			}
+			if (fields.size() >= 27u &&
+				(!ParseNumber(fields[25], hit.fRiseHeightM) ||
+				 !ParseNumber(fields[26], hit.iPushMs)))
+			{
+				m_strStatus = "Attack template rise height or duration is invalid";
+				return false;
+			}
+			if (fields.size() >= 28u && !ParseNumber(fields[27], hit.fPushRangeM))
+			{
+				m_strStatus = "Attack template push range is invalid";
+				return false;
+			}
+			if (fields.size() == 30u)
+			{
+				if (fields[28] != "0" && fields[28] != "1")
+				{
+					m_strStatus = "Attack forcePush is invalid";
+					return false;
+				}
+				hit.ForcePush = fields[28] == "1";
+				hit.strPushDirection = fields[29];
+			}
+
+			// ID 형식이 올바른 것과 실제 소유자가 존재하는 것은 다른 조건이다.
+			// 먼저 게시 catalog 안의 encounter와 pattern을 찾아 해당 배열에만 연결한다.
 			const auto owners = m_BossPatterns.find(std::string(fields[1]));
-			if (owners == m_BossPatterns.end()) { m_strStatus = "Attack encounter is missing"; return false; }
-			const auto pattern = std::find_if(owners->second.begin(), owners->second.end(), [&](const auto& row) { return row.strPatternId == fields[2]; });
-			if (pattern == owners->second.end()) { m_strStatus = "Attack pattern is missing"; return false; }
+			if (owners == m_BossPatterns.end())
+			{
+				m_strStatus = "Attack encounter is missing";
+				return false;
+			}
+			const auto pattern = std::find_if(
+				owners->second.begin(), owners->second.end(),
+				[&](const auto& row)
+				{
+					return row.strPatternId == fields[2];
+				});
+			if (pattern == owners->second.end())
+			{
+				m_strStatus = "Attack pattern is missing";
+				return false;
+			}
+
 			if (fields[4] == "STAGE")
 			{
-				const auto stage = std::find_if(pattern->Stages.begin(), pattern->Stages.end(),
-					[&](const auto& row) { return row.strActionId == fields[3]; });
-				if (set != 0u || stage == pattern->Stages.end() || stage->AttackContacts.size() != ordinal ||
-					(hit.strDamageKind == "PROFILE" && !Find_DamageRatePercent(hit.strDamageProfileId)))
-				{ m_strStatus = "Stage contact owner, order or profile is invalid"; return false; }
+				const auto stage = std::find_if(
+					pattern->Stages.begin(), pattern->Stages.end(),
+					[&](const auto& row)
+					{
+						return row.strActionId == fields[3];
+					});
+				// Stage 판정은 한 배열에 게시된 순서대로 들어온다. PROFILE의 문법뿐
+				// 아니라 실제 피해 profile 조회도 이 catalog 계층에서 확인한다.
+				if (set != 0u ||
+					stage == pattern->Stages.end() ||
+					stage->AttackContacts.size() != ordinal ||
+					(hit.strDamageKind == "PROFILE" &&
+					 !Find_DamageRatePercent(hit.strDamageProfileId)))
+				{
+					m_strStatus = "Stage contact owner, order or profile is invalid";
+					return false;
+				}
 				stage->AttackContacts.push_back(std::move(hit));
-				if (!stage->iDurationMs || !LostArk::Shared::Validate_AttackHitTemplates(stage->AttackContacts, stage->iDurationMs - 1u))
-				{ m_strStatus = "Stage contact shape, time or damage is invalid"; return false; }
+				// 판정은 stage 종료 전에 있어야 한다. duration 0을 먼저 거부해
+				// duration - 1의 unsigned underflow를 막는다. 실패하면 이 함수의
+				// LOAD_ROLLBACK이 로드 전 패턴 저장소를 복원하므로 부분 행을 남기지 않는다.
+				if (!stage->iDurationMs ||
+					!LostArk::Shared::Validate_AttackHitTemplates(
+						stage->AttackContacts, stage->iDurationMs - 1u))
+				{
+					m_strStatus = "Stage contact shape, time or damage is invalid";
+					return false;
+				}
 				continue;
 			}
-			const auto trigger = std::find_if(pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(), [&](const auto& row) { return row.strTriggerId == fields[3]; });
-			if (trigger == pattern->MechanicTriggers.end()) { m_strStatus = "Attack dynamic owner is missing"; return false; }
+
+			const auto trigger = std::find_if(
+				pattern->MechanicTriggers.begin(), pattern->MechanicTriggers.end(),
+				[&](const auto& row)
+				{
+					return row.strTriggerId == fields[3];
+				});
+			if (trigger == pattern->MechanicTriggers.end())
+			{
+				m_strStatus = "Attack dynamic owner is missing";
+				return false;
+			}
+			// destination은 trigger가 소유한 vector를 이번 행 처리 동안만 빌린다.
+			// role/set에 맞는 배열과 그 수명(ms)을 함께 골라 다른 owner의 판정을 섞지 않는다.
 			std::vector<LostArk::Shared::ATTACK_HIT_TEMPLATE>* destination = nullptr;
 			std::uint32_t lifetime = 0u;
 			if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS)
 			{
-				if (fields[4] == "FIXED" && set == 0u && !trigger->strFixedVisualId.empty()) { destination = &trigger->FixedHits; lifetime = trigger->iFixedLifetimeMs; }
-				else if (fields[4] == "TRACKING" && set == 0u && !trigger->strTrackingVisualId.empty()) { destination = &trigger->TrackingHits; lifetime = trigger->iDurationMs; }
-				else if (fields[4] == "RANDOM" && set < trigger->RandomVolleys.size()) { destination = &trigger->RandomVolleys[set].Hits; lifetime = trigger->RandomVolleys[set].iLifetimeMs; }
+				if (fields[4] == "FIXED" && set == 0u && !trigger->strFixedVisualId.empty())
+				{
+					destination = &trigger->FixedHits;
+					lifetime = trigger->iFixedLifetimeMs;
+				}
+				else if (fields[4] == "TRACKING" && set == 0u && !trigger->strTrackingVisualId.empty())
+				{
+					destination = &trigger->TrackingHits;
+					lifetime = trigger->iDurationMs;
+				}
+				else if (fields[4] == "RANDOM" && set < trigger->RandomVolleys.size())
+				{
+					destination = &trigger->RandomVolleys[set].Hits;
+					lifetime = trigger->RandomVolleys[set].iLifetimeMs;
+				}
 			}
-			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE && fields[4] == "ALBION" && set == 0u)
-			{ destination = &trigger->FixedHits; lifetime = trigger->iEffectLifetimeMs; }
-            else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE && fields[4] == "SELECTED" && set == 0u &&
-                trigger->eAirbornePhase == ALBION_AIRBORNE_PHASE::SELECT_PLAYER && trigger->bCaptureAirborneTargetPosition &&
-                !trigger->strSelectedEffectVisualId.empty())
-            { destination = &trigger->FixedHits; lifetime = trigger->iSelectedEffectLifetimeMs; }
-			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES && fields[4] == "PROJECTILE" && set == 0u)
-			{ destination = &trigger->ProjectileHits; lifetime = trigger->iProjectileLifetimeMs ? trigger->iProjectileLifetimeMs : 600000u; }
+			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_BLUE_CIRCLE &&
+				fields[4] == "ALBION" && set == 0u)
+			{
+				destination = &trigger->FixedHits;
+				lifetime = trigger->iEffectLifetimeMs;
+			}
+			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::ALBION_AIRBORNE &&
+				fields[4] == "SELECTED" && set == 0u &&
+				trigger->eAirbornePhase == ALBION_AIRBORNE_PHASE::SELECT_PLAYER &&
+				trigger->bCaptureAirborneTargetPosition &&
+				!trigger->strSelectedEffectVisualId.empty())
+			{
+				destination = &trigger->FixedHits;
+				lifetime = trigger->iSelectedEffectLifetimeMs;
+			}
+			else if (trigger->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::PURSUIT_PROJECTILES &&
+				fields[4] == "PROJECTILE" && set == 0u)
+			{
+				destination = &trigger->ProjectileHits;
+				lifetime = trigger->iProjectileLifetimeMs ?
+					trigger->iProjectileLifetimeMs : 600000u;
+			}
 			if (!destination || destination->size() != ordinal ||
-				(hit.strDamageKind == "PROFILE" && !Find_DamageRatePercent(hit.strDamageProfileId)))
-			{ m_strStatus = "Attack template owner, order or profile is invalid"; return false; }
+				(hit.strDamageKind == "PROFILE" &&
+				 !Find_DamageRatePercent(hit.strDamageProfileId)))
+			{
+				m_strStatus = "Attack template owner, order or profile is invalid";
+				return false;
+			}
 			destination->push_back(std::move(hit));
+			// 앞선 행까지 포함해 ID 중복과 값의 조합을 검증한다. 이 단계도 최종
+			// catalog commit 전이므로 실패하면 LOAD_ROLLBACK이 이전 패턴 저장소를 복원한다.
 			if (!LostArk::Shared::Validate_AttackHitTemplates(*destination, lifetime))
-			{ m_strStatus = "Attack template shape, window or damage is invalid"; return false; }
+			{
+				m_strStatus = "Attack template shape, window or damage is invalid";
+				return false;
+			}
 		}
 		else if (!fields.empty() && "PATTERNSUMMONSPAWN" == fields[0])
 		{
@@ -4240,7 +4477,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
         else if (!fields.empty() && "PATTERNPARENTCHILD" == fields[0])
         {
             BOSS_PATTERN_PARENT_CHILD child; std::uint32_t loop = 0u;
-            if (fields.size() != 8u || fields[1] != "ENCOUNTER_KAKULSAYDON_G1" ||
+            if (fields.size() != 8u || fields[1] != "ENCOUNTER_KOUKUSAYDON_G1" ||
                 !IsStableId(fields[2]) || !IsStableId(fields[3]) || !IsStableId(fields[4]) || fields[2] == fields[4] ||
                 !ParseNumber(fields[5], child.iStartMs) || !ParseNumber(fields[6], child.iDurationMs) ||
                 !child.iDurationMs || std::uint64_t(child.iStartMs) + child.iDurationMs > 600000u ||
@@ -4261,7 +4498,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PATTERNTIMELINE" == fields[0])
         {
             std::uint32_t lifetime = 0u;
-            if (fields.size() != 4u || fields[1] != "ENCOUNTER_KAKULSAYDON_G1" || !IsStableId(fields[2]) ||
+            if (fields.size() != 4u || fields[1] != "ENCOUNTER_KOUKUSAYDON_G1" || !IsStableId(fields[2]) ||
                 !ParseNumber(fields[3], lifetime) || lifetime == 0u || lifetime > 600000u)
             { m_strStatus = "Kouku row timeline lifetime is invalid"; return false; }
             const auto owners = m_BossPatterns.find(std::string(fields[1]));
@@ -4306,7 +4543,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			const auto owner = std::find_if(owners->second.begin(), owners->second.end(),
 				[&fields](const BOSS_PATTERN_DEFINITION& pattern) { return pattern.strPatternId == fields[2]; });
 			if (owner == owners->second.end() || owner->BossMotion || owner->bResetBossToSpawn ||
-				owner->strEncounterId != "ENCOUNTER_KAKULSAYDON_G1") return false;
+				owner->strEncounterId != "ENCOUNTER_KOUKUSAYDON_G1") return false;
 			owner->BossMotion = motion;
 		}
 		else if (!fields.empty() && "PATTERNBOSSMOTIONKEY" == fields[0])
@@ -4710,7 +4947,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!ParseNumber(fields[7], rangeUnits) ||
 				!ParseNumber(fields[8], approachUnits) ||
 				!ParseNumber(fields[9], turnDegrees) ||
-				(0u == primaryActionId && "ENCOUNTER_KAKULSAYDON_G1" != fields[1]) ||
+				(0u == primaryActionId && "ENCOUNTER_KOUKUSAYDON_G1" != fields[1]) ||
 				shapeCount > 256u ||
 				cooldownMs > 600000u || rangeUnits > 100000u ||
 				approachUnits > 100000u || turnDegrees > 360u ||
@@ -5281,8 +5518,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			stage->eBossResponseKind = kind;
 			stage->iBossResponseThreshold = threshold;
 		}
-		/* Sorted after PATTERN and ahead of its own steps, so the span opens an
-		empty list the step rows then fill in order. */
+		/* PATTERN 뒤, step 앞에서 빈 span 목록을 만들고 후속 행이 순서대로 채운다. */
 		else if (!fields.empty() && "PATTERNROTATION" == fields[0])
 		{
 			std::uint32_t fromBar = 0u;
@@ -5321,8 +5557,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			staged.iExpectedStepCount = stepCount;
 			rotations.push_back(std::move(staged));
 		}
-		/* Managed v20 weighted rows own their weight and enabled state. They are
-		strictly ordinal, unique, and may only attach to WEIGHTED_POOL. */
+		/* v20 weighted 행은 weight·enabled를 소유하며 고유한 순번으로 WEIGHTED_POOL에만 연결한다. */
 		else if (!fields.empty() &&
 			"PATTERNROTATIONCANDIDATE" == fields[0])
 		{
@@ -5385,8 +5620,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			candidate.bEnabled = 0u != enabled;
 			rotation->Candidates.push_back(std::move(candidate));
 		}
-		/* Sorted after its own span row, so the list it appends to exists. Every
-		pattern a step names is already parsed as well. */
+		/* 자신의 span과 pattern이 이미 읽힌 뒤 step을 순서대로 추가한다. */
 		else if (!fields.empty() && "PATTERNROTATIONSTEP" == fields[0])
 		{
 			std::uint32_t stepIndex = 0u;
@@ -5860,8 +6094,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			const bool perAlivePlayer =
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER ==
 					action.Volley.ePolicy;
-			/* ARENA_CENTER shares the BOSS_RELATIVE topology: one deterministic
-			multi-root radial wave without an arena-random supplement. */
+			/* ARENA_CENTER도 BOSS_RELATIVE처럼 결정적인 다중 root 방사 파동을 사용하며 arena 무작위 추가분은 없다. */
 			const bool bossRelative =
 				BOSS_COMBAT_OBJECT_VOLLEY_POLICY::BOSS_RELATIVE ==
 					action.Volley.ePolicy ||
@@ -6216,8 +6449,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			stage.bWallContact = true;
 		}
-		/* Sorted after PATTERNSTAGE by the publisher, exactly like
-		PATTERNWALLCONTACT, so the stage it refines already exists here. */
+		/* publisher가 PATTERNSTAGE 뒤로 정렬하므로 보완할 stage가 이미 존재해야 한다. */
 		else if (!fields.empty() && "PATTERNSTAGECOVERPIERCE" == fields[0])
 		{
 			std::uint32_t stageIndex = 0u;
@@ -6255,9 +6487,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			}
 			stage.bPiercesCover = true;
 		}
-		/* One row per slot so the row stays a fixed width. The stage collects
-		them, and a slot the publisher already gave to another edge cannot arrive
-		twice because it validates that across the whole document. */
+		/* slot마다 고정 폭 행을 읽어 stage에 모은다. 같은 slot을 다른 edge에 중복 배정하지 않는 것은 publisher가 문서 전체에서 검증한다. */
 		else if (!fields.empty() && "PATTERNSTAGEPROPBREAK" == fields[0])
 		{
 			std::uint32_t stageIndex = 0u;
@@ -6301,8 +6531,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			stage.strPropBreakSetId = std::string(fields[6]);
 			stage.PropBreakSlotIds.push_back(slotId);
 		}
-		/* Sorted after PATTERNSTAGE by the publisher, exactly like
-		PATTERNWALLCONTACT, so the stage it refines already exists here. */
+		/* publisher가 PATTERNSTAGE 뒤로 정렬하므로 보완할 stage가 이미 존재해야 한다. */
 		else if (!fields.empty() && "PATTERNSTAGECHARGE" == fields[0])
 		{
 			std::uint32_t stageIndex = 0u;
@@ -6330,9 +6559,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 			BOSS_PATTERN_STAGE_DEFINITION& stage = owner->Stages[stageIndex];
-			/* WALL_CONTACT must end the charge in its immediate authored reaction.
-			A scripted armour-opening charge owns GROGGY, while an ordinary authored
-			charge may converge both wall contact and timeout directly on RECOVERY. */
+			/* WALL_CONTACT는 charge를 즉시 저작 반응으로 끝낸다. 갑옷 개방 charge는 GROGGY, 일반 charge는 접촉·시간 만료 모두 RECOVERY를 사용할 수 있다. */
 			const auto wallBranch = std::find_if(
 				stage.Branches.begin(), stage.Branches.end(),
 				[](const BOSS_PATTERN_STAGE_BRANCH& branch)
@@ -6492,8 +6719,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		else if (!fields.empty() && "PLAYER" == fields[0])
 		{
 			PLAYER_RUNTIME_PROFILE player{};
-			/* The critical pair is appended after the published fifteen; without it
-			the class rolls no critical hit, which is the older behaviour. */
+			/* 기존 15필드 뒤에 치명 확률·배율이 붙는다. 두 필드가 없으면 이전처럼 치명타가 없다. */
 			const bool hasCritical = 17u == fields.size();
 			if ((15u != fields.size() && !hasCritical) ||
 				!ParseCharacterClass(fields[1], player.eCharacterClass) ||
@@ -6529,13 +6755,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						0u != player.iIdentityDrainPerSecond ||
 						0u != player.iIdentityStanceSwitchCost ||
 						0u != player.iIdentityCyclic)) ||
-				/* A cyclic gauge spends itself by wrapping, so it cannot also
-				drain or charge a switch -- there would be no single answer for
-				what "isHolding" means. A class can also spend identity through a
-				skill's own iIdentityCost (Artist's moon/sun orbs), which is not
-				known until every SKILL row is read -- checked in the post-load
-				pass below, alongside the identity-pool bound on iIdentityCost
-				itself. */
+				/* 순환 gauge는 감쇠·자세 전환 비용과 함께 쓰지 않는다. skill별 identity cost와 pool 상한은 모든 SKILL 행을 읽은 뒤 검증한다. */
 				(0u != player.iIdentityCyclic &&
 					(0u != player.iIdentityDrainPerSecond ||
 						0u != player.iIdentityStanceSwitchCost ||
@@ -6586,11 +6806,11 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		return false;
 	}
 	const bool hasKoukuSaydonBoss =
-		m_Bosses.contains("BOSS_KAKULSAYDON_G1_KOUKU");
+		m_Bosses.contains("BOSS_KOUKUSAYDON_G1_KOUKU");
 	const bool hasKoukuSaydonPatterns =
-		m_BossPatterns.contains("ENCOUNTER_KAKULSAYDON_G1");
+		m_BossPatterns.contains("ENCOUNTER_KOUKUSAYDON_G1");
 	const bool hasKoukuSaydonSequence =
-		m_BossPatternSequences.contains("ENCOUNTER_KAKULSAYDON_G1");
+		m_BossPatternSequences.contains("ENCOUNTER_KOUKUSAYDON_G1");
 	const bool hasAnyKoukuSaydonProductComponent =
 		hasKoukuSaydonBoss || hasKoukuSaydonPatterns || hasKoukuSaydonSequence ||
 		0u != m_iKoukuSaydonProductSourceRevision;
@@ -6608,9 +6828,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		m_strStatus = "Player skill combat traits are incomplete";
 		return false;
 	}
-	/* Rows arrive sorted, so a skill's cost cannot be checked against a pool while
-	the skill row is being parsed. The largest pool any class has is the only bound
-	that makes a cost payable by somebody. */
+	/* 행 정렬 때문에 skill cost의 pool 검사는 로드 뒤에 한다. 전체 class 중 최대 pool을 공통 상한으로 사용한다. */
 	std::uint32_t largestResourcePool = 0;
 	std::uint32_t largestIdentityPool = 0;
 	for (const auto& [characterClass, player] : m_Players)
@@ -6711,7 +6929,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	}
 	for (const auto& [characterClass, player] : m_Players)
 	{
-		/* An ember class spends its gauge by running the dragon form down. */
+		/* ember class는 용 형상의 유지 gauge를 소비한다. */
 		if (0u != player.iMaximumIdentity &&
 			0u == player.iIdentityDrainPerSecond &&
 			0u == player.iIdentityStanceSwitchCost &&
@@ -6819,13 +7037,10 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		const auto foundParts = m_BossParts.find(archetypeId);
 		const bool isValtanPrimary = "BOSS_VALTAN" == archetypeId &&
 			"ENCOUNTER_VALTAN" == boss.strEncounterId;
-		/* Every KoukuSaydon arena boss (the Gate 1 Kouku and the Debug gate
-		bosses) shares the Gate 1 animation-audition contract: no parts, no
-		gameplay phase action, MECHANIC audition patterns without a source
-		primary action. */
+		/* G1 encounter의 BOSS_KOUKUSAYDON_ archetype은 별도 부위 정의가 없어도 허용한다. */
 		const bool isKoukuSaydonGateOne =
-			"ENCOUNTER_KAKULSAYDON_G1" == boss.strEncounterId &&
-			archetypeId.starts_with("BOSS_KAKULSAYDON_");
+			"ENCOUNTER_KOUKUSAYDON_G1" == boss.strEncounterId &&
+			archetypeId.starts_with("BOSS_KOUKUSAYDON_");
 		if ((m_BossParts.end() == foundParts || foundParts->second.empty()) &&
 			!dependentBossArchetypeIds.contains(archetypeId) &&
 			!isKoukuSaydonGateOne)
@@ -6995,9 +7210,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				 isKoukuSaydonGateOne);
 			const bool validSelection = validNormalSelection ||
 				validHealthSelection || validAuditionSelection;
-			// Hand-authored audition clips have no extracted skill provenance.
-			// The publisher omits PATTERNSOURCE for these; normal encounter
-			// patterns and explicit malformed source rows remain strict.
+			// 수동 저작 audition clip에는 추출 skill 출처가 없다. publisher가 PATTERNSOURCE를 생략하는 경우만 허용하고 일반 pattern·잘못된 명시 행은 계속 거부한다.
 			const bool isAuthoredValtanAudition =
 				"ENCOUNTER_VALTAN" == pattern.strEncounterId && isAuditionOnly &&
 				!patternSourceOwners.contains(patternPolicyKey) &&
@@ -7070,13 +7283,21 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{
 				const BOSS_PATTERN_STAGE_DEFINITION& stage =
 					pattern.Stages[stageIndex];
-				if (!LostArk::Shared::Validate_StageAttackContacts(stage.AttackContacts, stage.iDurationMs,
-					stage.HitOffsetsMs, stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
-					(!stage.AttackContacts.empty() && (stage.eHitActivationKind != BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE ||
-					 stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE ||
-					 (stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE &&
-					  stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER))))
-				{ m_strStatus = "Stage contacts do not match ordinary pulse authority"; return false; }
+				// 행 단위 검증 뒤, 완성된 stage의 판정 시각과 기존 pulse schedule을 대조한다.
+				// contacts가 없으면 기존 stage 판정을 그대로 사용한다. contacts가 있는 경우는
+				// 피해 pulse와 허용된 이동만 사용할 수 있어 별도의 판정 시계를 만들지 않는다.
+				if (!LostArk::Shared::Validate_StageAttackContacts(
+						stage.AttackContacts, stage.iDurationMs, stage.HitOffsetsMs,
+						stage.iHitCount, stage.iHitDelayMs, stage.iHitIntervalMs) ||
+					(!stage.AttackContacts.empty() &&
+					 (stage.eHitActivationKind != BOSS_PATTERN_HIT_ACTIVATION_KIND::PULSE_SCHEDULE ||
+					  stage.ePlayerResponse != BOSS_PATTERN_PLAYER_RESPONSE::DAMAGE ||
+					  (stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::NONE &&
+					   stage.Motion.eKind != BOSS_PATTERN_STAGE_MOTION_KIND::TO_ARENA_CENTER))))
+				{
+					m_strStatus = "Stage contacts do not match ordinary pulse authority";
+					return false;
+				}
 				const bool zeroShapeValues =
 					0.f == stage.fHitOuterRadius &&
 					0.f == stage.fHitInnerRadius &&
@@ -7444,8 +7665,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 						const bool isVolley =
 							BOSS_PATTERN_STAGE_ACTION_KIND::
 								SPAWN_COMBAT_OBJECT_VOLLEY == action.eKind;
-						// Per-player volleys resolve their own fresh target poses at this
-						// Stage edge; they do not consume the Pattern's locked target.
+						// player별 volley는 stage 진입의 새 pose를 읽으며 pattern이 고정한 단일 target을 사용하지 않는다.
 						const bool perPlayerFixedAreaVolley = fixedArea && isVolley &&
 							BOSS_COMBAT_OBJECT_VOLLEY_POLICY::PER_ALIVE_PLAYER == action.Volley.ePolicy &&
 							BOSS_COMBAT_OBJECT_ORIGIN_POLICY::LOCKED_TARGET_PER_ALIVE_PLAYER ==
@@ -7541,9 +7761,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							BOSS_COMBAT_OBJECT_LAYOUT_KIND::SINGLE ==
 								action.Volley.eLayout &&
 							!action.Volley.bAllowOverlap &&
-							/* Restored 2026-09-03 authoring: three waves 1333 ms
-							   apart, one tracking axe per alive player plus four
-							   arena-random axes around the boss spawn, 36 max. */
+							/* 1333ms 간격의 3파동이다. 생존 player별 추적 도끼와 spawn 주변 무작위 4개를 포함해 총 36개로 제한한다. */
 							36u == action.Volley.iMaximumTotalObjects &&
 							3u == action.Volley.iSpawnCount &&
 							0u == action.Volley.iFirstSpawnOffsetMs &&
@@ -7775,8 +7993,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 							!followupPattern->Stages.empty())
 						{
 							counterTarget = &followupPattern->Stages.front();
-							/* Cross-pattern ordering is owned by the finite follow-up
-							graph, not by either pattern's local stage index. */
+							/* pattern 간 순서는 각자의 stage index가 아닌 유한 follow-up graph가 결정한다. */
 							counterTargetIsForward = true;
 						}
 					}
@@ -8026,7 +8243,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
         {
             const auto failParent = [&](const char* reason) { m_strStatus = "Parent " + parent.strPatternId + ": " + reason; return false; };
             const bool repeating = !parent.strParentLoopStartOccurrenceId.empty();
-            if (repeating && (parent.strGateId != "BINGO" || parent.strTargetBossPlacementId != "boss.kakulsaydon.bingo.saydon" ||
+            if (repeating && (parent.strGateId != "BINGO" || parent.strTargetBossPlacementId != "boss.koukusaydon.bingo.saydon" ||
                 parent.BossMotion || parent.bResetBossToSpawn ||
                 !parent.LogicWindows.empty() || !parent.WorldSequences.empty() || !parent.SceneProfiles.empty() ||
                 parent.MechanicTriggers.size() != 1u || parent.MechanicTriggers.front().eKind != BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BINGO_BOARD ||
@@ -8097,7 +8314,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
                 else if (!window.PatternIds.empty() || window.iCompletionCount) return fail("Only a completion chain owns candidates");
                 for (const auto* outcomes : { &window.OnSuccess, &window.OnFail, &window.OnTimeout })
                     for (const auto& outcome : *outcomes)
-                        // A chain root and a plain Gate 3 pattern both enter through this window; the chain is optional.
+                        // 이 window는 chain root와 일반 Gate 3 pattern 모두가 사용하므로 chain은 선택적이다.
                         if (outcome.eKind == BOSS_PATTERN_LOGIC_RESULT_KIND::MARIO_ENTER &&
                             (pattern.strGateId != "GATE3" || window.eKind != BOSS_PATTERN_LOGIC_KIND::ENTER_AREA ||
                              outcomes != &window.OnSuccess || outcomes->size() != 1u || window.CardRegions.empty() || outcome.iMarioEntryStage > 4u))
@@ -8270,9 +8487,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 	}
 
-	/* The intro is the only automatic selector edge not represented by a
-	rotation row. Keep it normal-only so an AUDITION_ONLY stable ID can never be
-	promoted into combat by changing ENCOUNTERINTRO alone. */
+	/* intro는 rotation 행에 없는 자동 선택 진입점이다. normal만 허용해 AUDITION_ONLY pattern이 전투에 자동 진입하지 않게 한다. */
 	for (const auto& [encounterId, introPatternId] :
 		m_IntroPatternIdByEncounter)
 	{
@@ -8325,7 +8540,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				return false;
 			}
 		}
-		// Ordinals own occurrences: the same authored pattern may run again.
+		// 순번이 occurrence를 구분하므로 같은 저작 pattern도 다시 실행할 수 있다.
 		for (const std::string& patternId : sequence.PatternIds)
 		{
 			const auto pattern = std::find_if(
@@ -8399,8 +8614,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 				!rotation.Candidates.empty() ||
 				rotation.PatternIds.size() != rotation.iExpectedStepCount)
 			{
-				/* Legacy order intentionally preserves duplicate steps. Only the
-				tagged shape and exact ordinal count are constrained. */
+				/* 이전 ORDERED 형식은 중복 step을 유지하며 tag 형식·정확한 순번 개수만 제한한다. */
 				m_strStatus =
 					"Boss legacy ordered rotation tagged shape is incomplete";
 				return false;
@@ -8428,10 +8642,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 	}
 
-	/* Phase-boundary edits are not an independent HOT_RELOAD domain. Until one
-	atomic SET_PHASE_BOUNDARY transaction owns the mechanic and both adjacent
-	rotation partitions, direct bootstrap admission must prove the published
-	Valtan topology is coherent. */
+	/* 직접 bootstrap을 승인할 때 Valtan의 phase 경계와 인접 rotation 구간이 함께 일관적인지 확인한다. */
 	const auto valtanRotations =
 		m_BossPatternRotations.find("ENCOUNTER_VALTAN");
 	for (const auto& [bundleId, bundle] : m_BossPatternBundles)
@@ -8459,9 +8670,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		 m_BossPatternSequences.end() == valtanSequence ||
 		 m_BossPatterns.end() == valtanPatterns))
 	{
-		/* Missing the exclusive program must not silently revive the legacy
-		intro/rotation/global selector, where disabled Product patterns such as
-		Dash could become automatic again. */
+		/* 전용 sequence가 없으면 거부한다. 이전 자동 selector로 돌아가 비활성 pattern을 다시 실행하지 않는다. */
 		m_strStatus =
 			"Valtan authored phase topology has no exclusive pattern sequence";
 		return false;
@@ -8524,14 +8733,13 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		}
 	}
 
-	/* Hash the already parsed bytes, not a second disk read. Scope is resolved
-	   from validated owners because target/bundle rows use IDs in column 1. */
+	/* 디스크를 다시 읽지 않고 이미 parse한 byte를 hash한다. target·bundle 행은 검증된 owner를 통해 scope를 구한다. */
 	std::string nonKoukuRows = "LOSTARK_NON_KOUKU_GAMEPLAY\t" +
 		std::to_string(GAMEPLAY_BOOTSTRAP_VERSION) + "\n";
 	std::string koukuBootstrapRows, nonKoukuBootstrapRows;
 	std::istringstream domainInput{ bootstrapBytes };
 	std::getline(domainInput, line);
-	const auto* koukuPatterns = Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+	const auto* koukuPatterns = Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
 	while (std::getline(domainInput, line))
 	{
 		StripCarriageReturn(line);
@@ -8540,7 +8748,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 		if (fields.size() >= 2u)
 		{
 			const auto kind = fields[0];
-			koukuOwned = fields[1] == "ENCOUNTER_KAKULSAYDON_G1" &&
+			koukuOwned = fields[1] == "ENCOUNTER_KOUKUSAYDON_G1" &&
 				(kind.starts_with("PATTERN") || kind == "KOUKUMADNESS" ||
 				 kind == "KOUKUSAYDONPRODUCTREVISION" || kind == "ENCOUNTERINTRO");
 			if (kind == "RAIDGATE" || kind == "RAIDFLOWSTEP" || kind == "RAIDFLOWGROUP" || kind == "RAIDARRIVAL" || kind == "RAIDBINGOSPECIAL") koukuOwned = true;
@@ -8551,7 +8759,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 			{
 				const auto* bundle = Find_BossPatternBundle(std::string(fields[1]));
 				koukuOwned = nullptr != bundle &&
-					bundle->strEncounterId == "ENCOUNTER_KAKULSAYDON_G1";
+					bundle->strEncounterId == "ENCOUNTER_KOUKUSAYDON_G1";
 			}
 		}
 		auto& domainRows = koukuOwned ? koukuBootstrapRows : nonKoukuBootstrapRows;
@@ -8566,7 +8774,7 @@ bool LostArk::Server::CGameplayCatalog::Load_BootstrapBytes(
 	}
 	for (const auto& [gateId, gate] : m_KoukuRaidGates)
 	{
-		if (gate.Entries.size() != gate.iExpectedEntryCount || gate.strEncounterId != "ENCOUNTER_KAKULSAYDON_G1")
+		if (gate.Entries.size() != gate.iExpectedEntryCount || gate.strEncounterId != "ENCOUNTER_KOUKUSAYDON_G1")
 		{ m_strStatus = "Kouku raid flow is incomplete or outside its encounter"; return false; }
 		if (gateId == "BINGO")
 		{
@@ -8734,15 +8942,12 @@ LostArk::Server::CGameplayCatalog::Find_BossPatternRotation(
 		return nullptr;
 	for (const BOSS_PATTERN_ROTATION_DEFINITION& rotation : iter->second)
 	{
-		/* Managed windows are phase-owned. Legacy ORDERED rows predate that
-		contract and remain phase-agnostic so the post-109 phase-two script keeps
-		its authored order. */
+		/* 정의된 managed window는 phase를 맞춘다. window가 없는 이전 ORDERED 행에는 이 phase 필터를 적용하지 않는다. */
 		if (rotation.Window.Is_Defined() && rotation.Window.iGameplayPhase != gameplayPhase)
 		{
 			continue;
 		}
-		/* Bars count down. A span owns the stretch at and below its opening
-		bar and stops on the bar the next scripted mechanic sits on. */
+		/* 감소하는 체력 bar의 구간은 to < healthBar <= from이다. 다음 기믹의 bar에서는 현재 구간이 끝난다. */
 		if (healthBar <= rotation.iFromHealthBar &&
 			healthBar > rotation.iToHealthBar)
 		{
@@ -8772,7 +8977,7 @@ std::uint32_t
 LostArk::Server::CGameplayCatalog::Find_KoukuSaydonProductSourceRevision(
 	const std::string& encounterId) const noexcept
 {
-	return "ENCOUNTER_KAKULSAYDON_G1" == encounterId ?
+	return "ENCOUNTER_KOUKUSAYDON_G1" == encounterId ?
 		m_iKoukuSaydonProductSourceRevision : 0u;
 }
 
@@ -9101,7 +9306,7 @@ bool LostArk::Server::CGameplayCatalog::Build_NumericBalanceReceiptHashes(
         const auto fields = SplitTabs(line);
         std::unordered_set<std::size_t> numeric;
         for (const auto& column : Numeric_Columns(fields)) numeric.insert(column.column);
-        // The rate remains numeric when the coefficient/addend formula hides it in the UI.
+        // coefficient·addend 수식 때문에 UI에서 숨겨져도 rate는 수치로 유지한다.
         if (!fields.empty() && fields[0] == "DAMAGE") numeric.insert(2u);
         for (std::size_t i = 0; i < fields.size(); ++i)
         {

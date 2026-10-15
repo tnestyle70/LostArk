@@ -21,7 +21,7 @@ from verify_dimensionmaster_summon_bind_pose import (read_wmodel, combined_trans
 
 def audit(resources):
     read = lambda path: json.loads((ROOT / path).read_text(encoding="utf-8-sig"))
-    contract = (ROOT / "Shared/Public/Gameplay/MaharakaWaterpangContract.h").read_text()
+    contract = (ROOT / "Shared/Public/Gameplay/MaharakaWaterpangContract.h").read_text(encoding="utf-8-sig")
     roster_text = contract.split("MAHARAKA_WATERPANG_AI_NPCS", 1)[1].split(";", 1)[0]
     ids = re.findall(r'"(NPC_[^"]+)"', roster_text)
     assert len(ids) == len(set(ids)) == 8

@@ -1,4 +1,5 @@
 
+// 여러 FX가 공유하는 sampler·rasterizer·depth·blend 상태와 scene/bloom 출력 보조 함수를 정의한다.
 sampler LinearSampler = sampler_state
 {
     Filter = MIN_MAG_MIP_LINEAR;

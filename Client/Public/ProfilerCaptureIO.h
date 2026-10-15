@@ -13,6 +13,10 @@
 
 NS_BEGIN(Client)
 
+// 고정 컷신 측정 결과의 정의는 전용 헤더가 소유하고 저장 문맥은 불변 결과의 수명만 공유한다.
+struct FProfilerCutsceneCapture;
+struct MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS;
+
 struct FProfilerCaptureFile final
 {
 	filesystem::path FileName;
@@ -78,6 +82,10 @@ struct FProfilerCaptureContext final
     // Optional owned values copied before launching the existing save worker.
     FProfilerMovementCoverage MovementCoverage;
     std::vector<FProfilerMovementSample> MovementSamples;
+    // 메인 스레드가 측정을 마친 뒤 완성한 불변 값이다. 기존 writer worker가 저장 완료까지 보유한다.
+    std::shared_ptr<const FProfilerCutsceneCapture> CutsceneGeometry;
+    // 현재 Level 로드 때 확정한 준비 결과다. 저장된 모든 과거 frame의 상태로 소급하지 않는다.
+    std::shared_ptr<const MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS> LowGeometryPreparation;
 };
 
 // Comparison values are observations. Missing fields never become measured zero.

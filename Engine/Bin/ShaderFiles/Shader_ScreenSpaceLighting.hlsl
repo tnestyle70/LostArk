@@ -1,5 +1,5 @@
-// Experimental current-frame screen-space transport for MapPBR receivers only.
-// No history, hidden geometry, hardware ray tracing or physical energy conservation.
+// 현재 화면의 깊이·법선·색으로 MapPBR의 간접광과 반사를 계산해 scene/bloom 출력에 더한다.
+// 이전 프레임이나 화면 밖 지형을 추적하지 않으므로 현재 화면에 있는 표면만 반영한다.
 #include "Engine_Shader_Defines.hlsli"
 
 float4x4 g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;

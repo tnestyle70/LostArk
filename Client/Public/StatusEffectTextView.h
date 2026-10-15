@@ -1,75 +1,49 @@
-#pragma once
+﻿#pragma once
 
+// Client 이름 공간과 공통 기본 타입을 사용한다.
 #include "Client_Defines.h"
+// 표시 시간·위치에 쓸 f32_t와 float2_t를 사용한다.
 #include "Engine_Defines.h"
 
+// entity·문구별 마지막 발생 key를 조회한다.
 #include <map>
+// 캐릭터 anchor를 비소유 weak_ptr로 전달·보관한다.
 #include <memory>
+// 각 문구의 화면 오프셋을 난수로 한 번 정한다.
 #include <random>
+// 등록한 문구를 값으로 보관한다.
 #include <string>
+// entity ID와 문구를 묶은 key를 만든다.
 #include <utility>
+// 현재 재생 중인 문구 발생 목록을 순서대로 보관한다.
 #include <vector>
 
 NS_BEGIN(Client)
 
 class CCharacter;
 
-/* Retail floating status word over a character's head -- the word a status effect
-puts on screen ("gongpo" = fear, "gijeol" = stun, ...).
-
-Source of the presentation, traced from the shipped client:
-  * Movie   damagetext.gfx (package OVSG0AHW8W2OD62YW96I6C.upk), class
-            ark.ui.damageText.AdvancedDamageText (sprite 269). Its `type` picks
-            one of ani0..ani5: 0 normal, 1 critical, 2 nullified, 3 status,
-            4 dot, 5 (delegates to ani4). This is a different class from
-            DamageTextCBT2, which is what CMainApp::RenderDamageNumbers already
-            draws for damage numbers.
-  * Motion  not settled by shipped data. EFTable_SkillBuff carries a per-buff
-            FontShow of 0..5 that lines up with ani0..ani5, but the table cannot
-            say whether it is the type or the type plus one: the 0-based reading
-            explains ani5 being reachable, the 1-based one explains FontShow 0
-            meaning "no word". The mainstream status words -- burn, bleed, stun,
-            fear -- are FontShow 1, and watching the real client settles which
-            motion they run: no bounce (ani1) and no growth from nothing
-            (ani2/ani3), so ani0. The other motions are not written because no
-            other status is replicated yet.
-  * Font    DefineEditText 267 authors fontClass "$YG760" (= Font_YG760) at
-            fontHeight 640 twips = 32 pt, which is the class constant
-            ORIGINAL_TEXT_SIZE = 32, with a DropShadow (45 deg, blur 6.0,
-            distance 0, strength 1.5, opaque black).
-  * Word    EFTable_GameMsg namespace tip.name.skillbuffdmgfont_<buffId>.
-  * Colour  EFTable_SkillBuff.FontColor for that same buff id.
-  * Size    the authored 32 pt is 100%. EFTable_SkillBuff.BuffFontScale is a
-            per-buff percentage override, but it is 0 (host default) on 33523 of
-            the table's 33527 rows.
-
-The colour and the word are therefore data, not code: the caller passes both.
-This view owns no gameplay state -- it never decides that a status is active, it
-only draws one word per submitted occurrence and forgets it when the motion ends. */
+// Level이 전달한 상태 발생마다 캐릭터 위에 문구·색을 잠시 표시한다.
+// 상태 적용을 판정하지 않으며 표시 위치의 캐릭터를 weak_ptr로 참조해 수명을 늘리지 않는다.
 class CStatusEffectTextView final
 {
 public:
 	struct REQUEST
 	{
-		/* Identity of the owner and occurrence. Each word has its own last key,
-		so concurrent statuses cannot retrigger one another. */
+		// 소유 entity ID·문구별로 마지막 발생 key를 기억해 반복 snapshot의 재표시를 막는다.
 		std::uint32_t				iOwnerEntityId = 0u;
 		std::uint32_t				iOccurrenceKey = 0u;
 		std::wstring				strWord;
-		/* 0xRRGGBB, straight from EFTable_SkillBuff.FontColor. */
+		// 문구의 RGB 값이다. 입력 형식은 0xRRGGBB다.
 		std::uint32_t				iColorRgb = 0xFFFFFFu;
 		std::weak_ptr<CCharacter>	pAnchor;
 	};
 
 public:
-	/* Ignored when the owner's current key was already spawned, so a state that
-	stays true across many snapshots still pops exactly one word. Words do stack
-	on one head: each occurrence keeps its own scatter offset, the way several
-	statuses landing together read on screen. */
+	// 같은 entity·문구의 마지막 key와 같으면 생략한다. 새 발생은 독립 오프셋을 갖는 표시 항목으로 보관한다.
 	void Submit(const REQUEST& Request);
+	// 유한한 0 이상의 delta초만 누적하고 수명이 끝났거나 anchor가 사라진 항목을 지운다.
 	void Update(f32_t fTimeDelta);
-	/* Called from the level's Render pass; draws nothing when the anchor is gone
-	or projects behind the camera. */
+	// Level의 Render가 호출한다. owner ID가 0이면 전체, 아니면 해당 owner만 그리며 투영 불가·소멸 anchor는 생략한다.
 	void Render(std::uint32_t onlyOwnerEntityId = 0u) const;
 
 private:
@@ -80,15 +54,14 @@ private:
 		std::uint32_t				iColorRgb = 0xFFFFFFu;
 		std::weak_ptr<CCharacter>	pAnchor;
 		f32_t						fAgeSeconds = 0.f;
-		/* Stage-pixel scatter drawn once when the word spawns, so two words on one
-		head do not sit on top of each other and so a repeat of the same word does
-		not land in the same place. */
+		// 등록 시 한 번 뽑은 1080p 기준 픽셀 오프셋이다. 동시에 생긴 글자의 겹침을 줄인다.
 		float2_t					vScatterPx = {};
 	};
 
 private:
+	// Level 소유 view의 값 멤버다. 소멸 시 목록·중복 기록이 정리되며 캐릭터 수명에는 영향이 없다.
 	vector<OCCURRENCE>						m_Occurrences;
-	/* Last key per owner and word. Independent Server status clocks may share a tick. */
+	// entity·문구별 마지막 key다. 발생 항목이 만료되어도 이 기록은 view 수명 동안 남는다.
 	std::map<std::pair<std::uint32_t, std::wstring>, std::uint32_t> m_SpawnedKeyByOwner;
 	std::mt19937							m_Scatter{ std::random_device{}() };
 };

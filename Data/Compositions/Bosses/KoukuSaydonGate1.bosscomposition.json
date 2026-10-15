@@ -1,7 +1,7 @@
 {
   "schema": "lostark.boss-composition",
   "formatVersion": 1,
-  "compositionId": "boss.composition.kakulsaydon",
+  "compositionId": "boss.composition.koukusaydon",
   "status": "REFERENCE_ONLY",
   "revision": 2,
   "displayName": "KoukuSaydon Gate 1 Boss Composition",

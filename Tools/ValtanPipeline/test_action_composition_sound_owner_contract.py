@@ -164,9 +164,8 @@ class ActionCompositionSoundOwnerContractTests(unittest.TestCase):
         cls.workbench_h = (
             REPO_ROOT / "Client/Public/ValtanActionWorkbench.h"
         ).read_text(encoding="utf-8")
-        cls.workbench_cpp = (
-            REPO_ROOT / "Client/Private/ValtanActionWorkbench.cpp"
-        ).read_text(encoding="utf-8")
+        cls.workbench_cpp = read_source_text(
+            REPO_ROOT / "Client/Private/ValtanActionWorkbench.cpp", encoding="utf-8")
         cls.boss_cpp = (
             REPO_ROOT / "Client/Private/ValtanBossTool.cpp"
         ).read_text(encoding="utf-8")

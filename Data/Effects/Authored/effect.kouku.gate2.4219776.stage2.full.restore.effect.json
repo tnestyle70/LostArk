@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 15,
-  "sourceModelPreview": {"gateId": "GATE2", "actorProfileId": "MN_RPCZ_00", "targetBossPlacementId": "boss.kakulsaydon.g2.kouku", "animations": [{"runtimeClip": "rpcz00_att_battle_6_03", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "GATE2", "actorProfileId": "MN_RPCZ_00", "targetBossPlacementId": "boss.koukusaydon.g2.kouku", "animations": [{"runtimeClip": "rpcz00_att_battle_6_03", "startOffsetMs": 0, "sourceStartMs": 0, "playMs": 1167, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.gate2.4219776.stage2.full.restore",
   "displayName": "쿠크 거미카운터 원본 돌진·바닥",
   "bloomIntensity": 1.29999995,

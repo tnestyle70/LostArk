@@ -9,20 +9,20 @@ namespace Client { class DATA_JSON_VALUE; struct FMapStaticInstance; }
 namespace MapToolDetail
 {
 
-	constexpr const char* KAKUL_AREA_ID = "LV_LUT_MIDNIGHTC_ED";
+	constexpr const char* KOUKU_AREA_ID = "LV_LUT_MIDNIGHTC_ED";
 	/* build_arena_rise.py splits the 430 visible arena placements into
 	   32-track templates. Every instance has to start on the same frame; their
 	   own startDelayMs staggers the rise from the floor upward. */
-	constexpr uint32_t KAKUL_ARENA_RISE_INSTANCE_COUNT = 14u;
+	constexpr uint32_t KOUKU_ARENA_RISE_INSTANCE_COUNT = 14u;
 	/* Instances converted straight from the original UE3 Matinee source are
 	   named after the sequence they came from, so the whole import plays by
 	   walking the document instead of a hand written list. */
-	constexpr const char* KAKUL_ORIGINAL_INSTANCE_PREFIX =
+	constexpr const char* KOUKU_ORIGINAL_INSTANCE_PREFIX =
 		"world.sequence.instance.original_";
 	/* Every imported Mario stage sequence shares this prefix, so the loop
 	   picks them up from the document rather than a list that would fall
 	   behind the next import. */
-	constexpr const char* KAKUL_MARIO_INSTANCE_PREFIX =
+	constexpr const char* KOUKU_MARIO_INSTANCE_PREFIX =
 		"world.sequence.instance.mario_";
 	/* The card maze march states, in the order the Setos leave:
 	   3->9, 6->12, 9->3, 12->6 o'clock. Every corridor lane carries its own
@@ -37,25 +37,25 @@ namespace MapToolDetail
 
 	/* Rewind this far before the authored end. One slow frame is well
 	   inside it, which is what keeps an instance from ever finishing. */
-	constexpr f32_t KAKUL_MARIO_LOOP_REWIND_MARGIN_MS = 120.f;
+	constexpr f32_t KOUKU_MARIO_LOOP_REWIND_MARGIN_MS = 120.f;
 	/* The pop-up book. Its unfold clip runs 2370ms; the arena instances start
 	   with it and hold their folded pose until each group is due. */
-	constexpr const char* KAKUL_BOOK_INSTANCE_ID =
+	constexpr const char* KOUKU_BOOK_INSTANCE_ID =
 		"world.sequence.instance.book_open";
 	/* Deploy placement 7: the one book, at the original's own pose and scale.
 	   The arena no longer carries a second copy. */
-	constexpr uint64_t KAKUL_BOOK_PLACEMENT_ID = 7ull;
+	constexpr uint64_t KOUKU_BOOK_PLACEMENT_ID = 7ull;
 	/* The cutscene set is authored hidden and shown only while the unfold
 	   runs; hand-authored arena placements start at the end of the range. */
-	constexpr uint64_t KAKUL_CUTSCENE_SET_FIRST_ID = 41ull;
-	constexpr uint64_t KAKUL_CUTSCENE_SET_END_ID = 300ull;
+	constexpr uint64_t KOUKU_CUTSCENE_SET_FIRST_ID = 41ull;
+	constexpr uint64_t KOUKU_CUTSCENE_SET_END_ID = 300ull;
 	/* The reference holds the finished miniature inside the book for a camera
 	   push-in before it cuts to the arena. The book leaves this long after the
 	   last arena_rise instance has settled, whatever the sheet timing is. */
-	constexpr f32_t KAKUL_BOOK_HOLD_AFTER_ARENA_MS = 1500.f;
+	constexpr f32_t KOUKU_BOOK_HOLD_AFTER_ARENA_MS = 1500.f;
 	/* One slow frame of cutscene time; a stall longer than this is a load
 	   hitch, not elapsed animation. */
-	constexpr f32_t KAKUL_CUTSCENE_MAX_STEP_SECONDS = 0.1f;
+	constexpr f32_t KOUKU_CUTSCENE_MAX_STEP_SECONDS = 0.1f;
 	struct AUTHORING_FILE_BACKUP
 	{
 		std::filesystem::path destination;

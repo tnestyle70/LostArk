@@ -1,4 +1,5 @@
 
+// 셀 정점을 World·View·Projection으로 옮기고 지정한 색을 첫 색상 타깃에 출력하는 디버그 pass다.
 #include "Engine_Shader_Defines.hlsli"
 
 float4x4    g_WorldMatrix, g_ViewMatrix, g_ProjMatrix;

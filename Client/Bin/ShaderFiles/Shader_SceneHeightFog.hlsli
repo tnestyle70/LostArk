@@ -1,3 +1,5 @@
+// world/camera 위치와 장면 안개 입력으로 안개색·투과도를 계산해 최종 색 합성에 넘긴다.
+// Enabled와 밀도 등은 CPU에서 받은 값을 사용하며 이 include가 설정을 저장하거나 켜지 않는다.
 #ifndef LOSTARK_SCENE_HEIGHT_FOG
 #define LOSTARK_SCENE_HEIGHT_FOG
 uint        g_iHeightFogEnabled = 0u;

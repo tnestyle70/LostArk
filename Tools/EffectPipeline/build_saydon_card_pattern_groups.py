@@ -104,7 +104,7 @@ def append_group(document, original, name, delay=0, cut=None):
 def current_preview(pattern_ordinal):
     composition = read(ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json')
     pattern = next(p for p in composition['patterns']
-                   if p['patternId'] == f'KAKULSAYDON_G1_PATTERN_{pattern_ordinal}')
+                   if p['patternId'] == f'KOUKUSAYDON_G1_PATTERN_{pattern_ordinal}')
     animations, offset = [], 0
     for stage in pattern['stages']:
         for occurrence in stage['animationOccurrences']:
@@ -165,7 +165,7 @@ def repair_dice_continuity(document):
     release_time = birth_time(rise)
     model_path = ROOT / 'Client/Bin/Resources/Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel'
     boss = next(b for b in read(ROOT / 'Data/Actors/BossCatalog.json')['bosses']
-                if b['archetypeId'] == 'BOSS_KAKULSAYDON_G1_SAYDON')
+                if b['archetypeId'] == 'BOSS_KOUKUSAYDON_G1_SAYDON')
     model = pose.read_wmodel(model_path, animation_names={'rpct00_att_battle_11_02'})
     actor = dict(body=model, bodyPre=pose.affine_matrix((boss['bodyModelPreScale'],) * 3,
         (0, 0, 0, 1), (0, 0, 0)), poses={}, validatedClips=set())

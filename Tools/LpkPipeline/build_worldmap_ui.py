@@ -126,7 +126,7 @@ LEGEND_ROWS = [
     ("etc", "sys.map.filter_category_etc", "Minimap_Symbol_1_121"),
     ("character", "sys.Map.filter_category_character", "Minimap_Symbol_1_564"),
 ]
-LEVEL_CONTINENT = {"BERN": "BER", "VALTAN_ARENA": "LUT", "KAKULSAYDON_ARENA": "LUT"}
+LEVEL_CONTINENT = {"BERN": "BER", "VALTAN_ARENA": "LUT", "KOUKUSAYDON_ARENA": "LUT"}
 CONTINENT_PK = {"BER": 11}     # EFTable_ContinentBase row of "베른 북부" (the zone tree's continent title)
 SQUAREHOLE_FARE_SHILLING = 38   # capture: 조화의 광장 38 shilling; no currency system yet, display only
 PANEL_ROWS = 16
@@ -140,7 +140,7 @@ PANEL_HEADER_H = 81.0
 HEADER_H = 40.0
 
 # Project level -> retail zone. Bounds come from Data/UI/Minimap/MinimapAreas.json (MinimapData vol 0/1).
-LEVEL_ZONE = {"BERN": 11102, "VALTAN_ARENA": 37051, "KAKULSAYDON_ARENA": 37081}
+LEVEL_ZONE = {"BERN": 11102, "VALTAN_ARENA": 37051, "KOUKUSAYDON_ARENA": 37081}
 # EFTable_MapFactor WorldmapScaleFactor / WorldmapShiftFactorX,Y of the outdoor volume.
 MAP_FACTOR = {11102: (1.4, 3.0, -9.0), 37051: (1.0, 0.0, 0.0), 37081: (1.0, 0.0, 0.0)}
 OVERVIEW_PX = 768.0     # <Level>_<vol>_Full textures are 768 px on their long side

@@ -1,0 +1,38 @@
+﻿베른 컷신 최적화 — 현재 검증 상태 (2026-10-14)
+
+확인된 성과
+- 실제 저폴리 VB/IB를 사용해 GPU 기하량을 줄였다. 단일 모델 7종 가운데 5종은 VS와 index가 모두 원본의 1/8 이하이다.
+- PILLAR06: VS 12,871→1,223 / index 33,810→3,840 / 모델 draw 7→1.
+- PILLAR07: VS 11,850→1,054 / index 31,104→3,456 / 모델 draw 6→1.
+- 04 폴더의 최종색 이미지에는 실제 원본 재질·RNM·static shadow를 적용했다. 수치에는 같은 후처리 24VS/36index가 추가된다.
+- 실제 제품 Baker의 준비·9 atlas 바인딩·렌더·기하량 24조건을 검증했다. 독립 이미지와 최종 RGBA byte 일치는 18개 카메라 쌍에서 확인했으며, 나머지 6개 cull 조건에는 독립 이미지 비교 필드가 없다.
+- 선택/원본 중복 제외/컷신 해제/실패 복귀는 실제 제품 LOD를 연결한 133개 배치 인스턴스 검증에서 6,869개 조건을 통과했고 프로세스 exit 0을 확인했다.
+
+제품 반영 상태
+- G39/G41/G42 소스 반영 완료. 대체 실패 프레임은 원본 LOD0으로 복구한다.
+- Resources/Map/Derived/Bern의 원본 대체 자료 27개(10,717,470 bytes) 설치 완료. 원본 모델 파일은 변경하지 않았다.
+- 새 Release Proxy 셰이더 SHA-256은 검증한 12ef8138682887c21f6d679fbf3321bac334ec3c70791e567b23c26ae51390b3와 같다.
+- Product Release·Debug 빌드 PASS. Release 완료 2026-10-14T14:06:47.4409511Z, Debug 완료 2026-10-14T14:07:08.3029643Z (UTC). 네 제품 프로젝트와 runtime input 검증 영수증을 03 폴더에 보관했다.
+
+아직 완료하지 않은 범위
+- 베른 전체 컷신의 동일 카메라 VS·index를 1/8로 줄였다는 결과는 아직 없다.
+- 제품 거리·화면 크기 조건으로 전체 맵을 그린 전후 비교와 기본 카메라 성능 확인이 남아 있다.
+- 133개 배치 인스턴스 검증은 소유권/복구 확인용 넓은 거리 조건과 position-only shim을 사용했다. 제품 품질 조건이나 전체 맵 성능 수치로 쓰지 않는다.
+- game FPS 개선 완료를 주장하지 않는다. Client 화면 확인은 사용자가 한다.
+
+자료 구분
+- 00/01: 개선 전 카메라와 기존 LOD/HLOD/mip 설정 비교.
+- 02: 새 기하의 단일 모델 GPU 감소 검증.
+- 03: 측정 원문, 현재 제품 자료 검증과 설치 기록.
+- 04: 원본 재질을 적용한 최종색 품질 비교.
+- 예전 4,690검사 자료는 실험 LOD OBJ가 포함된 이전 기록이다. 기본 제품 기준에는 제품LOD_선택과복구_최종검증.json을 사용한다.
+
+조사 근거
+저장소: C:/Users/tnest/Desktop/LostArk
+기준 commit: 01518032dde86b5558976a2fbe5fd94ad625cfd1
+브랜치: codex/warlord-altv-radial-render-fix
+작업 폴더의 미커밋 변경을 포함한 조사이며 위 commit만의 완료 사실을 뜻하지 않는다.
+핵심 연결: CMapStaticBatchObject::Prepare_ColorProxySelection/Render_ColorProxyFallback,
+CMapStaticProxyBaker::Prepare_Replacement/Bind_Replacement, CMapPlacementRuntime::Set_CutsceneGeometryEnabled,
+CLevel_Bern::End_EntranceCinematic, CModel::Create_StaticProxy.
+상세 정본: .md/GB/10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md

@@ -34,7 +34,7 @@ struct KOUKU_SAYDON_ACTION_PRESENTATION final
 };
 
 /* Loads the embedded-body presentation of every KoukuSaydon arena boss
-(BOSS_KAKULSAYDON_* rows whose client contract is boss.kakulsaydon.*), with an
+(BOSS_KOUKUSAYDON_* rows whose client contract is boss.koukusaydon.*), with an
 optional weapon following the body clip or its loaded rest pose. Product animation bindings
 are admitted for the Gate 1 Kouku only. It deliberately does not share
 Valtan's armour prototype or joined presentation graph. */
@@ -76,8 +76,9 @@ class CKoukuSaydonPresentationAssetService final
 {
 public:
     static std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> Prepare_DraftProduct(
-        const std::string& presentationJson, const std::string& encounterJson, const std::string& gameplayRows,
-        std::uint32_t sourceRevision, std::string& status);
+        const std::string& presentationJson, 
+		const std::string& encounterJson, 
+		const std::string& gameplayRows, std::uint32_t sourceRevision, std::string& status);
     static bool Stage_DraftProduct(std::shared_ptr<const KOUKU_SAYDON_DRAFT_PRODUCT> draft, std::string& status);
     static bool Authorize_DraftProduct(const LostArk::Shared::GameplayDataRevision& rowsRevision,
         std::uint32_t runEpoch, std::string& status);

@@ -1,3 +1,5 @@
+﻿// Animation Tool의 원본 참조 탭이 사용하는 읽기 전용 문서 변환 계층이다.
+// 패턴 번호별 source 참조를 해석할 뿐 제품 패턴 master, Server 판정, Effect 게시 데이터는 쓰지 않는다.
 #include "ValtanPatternPreviewDocument.h"
 
 #include "DataJson.h"
@@ -17,6 +19,8 @@ namespace
 {
 	using namespace Client;
 
+	// JSON v2와 .clipseq v2의 입력 계약이다. 67개 참조 행, sequence/반복/clip 수와 펼친 clip 목록을 검사한다.
+	// 파일 전체 byte 수를 제한하거나 실행 중 Tool 모델을 잠그는 계약은 포함하지 않는다.
 	constexpr std::string_view DOCUMENT_SCHEMA =
 		"lostark.valtan-pattern-preview";
 	constexpr double DOCUMENT_VERSION = 2.0;
@@ -29,6 +33,7 @@ namespace
 	constexpr size_t MAX_CLIPS_PER_SOURCE_SEQUENCE = 64u;
 	constexpr size_t MAX_PLAYLIST_ITEMS = 2048u;
 
+	// .clipseq 한 행의 값을 소유한다. 디스크 reader 안에서 만들고 검증된 map으로 옮긴다.
 	struct SOURCE_SEQUENCE final
 	{
 		uint32_t iSourceActionId = 0u;
@@ -38,10 +43,13 @@ namespace
 		std::vector<std::string> Clips;
 	};
 
+	// 같은 action 안에도 여러 sequence가 있으므로 두 값을 함께 조회/중복 검사 키로 사용한다.
+	// std::map의 정렬 순서가 재생 순서는 아니며 실제 재생 순서는 JSON 참조와 각 Clips vector가 결정한다.
 	using SOURCE_SEQUENCE_KEY = std::pair<uint32_t, int32_t>;
 	using SOURCE_SEQUENCE_INDEX =
 		std::map<SOURCE_SEQUENCE_KEY, SOURCE_SEQUENCE>;
 
+	// 필수 키와 JSON 타입을 함께 확인한다. 반환 포인터는 호출자가 소유한 JSON 노드의 수명 동안만 차용한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& object,
 		const char_t* pName,
@@ -52,6 +60,7 @@ namespace
 			pValue : nullptr;
 	}
 
+	// 키 개수와 각 이름을 모두 맞춰 빠진 필드와 지원하지 않는 추가 필드를 거부한다.
 	bool_t Has_ExactProperties(
 		const DATA_JSON_VALUE& object,
 		const std::initializer_list<std::string_view> Names)
@@ -66,6 +75,7 @@ namespace
 		return true;
 	}
 
+	// asset/clip ID를 최대 255-byte의 영문자, 숫자, 밑줄, 하이픈, 점으로 제한한다. 이름의 실제 존재는 검사하지 않는다.
 	bool_t Is_StableToken(const std::string_view Value)
 	{
 		if (Value.empty() || Value.size() > 255u)
@@ -83,6 +93,7 @@ namespace
 		return true;
 	}
 
+	// 표시 문자열의 byte 길이와 제어 문자를 검사한다. 탭은 허용하며 UTF-8 코드 포인트의 유효성 검사는 하지 않는다.
 	bool_t Is_DisplayText(
 		const std::string_view Value,
 		const size_t iMaximumBytes)
@@ -97,11 +108,13 @@ namespace
 			});
 	}
 
+	// .clipseq에서 허용하는 세 mode 이름이다. 이 문서가 mode별 전투 실행 규칙을 만드는 것은 아니다.
 	bool_t Is_SourceSequenceMode(const std::string_view Value)
 	{
 		return "SEQUENCE" == Value || "HOLD" == Value || "COMBO" == Value;
 	}
 
+	// JSON 숫자가 유한한 비음수 정수이며 uint32 범위인지 확인한 뒤 출력에 대입한다. false이면 출력 숫자는 유지한다.
 	bool_t Parse_U32(
 		const DATA_JSON_VALUE& Value,
 		uint32_t& outValue)
@@ -119,6 +132,7 @@ namespace
 		return true;
 	}
 
+	// 저장 타입은 int32지만 sequence index 입력은 비음수만 허용한다. -1은 미설정 기본값으로만 쓰고 JSON에서 받지 않는다.
 	bool_t Parse_I32(
 		const DATA_JSON_VALUE& Value,
 		int32_t& outValue)
@@ -136,6 +150,7 @@ namespace
 		return true;
 	}
 
+	// .clipseq의 10진 숫자 문자열을 문자별로 읽고 uint32 상한을 확인한다. 성공한 경우에만 outValue를 바꾼다.
 	bool_t Parse_U32Token(
 		const std::string_view Value,
 		uint32_t& outValue)
@@ -155,6 +170,7 @@ namespace
 		return true;
 	}
 
+	// 문자열 sequence index도 비음수로 읽고 int32 상한을 추가 적용한다. 실패 시 기존 출력은 유지한다.
 	bool_t Parse_I32Token(
 		const std::string_view Value,
 		int32_t& outValue)
@@ -169,6 +185,7 @@ namespace
 		return true;
 	}
 
+	// JSON confidence 이름을 내부 enum으로 바꾼다. 알 수 없는 이름은 END로 남겨 이후 행 검증에서 거부한다.
 	VALTAN_PATTERN_PREVIEW_EVIDENCE Parse_Evidence(
 		const std::string_view Value)
 	{
@@ -187,6 +204,7 @@ namespace
 		return VALTAN_PATTERN_PREVIEW_EVIDENCE::END;
 	}
 
+	// getline으로 분리한 한 행 안에서 공백/탭/CR만 건너뛴다. 커서는 호출자의 값을 직접 전진시킨다.
 	void Skip_Space(
 		const std::string_view Text,
 		size_t& iCursor)
@@ -199,6 +217,7 @@ namespace
 		}
 	}
 
+	// 공백으로 나뉜 토큰을 소유 문자열로 복사한다. 실패 시에도 앞의 공백을 건너뛴 커서는 되돌리지 않는다.
 	bool_t Read_Token(
 		const std::string_view Text,
 		size_t& iCursor,
@@ -217,6 +236,8 @@ namespace
 		return true;
 	}
 
+	// 큰따옴표 안을 복사하되 역슬래시 escape와 CR은 지원하지 않는다. 빈 문자열 허용 여부는 상위 필드 검증이 정한다.
+	// 실패한 행은 상위 reader가 버리므로 진행 중인 커서를 rollback하지 않는다.
 	bool_t Read_Quoted(
 		const std::string_view Text,
 		size_t& iCursor,
@@ -240,6 +261,7 @@ namespace
 		return true;
 	}
 
+	// seq/mode/clips의 key=value 하나를 읽는다. key와 커서는 value 실패 전에 바뀔 수 있으므로 상위에서 행 전체를 폐기한다.
 	bool_t Read_Pair(
 		const std::string_view Text,
 		size_t& iCursor,
@@ -276,6 +298,7 @@ namespace
 		return true;
 	}
 
+	// 남은 공백을 제외한 문자가 없는지 확인한다. 커서를 값으로 받아 원래 커서 위치는 바꾸지 않는다.
 	bool_t At_End(
 		const std::string_view Text,
 		size_t iCursor)
@@ -284,6 +307,7 @@ namespace
 		return iCursor == Text.size();
 	}
 
+	// 쉼표로 나눈 clip ID를 원래 순서대로 보관한다. 빈 토큰/허용 문자/최대 64개를 검사하고 성공한 vector만 출력에 옮긴다.
 	bool_t Parse_ClipList(
 		const std::string_view Value,
 		std::vector<std::string>& outClips)
@@ -312,6 +336,8 @@ namespace
 		return true;
 	}
 
+	// Resolve_SourceSequences가 사용하는 .clipseq reader다. header의 소유 asset/version/선언 개수와 모든 행의 복합 키를 검증한다.
+	// 임시 map 전체가 통과한 뒤 outIndex를 교체하므로 false 반환 시 이전 map은 유지한다. 파일을 수정하거나 캐시하지 않는다.
 	bool_t Load_SourceSequenceIndex(
 		const std::string_view animationAssetId,
 		SOURCE_SEQUENCE_INDEX& outIndex,
@@ -327,6 +353,7 @@ namespace
 			return false;
 		}
 
+		// 첫 행은 magic, version, 큰따옴표 owner, 선언 행 수의 고정 순서다. 뒤에 남는 토큰도 거부한다.
 		std::string Header;
 		if (!std::getline(Input, Header))
 		{
@@ -357,6 +384,7 @@ namespace
 			return false;
 		}
 
+		// 선언 개수 상한은 header에서 확인한다. 실제 읽은 행 수와 선언 개수의 일치는 반복을 마친 뒤 비교한다.
 		SOURCE_SEQUENCE_INDEX Staged;
 		std::string Line;
 		uint32_t iPhysicalRows = 0u;
@@ -383,6 +411,7 @@ namespace
 				return false;
 			}
 
+			// 같은 필드가 두 번 나오거나 지원하지 않는 키가 나오면 즉시 실패한다. 필드 순서는 고정하지 않는다.
 			bool_t bSawSequence = false;
 			bool_t bSawMode = false;
 			bool_t bSawClips = false;
@@ -432,6 +461,7 @@ namespace
 				}
 			}
 
+			// 필수 필드 누락과 동일 (action, sequence) 중복을 여기서 함께 거부한다. 상태 문구는 두 경우 모두 같은 문자열을 사용한다.
 			if (!bSawSequence || !bSawMode || !bSawClips ||
 				!Staged.emplace(
 					SOURCE_SEQUENCE_KEY{
@@ -445,6 +475,7 @@ namespace
 			++iPhysicalRows;
 		}
 
+		// 행 수와 고유 키 수를 선언값에 맞춘다. 반복 종료 뒤 stream의 bad/fail 상태를 별도로 검사하지는 않는다.
 		if (iPhysicalRows != iDeclaredCount || Staged.size() != iDeclaredCount)
 		{
 			outStatus = "Valtan source clip sequence declared count does not match.";
@@ -456,6 +487,8 @@ namespace
 		return true;
 	}
 
+	// Parse_Text, 연결, 목록 작성이 공유하는 메모리 행 규칙이다. 정확히 67행이며 배열 위치+1이 패턴 번호여야 한다.
+	// clip 연결 완료 여부와 대상 모델의 존재는 여기서 확인하지 않는다.
 	bool_t Validate_RowPolicy(
 		const VALTAN_PATTERN_PREVIEW_DOCUMENT& document,
 		std::string& outStatus)
@@ -472,6 +505,7 @@ namespace
 		{
 			const VALTAN_PATTERN_PREVIEW_ENTRY& Pattern =
 				document.Patterns[iPattern];
+			// 미해결/동작 없음인 두 근거만 빈 sequence를 허용한다. 그 외 근거는 하나 이상의 참조가 필요하다.
 			const bool_t bMarkerEvidence =
 				VALTAN_PATTERN_PREVIEW_EVIDENCE::UNRESOLVED ==
 					Pattern.eEvidence ||
@@ -505,12 +539,14 @@ namespace
 	}
 }
 
+// 원본 참조 JSON의 Data 루트 경로를 반환한다. 디렉터리나 파일을 만드는 동작은 없다.
 std::filesystem::path Client::CValtanPatternPreviewDocument::Resolve_Path()
 {
 	return CProjectDataRoot::Resolve(
 		L"Animation/Authored/Valtan/Valtan.patternpreview.json");
 }
 
+// asset token을 검증한 다음 정해진 Reference 하위 경로를 구성한다. 지원하지 않는 token은 빈 경로로 반환한다.
 std::filesystem::path
 Client::CValtanPatternPreviewDocument::Resolve_ClipSequencePath(
 	const std::string_view animationAssetId)
@@ -524,6 +560,8 @@ Client::CValtanPatternPreviewDocument::Resolve_ClipSequencePath(
 		std::filesystem::path(Asset + ".clipseq"));
 }
 
+// 저작 JSON의 root/행/참조 필드 집합과 타입을 확인하고 임시 문서에 복사한다.
+// 행 규칙까지 통과한 마지막 지점에서 outDocument를 교체한다. 반환 false와 outStatus 변경 외에 이전 출력 문서는 건드리지 않는다.
 bool_t Client::CValtanPatternPreviewDocument::Parse_Text(
 	const std::string_view text,
 	VALTAN_PATTERN_PREVIEW_DOCUMENT& outDocument,
@@ -563,6 +601,7 @@ bool_t Client::CValtanPatternPreviewDocument::Parse_Text(
 		return false;
 	}
 
+	// JSON 노드 포인터는 이 함수의 Root에만 의존한다. 외부에 반환할 문자열/vector는 임시 문서에 값으로 복사한다.
 	VALTAN_PATTERN_PREVIEW_DOCUMENT Staged;
 	Staged.strAnimationAssetId = pAsset->Get_String();
 	Staged.Patterns.reserve(pPatterns->Get_Array().size());
@@ -606,6 +645,7 @@ bool_t Client::CValtanPatternPreviewDocument::Parse_Text(
 		Pattern.strNote = pNote->Get_String();
 		Pattern.Sequences.reserve(pSequences->Get_Array().size());
 
+		// 저작 참조에는 세 식별/반복 필드만 허용한다. resolved 이름/mode/clip 배열을 JSON에서 직접 받을 수는 없다.
 		for (const DATA_JSON_VALUE& SequenceValue :
 			pSequences->Get_Array())
 		{
@@ -648,6 +688,8 @@ bool_t Client::CValtanPatternPreviewDocument::Parse_Text(
 	return true;
 }
 
+// Load/Validate가 저작 참조를 실제 source sequence와 모델 clip 목록에 연결한다.
+// 입력 문서를 복사해 이전 연결 결과를 버리고 재구성하므로 stale 문자열을 성공 결과로 재사용하지 않는다.
 bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 	const VALTAN_PATTERN_PREVIEW_DOCUMENT& document,
 	const std::string_view expectedAnimationAssetId,
@@ -670,6 +712,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 	if (!Validate_RowPolicy(document, outStatus))
 		return false;
 
+	// 모델이 제공한 이름을 set으로 만들어 존재 확인에 쓰고 중복 입력도 거부한다. 모델 객체 자체를 보관하거나 잠그지는 않는다.
 	std::unordered_set<std::string> AvailableClipSet;
 	AvailableClipSet.reserve(availableClips.size());
 	for (const std::string& Clip : availableClips)
@@ -689,6 +732,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 		return false;
 	}
 
+	// 결과 문서가 모든 문자열/vector를 소유한다. SourceIndex와 AvailableClipSet이 함수 끝에서 소멸해도 결과는 유효하다.
 	VALTAN_PATTERN_PREVIEW_DOCUMENT Staged = document;
 	size_t iResolvedSequenceCount = 0u;
 	size_t iExpandedItemCount = 0u;
@@ -702,6 +746,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 		for (VALTAN_PATTERN_PREVIEW_SOURCE_SEQUENCE_REF& Reference :
 			Pattern.Sequences)
 		{
+			// 입력 문서가 이전 연결 결과를 갖고 있어도 이번 source 파일 기준으로 다시 채운다.
 			Reference.strSequenceName.clear();
 			Reference.strSequenceMode.clear();
 			Reference.ResolvedClips.clear();
@@ -719,6 +764,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 				return false;
 			}
 
+			// 원본 한 행의 모든 clip이 대상 모델 목록에 있어야 해당 참조를 채운다. 하나라도 없으면 임시 문서 전체를 버린다.
 			const SOURCE_SEQUENCE& Source = Found->second;
 			for (const std::string& Clip : Source.Clips)
 			{
@@ -740,6 +786,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 			Reference.strSequenceMode = Source.strMode;
 			Reference.ResolvedClips = Source.Clips;
 			++iResolvedSequenceCount;
+			// clip 수에 반복 횟수를 곱해 늘어난 항목 수를 검사한다. 빈 sequence의 marker 증가에는 별도 상한 검사가 없다.
 			iExpandedItemCount +=
 				Source.Clips.size() * static_cast<size_t>(Reference.iRepeat);
 			if (iExpandedItemCount > MAX_PLAYLIST_ITEMS)
@@ -757,6 +804,7 @@ bool_t Client::CValtanPatternPreviewDocument::Resolve_SourceSequences(
 	return true;
 }
 
+// 동일한 source 파일/모델 clip 대조를 수행하되 완성한 임시 문서는 버린다. 디스크 읽기가 없는 순수 필드 검사는 아니다.
 bool_t Client::CValtanPatternPreviewDocument::Validate(
 	const VALTAN_PATTERN_PREVIEW_DOCUMENT& document,
 	const std::string_view expectedAnimationAssetId,
@@ -772,6 +820,8 @@ bool_t Client::CValtanPatternPreviewDocument::Validate(
 		outStatus);
 }
 
+// Render_ValtanPatternPreview가 대상 모델의 clip 이름 목록을 전달하는 로드 진입점이다.
+// 열기 실패나 parse/연결의 false는 이전 outDocument를 유지한다. 읽은 뒤 stream 오류 상태를 별도로 검사하지는 않는다.
 bool_t Client::CValtanPatternPreviewDocument::Load(
 	const std::string_view expectedAnimationAssetId,
 	const std::vector<std::string>& availableClips,
@@ -788,6 +838,7 @@ bool_t Client::CValtanPatternPreviewDocument::Load(
 	const std::string Text{
 		std::istreambuf_iterator<char>(Input),
 		std::istreambuf_iterator<char>() };
+	// JSON만 읽은 값과 source/model까지 연결한 값을 구분한다. 두 단계가 모두 성공해야 caller가 사용할 문서를 넘긴다.
 	VALTAN_PATTERN_PREVIEW_DOCUMENT Authored;
 	VALTAN_PATTERN_PREVIEW_DOCUMENT Resolved;
 	if (!Parse_Text(Text, Authored, outStatus) ||
@@ -804,6 +855,9 @@ bool_t Client::CValtanPatternPreviewDocument::Load(
 	return true;
 }
 
+// Start_ValtanPatternPreview가 선택한 양끝 포함 번호 범위를 clip 단위 목록으로 만든다.
+// 이미 연결된 문서를 전제로 세 결과 필드의 비어 있음만 확인하며 .clipseq나 실제 모델을 다시 열지는 않는다.
+// 문서/목록은 값으로 분리하고 false 반환 시 이전 outPlaylist를 보존한다. 실제 재생 전 모델과 시간 검사는 Tool이 수행한다.
 bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 	const VALTAN_PATTERN_PREVIEW_DOCUMENT& resolvedDocument,
 	const uint32_t iFirstPattern,
@@ -826,9 +880,11 @@ bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 	{
 		const VALTAN_PATTERN_PREVIEW_ENTRY& Pattern =
 			resolvedDocument.Patterns[static_cast<size_t>(iPattern - 1u)];
+		// 현재 패턴이 시작하는 목록 위치를 기억해 모든 반복을 펼친 뒤 이 패턴의 step 번호/개수를 채운다.
 		const size_t iPatternStart = Staged.size();
 		if (Pattern.Sequences.empty())
 		{
+			// 미해결/동작 없음 행을 목록에서 지우지 않고 marker 하나로 남긴다. idle clip과 0.45초 길이는 Tool 재생기가 정한다.
 			VALTAN_PATTERN_PREVIEW_PLAY_ITEM Marker;
 			Marker.iPatternNumber = Pattern.iNumber;
 			Marker.strPatternLabel = Pattern.strLabel;
@@ -848,6 +904,7 @@ bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 						"Valtan playlist requires a fully resolved source sequence document.";
 					return false;
 				}
+				// JSON 참조 순서, 반복 번호, 원본 clip 순서로 펼친다. mode는 표시 정보로 복사하며 이 루프의 순서를 바꾸지 않는다.
 				for (uint32_t iRepeat = 1u;
 					iRepeat <= Reference.iRepeat; ++iRepeat)
 				{
@@ -871,6 +928,7 @@ bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 						Item.strSequenceMode = Reference.strSequenceMode;
 						Item.strClipName = Reference.ResolvedClips[iSourceStep];
 						Staged.push_back(std::move(Item));
+						// 일반 clip을 추가할 때 전체 항목 수 상한을 확인한다. marker 분기에는 같은 검사가 없어 마지막 marker로 상한을 넘을 수 있다.
 						if (Staged.size() > MAX_PLAYLIST_ITEMS)
 						{
 							outStatus =
@@ -882,6 +940,7 @@ bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 			}
 		}
 
+		// 패턴 내부의 펼친 step은 1부터 센다. 반복/source 내부 step과 별도로 UI에서 전체 진행을 표시한다.
 		const size_t iPatternStepCount = Staged.size() - iPatternStart;
 		if (0u == iPatternStepCount)
 		{
@@ -897,12 +956,14 @@ bool_t Client::CValtanPatternPreviewDocument::Build_Playlist(
 		}
 	}
 
+	// 완성한 목록을 한 번 교체한다. 항목의 문자열은 독립 값이며 Tool은 이후 자신의 목록과 모델 weak_ptr을 함께 관리한다.
 	outPlaylist = std::move(Staged);
 	outStatus = "Built bounded Valtan source-sequence playlist with " +
 		std::to_string(outPlaylist.size()) + " item(s).";
 	return true;
 }
 
+// 참조 패널이 표시할 enum 이름을 정적 문자열로 반환한다. 정의되지 않은 값은 INVALID로 표시한다.
 const char_t* Client::CValtanPatternPreviewDocument::Evidence_Name(
 	const VALTAN_PATTERN_PREVIEW_EVIDENCE eEvidence)
 {

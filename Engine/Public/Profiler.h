@@ -107,11 +107,11 @@ enum class EProfilerCounter : uint16_t
     UniqueMeshes,
     DroppedMeshSamples,
     EffectAmbientClampedUpdates,
-    // Sum of omitted visual time across effects, not wall time or CPU savings.
+    // 이펙트별 생략된 표시 시간의 합이다. 실제 경과 시간이나 CPU 절약 시간이 아니다.
     EffectAmbientDiscardedMicroseconds,
     EffectAmbientFixedSteps,
     EffectAmbientMaxFixedSteps,
-    // Chunk count/bytes are live gauges; draw/index counters are frame submissions.
+    // chunk 개수·byte는 현재 보유량, draw·index 수는 프레임 제출량이다.
     MapChunkCount,
     MapChunkNearDraws,
     MapChunkFarDraws,
@@ -149,11 +149,43 @@ enum class EProfilerCounter : uint16_t
     EffectParticleCallerJobs,
     EffectParticleWorkerJobs,
     EffectParticleAssistants,
+    // 준비 보유량은 Level snapshot, 선택은 batch별 현재 프레임의 마지막 판정, draw는 실제 제출량이다.
+    MapLowGeometryLeaseActive,
+    MapLowGeometryUnsupportedBatches,
+    MapLowGeometrySupportedBatches,
+    MapLowGeometryPreparedBatches,
+    MapLowGeometryPreparationRejectedBatches,
+    MapLowGeometryPreparationFailedBatches,
+    MapLowGeometryPreparationReportFailures,
+    MapLowGeometryVisitedBatches,
+    MapLowGeometryBindingDisabledBatches,
+    MapLowGeometryNoCameraBatches,
+    MapLowGeometryMeshLodDisabledBatches,
+    MapLowGeometryEnvironmentReplacedBatches,
+    MapLowGeometrySourceMaterialsDisabledBatches,
+    MapLowGeometryDebugViewBatches,
+    MapLowGeometryMapPbrBatches,
+    MapLowGeometryBindingCollectionBatches,
+    MapLowGeometryFrustumOverrideBatches,
+    MapLowGeometryInvalidCameraBatches,
+    MapLowGeometryTestedInstances,
+    MapLowGeometryVisibilityRejectedInstances,
+    MapLowGeometryDistanceRejectedInstances,
+    MapLowGeometryDepthRejectedInstances,
+    MapLowGeometryPixelRejectedInstances,
+    MapLowGeometryFrustumRejectedInstances,
+    MapLowGeometryCandidateInstances,
+    MapLowGeometryPreflightFailedBatches,
+    MapLowGeometrySelectedInstances,
+    MapLowGeometryDrawCalls,
+    MapLowGeometrySubmittedIndices,
+    MapLowGeometryLateFailures,
+    MapLowGeometryFallbackDrawCalls,
+    MapLowGeometryFallbackIndices,
     Count
 };
 
-// Fixed main-thread work categories are accumulated even with raw detail disabled.
-// Times are inclusive: a parent category can overlap its instrumented children.
+// 상세 raw 기록을 꺼도 주 스레드의 고정 작업 분류는 누적한다. 부모·자식이 겹치는 inclusive 시간이다.
 enum class EProfilerWork : uint8_t
 {
     MapBatchRender,
@@ -190,15 +222,13 @@ struct FProfilerScopeSample final
 {
     uint32_t NameId = 0;
     uint32_t Depth = 0;
-    /* Win32 thread id of the thread that ran the scope. Worker scopes (Loader,
-       Effect preparation) are attributed to the frame in which they ended. */
+    /* scope를 실행한 Win32 thread ID다. worker scope는 종료된 프레임에 속한다. */
     uint32_t ThreadId = 0;
     uint64_t BeginTick = 0;
     uint64_t EndTick = 0;
 };
 
-/* GPU samples belong to their original submitted frame. Pending is not a
-   zero-duration result. Failed/unsupported GPU collection keeps CPU data. */
+/* GPU sample은 원래 제출 프레임에 속한다. Pending은 0ms가 아니며 GPU 수집 실패·미지원이어도 CPU 데이터는 유지한다. */
 enum class EProfilerGpuFrameStatus : uint8_t
 {
     Unsupported,
@@ -209,19 +239,14 @@ enum class EProfilerGpuFrameStatus : uint8_t
     Error
 };
 
-/* CPU-issued submissions through instrumented Engine VIBuffer/CMesh paths.
-   Indices includes instances; Instances counts instanced submissions only.
-   MeshInstances includes one for a non-instanced CMesh draw. These are not
-   final visible geometry, and do not include DirectXTK/ImGui internal draws.
-   Existing indirect upper-bound counters remain separate, never exact indices. */
+/* 계측한 VIBuffer·CMesh의 CPU 제출량이다. index에는 instance를 반영하고 MeshInstances는 일반 mesh draw도 1로 센다. 최종 가시 geometry·외부 UI draw·간접 draw 상계와 구분한다. */
 struct FProfilerDrawStats final
 {
     uint64_t DrawCalls = 0, InstancedDrawCalls = 0, Instances = 0, Indices = 0;
     uint64_t MeshDrawCalls = 0, MeshInstances = 0, MeshIndices = 0;
 };
 
-/* Inclusive timestamp interval relative to the GPU frame begin. Nested scopes
-   overlap; multiple copies with the same NameId remain separate samples. */
+/* GPU 프레임 시작 기준 inclusive 구간이다. 중첩 scope는 겹치며 같은 NameId의 호출도 별도 sample로 보관한다. */
 struct FProfilerGpuScopeSample final
 {
     uint32_t NameId = 0;
@@ -236,8 +261,7 @@ struct FProfilerGpuScopeSample final
     uint64_t IAVertices = 0, IAPrimitives = 0;
 };
 
-/* Main-thread animation evaluation joined to successful model submissions in
-   the same frame. NotSubmitted does not by itself mean outside the frustum. */
+/* 주 스레드의 animation 계산과 같은 프레임의 성공한 모델 제출을 연결한다. NotSubmitted만으로 frustum 밖이라고 판단하지 않는다. */
 struct FProfilerAnimationStats final
 {
     uint64_t UpdateCalls = 0;
@@ -255,7 +279,7 @@ struct FProfilerModelAnimationToken final
     uint64_t FrameNumber = 0;
 };
 
-// Secondary window presentation only. Main-thread capture; bounded per frame.
+// 보조 창 표시만 주 스레드에서 프레임별 상한 안에 수집한다.
 struct FProfilerViewportPresent final
 {
     uint32_t ViewportId = 0;
@@ -265,16 +289,14 @@ struct FProfilerViewportPresent final
     int32_t Result = 0;
 };
 
-// Optional detailed submission trace. Names are display labels, not stable
-// asset IDs. IndexCount is per instance; there is no per-draw GPU timing.
+// 선택적 상세 제출 기록이다. 이름은 표시용이며 stable asset ID가 아니다. IndexCount는 instance당 값이고 draw별 GPU 시간은 없다.
 struct FProfilerMeshDrawSample final
 {
     uint32_t PassNameId = UINT32_MAX, MeshNameId = 0;
     uint32_t VertexCount = 0, IndexCount = 0, Instances = 0, MaterialSlot = 0;
 };
 
-// Low-rate OS observations, not allocator/resource attribution. Each validity
-// flag is independent; unavailable must never be displayed as measured zero.
+// 낮은 빈도의 OS 관측값이며 할당자·자원별 사용량이 아니다. 각 유효 flag는 독립이고 unavailable을 측정된 0으로 표시하지 않는다.
 struct FProfilerMemorySegment final
 {
     bool Valid = false;
@@ -284,7 +306,7 @@ struct FProfilerMemoryStats final
 {
     bool Sampled = false, ProcessValid = false, SystemValid = false;
     uint64_t SampleFrameNumber = 0, SampleTick = 0;
-    // Captured frames use frame End; LiveStats uses the current QPC tick.
+    // capture frame은 End 시각, LiveStats는 현재 QPC 시각을 기준으로 한다.
     double AgeMs = 0.0;
     uint32_t ProcessId = 0;
     uint64_t PrivateCommitBytes = 0, WorkingSetBytes = 0;
@@ -294,7 +316,7 @@ struct FProfilerMemoryStats final
     bool AdapterIdentityValid = false;
     uint32_t AdapterLuidLow = 0, AdapterNodeIndex = 0;
     int32_t AdapterLuidHigh = 0;
-    // Local does not necessarily mean dedicated VRAM (for example on UMA).
+    // Local 메모리가 항상 전용 VRAM을 뜻하지는 않는다. UMA도 고려해야 한다.
     FProfilerMemorySegment Local{}, NonLocal{};
 };
 
@@ -305,10 +327,9 @@ struct FProfilerFrame final
     FProfilerMemoryStats Memory{};
     std::vector<FProfilerMeshDrawSample> MeshDraws;
     uint64_t DroppedMeshDraws = 0;
-    // Interval is previous Begin -> this Begin. Gap is previous End -> this
-    // Begin, so Interval = PreviousCpuFrameMs + FrameGapMs (except first frame).
+    // Interval은 이전 Begin~현재 Begin, Gap은 이전 End~현재 Begin이다. 첫 프레임을 제외하면 Interval=이전 CPU 시간+Gap이다.
     double PreviousCpuFrameMs = 0.0, FrameGapMs = 0.0;
-    // Dropped completions attributed to this frame; excludes deliberately disabled detail scopes.
+    // 이 프레임에 귀속된 누락 완료 수다. 명시적으로 끈 상세 scope는 제외한다.
     uint64_t DroppedCpuScopes = 0;
     bool DetailedCpuScopes = false;
     double CpuFrameMs = 0.0;
@@ -329,8 +350,7 @@ struct FProfilerFrame final
     D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline{};
 };
 
-// Describes one newest-completed-frame export without copying any frame samples.
-// Evicted frames are counted since Reset; excluded retained frames can still be saved.
+// sample 복사 없이 최신 완료 frame의 export 범위를 설명한다. eviction은 Reset 이후 수이며 제외된 보유 frame은 별도로 저장할 수 있다.
 struct FProfilerCaptureWindow final
 {
     uint64_t RequestedFrames = 0;
@@ -389,9 +409,27 @@ struct FProfilerLiveStats final
     D3D11_QUERY_DATA_PIPELINE_STATISTICS Pipeline{};
 };
 
-/* One completed scope that took at least LONG_OPERATION_THRESHOLD_MS. It is
-   kept in a small ring independent of frame history so a long JSON parse on
-   the Loader thread stays visible after the frame it ended in scrolled out. */
+// Capture ON/OFF와 독립인 완료 프레임 계측이다. Vertex는 전체 GPU VS 실행 수로
+// TK/UI도 포함한다. Index는 계측된 Engine direct/indirect 제출의 index 참조 수다.
+// 두 값은 unique vertex나 최종 보이는 픽셀 수가 아니며, 유효성은 각각 판단한다.
+struct FProfilerGeometryStats final
+{
+    uint64_t FrameNumber = 0, CurrentFrameNumber = 0, CaptureFrameNumber = 0;
+    uint64_t VSInvocations = 0, DirectIndices = 0, IndirectIndices = 0, TotalIndices = 0;
+    uint64_t IndirectDrawCalls = 0, DroppedFrames = 0;
+    uint32_t LatencyFrames = 0;
+    bool VertexValid = false, IndexValid = false, Pending = false;
+};
+
+// BufferOrdinal은 이 geometry frame 안에서만 유효하다. 주소는 저장/출력하지 않는다.
+// 같은 args offset을 여러 번 제출했으면 DrawCount가 그 횟수다.
+struct FProfilerIndirectArgument final
+{
+    uint32_t BufferOrdinal = 0, ArgsByteOffset = 0;
+    uint32_t IndexCount = 0, InstanceCount = 0, DrawCount = 0;
+};
+
+/* 임계 시간 이상인 완료 scope를 작은 별도 ring에 보관해 원래 frame이 history에서 사라져도 긴 작업을 조회한다. */
 struct FProfilerLongOperation final
 {
     uint64_t Sequence = 0;
@@ -401,8 +439,7 @@ struct FProfilerLongOperation final
     double DurationMs = 0.0;
 };
 
-/* Sum over a window of history frames for one (scope name, thread) pair.
-   Self time excludes scopes nested inside it on the same thread. */
+/* 선택한 history 구간의 이름·thread 쌍별 합이다. self 시간은 같은 thread의 내부 scope를 뺀다. */
 struct FProfilerScopeAggregate final
 {
     uint32_t NameId = 0;
@@ -410,7 +447,7 @@ struct FProfilerScopeAggregate final
     uint64_t Calls = 0;
     double InclusiveMs = 0.0;
     double SelfMs = 0.0;
-    // A dropped scope anywhere in the selected window makes self attribution incomplete.
+    // 선택 구간에 누락 scope가 하나라도 있으면 self 시간 귀속이 완전하지 않다.
     bool SelfComplete = true;
     double MaxMs = 0.0;
 };
@@ -429,6 +466,8 @@ struct FProfilerGpuScopeAggregate final
     uint64_t IAVertices = 0, IAPrimitives = 0;
 };
 
+// CPU 구간·GPU query·그리기 통계를 프레임 기록으로 모아 조회와 저장용 snapshot을 제공한다.
+// CPU worker의 완료 구간은 잠금으로 모으고, immediate-context GPU 계측은 초기화한 주 스레드가 수행한다.
 class ENGINE_DLL CProfiler final
 {
 public:
@@ -445,7 +484,7 @@ public:
 
 public:
     CProfiler();
-    ~CProfiler() = default;
+    ~CProfiler();
     HRESULT Initialize(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext);
     void Begin_Frame();
     void End_Frame();
@@ -460,19 +499,16 @@ public:
 
     void Reset_History();
 
-    /* Thread-safe. Nesting is tracked per thread, so a scope may begin and end
-       on any thread and outside the main-thread frame boundaries. The token is
-       only meaningful on the thread that began the scope. */
+    /* 중첩을 thread별로 추적하며 main frame 밖에서도 호출할 수 있다. token의 시작·종료는 같은 thread에서 수행해야 한다. */
     uint32_t Register_ScopeName(std::string_view name) { return Intern_Name(name); }
     uint32_t Begin_Scope(std::string_view name);
     void End_Scope(uint32_t token) noexcept;
 
-    /* Immediate-context main thread only; disabled/unsupported/overflow scopes
-       return UINT32_MAX. No query creation or GPU wait occurs on this path. */
+    /* immediate-context 주 스레드 전용이다. 비활성·미지원·초과 시 UINT32_MAX이며 이 경로는 query 생성·GPU 대기를 하지 않는다. */
     uint32_t Begin_GpuScope(std::string_view name, bool collectPipeline = false);
     void End_GpuScope(uint32_t token) noexcept;
 
-    // Main thread only. No raw samples, names, locks or allocation on this path.
+    // 주 스레드 전용이며 raw sample·이름·잠금·할당을 사용하지 않는다.
     FProfilerWorkToken Begin_Work(EProfilerWork work) const noexcept;
     void End_Work(EProfilerWork work, FProfilerWorkToken token) noexcept;
     static const char* Get_WorkName(EProfilerWork work) noexcept;
@@ -480,8 +516,7 @@ public:
     FProfilerModelAnimationToken Begin_ModelAnimation() const noexcept;
     void End_ModelAnimation(const void* model, FProfilerModelAnimationToken token);
     void Record_ModelSubmitted(const void* model);
-    // Main-thread CMesh draw boundary only. Pointer is an ephemeral dedup key,
-    // never exported. Geometry shared by many CModel clones counts once.
+    // 주 스레드 CMesh draw에서만 기록한다. pointer는 export하지 않는 임시 중복 key이며 여러 복제본이 공유한 geometry는 한 번 센다.
     void Record_MeshSubmitted(const void* mesh, uint32_t indexCount, uint32_t instances = 1,
         std::string_view meshName = {}, uint32_t vertexCount = 0, uint32_t materialSlot = 0);
     void Record_ViewportPresent(const FProfilerViewportPresent& sample);
@@ -492,21 +527,28 @@ public:
     FProfilerCaptureSnapshot Snapshot(size_t frameWindow = MAX_HISTORY_FRAMES) const;
     FProfilerCaptureWindow Get_CaptureWindow(size_t frameWindow) const;
     bool Get_LiveStats(FProfilerLiveStats& outStats) const;
-    // Copies only distinct memory poll attempts from up to maxFrames retained
-    // frames, oldest first. AgeMs uses the current tick; no OS query is issued.
+    // 모두 immediate-context main thread용이다. 조회는 GPU 작업/대기를 만들지 않는다.
+    uint64_t Get_GeometryFrameNumber() const noexcept;
+    bool Get_GeometryStats(FProfilerGeometryStats& output) const noexcept;
+    bool Get_GeometryStatsForFrame(uint64_t frameNumber, FProfilerGeometryStats& output) const noexcept;
+    void Request_GeometryDetailForCurrentFrame() noexcept;
+    bool Get_GeometryIndirectArguments(uint64_t frameNumber,
+        std::vector<FProfilerIndirectArgument>& output) const;
+    uint32_t Get_GeometryIndirectBufferOrdinal(ID3D11Buffer* arguments) const noexcept;
+    // CMesh가 성공한 indirect 제출 뒤 호출한다. args는 End_Frame까지 불변이어야 한다.
+    void Record_GeometryIndirectDraw(ID3D11Buffer* arguments, uint32_t argsByteOffset) noexcept;
+    // 보유한 최대 maxFrames에서 중복 없는 메모리 조회 시도만 오래된 순서로 복사한다. 현재 tick으로 AgeMs를 구하며 OS를 재조회하지 않는다.
     void Get_MemorySamples(size_t maxFrames, std::vector<FProfilerMemoryStats>& outSamples) const;
 
     uint32_t Get_MainThreadId() const noexcept { return m_MainThreadId; }
     double Ticks_ToMs(uint64_t ticks) const noexcept;
     size_t Get_HistoryFrameCount() const;
     void Get_ScopeNames(std::vector<std::string>& outNames) const;
-    /* Aggregates the most recent frameWindow history frames, sorted by
-       inclusive time descending. */
+    /* 최근 frameWindow history를 집계해 inclusive 시간 내림차순으로 반환한다. */
     void Get_ScopeAggregates(
         size_t frameWindow,
         std::vector<FProfilerScopeAggregate>& outAggregates) const;
-    /* Excludes incomplete GPU frames. Same-name calls are summed per frame;
-       absent passes contribute zero to max/p95 and the valid-frame divisor. */
+    /* 미완료 GPU frame은 제외한다. 같은 이름 호출은 프레임별로 합치고 없는 pass는 유효 frame의 0으로 max·p95에 포함한다. */
     void Get_GpuScopeAggregates(
         size_t frameWindow,
         std::vector<FProfilerGpuScopeAggregate>& outAggregates,
@@ -566,10 +608,17 @@ private:
     FProfilerCaptureWindow Get_CaptureWindowLocked(size_t frameWindow) const;
     FProfilerDrawStats Read_DrawCounters() const noexcept;
     void Sample_Memory(uint64_t tick);
+    void Initialize_Geometry();
+    void Begin_GeometryFrame() noexcept;
+    void End_GeometryFrame() noexcept;
+    void Resolve_GeometryFrames() noexcept;
+    void Add_GeometryDirectIndices(uint64_t count) noexcept;
 
 private:
     // Distinguishes a new profiler constructed at a previously used address.
     const uint64_t m_InstanceId;
+    struct FGeometryState;
+    std::unique_ptr<FGeometryState> m_Geometry;
     ComPtr<ID3D11Device> m_pDevice;
     ComPtr<ID3D11DeviceContext> m_pContext;
     ComPtr<IDXGIAdapter3> m_pMemoryAdapter;
@@ -578,7 +627,7 @@ private:
     uint64_t m_LastMemoryPollTick = 0;
     FProfilerMemoryStats m_MemorySample{};
     LARGE_INTEGER m_Frequency{};
-    // UI requests are latched at Begin_Frame so a capture never starts mid-frame.
+    // UI 요청은 Begin_Frame에서 받아 capture가 프레임 중간에 시작되지 않게 한다.
     std::atomic_bool m_Enabled = false;
     std::atomic_bool m_Collecting = false;
     std::atomic_bool m_ResetRequested = false;
@@ -622,7 +671,7 @@ private:
     };
     std::unordered_map<const void*, FModelAnimationWork> m_ModelAnimationWork;
     std::unordered_set<const void*> m_SubmittedModels;
-    // Fixed table avoids allocating a node for each mesh on every frame.
+    // 고정 table로 프레임마다 mesh별 node를 할당하지 않는다.
     std::array<const void*, MAX_UNIQUE_MESHES_PER_FRAME * 2> m_SubmittedMeshKeys{};
     size_t m_SubmittedMeshCount = 0;
 };
@@ -649,7 +698,7 @@ private:
     uint32_t m_Token = UINT32_MAX;
 };
 
-// High-frequency per-draw CPU work is opt-in; pass timing and counters stay available.
+// 빈번한 draw별 CPU 계측만 선택적으로 켠다. pass 시간·counter는 계속 제공한다.
 class CProfilerDetailScope final
 {
 public:

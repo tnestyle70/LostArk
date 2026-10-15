@@ -33,7 +33,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
         !Is_KoukuGate3EntryTerrace(std::numeric_limits<float>::quiet_NaN(), 25.6f, 960.53015f),
         "Gate 3 entry deck predicate admits the authored arrival and excludes the lower floor, outside and nonfinite input");
     C2S_GATE_PROGRESS_PROPOSE wire; wire.iRequestSequence = 1u;
-    wire.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; wire.eKind = GATE_PROGRESS_KIND::ENTER_GATE3;
+    wire.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; wire.eKind = GATE_PROGRESS_KIND::ENTER_GATE3;
     CPacketWriter writer; tests.Require(Write_Message(writer, wire), "Explicit Gate 3 entry writes the existing gate proposal packet");
     CPacketReader reader{writer.Get_Buffer()}; C2S_GATE_PROGRESS_PROPOSE decoded;
     tests.Require(Read_Message(reader, decoded) && decoded.eKind == GATE_PROGRESS_KIND::ENTER_GATE3,
@@ -41,7 +41,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
     auto invalidBytes = writer.Get_Buffer(); invalidBytes.back() = static_cast<std::uint8_t>(GATE_PROGRESS_KIND::END);
     CPacketReader invalidReader{invalidBytes};
     tests.Require(!Read_Message(invalidReader, decoded), "Unknown gate proposal kind remains rejected");
-    S2C_GATE_PROGRESS_STATE state; state.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+    S2C_GATE_PROGRESS_STATE state; state.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
     state.iGateCount = 4u; state.eKind = GATE_PROGRESS_KIND::ENTER_GATE3;
     state.bClosed = true; state.eResult = GATE_PROGRESS_VOTE_RESULT::CANCELLED;
     CPacketWriter stateWriter; tests.Require(Write_Message(stateWriter, state), "Automatic Gate 3 closed result with no proposal encodes");
@@ -52,7 +52,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
 
     for (unsigned count = 1u; count <= 4u; ++count)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Gate 3 entry fixture loads the actual catalog, world and navigation");
         if (!room->Is_Ready()) continue;
         std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -70,7 +70,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
             sessions.push_back(std::move(connection));
             if (id <= count) { room->m_PartyIdByPlayerId[id] = 77u; room->m_PartyMembersByPartyId[77u].push_back(id); }
         }
-        tests.Require(room->Spawn_GatePlacement("boss.kakulsaydon.g2.big-saydon"), "Preservation fixture has an existing disabled-placement boss");
+        tests.Require(room->Spawn_GatePlacement("boss.koukusaydon.g2.big-saydon"), "Preservation fixture has an existing disabled-placement boss");
         room->m_GateProgress.iCurrentGate = count % 2u;
         const auto previousGate = room->m_GateProgress.iCurrentGate;
         const auto previousPlayers = room->m_Players;
@@ -125,7 +125,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
         completeCountdown(); room->m_iNextNetEntityId = nextId; preserved();
         const auto navigation = room->m_ServerNavigation; room->m_ServerNavigation = {};
         completeCountdown(); room->m_ServerNavigation = navigation; preserved();
-        auto* gatePlacement = const_cast<WORLD_BOOTSTRAP_PLACEMENT*>(room->Find_Placement("boss.kakulsaydon.g3.saydon"));
+        auto* gatePlacement = const_cast<WORLD_BOOTSTRAP_PLACEMENT*>(room->Find_Placement("boss.koukusaydon.g3.saydon"));
         tests.Require(gatePlacement != nullptr, "Gate 3 staged boss has an authored placement");
         if (gatePlacement)
         {
@@ -148,7 +148,7 @@ void CServerGameplayContractRunner::Run_KoukuGate3Entry(TESTS& tests)
         tests.Require(!room->m_GateProgress.iProposalId && room->m_GateProgress.iCurrentGate == 3u && !room->Is_KoukuRaidRunning(),
             "Automatic non-raid entry targets Gate 3 after ten seconds without a proposal");
         tests.Require(std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& entity) {
-            return entity.strPlacementId == "boss.kakulsaydon.g3.saydon"; }), "Prebuilt Gate 3 boss commits through the existing spawn consumer");
+            return entity.strPlacementId == "boss.koukusaydon.g3.saydon"; }), "Prebuilt Gate 3 boss commits through the existing spawn consumer");
         for (unsigned id = 1u; id <= count; ++id)
         {
             const auto& player = room->m_Players.at(id);
@@ -191,9 +191,9 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         tests.Require(run.bEntryRunning, "The first authored flow entry starts at the three-second boundary");
     };
     for (const auto& [marioPattern, bars] : std::array<std::pair<const char*, unsigned>, 4u>{
-        {{"KAKULSAYDON_G1_PATTERN_88", 155u}, {"KAKULSAYDON_G1_PATTERN_91", 125u}, {"KAKULSAYDON_G1_PATTERN_92", 80u}, {"KAKULSAYDON_G1_PATTERN_93", 55u}}})
+        {{"KOUKUSAYDON_G1_PATTERN_88", 155u}, {"KOUKUSAYDON_G1_PATTERN_91", 125u}, {"KOUKUSAYDON_G1_PATTERN_92", 80u}, {"KOUKUSAYDON_G1_PATTERN_93", 55u}}})
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         auto& run = room->m_KoukuRaid;
         run.pCatalog = room->m_GameplayCatalog.Get_ActiveGeneration();
         run.iOwnerSessionId = 501u; run.PlayerIds = {1u};
@@ -216,7 +216,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             const auto* gate = run.pCatalog->Find_KoukuRaidGate("GATE3");
             const auto mechanic = std::find_if(gate->Entries.begin(), gate->Entries.end(), [&](const auto& entry) {
                 return entry.strTargetId == marioPattern; });
-            auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON");
+            auto* boss = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.g3.saydon", "BOSS_KOUKUSAYDON_G3_SAYDON");
             tests.Require(boss && mechanic != gate->Entries.end(), "The threshold fixture resolves the real Mario entry and actor");
             if (boss && mechanic != gate->Entries.end())
             {
@@ -230,7 +230,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     room->m_iServerTick = tick; player.iInvulnerableEndTick = tick + 600u; player.iShield = 200000000u;
                     room->Prepare_KoukuAuditionTick(tick);
                     room->Update_KoukuPatternTails(tick);
-                    boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON");
+                    boss = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.g3.saydon", "BOSS_KOUKUSAYDON_G3_SAYDON");
                     if (!boss) { alive = false; break; }
                     if (tick > 190u) boss->iCurrentHp = static_cast<std::uint32_t>(
                         static_cast<std::uint64_t>(boss->iMaximumHp) * (bars - 1u) / boss->iMaximumHealthBars);
@@ -248,7 +248,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     }
                     room->Update_KoukuSaydonBoss(*boss, tick);
                     room->Commit_KoukuMechanicTriggers(tick);
-                    phaseTwoSeen = phaseTwoSeen || (boss->strPatternId == "KAKULSAYDON_G1_PATTERN_33" && !player.iCurrentHp);
+                    phaseTwoSeen = phaseTwoSeen || (boss->strPatternId == "KOUKUSAYDON_G1_PATTERN_33" && !player.iCurrentHp);
                     room->Update_KoukuWorldBodies(tick);
                     const auto receipt = room->m_KoukuSaydonPatternAuditionReceiptBySessionId.find(501u);
                     penaltyCompleted = penaltyCompleted || (entered && !player.iCurrentHp && receipt != room->m_KoukuSaydonPatternAuditionReceiptBySessionId.end() &&
@@ -289,7 +289,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             expected.push_back(entry.strEntryId);
         }
         for (auto entry = loop; entry != gate->Entries.end(); ++entry) expected.push_back(entry->strEntryId);
-        const auto laser = [](const auto& entry) { return entry.strTargetId == "KAKULSAYDON_G1_PATTERN_123"; };
+        const auto laser = [](const auto& entry) { return entry.strTargetId == "KOUKUSAYDON_G1_PATTERN_123"; };
         tests.Require(independent && std::count_if(gate->Entries.begin(), loop, laser) == 1 &&
             std::count_if(loop, gate->Entries.end(), laser) == 1,
             "Bingo normal flow has independent patterns and one laser in both its prefix and repeated tail");
@@ -323,7 +323,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             room.Prepare_KoukuAuditionTick(tick);
             room.Update_KoukuPatternTails(tick);
             room.Update_KoukuBingo(tick);
-            auto* boss = room.Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            auto* boss = room.Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
             if (!boss) return rejectAdvance("Bingo boss missing");
             boss->iCurrentHp = boss->iMaximumHp;
             if (!room.Update_KoukuSaydonBoss(*boss, tick)) return rejectAdvance("boss update rejected");
@@ -545,7 +545,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             }
             if (run.bBingoSpecialRunning)
             {
-                const auto* boss = room.Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+                const auto* boss = room.Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
                 if (boss && boss->strPatternId == special->strPatternId)
                 {
                     if (!specialStartTick) specialStartTick = boss->iPatternStartTick;
@@ -607,7 +607,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
     for (unsigned participantCount = 2u; participantCount <= 4u; ++participantCount)
     for (unsigned scenario = 0u; scenario < 2u; ++scenario)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Party product admission loads the published world and raid");
         if (!room->Is_Ready()) continue;
         std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -635,7 +635,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             {
                 const auto source = CKoukuSaydonBrain::Resolve_ProductSourceRevision(catalog);
                 C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST stale;
-                stale.iRequestSequence = 1u; stale.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+                stale.iRequestSequence = 1u; stale.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
                 stale.eOperation = KOUKUSAYDON_RAID_OPERATION::START; stale.strStartGateId = "GATE1";
                 stale.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
                 stale.iActionSourceRevision = source + 1u; stale.iSequenceSourceRevision = publishedGate->iSequenceRevision;
@@ -690,7 +690,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         {
             room->m_GateProgress.iCurrentGate = 3u; room->m_GateProgress.iClearedMask = 7u;
             C2S_GATE_PROGRESS_PROPOSE proposal; proposal.iRequestSequence = 1u;
-            proposal.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; proposal.eKind = GATE_PROGRESS_KIND::ADVANCE;
+            proposal.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; proposal.eKind = GATE_PROGRESS_KIND::ADVANCE;
             room->Handle_GateProgressPropose(501u, proposal);
             tests.Require(run.State.iRunEpoch == 0u && room->m_GateProgress.Voters.size() == participantCount,
                 "The legacy Bingo UI waits for all party voters before resource admission");
@@ -704,7 +704,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             }
             tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.bGateVoteEntry &&
                 run.State.strGateId == "BINGO" && room->m_GateProgress.iCurrentGate == 3u &&
-                !room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON"),
+                !room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON"),
                 "Release Bingo UI admits the saved intro/Flow owner instead of an idle spawned boss");
         }
         if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING) continue;
@@ -737,7 +737,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 "Bingo UI intro completion queues its first published independent entry after the idle delay");
             const auto common = room->m_KoukuSaydonPatternAudition.iCommonStartTick;
             room->m_iServerTick = common; room->Prepare_KoukuAuditionTick(common);
-            const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            const auto* boss = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
             tests.Require(boss && !boss->strPatternId.empty() &&
                 room->m_KoukuSaydonPatternAudition.ePhase == CGameRoom::KOUKUSAYDON_PATTERN_AUDITION_PHASE::ACTIVE,
                 "The real Bingo scheduler starts its first independent pattern at the common Server tick in Release");
@@ -757,7 +757,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         const std::uint8_t sourceGate = static_cast<std::uint8_t>(advance ? transition + 1u : transition - 1u);
         const std::string sourceGateId = "GATE" + std::to_string(sourceGate);
         const std::string targetGateId = "GATE" + std::to_string(advance ? sourceGate + 1u : sourceGate);
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Standalone gate transition loads the actual published world and raid");
         if (!room->Is_Ready()) continue;
         std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -836,7 +836,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         };
         room->m_iServerTick = 100u;
         C2S_GATE_PROGRESS_PROPOSE proposal; proposal.iRequestSequence = 1u;
-        proposal.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        proposal.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         proposal.eKind = advance ? GATE_PROGRESS_KIND::ADVANCE : GATE_PROGRESS_KIND::RESTART;
         room->Handle_GateProgressPropose(501u, proposal);
         auto& run = room->m_KoukuRaid;
@@ -944,7 +944,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
     // Exercise the production phase-2 placement and return-pin helper against the published cage anchor.
     for (unsigned count = 1u; count <= 4u; ++count)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Legacy G3 clear fixture loads the published raid admission");
         if (!room->Is_Ready()) continue;
         std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -961,10 +961,10 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             connection->m_isSendRunning.store(true); room->m_Sessions.emplace(player.iSessionId, connection);
             sessions.push_back(std::move(connection));
         }
-        tests.Require(room->Spawn_GatePlacement("boss.kakulsaydon.g3.saydon"),
+        tests.Require(room->Spawn_GatePlacement("boss.koukusaydon.g3.saydon"),
             "F1 and legacy in-game Gate 3 use the authored primary boss placement");
         auto boss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& e) {
-            return e.strPlacementId == "boss.kakulsaydon.g3.saydon"; });
+            return e.strPlacementId == "boss.koukusaydon.g3.saydon"; });
         if (boss == room->m_WorldEntities.end()) continue;
         auto dead = *boss; dead.iCurrentHp = 0u; dead.eAction = SERVER_ENTITY_ACTION::DEAD;
         room->m_iServerTick = 100u;
@@ -986,7 +986,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         tests.Require(Write_Message(preparationWire, run.State), "Legacy clear PREPARING uses the existing Shared packet schema");
         room->m_WorldEntities.erase(boss);
         C2S_GATE_PROGRESS_PROPOSE bypass; bypass.iRequestSequence = 90u;
-        bypass.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; bypass.eKind = GATE_PROGRESS_KIND::ADVANCE;
+        bypass.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; bypass.eKind = GATE_PROGRESS_KIND::ADVANCE;
         room->Handle_GateProgressPropose(501u, bypass);
         tests.Require(!room->m_GateProgress.iProposalId && !room->Enter_KoukuRaidCombat(4u, room->m_iServerTick),
             "Manual advance and direct Bingo entry cannot bypass a standalone clear's resource preparation");
@@ -1046,7 +1046,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         for (unsigned step = 1u; step < 90u; ++step)
         {
             room->Tick(1.f / 30.f);
-            const auto* activeBoss = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            const auto* activeBoss = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
             idleHeld = idleHeld && room->m_iServerTick == encoreEndTick + step &&
                 run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && !run.bEntryRunning &&
                 run.State.strFlowEntryId.empty() && activeBoss && activeBoss->iNetEntityId == bingoBossId &&
@@ -1064,7 +1064,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             room->m_KoukuSaydonPatternAudition.Request.strPatternId == firstPattern->strPatternId,
             "The 90th real tick queues the first authored Bingo flow instead of leaving an idle combat shell");
         room->Tick(1.f / 30.f);
-        const auto* playing = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+        const auto* playing = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
         const bool openingPlaying = playing && playing->iNetEntityId == bingoBossId && playing->iCurrentHp &&
             playing->strPatternId == firstPattern->strPatternId && playing->iPatternSequence &&
             playing->iPatternStageIndex == 0u && playing->strActionId == firstPattern->Stages.front().strActionId &&
@@ -1081,7 +1081,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         for (unsigned step = 0u; step < 180u && !nextStagePlaying; ++step)
         {
             room->Tick(1.f / 30.f);
-            playing = room->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON");
+            playing = room->Find_KoukuSaydonArenaBoss("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON");
             const auto& board = room->m_KoukuBingoDuration;
             boardPreserved = boardPreserved && board.iOwnerId == bingoBossId && board.bEncounterOwned && !board.iEndTick &&
                 room->m_iKoukuBingoBoardEpoch == boardEpoch && board.iNextBombTick == boardBefore.iNextBombTick &&
@@ -1112,7 +1112,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 for (auto& [id, player] : room->m_Players)
                 { player.iCurrentHp = player.iMaximumHp; player.eAction = PLAYER_ACTION_STATE::NONE; }
                 C2S_SPAWN_WORLD_ENTITY spawn;
-                spawn.strPlacementId = "boss.kakulsaydon.bingo.saydon";
+                spawn.strPlacementId = "boss.koukusaydon.bingo.saydon";
                 room->Handle_SpawnWorldEntity(501u, spawn);
                 tests.Require(!(room->m_GateProgress.iClearedMask & 8u) &&
                     std::any_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [&](const auto& entity) {
@@ -1120,7 +1120,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                     "Standalone F1 Bingo creates the authored boss and resets its previous gate clear before final-clear admission");
             }
             auto endingBoss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(), [](const auto& row) {
-                return row.strPlacementId == "boss.kakulsaydon.bingo.saydon"; });
+                return row.strPlacementId == "boss.koukusaydon.bingo.saydon"; });
             tests.Require(endingBoss != room->m_WorldEntities.end() && endingBoss->iMaximumHealthBars == 77u,
                 "The real published Bingo boss spawns with exactly seventy-seven health bars");
             if (endingBoss == room->m_WorldEntities.end()) return;
@@ -1147,7 +1147,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                             const bool decoded = Read_Message(reader, state);
                             delivery.correctOrder &= decoded;
                             if (decoded && state.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC &&
-                                state.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9") delivery.sawEnding = true;
+                                state.strSequencePatternId == "KOUKUSAYDON_G1_PATTERN_9") delivery.sawEnding = true;
                         }
                         else if (frame.ePacketType == PACKET_TYPE::S2C_GATE_PROGRESS_STATE)
                         {
@@ -1180,7 +1180,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             if (standalone)
             {
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::PREPARING && run.bClearedBossPreparation &&
-                    run.State.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked(),
+                    run.State.strSequencePatternId == "KOUKUSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked(),
                     "Standalone Bingo death reuses pinned shared resource preparation for its original ending");
                 if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::PREPARING) return;
                 auto endingReady = run.Request; endingReady.eOperation = KOUKUSAYDON_RAID_OPERATION::READY;
@@ -1201,7 +1201,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             }
             const auto* finalGate = run.pCatalog ? run.pCatalog->Find_KoukuRaidGate("BINGO") : nullptr;
             tests.Require(finalGate && run.State.ePhase == KOUKUSAYDON_RAID_PHASE::CINEMATIC && run.bClearCinematic &&
-                run.State.strSequencePatternId == "KAKULSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked() &&
+                run.State.strSequencePatternId == "KOUKUSAYDON_G1_PATTERN_9" && room->Is_KoukuRaidInputBlocked() &&
                 !run.bEntryRunning && !room->m_KoukuBingoDuration.iOwnerId && noMvp(),
                 "The next safe fixed tick starts only the original Bingo ending and retires combat and board timers");
             if (!finalGate || run.State.ePhase != KOUKUSAYDON_RAID_PHASE::CINEMATIC) return;
@@ -1228,7 +1228,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
     }
     for (unsigned count = 1; count <= 4; ++count)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Mario formation loads actual Gate 3 navigation");
         if (!room->Is_Ready()) continue;
         auto& audition = room->m_KoukuSaydonPatternAudition;
@@ -1237,7 +1237,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         audition.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
         audition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*audition.pProductGeneration);
         std::string status;
-        const auto* phase = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*audition.pProductGeneration, "KAKULSAYDON_G1_PATTERN_33", status);
+        const auto* phase = CKoukuSaydonBrain::Find_AnimationOnlyPattern(*audition.pProductGeneration, "KOUKUSAYDON_G1_PATTERN_33", status);
         const BOSS_PATTERN_MECHANIC_TRIGGER* formation = nullptr;
         if (phase) for (const auto& trigger : phase->MechanicTriggers)
             if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::MARIO_PHASE2_PLAYERS) formation = &trigger;
@@ -1345,7 +1345,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
 #ifdef _DEBUG
     for (unsigned failure = 0u; failure < 4u; ++failure)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         if (!room->Is_Ready()) continue;
         auto connection = std::make_shared<CClientSession>(501u, INVALID_SOCKET,
             CClientSession::FRAME_HANDLER{}, CClientSession::CLOSED_HANDLER{});
@@ -1355,11 +1355,11 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         player.fPositionX = 9.f; player.fPositionZ = -61.f; player.bPatternBound = true;
         room->m_PlayerIdBySessionId[501u] = 1u;
         SERVER_WORLD_ENTITY existing;
-        const auto* placement = room->Find_Placement("boss.kakulsaydon.g1.saydon");
+        const auto* placement = room->Find_Placement("boss.koukusaydon.g1.saydon");
         if (placement && room->Build_WorldEntity(*placement, 987u, existing)) room->m_WorldEntities.push_back(std::move(existing));
         const auto beforeEntities = room->m_WorldEntities.size();
         C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
-        request.iRequestSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.strStartGateId = "GATE1";
+        request.iRequestSequence = 1u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; request.strStartGateId = "GATE1";
         request.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
         request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
         request.iSequenceSourceRevision = room->m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1")->iSequenceRevision;
@@ -1397,7 +1397,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
 #endif
     for (unsigned count = 1; count <= 4; ++count)
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Raid room loads navigation and world templates");
         if (!room->Is_Ready()) continue;
         auto& run = room->m_KoukuRaid;
@@ -1415,7 +1415,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             sessions.push_back(std::move(connection));
         }
         C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST start;
-        start.iRequestSequence = 1u; start.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; start.strStartGateId = "GATE1";
+        start.iRequestSequence = 1u; start.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; start.strStartGateId = "GATE1";
         start.ExpectedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
         start.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(room->m_GameplayCatalog.Active());
         start.iSequenceSourceRevision = room->m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1")->iSequenceRevision;
@@ -1469,7 +1469,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         unsigned proposalSequence = 1u;
         const auto propose = [&](GATE_PROGRESS_KIND kind) {
             C2S_GATE_PROGRESS_PROPOSE request; request.iRequestSequence = proposalSequence++;
-            request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.eKind = kind;
+            request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; request.eKind = kind;
             room->Handle_GateProgressPropose(501u, request);
         };
         const auto respond = [&](unsigned id, bool accepted) {
@@ -1561,7 +1561,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 if (count > 1u)
                 {
                     C2S_GATE_PROGRESS_PROPOSE unauthorized; unauthorized.iRequestSequence = proposalSequence++;
-                    unauthorized.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; unauthorized.eKind = GATE_PROGRESS_KIND::RESTART;
+                    unauthorized.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; unauthorized.eKind = GATE_PROGRESS_KIND::RESTART;
                     room->Handle_GateProgressPropose(500u + count, unauthorized);
                     tests.Require(!room->m_GateProgress.iProposalId, "Only the raid owner can propose a gate vote");
                 }
@@ -1585,7 +1585,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
             if (std::string(gateId) == "GATE2")
             {
                 auto supporting = dead; ++supporting.iNetEntityId; supporting.iCurrentHp = 0u;
-                supporting.strPlacementId = "boss.kakulsaydon.g2.big-saydon";
+                supporting.strPlacementId = "boss.koukusaydon.g2.big-saydon";
                 room->Notify_KoukuRaidBossDeath(supporting, end + 1u); room->Notify_GateBossDeath(supporting);
                 tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && !(room->m_GateProgress.iClearedMask & 2u),
                     "Gate 2 supporting actor cannot clear the pinned primary boss encounter");
@@ -1667,7 +1667,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
         if (const auto* bingo = run.pCatalog->Find_KoukuRaidGate("BINGO"))
         {
             // The saved encore removes 5000 ms of lead-in while retaining its audio tail.
-            tests.Require(bingo->strIntroPatternId == "KAKULSAYDON_G1_PATTERN_10" && bingo->iIntroDurationMs == 21322u &&
+            tests.Require(bingo->strIntroPatternId == "KOUKUSAYDON_G1_PATTERN_10" && bingo->iIntroDurationMs == 21322u &&
                 bingo->Entries.size() == 35u && !bingo->strLoopStartEntryId.empty(),
                 "Published Bingo pins the trimmed 21322 ms encore before its saved independent combat flow");
             if (bingo->Entries.empty()) continue;
@@ -1768,7 +1768,7 @@ void CServerGameplayContractRunner::Run_KoukuRaidIntegration(TESTS& tests)
                 run.bEntryRunning, "Standalone Bingo READY starts the same saved combat loop without a cinematic phase");
             if (!bingo->strClearPatternId.empty())
             {
-                tests.Require(bingo->strClearPatternId == "KAKULSAYDON_G1_PATTERN_9" && bingo->iClearDurationMs >= 49083u,
+                tests.Require(bingo->strClearPatternId == "KOUKUSAYDON_G1_PATTERN_9" && bingo->iClearDurationMs >= 49083u,
                     "Published Bingo clear reuses its original ending and finite sound tail clock");
                 SERVER_WORLD_ENTITY endingBoss;
                 endingBoss.iNetEntityId = run.iPrimaryBossId; endingBoss.iCurrentHp = 0u;
@@ -1827,7 +1827,25 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
     int result = 1;
     const auto execute = [](void* opaque) {
         TESTS tests;
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        // 아래 피해 fixture는 매번 새 플레이어 상태에서 시작한다. 제품의 표본 생성기를 복제하지 않고
+        // 각 타격의 ±10% 범위, 대상별 event 수·HP 감소 합, 표본 serial을 독립적으로 확인한다.
+        // 면역·원거리 대상은 event와 표본이 모두 0이어야 하므로 범위 허용으로 잘못된 타격을 숨기지 않는다.
+        const auto matchesIncomingDamage = [](const SERVER_PLAYER& player, std::uint32_t initialHp,
+            std::uint32_t baseline, std::size_t expectedCount, const std::vector<DAMAGE_EVENT>& hits) {
+            std::uint64_t amount = 0u;
+            std::size_t count = 0u;
+            for (const auto& event : hits) {
+                if (event.iTargetNetEntityId != player.iNetEntityId) continue;
+                if (event.isOutgoing || event.eHitFlag != DAMAGE_HIT_FLAG::NORMAL ||
+                    event.iAmount < baseline - baseline / 10u || event.iAmount > baseline + baseline / 10u)
+                    return false;
+                amount += event.iAmount;
+                ++count;
+            }
+            return count == expectedCount && player.iIncomingDamageSampleSerial == expectedCount &&
+                player.iCurrentHp <= initialHp && amount == initialHp - player.iCurrentHp;
+        };
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Dice damage fixture loads authoritative gameplay");
         if (!room->Is_Ready()) { std::cout << "Dice room: " << room->Get_Status() << '\n'; *static_cast<int*>(opaque) = 1; return; }
         auto& catalog = room->m_GameplayCatalog;
@@ -1835,7 +1853,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         room->m_WorldEntities.clear(); room->m_WorldEntities.reserve(2u); room->m_WorldEntities.emplace_back();
         auto& boss = room->m_WorldEntities.front();
         boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-        boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+        boss.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1"; boss.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
         boss.iCurrentHp = 100u; boss.eAction = SERVER_ENTITY_ACTION::IDLE;
         boss.strPatternId = "dice.hit.contract"; boss.iPatternSequence = 700u;
         boss.PinnedDefinitionRevision = catalog.Get_ActiveRevision();
@@ -1882,8 +1900,9 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 101u, events);
             bool correct = events.size() == 4u;
             for (const auto& [id, p] : room->m_Players) {
-                const auto expected = (id == symbol || id == 5u) ? p.iMaximumHp : p.iMaximumHp / 10u;
-                correct = correct && p.iCurrentHp == expected;
+                const auto expectedCount = (id == symbol || id == 5u) ? 0u : 1u;
+                correct = correct && matchesIncomingDamage(p, p.iMaximumHp,
+                    p.iMaximumHp * 90u / 100u, expectedCount, events);
             }
             if (!correct) {
                 std::cout << "Dice case " << hitKind << " symbol=" << symbol << " color=" << static_cast<unsigned>(color)
@@ -1892,8 +1911,8 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                 std::cout << '\n';
             }
             tests.Require(correct, hit.strTrigger == "CONTACT" ?
-                "Contact card: each of four suits ignores color, protects only matching players, and deals 90% maximum HP to different or unassigned suits including bound players" :
-                "Timed card: each of four suits uses the same per-player symbol immunity and exact 90% maximum HP without hitting distant players");
+                "Contact card preserves suit immunity and applies one sampled 90%-HP baseline hit with matching HP/event totals" :
+                "Timed card preserves suit immunity, excludes distant players and applies one sampled 90%-HP baseline hit");
             const auto eventCount = events.size();
             room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 102u, events);
             tests.Require(events.size() == eventCount, "A completed card contact does not deal a duplicate hit on the next tick");
@@ -1932,10 +1951,10 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             std::vector<S2C_COMBAT_OBJECT_DESPAWNED> retired;
             room->m_CombatObjectRuntime.Drain_Lifecycle(spawned, pulses, retired);
             std::erase_if(pulses, [&](const auto& event) { return event.strHitId != trigger.strContactVisualId; });
-            tests.Require(interceptor.iCurrentHp == (matching ? 2000u : 200u) &&
-                room->m_Players.at(1u).iCurrentHp == 1000u && damage.size() == (matching ? 0u : 1u) &&
-                pulses.size() == 1u && retired.size() == 1u && live.empty(),
-                "Every suit card terminates on a bound bystander: equal suit immune, other suit 90 percent HP, one contact burst");
+            tests.Require(matchesIncomingDamage(interceptor, 2000u, 1800u, matching ? 0u : 1u, damage) &&
+                matchesIncomingDamage(room->m_Players.at(1u), 1000u, 900u, 0u, damage) &&
+                damage.size() == (matching ? 0u : 1u) && pulses.size() == 1u && retired.size() == 1u && live.empty(),
+                "Every suit card retires on interception with exact suit immunity, one sampled wrong-suit hit and one burst");
             tests.Require(interceptor.bPatternBound == (!matching || ownership != 0u),
                 "Matching interception releases only its occurrence-owned bind and preserves other suits, foreign owners and other pattern sequences");
         }
@@ -1953,14 +1972,18 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         tests.Require(staged && room->m_CombatObjectRuntime.Commit(std::move(transaction)), "Generic pursuit stages without optional symbol data");
         std::vector<DAMAGE_EVENT> events;
         room->m_CombatObjectRuntime.Update(room->m_Players, room->m_WorldEntities, catalog, .034f, 201u, events);
-        tests.Require(room->m_Players.at(1u).iCurrentHp == 500u && events.size() == 5u,
-            "Absent cardSymbols preserves ordinary damage even when players have card assignments");
+        bool genericDamageCorrect = events.size() == 5u;
+        for (const auto& [id, player] : room->m_Players)
+            genericDamageCorrect = genericDamageCorrect && matchesIncomingDamage(player, player.iMaximumHp,
+                player.iMaximumHp / 2u, id == 5u ? 0u : 1u, events);
+        tests.Require(genericDamageCorrect,
+            "Absent cardSymbols applies one sampled ordinary hit to each nearby player regardless of card assignment");
 
         // Complete Play keeps the real raid owner across P79 -> P78. Exercise
         // two connected humans both with and without a sessionless guide.
         for (const bool withGuide : {false, true})
         {
-            auto flowRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+            auto flowRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
             tests.Require(flowRoom->Is_Ready(), "Complete Play dice fixture admits the installed world");
             if (!flowRoom->Is_Ready()) continue;
             std::vector<std::shared_ptr<CClientSession>> sessions;
@@ -1981,7 +2004,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                 flowRoom->m_Sessions.emplace(player.iSessionId, connection); sessions.push_back(connection);
             }
             C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST request;
-            request.iRequestSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA; request.strStartGateId = "GATE1";
+            request.iRequestSequence = 1u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA; request.strStartGateId = "GATE1";
             request.ExpectedGameplayRevision = flowRoom->m_GameplayCatalog.Get_ActiveRevision();
             request.iActionSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(flowRoom->m_GameplayCatalog.Active());
             const auto* gate = flowRoom->m_GameplayCatalog.Active().Find_KoukuRaidGate("GATE1");
@@ -2004,9 +2027,9 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             flowRoom->m_iServerTick = run.State.iEndTick;
             flowRoom->Update_KoukuRaid(flowRoom->m_iServerTick);
             const auto previous = std::find_if(gate->Entries.begin(), gate->Entries.end(), [](const auto& entry) {
-                return entry.strTargetId == "KAKULSAYDON_G1_PATTERN_79"; });
+                return entry.strTargetId == "KOUKUSAYDON_G1_PATTERN_79"; });
             tests.Require(run.State.ePhase == KOUKUSAYDON_RAID_PHASE::COMBAT && previous != gate->Entries.end() &&
-                std::next(previous) != gate->Entries.end() && std::next(previous)->strTargetId == "KAKULSAYDON_G1_PATTERN_78",
+                std::next(previous) != gate->Entries.end() && std::next(previous)->strTargetId == "KOUKUSAYDON_G1_PATTERN_78",
                 "The installed Complete Play flow transitions from P79 to the dice pattern");
             if (run.State.ePhase != KOUKUSAYDON_RAID_PHASE::COMBAT || previous == gate->Entries.end()) continue;
             // Skip earlier independent entries, then run all actual ticks of the
@@ -2017,10 +2040,10 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             for (unsigned step = 0u; step < 2000u && !inspected; ++step)
             {
                 flowRoom->Tick(1.f / 30.f);
-                auto* liveBoss = flowRoom->Find_KoukuSaydonArenaBoss("boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON");
+                auto* liveBoss = flowRoom->Find_KoukuSaydonArenaBoss("boss.koukusaydon.g1.saydon", "BOSS_KOUKUSAYDON_G1_SAYDON");
                 if (!liveBoss || !flowRoom->Is_KoukuRaidRunning()) break;
-                sawPrevious |= liveBoss->strPatternId == "KAKULSAYDON_G1_PATTERN_79";
-                if (liveBoss->strPatternId != "KAKULSAYDON_G1_PATTERN_78") continue;
+                sawPrevious |= liveBoss->strPatternId == "KOUKUSAYDON_G1_PATTERN_79";
+                if (liveBoss->strPatternId != "KOUKUSAYDON_G1_PATTERN_78") continue;
                 const auto* member = flowRoom->Find_KoukuAuditionMember(liveBoss->iNetEntityId, liveBoss->iPatternSequence);
                 if (!member || std::none_of(member->LogicLedger.Windows.begin(), member->LogicLedger.Windows.end(),
                     [](const auto& window) { return window.bOpened && !window.bClosed && window.iFreePlayerNetEntityId; })) continue;
@@ -2074,7 +2097,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
                         std::count_if(decoded.Players.begin(), decoded.Players.end(), [](const auto& player) {
                             return player.eControlKind == PLAYER_CONTROL_KIND::HUMAN && player.isPatternBound; }) == 1 &&
                         std::any_of(decoded.Entities.begin(), decoded.Entities.end(), [](const auto& entity) {
-                            return entity.strPatternId == "KAKULSAYDON_G1_PATTERN_78"; }),
+                            return entity.strPatternId == "KOUKUSAYDON_G1_PATTERN_78"; }),
                         "Both Client snapshots carry exactly one human bind and the live dice pattern for floor-effect admission");
                 }
             }
@@ -2087,7 +2110,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         const auto* installed = catalog.Find_BossPatterns(boss.strEncounterId);
         const BOSS_PATTERN_DEFINITION* dice = nullptr;
         if (installed) for (const auto& candidate : *installed)
-            if (candidate.strPatternId == "KAKULSAYDON_G1_PATTERN_78") dice = &candidate;
+            if (candidate.strPatternId == "KOUKUSAYDON_G1_PATTERN_78") dice = &candidate;
         const BOSS_PATTERN_LOGIC_WINDOW* binding = nullptr;
         if (dice) for (const auto& window : dice->LogicWindows)
             if (window.eKind == BOSS_PATTERN_LOGIC_KIND::CARD_DICE_BIND) binding = &window;
@@ -2192,7 +2215,7 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             room->m_WorldEntities.pop_back(); room->m_KoukuSaydonPatternAudition.Members.clear();
         }
 
-        // Fixed damage is independent of maximum HP and shares the existing contact clock and safe-zone gate.
+        // 고정 피해의 기준량은 최대 HP와 독립적이며, 일반 피격의 ±10% 표본·접촉 시계·안전 지대는 공유한다.
         BOSS_PATTERN_LOGIC_RESULT fixed{}; fixed.eKind = BOSS_PATTERN_LOGIC_RESULT_KIND::FIXED_DAMAGE; fixed.iDamageAmount = 500u;
         BOSS_PATTERN_LOGIC_WINDOW contact{}; contact.strWindowId = "fixed.tick";
         contact.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; contact.iDurationMs = 1000u; contact.iRepeatIntervalMs = 500u;
@@ -2203,11 +2226,19 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
         seedPlayers(MECHANIC_CARD_COLOR::RED); room->m_Players.erase(1u); room->m_Players.erase(2u);
         KOUKUSAYDON_LOGIC_LEDGER fixedLedger{}; KOUKUSAYDON_LOGIC_OUTPUT output{}; events.clear();
         CKoukuSaydonLogicRuntime::Build(fixedPattern, boss, 300u, fixedLedger);
-        for (unsigned tick : {300u, 300u, 314u, 315u, 330u})
+        bool fixedClockCorrect = true;
+        for (unsigned tick : {300u, 300u, 314u, 315u, 330u}) {
             CKoukuSaydonLogicRuntime::Update(boss, fixedPattern, fixedLedger, room->m_Players, catalog, nullptr, tick, events, output);
-        tests.Require(room->m_Players.at(3u).iCurrentHp == 2000u && room->m_Players.at(4u).iCurrentHp == 3000u &&
-            room->m_Players.at(6u).iCurrentHp == 5000u && events.size() == 6u,
-            "Fixed fire tick deals exactly 500 at entry and each 500 ms, independent of maximum HP, with no duplicate or end tick");
+            const auto expectedCount = tick < 315u ? 1u : 2u;
+            fixedClockCorrect = fixedClockCorrect && events.size() == expectedCount * 3u;
+            for (const PLAYER_ID id : {3u, 4u, 6u})
+                fixedClockCorrect = fixedClockCorrect && matchesIncomingDamage(room->m_Players.at(id),
+                    1000u * id, 500u, expectedCount, events);
+            fixedClockCorrect = fixedClockCorrect && matchesIncomingDamage(room->m_Players.at(5u),
+                5000u, 500u, 0u, events);
+        }
+        tests.Require(fixedClockCorrect,
+            "Fixed fire uses a 500 baseline with per-hit variation only at entry and 500 ms, never duplicate or end ticks");
         auto zone = contact; zone.strWindowId = "fixed.safe"; zone.eKind = BOSS_PATTERN_LOGIC_KIND::INVULNERABILITY_ZONE;
         zone.iRepeatIntervalMs = 0u; zone.OnSuccess.clear(); fixedPattern.LogicWindows.push_back(zone);
         seedPlayers(MECHANIC_CARD_COLOR::RED); events.clear(); output = {};
@@ -2226,9 +2257,9 @@ int CServerGameplayContractRunner::Run_KoukuDiceDamageContracts()
             if (!admitted) std::cout << "Dice draft: " << draft.Get_Status() << '\n';
             tests.Require(admitted, "Actual prepared Dice rows pass the native transactional draft parser");
             if (admitted) {
-                const auto* patterns = draft.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+                const auto* patterns = draft.Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
                 std::set<MECHANIC_CARD_SYMBOL> exact;
-                if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KAKULSAYDON_G1_PATTERN_78")
+                if (patterns) for (const auto& pattern : *patterns) if (pattern.strPatternId == "KOUKUSAYDON_G1_PATTERN_78")
                     for (const auto& trigger : pattern.MechanicTriggers)
                         if (trigger.ProjectileCardSymbols.size() == 1u && trigger.ProjectileHits.size() == 1u &&
                             trigger.ProjectileHits.front().iDamagePercent == 90u)
@@ -2249,12 +2280,12 @@ int CServerGameplayContractRunner::Run_KoukuJokerAimContracts()
     int result = 1;
     const auto execute = [](void* opaque) {
         TESTS tests;
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         tests.Require(room->Is_Ready(), "Joker aim fixture loads the actual published world and Product");
         if (!room->Is_Ready()) { *static_cast<int*>(opaque) = 1; return; }
         auto& catalog = room->m_GameplayCatalog;
         std::string status;
-        const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(catalog.Active(), "KAKULSAYDON_G1_PATTERN_13", status);
+        const auto* pattern = CKoukuSaydonBrain::Find_AnimationOnlyPattern(catalog.Active(), "KOUKUSAYDON_G1_PATTERN_13", status);
         std::vector<const BOSS_PATTERN_MECHANIC_TRIGGER*> selections;
         if (pattern) for (const auto& trigger : pattern->MechanicTriggers)
             if (trigger.eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_RANDOM_TARGET_PRESENTATION) selections.push_back(&trigger);
@@ -2263,7 +2294,7 @@ int CServerGameplayContractRunner::Run_KoukuJokerAimContracts()
             selections[2]->iStartMs == 12587u && selections[2]->iDurationMs == 5323u,
             "Published P13 preserves all three authored Duration boundaries 0-2658, 6244-8902 and 12587-17910 ms");
         if (selections.size() != 3u) { *static_cast<int*>(opaque) = 1; return; }
-        const auto* placement = room->Find_Placement("boss.kakulsaydon.g2.big-saydon");
+        const auto* placement = room->Find_Placement("boss.koukusaydon.g2.big-saydon");
         SERVER_WORLD_ENTITY entity;
         const bool spawned = placement && room->Build_WorldEntity(*placement, room->m_iNextNetEntityId, entity);
         tests.Require(spawned, "Joker uses its actual Gate 2 big Saydon body");
@@ -2282,7 +2313,7 @@ int CServerGameplayContractRunner::Run_KoukuJokerAimContracts()
         player.fPositionX = getBoss()->fPositionX + 15.f; player.fPositionY = getBoss()->fPositionY; player.fPositionZ = getBoss()->fPositionZ;
         C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
         request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
-        request.strPatternId = pattern->strPatternId; request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        request.strPatternId = pattern->strPatternId; request.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         request.Scope.strEncounterId = pattern->strEncounterId; request.Scope.strGateId = "GATE2";
         request.Scope.strBossPlacementId = placement->strPlacementId; request.Scope.strBossArchetypeId = placement->strArchetypeId;
         request.Scope.ExpectedGameplayRevision = catalog.Get_ActiveRevision();

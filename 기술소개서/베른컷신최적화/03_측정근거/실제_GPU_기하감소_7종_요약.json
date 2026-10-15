@@ -1,0 +1,75 @@
+{
+  "scope": "individual model GPU geometry only; full scene and product activation incomplete",
+  "rows": [
+    {
+      "model": "HOUSE07",
+      "vsBefore": 5686,
+      "vsAfter": 519,
+      "indicesBefore": 15030,
+      "indicesAfter": 1404,
+      "drawsBefore": 5,
+      "drawsAfter": 1,
+      "actualOneEighth": true
+    },
+    {
+      "model": "PILLAR06",
+      "vsBefore": 12871,
+      "vsAfter": 1223,
+      "indicesBefore": 33810,
+      "indicesAfter": 3840,
+      "drawsBefore": 7,
+      "drawsAfter": 1,
+      "actualOneEighth": true
+    },
+    {
+      "model": "PILLAR07",
+      "vsBefore": 11850,
+      "vsAfter": 1054,
+      "indicesBefore": 31104,
+      "indicesAfter": 3456,
+      "drawsBefore": 6,
+      "drawsAfter": 1,
+      "actualOneEighth": true
+    },
+    {
+      "model": "PILLAR02",
+      "vsBefore": 3931,
+      "vsAfter": 343,
+      "indicesBefore": 8586,
+      "indicesAfter": 1056,
+      "drawsBefore": 7,
+      "drawsAfter": 1,
+      "actualOneEighth": true
+    },
+    {
+      "model": "BRIDGE02",
+      "vsBefore": 1415,
+      "vsAfter": 134,
+      "indicesBefore": 3936,
+      "indicesAfter": 360,
+      "drawsBefore": 2,
+      "drawsAfter": 1,
+      "actualOneEighth": true
+    },
+    {
+      "model": "CLIFF02",
+      "vsBefore": 1739,
+      "vsAfter": 226,
+      "indicesBefore": 5400,
+      "indicesAfter": 672,
+      "drawsBefore": 1,
+      "drawsAfter": 1,
+      "actualOneEighth": false
+    },
+    {
+      "model": "PILLAR01",
+      "vsBefore": 1015,
+      "vsAfter": 130,
+      "indicesBefore": 2544,
+      "indicesAfter": 288,
+      "drawsBefore": 1,
+      "drawsAfter": 1,
+      "actualOneEighth": false
+    }
+  ]
+}

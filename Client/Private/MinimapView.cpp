@@ -53,7 +53,7 @@ namespace
 	{
 		if ("BERN" == strName) return LEVEL::BERN;
 		if ("VALTAN_ARENA" == strName) return LEVEL::VALTAN_ARENA;
-		if ("KAKULSAYDON_ARENA" == strName) return LEVEL::KAKULSAYDON_ARENA;
+		if ("KOUKUSAYDON_ARENA" == strName) return LEVEL::KOUKUSAYDON_ARENA;
 		return LEVEL::END;
 	}
 }

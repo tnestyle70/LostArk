@@ -559,13 +559,13 @@ namespace
 			const bool_t hasSeparateWeapon = nullptr != pWeaponModel &&
 				pWeaponModel->Is_String() && nullptr != pWeaponScale &&
 				pWeaponScale->Is_Number();
-			/* Every KoukuSaydon arena boss (BOSS_KAKULSAYDON_* with a
-			boss.kakulsaydon.*.client.v1 contract) may present an embedded body
+			/* Every KoukuSaydon arena boss (BOSS_KOUKUSAYDON_* with a
+			boss.koukusaydon.*.client.v1 contract) may present an embedded body
 			without a separate weapon; CKoukuSaydonPresentationAssetService owns
 			that shape. Valtan rows stay body-and-weapon exact. */
 			const bool_t isKoukuSaydonFamily =
-				entry.archetypeId.starts_with("BOSS_KAKULSAYDON_") &&
-				entry.clientPresentationId.starts_with("boss.kakulsaydon.") &&
+				entry.archetypeId.starts_with("BOSS_KOUKUSAYDON_") &&
+				entry.clientPresentationId.starts_with("boss.koukusaydon.") &&
 				entry.clientPresentationId.ends_with(".client.v1");
 			const bool_t hasEmbeddedBodyOnly = nullptr != pWeaponModel &&
 				pWeaponModel->Is_Null() && nullptr != pWeaponScale &&

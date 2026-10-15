@@ -85,8 +85,7 @@ namespace
 		}
 		return true;
 	}
-	/* A NONE mode carries only empty slots; any other mode may leave slots
-	empty but every filled slot indexes an authored icon list of at most 8. */
+	/* NONE mode는 빈 slot만 허용한다. 나머지 mode는 빈 값 또는 8개 icon 범위의 index를 허용한다. */
 	bool Is_Valid_KoukuHudSlots(const LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
 	{
 		for (std::size_t slot = 0u; slot < LostArk::Shared::KOUKU_HUD_SLOT_COUNT; ++slot)
@@ -102,8 +101,7 @@ namespace
 		return true;
 	}
 
-	/* Only the buffs the count claims are on the wire, so a player with none costs
-	one byte and the reader never walks past what the writer sent. */
+	/* count가 지정한 buff만 읽는다. 사용하지 않은 snapshot slot은 먼저 비운다. */
 	bool Read_ActiveBuffs(
 		LostArk::Shared::CPacketReader& reader,
 		LostArk::Shared::PLAYER_SNAPSHOT& snapshot)
@@ -319,8 +317,7 @@ namespace
 			   LostArk::Shared::PLAYER_ACTION_STATE::WALL_CLIMB == snapshot.eAction) &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
-			 /* A fall is timed: the client seeks the descent from this tick when
-			 it joins late, so a FALLING snapshot without one is malformed. */
+			 /* 늦게 받은 Client도 낙하 경과를 맞출 수 있도록 FALLING에는 유효한 시작 tick이 필요하다. */
 			 (LostArk::Shared::PLAYER_ACTION_STATE::FALLING == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
@@ -334,8 +331,7 @@ namespace
 			 (LostArk::Shared::PLAYER_ACTION_STATE::GRABBED == snapshot.eAction &&
 				snapshot.iSkillId == LostArk::Shared::INVALID_SKILL_ID &&
 				0 != snapshot.iActionStartTick) ||
-			 /* An interaction press carries the mode skill index it resolved to
-			 in the skill id field, and its start tick like every timed action. */
+			 /* 상호작용은 skill ID 필드에 mode skill index를 싣고 시작 tick을 함께 보낸다. */
 			 (LostArk::Shared::PLAYER_ACTION_STATE::INTERACTION == snapshot.eAction &&
 				snapshot.iSkillId < LostArk::Shared::KOUKU_HUD_SLOT_COUNT &&
 				0 != snapshot.iActionStartTick) ||
@@ -636,8 +632,7 @@ namespace
 			snapshot.PinnedDefinitionRevision.Is_Valid();
 	}
 
-	// Zero HP damage is valid only for an explicit stagger contribution or
-	// mechanic-success pulse; ordinary hits still require a positive amount.
+	// 피해 0은 무력화 기여·counter/무력화 성공 또는 무적 판정일 때 허용한다. 일반 타격은 양수 피해가 필요하다.
 	bool Is_Valid_DamageEvent(
 		const LostArk::Shared::DAMAGE_EVENT& damage)
 	{
@@ -650,11 +645,11 @@ namespace
 			static_cast<std::uint8_t>(damage.eMarioHitSource) < static_cast<std::uint8_t>(LostArk::Shared::MARIO_HIT_SOURCE::END) &&
 			(damage.eMarioHitSource == LostArk::Shared::MARIO_HIT_SOURCE::NONE ||
 				(!damage.isOutgoing && damage.iAmount && damage.eHitFlag != LostArk::Shared::DAMAGE_HIT_FLAG::HEAL)) &&
-			/* A heal is the target's own gain and carries no combat bookkeeping. */
+			/* 회복은 대상의 증가량이며 무력화·counter 기여를 함께 싣지 않는다. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::HEAL != damage.eHitFlag ||
 				(damage.isOutgoing && 0 == damage.iStaggerAmount &&
 					!damage.isCounterSuccess && !damage.isStaggerSuccess)) &&
-			/* A blocked outgoing hit carries a verdict, never damage or mechanic credit. */
+			/* 무적으로 막힌 outgoing 타격은 판정만 보내며 피해·무력화·기믹 기여는 0이다. */
 			(LostArk::Shared::DAMAGE_HIT_FLAG::INVINCIBLE != damage.eHitFlag ||
 				(damage.isOutgoing && 0u == damage.iAmount && 0u == damage.iStaggerAmount &&
 					!damage.isCounterSuccess && !damage.isStaggerSuccess &&
@@ -870,9 +865,7 @@ namespace
 	{
 		for (std::size_t i = 0; i < events.size(); ++i)
 		{
-			// Event sequences never wrap within an encounter epoch. The room must
-			// reset the epoch before UINT64_MAX can be reused, so raw ascending
-			// order is the canonical zero-reuse order on this wire.
+			// 같은 encounter epoch의 event sequence는 재사용하지 않고 엄격히 증가한다. UINT64_MAX 재사용 전 epoch를 바꿔야 한다.
 			if (!Is_Valid_DestructionEventWire(events[i]) ||
 				(0 != i &&
 					!(events[i - 1].iEventSequence < events[i].iEventSequence)))
@@ -1011,8 +1004,7 @@ namespace
 	bool Is_Valid_EncounterPropSlots(
 		const std::vector<LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE>& slots)
 	{
-		// Slot IDs arrive in one canonical ascending order so two servers cannot
-		// disagree about the same set, and duplicates are a hard reject.
+		// slot ID는 중복 없는 엄격한 오름차순이어야 한다.
 		for (std::size_t index = 0; index < slots.size(); ++index)
 		{
 			const LostArk::Shared::ENCOUNTER_PROP_SLOT_WIRE& slot = slots[index];
@@ -2404,7 +2396,7 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer,
-	const C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message)
+	const C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA& message)
 {
 	if (0u == message.iRequestSequence)
 		return false;
@@ -2414,9 +2406,9 @@ bool LostArk::Shared::Write_Message(
 
 bool LostArk::Shared::Read_Message(
 	CPacketReader& reader,
-	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA& message)
+	C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA& message)
 {
-	C2S_DEBUG_ENTER_KAKULSAYDON_ARENA decoded{};
+	C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA decoded{};
 	if (!reader.Read_U32(decoded.iRequestSequence) ||
 		0u == decoded.iRequestSequence)
 	{
@@ -3127,8 +3119,7 @@ bool LostArk::Shared::Read_Message(
 bool LostArk::Shared::Write_Message(
 	CPacketWriter& writer, const S2C_SCENE_PROFILE_APPLY& message)
 {
-	/* Profile IDs share the stable-ID alphabet and bound of sequence instance
-	IDs; both are opaque presentation names the Client resolves itself. */
+	/* profile ID는 sequence instance와 같은 문자·길이 규칙을 쓴다. 실제 presentation 해석은 Client가 맡는다. */
 	if (!Is_Valid_SequenceInstanceId(message.strProfileId) ||
 		message.iBlendMs > 600000u || message.iDurationMs > 600000u)
 		return false;
@@ -3292,8 +3283,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_WORLD_SNAPS
 		!Are_Valid_RequiredPinnedRevisions(
 			message.ActiveGameplayRevision,
 			message.RequiredPinnedGameplayRevisions) ||
-		// maximum 0 means "no Esther in this world" and then the level must be
-		// 0 too; a live gauge can never exceed its maximum.
+		// 최대 gauge가 0이면 현재 값도 0이어야 한다. 현재 gauge는 최대값을 넘을 수 없다.
 		(0 == message.iEstherGaugeMaximum && 0 != message.iEstherGauge) ||
 		message.iEstherGauge > message.iEstherGaugeMaximum)
     {
@@ -4368,9 +4358,7 @@ namespace
 			Is_PlayPatternIdAuditionOperation(rawOperation);
 	}
 
-	// A request sequence of zero can never be told apart from a default-built
-	// struct, so it is not a usable duplicate key. Health bar zero is the dead
-	// boss and carries no authored pattern.
+	// 요청 sequence는 기본값 0을 허용하지 않는다. targetHealthBar의 의미·허용 범위는 operation별로 아래에서 검사한다.
 	bool Is_Valid_AuditionRequest(
 		const std::uint32_t requestSequence,
 		const std::uint8_t rawOperation,
@@ -4436,9 +4424,7 @@ namespace
 		{
 			return false;
 		}
-		/* Legacy operations retain their exact wire shape. Rejecting hidden
-		   stable-ID data here prevents a caller from believing those IDs were
-		   transported when their operation intentionally does not encode them. */
+		/* 기존 operation은 stable ID를 전송하지 않으므로 숨은 ID 입력을 거부해 전송됐다는 오해를 막는다. */
 		if (!bossPlacementId.empty() || !patternId.empty())
 			return false;
 		// A selected timeline row is addressed by its stable non-zero command ID;
@@ -4467,8 +4453,7 @@ namespace
 					VALTAN_ARENA_PRESET::END);
 		}
 
-		// These operations name an authored mechanic or a Debug view directly,
-		// rather than a health-bar crossing, so they carry exactly zero.
+		// 이 operation은 체력 구간 대신 기믹·Debug 장면을 직접 지정하므로 targetHealthBar는 0이어야 한다.
 		if (static_cast<std::uint8_t>(VALTAN_AUDITION_OPERATION::PLAY_ENTRANCE) ==
 			rawOperation ||
 			static_cast<std::uint8_t>(
@@ -4803,9 +4788,7 @@ namespace
 			return false;
 		}
 
-		/* Slot uniqueness, start membership, and definition resolution are
-		   Server semantics so every well-shaped invalid request receives a typed
-		   result instead of disappearing at the frame decoder. */
+		/* slot 중복·시작 slot 포함·정의 조회는 Server가 판정한다. 형식이 맞는 요청은 typed 거절 결과를 받을 수 있게 한다. */
 		if (!std::all_of(
 			message.Slots.begin(), message.Slots.end(),
 			Is_Valid_ValtanPatternFlowSlot))
@@ -4813,9 +4796,7 @@ namespace
 			return false;
 		}
 
-		/* Keep typed encoding inside the shared 64 KiB frame contract even for
-		   callers that construct wire rows without the Boss Tool document's
-		   shorter canonical slot IDs. */
+		/* 직접 구성한 wire ID가 길어도 전체 payload와 header가 공용 64 KiB frame 상한 안에 들도록 검사한다. */
 		std::size_t encodedBytes = sizeof(std::uint32_t) * 2u +
 			GAMEPLAY_DATA_REVISION_BYTES +
 			sizeof(std::uint8_t);
@@ -7042,7 +7023,7 @@ bool LostArk::Shared::Write_Message(
 	if (0u == message.iRequestSequence ||
 		(WORLD_ID::BERN != message.eTargetWorldId &&
 		 WORLD_ID::VALTAN_ARENA != message.eTargetWorldId &&
-		 WORLD_ID::KAKULSAYDON_ARENA != message.eTargetWorldId &&
+		 WORLD_ID::KOUKUSAYDON_ARENA != message.eTargetWorldId &&
 		 WORLD_ID::MAHARAKA != message.eTargetWorldId &&
 		 WORLD_ID::COLOSSEUM != message.eTargetWorldId) || result < 1u || result > 5u)
 		return false;
@@ -7062,7 +7043,7 @@ bool LostArk::Shared::Read_Message(
 		!reader.Read_U8(result) || 0u == decoded.iRequestSequence ||
 		(static_cast<std::uint16_t>(WORLD_ID::BERN) != world &&
 		 static_cast<std::uint16_t>(WORLD_ID::VALTAN_ARENA) != world &&
-		 static_cast<std::uint16_t>(WORLD_ID::KAKULSAYDON_ARENA) != world &&
+		 static_cast<std::uint16_t>(WORLD_ID::KOUKUSAYDON_ARENA) != world &&
 		 static_cast<std::uint16_t>(WORLD_ID::MAHARAKA) != world &&
 		 static_cast<std::uint16_t>(WORLD_ID::COLOSSEUM) != world) ||
 		result < 1u || result > 5u)
@@ -7240,7 +7221,7 @@ bool LostArk::Shared::Write_Message(
 		return false;
 	const bool transportControl = message.eOperation == WORLD_SEQUENCE_OPERATION::REPLAY ||
 		message.eOperation == WORLD_SEQUENCE_OPERATION::STOP;
-	// Viewer transport is separate from exact owned cue and owner lifecycle operations.
+	// viewer 재생·정지는 run epoch·개별 owned cue를 대상으로 하는 명령과 구분한다.
 	if ((transportControl && (message.iRunEpoch != 0u || !message.strTargetSequenceInstanceId.empty() ||
 		!message.strTargetCueId.empty())) ||
 		(message.eOperation != WORLD_SEQUENCE_OPERATION::PLAY &&
@@ -7332,7 +7313,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_WORLD
 		message.eOperation >= DEBUG_WORLD_PLAYBACK_OPERATION::END ||
 		!Is_Valid_SequenceInstanceId(message.strTargetId)) return false;
 	const bool arrival = message.eOperation == DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER;
-	if (arrival && (message.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !message.iRunEpoch ||
+	if (arrival && (message.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !message.iRunEpoch ||
 		message.iRoomPlayerSlot > 3u || !Is_Valid_SequenceInstanceId(message.strOccurrenceId) ||
 		!std::isfinite(message.fPositionX) || !std::isfinite(message.fPositionY) || !std::isfinite(message.fPositionZ) ||
 		std::abs(message.fPositionX) > 100000.f || std::abs(message.fPositionY) > 100000.f || std::abs(message.fPositionZ) > 100000.f)) return false;
@@ -8058,7 +8039,7 @@ bool LostArk::Shared::Read_Message(
 
 bool LostArk::Shared::Write_Message(CPacketWriter& writer, const C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST& m)
 {
-	if (!m.iRequestSequence || m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || m.eOperation >= KOUKUSAYDON_RAID_OPERATION::END ||
+	if (!m.iRequestSequence || m.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || m.eOperation >= KOUKUSAYDON_RAID_OPERATION::END ||
 		!m.ExpectedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
 		(m.strStartGateId != "GATE1" && m.strStartGateId != "GATE2" && m.strStartGateId != "GATE3" && m.strStartGateId != "BINGO") ||
 		(m.eOperation == KOUKUSAYDON_RAID_OPERATION::START ? m.iExpectedRunEpoch != 0u : m.iExpectedRunEpoch == 0u) ||
@@ -8085,7 +8066,7 @@ bool LostArk::Shared::Write_Message(CPacketWriter& writer, const S2C_KOUKUSAYDON
     for (std::size_t i = 0; i < m.ParticipantPlayerIds.size(); ++i)
         if (m.ParticipantPlayerIds[i] == INVALID_PLAYER_ID || std::find(m.ParticipantPlayerIds.begin(), m.ParticipantPlayerIds.begin() + i, m.ParticipantPlayerIds[i]) != m.ParticipantPlayerIds.begin() + i) return false;
     if (m.iRunEpoch && std::find(m.ParticipantPlayerIds.begin(), m.ParticipantPlayerIds.end(), m.iOwnerPlayerId) == m.ParticipantPlayerIds.end()) return false;
-	if (m.eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !m.iRequestSequence || m.ePhase == KOUKUSAYDON_RAID_PHASE::INACTIVE || m.ePhase >= KOUKUSAYDON_RAID_PHASE::END ||
+	if (m.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !m.iRequestSequence || m.ePhase == KOUKUSAYDON_RAID_PHASE::INACTIVE || m.ePhase >= KOUKUSAYDON_RAID_PHASE::END ||
         (m.iRunEpoch ? m.iOwnerPlayerId == INVALID_PLAYER_ID : (m.ePhase != KOUKUSAYDON_RAID_PHASE::ABORTED || m.iOwnerPlayerId != INVALID_PLAYER_ID)) ||
 		!m.PinnedGameplayRevision.Is_Valid() || !m.iActionSourceRevision || !m.iSequenceSourceRevision ||
 		(m.strGateId != "GATE1" && m.strGateId != "GATE2" && m.strGateId != "GATE3" && m.strGateId != "BINGO") ||

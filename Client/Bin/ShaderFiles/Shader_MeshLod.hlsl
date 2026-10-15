@@ -1,5 +1,5 @@
-// The CPU has already selected visible instances. One conservative LOD serves
-// the whole batch, preserving one draw per mesh and the original instance order.
+// CPU가 골라 둔 인스턴스 묶음에 공통 LOD 하나를 선택하고 indirect Draw 인자를 UAV에 기록한다.
+// 전체 묶음의 경계를 기준으로 선택하므로 메시별 Draw 수와 원래 인스턴스 순서를 유지한다.
 cbuffer MeshLodSelection : register(b0)
 {
     uint4 g_Ranges[3]; // index count, first index, unused, unused

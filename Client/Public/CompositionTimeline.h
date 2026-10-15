@@ -1,5 +1,6 @@
-#pragma once
+﻿#pragma once
 
+// 이 파일은 저작 화면의 픽셀 기하·글자 크기·draw list를 다룬다. 보스 판정과 실제 재생 시계는 포함하지 않는다.
 #include "imgui.h"
 
 #include <algorithm>
@@ -8,13 +9,17 @@
 #include <cstdio>
 #include <limits>
 #include <string>
+// stable occurrence/group ID에서 표시 행 또는 임시 group index를 찾는 파생 조회표다.
 #include <unordered_map>
 #include <utility>
+// 가변 개수의 시간 구간과 행 끝 시각을 연속 저장해 정렬·순회한다. 반환 뒤 원본 문서는 변경되지 않는다.
 #include <vector>
 
+// 두 보스와 여러 저작 도구가 공유하는 화면 알고리즘 이름 공간이다. 클래스 instance나 문서 소유자를 추가하지 않는다.
 namespace Client::CompositionTimeline
 {
 
+// 헤더 정의를 여러 CPP가 포함하므로 inline을 붙인다. constexpr는 픽셀 기본값이며 동적 font/DPI 계산을 대신하지 않는다.
 inline constexpr float LaneHeight = 24.f;
 inline constexpr float LabelWidth = 180.f;
 inline constexpr float MinimumBoxWidth = 8.f;
@@ -25,32 +30,40 @@ struct ROW_METRICS
 	float boxHeight, laneHeight, rulerHeight;
 };
 
-// The current font already includes viewport DPI. Recompute from its pixel
-// height instead of scaling fixed rows again when moving between monitors.
+// 현재 font 크기에는 viewport DPI가 반영되어 있다.
+// 모니터를 옮길 때 고정 행 높이에 DPI를 다시 곱하지 않고 현재 글자 높이에서 계산한다.
 inline ROW_METRICS GetCompactRowMetrics()
 {
 	const auto& style = ImGui::GetStyle();
 	const float textHeight = ImGui::GetTextLineHeight();
 	const float boxHeight = std::ceil((std::max)(BoxHeight,
 		textHeight + 2.f * (std::max)(1.f, style.FramePadding.y)));
+
 	return {boxHeight,
 		std::ceil((std::max)(LaneHeight, boxHeight + (std::max)(2.f, style.ItemSpacing.y))),
 		std::ceil((std::max)(LaneHeight, textHeight + 6.f))};
 }
 
+// 각 label의 현재 font 너비를 재서 가장 긴 이름과 여백 16px를 수용한다. 결과는 timeline 왼쪽 이름표 폭(px)이다.
+// const char* const*: labels는 문자열 포인터 배열을 차용한다. 첫 const는 문자 변경을, 두 번째 const는 labels[i] 재지정을 막는다.
+// labels 변수 자체는 지역 포인터여서 이동 가능하다. count개 포인터는 유효해야 하며, 개별 null 항목은 건너뛴다. 배열 길이는 포인터에 없어서 count를 별도로 받는다.
 inline float GetCompactLabelWidth(const char* const* labels, const std::size_t count)
 {
 	float width = LabelWidth;
+
 	for (std::size_t i = 0u; i < count; ++i)
 		if (labels[i]) width = (std::max)(width, ImGui::CalcTextSize(labels[i]).x + 16.f);
+
 	return std::ceil(width);
 }
 
+// 시간 단위 ms를 1000으로 초 단위에 맞춰 px/초 배율을 구한다. 유효하지 않은 길이는 minimum을 반환하고 문서 시각은 수정하지 않는다.
 inline float FitPixelsPerSecond(const float availableWidth, const double durationMs,
 	const float minimum = 1.f, const float maximum = 500.f)
 {
 	if (!std::isfinite(availableWidth) || !std::isfinite(durationMs) || durationMs <= 0.)
 		return minimum;
+
 	return static_cast<float>(std::clamp(double(availableWidth) * 1000. / durationMs,
 		double(minimum), double(maximum)));
 }
@@ -64,8 +77,8 @@ inline void DrawTrackLabel(ImDrawList* draw, const ImVec2 origin, const float wi
 	draw->PopClipRect();
 }
 
-// A category owns one label and all of its display subrows. Stable identities,
-// interval packing and edit transactions remain with the authoring owner.
+// category는 이름표 하나와 여러 표시 행의 기하 정보만 묶는다.
+// stable ID, 시간 구간의 행 배치, 실제 편집 transaction은 호출한 저작 소유자가 담당한다.
 struct CATEGORY_LANE_GEOMETRY
 {
 	ImVec2 origin, contentMin, contentMax;
@@ -99,8 +112,8 @@ inline CATEGORY_LANE_GEOMETRY DrawCategoryLane(ImDrawList* draw,
 	return geometry;
 }
 
-// Keep the legacy constants for editors that own their own row geometry.
-// Font-aware callers use the same dimensions for drawing and hit testing.
+// 직접 행 기하를 정하는 기존 편집기를 위해 기본 상수는 유지한다.
+// font 크기를 반영하는 호출자는 그리기와 hit test에 같은 계산 결과를 사용한다.
 inline float GetBoxHeight()
 {
 	const float padding = (std::max)(4.f, ImGui::GetStyle().FramePadding.y);
@@ -128,7 +141,7 @@ inline constexpr ImU32 WorldLabelColor = IM_COL32(150, 190, 240, 255);
 inline constexpr ImU32 SceneProfileLabelColor = IM_COL32(200, 170, 240, 255);
 inline constexpr ImU32 PresentationLabelColor = IM_COL32(180, 210, 200, 255);
 
-// Display rows never become authored identities. Callers partition actor/slot lanes.
+// 표시 행 번호는 저장 ID가 아니다. 호출자가 actor/slot별 입력 목록을 나눠 전달한다.
 struct DISPLAY_INTERVAL
 {
 	std::string occurrenceId;
@@ -142,6 +155,7 @@ struct DISPLAY_GROUP
 	double startMs = 0., endMs = 0.;
 	std::size_t firstRow = 0u, rowCount = 0u;
 };
+// occurrenceRows는 표시할 행을 찾는 인덱스이고 groups는 group 기하를 순회할 값 목록이다. 둘 다 다시 만들 수 있는 화면 파생 값이다.
 struct DISPLAY_LAYOUT
 {
 	std::unordered_map<std::string, std::size_t> occurrenceRows;
@@ -149,11 +163,14 @@ struct DISPLAY_LAYOUT
 	std::size_t rowCount = 1u;
 };
 
+// intervals를 값으로 받아 함수가 소유한 vector를 정렬한다. lvalue는 복사하고, 현재 호출자처럼 std::move로 넘기면 버퍼 소유권을 옮긴다.
+// 시작순 stable_sort 뒤 group 안의 첫 빈 행을 찾고, group 전체를 연속된 행 묶음에 배치한다. rowEnds는 각 행이 다시 비는 ms다.
+// hash map은 ID를 찾는 용도이며 반복 순서에 의존하지 않는다. 행 탐색은 선형이므로 모든 입력에서 최적 시간·최소 행 수를 보장하는 알고리즘은 아니다.
 inline DISPLAY_LAYOUT AllocateDisplayRows(
 	std::vector<DISPLAY_INTERVAL> intervals, const double minimumBoxMs)
 {
-	// A saved group reserves one contiguous row block for its complete span.
-	// Internal overlaps still get separate hit-test rows; no authored clock changes.
+	// 저장된 group의 전체 시간 범위가 연속된 행 묶음을 예약한다.
+	// group 내부에서 시간이 겹치는 항목은 서로 다른 hit-test 행에 배치하며 저작 시각은 바꾸지 않는다.
 	std::stable_sort(intervals.begin(), intervals.end(),
 		[](const auto& a, const auto& b) { return a.startMs < b.startMs; });
 	struct UNIT
@@ -209,7 +226,7 @@ inline DISPLAY_LAYOUT AllocateDisplayRows(
 	return layout;
 }
 
-// Marquee uses the drawn box rectangle (including short point boxes), not label IDs.
+// 드래그 사각 선택은 label ID가 아니라 실제 그린 box 사각형으로 검사한다. 짧은 point box도 포함한다.
 inline bool MarqueeIntersectsBox(const ImVec2 anchor, const ImVec2 pointer,
     const ImVec2 boxMin, const ImVec2 boxMax)
 {
@@ -231,9 +248,9 @@ enum class BoxGesture : std::uint8_t
 	TRIM_END
 };
 
-// The caller owns row hovering, edit permissions, and the captured drag state.
-// Distances may extend outside the box so a short semantic endpoint is still
-// reachable. When the two grips overlap, the nearest wins; ties choose the end.
+// 행 hover·편집 권한·drag 시작 상태는 호출자가 소유한다.
+// 짧은 box의 시간상 끝점도 잡을 수 있도록 box 바깥의 거리까지 검사한다.
+// 양 끝 손잡이가 겹치면 가까운 쪽을, 거리가 같으면 끝 손잡이를 고른다.
 inline BoxGesture HitBoxGesture(const float mouseX, const float startX,
 	const float endX, const float edgeWidth, const bool allowStart,
 	const bool allowEnd)
@@ -251,9 +268,11 @@ inline BoxGesture HitBoxGesture(const float mouseX, const float startX,
 	return start ? BoxGesture::TRIM_START : BoxGesture::MOVE;
 }
 
-// A sequential playlist has no independently saved wall-clock offset. Left
-// trim advances its source start and ripples later slots; the source end stays
-// fixed. Right trim moves only the source end. Callers retain Stage authority.
+// 순차 playlist는 항목마다 독립적인 재생 시작 offset을 저장하지 않는다.
+// 시작 trim은 delta에 따라 원본 시작점을 앞뒤로 옮기며 원본 끝점을 유지한다. 뒤 slot의 배치는 호출자가 적용한다.
+// 끝 trim은 원본 끝점만 바꾼다. Stage 시간의 최종 적용은 호출자가 담당한다.
+// wallDeltaMs는 화면에서 이동한 재생 시간(ms), playRate를 곱한 delta는 원본 clip 시간(ms)이다.
+// 출력 참조는 모든 입력 검증 뒤에만 쓴다. false면 호출자가 가진 이전 시작/길이를 유지할 수 있다.
 inline bool TrimSequentialSourceWindow(const std::uint32_t sourceStartMs,
     const std::uint32_t sourcePlayMs, const std::uint32_t nativeDurationMs,
     const double playRate, const bool startEdge, const std::int64_t wallDeltaMs,
@@ -287,8 +306,8 @@ inline void DrawRuler(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 	const float visibleMaxX = draw->GetClipRectMax().x;
 	if (visibleMaxX > visibleMinX)
 	{
-		// Preserve the original Valtan ruler at normal zoom. Wider intervals at
-		// low zoom keep a ten-minute canvas readable in either boss editor.
+		// 일반 zoom에서는 기존 발탄 눈금 간격을 유지한다.
+		// 낮은 zoom에서는 눈금 간격을 넓혀 긴 시간 범위도 두 보스 편집기에서 읽을 수 있게 한다.
 		std::uint64_t tickMs = pxPerSecond >= 180.f ? 500u : 1000u;
 		while (tickMs < (std::numeric_limits<std::uint32_t>::max)() &&
 			static_cast<double>(tickMs) * pxPerSecond * 0.001 < 64.0)
@@ -318,8 +337,8 @@ inline void DrawRuler(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 	draw->PopClipRect();
 }
 
-// Geometry and family colors come from the caller. This draws no hit item and
-// makes no authoring mutation; both workbenches retain their own stable IDs.
+// 기하와 종류별 색은 호출자가 전달한다. 이 함수는 hit item을 등록하거나
+// 저작 데이터를 바꾸지 않으며 두 Workbench의 stable ID 소유권도 바꾸지 않는다.
 inline void DrawBox(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 	const ImU32 fill, const bool selected, const char* label,
 	const bool leftGrip = true, const bool rightGrip = true)
@@ -327,7 +346,7 @@ inline void DrawBox(ImDrawList* draw, const ImVec2 min, const ImVec2 max,
 	if (nullptr == draw || max.x <= min.x || max.y <= min.y)
 		return;
 	const auto clipMin = draw->GetClipRectMin(), clipMax = draw->GetClipRectMax();
-	// The selected outline reaches beyond the box; hit items remain caller-owned.
+	// 선택 테두리는 box 바깥까지 그려진다. hit item의 등록과 처리는 계속 호출자가 담당한다.
 	if (max.x + 2.f < clipMin.x || min.x - 2.f > clipMax.x ||
 		max.y + 2.f < clipMin.y || min.y - 2.f > clipMax.y) return;
 	draw->AddRectFilled(min, max, fill, 3.f);

@@ -49,16 +49,16 @@ CLASS_PC_KEY = {
 }
 
 # EFTable_Npc.PrimaryKey of the original boss each archetype plays.
-# BOSS_KAKULSAYDON_G1_KOUKU is left out on purpose: the MN_RPCZ_00 candidates carry no
+# BOSS_KOUKUSAYDON_G1_KOUKU is left out on purpose: the MN_RPCZ_00 candidates carry no
 # NpcBalance row, matching the project's own one-bar presentation-only boss.
 BOSS_NPC_KEY = {
     "BOSS_VALTAN": 480007,
     "BOSS_VALTAN_GHOST": 480008,
-    "BOSS_KAKULSAYDON_G1_SAYDON": 480601,
-    "BOSS_KAKULSAYDON_G2_KOUKU": 480611,
-    "BOSS_KAKULSAYDON_G2_BIG_SAYDON": 480621,
-    "BOSS_KAKULSAYDON_G3_SAYDON": 480631,
-    "BOSS_KAKULSAYDON_BINGO_SAYDON": 480635,
+    "BOSS_KOUKUSAYDON_G1_SAYDON": 480601,
+    "BOSS_KOUKUSAYDON_G2_KOUKU": 480611,
+    "BOSS_KOUKUSAYDON_G2_BIG_SAYDON": 480621,
+    "BOSS_KOUKUSAYDON_G3_SAYDON": 480631,
+    "BOSS_KOUKUSAYDON_BINGO_SAYDON": 480635,
 }
 
 # Monsters whose model path carries no NPC id.  The clown box is named in CLAUDE.md.

@@ -1,5 +1,6 @@
 #pragma once
 
+// D3D11 장치·context·swap chain과 ComPtr, 창 모드·엔진 수학 타입을 선언한다.
 #include "Engine_Defines.h"
 
 NS_BEGIN(Engine)
@@ -15,6 +16,9 @@ NS_BEGIN(Engine)
 /* 3. 백버퍼뷰를 생성한다. */
 /* 4. 깊이버퍼 텍스쳐를 생성하고 깊이버퍼 뷰를 생성한다. */
 
+// GameInstance가 그래픽 장치와 화면 출력 자원을 소유하는 경계다.
+// D3D 자원은 ComPtr로 유지하고, 화면 크기/전체 화면 전환은 프레임 사이에 호출한다.
+// 내부 mutex는 없으며 immediate context와 swap chain의 호출 순서는 상위 렌더 흐름이 보장한다.
 class CGraphic_Device final
 {		
 private:
@@ -25,21 +29,31 @@ public:
 public:
 	/* 그래픽 디바이스의 초기화. */
 	/* 장치객체를 생성한다. */
+	// 장치와 기본 출력 대상을 준비한 뒤에만 출력 ComPtr에 장치/context를 넘긴다.
+	// 중간 실패는 HRESULT로 반환하며 멤버에 이미 만든 자원이 남을 수 있어 소유자가 정리한다.
 	HRESULT Initialize(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
 		int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
 		ComPtr<ID3D11DeviceContext>& pOutContext);
 	
 	/* 백버퍼를 지운다. */
+	// 유효한 RGBA 색상을 받아 기본 RTV/DSV와 viewport를 다시 바인딩한 뒤 색상만 지운다.
 	HRESULT Clear_BackBuffer_View(const float4_t* pClearColor);
 
 	/* 깊이버퍼 + 스텐실버퍼를 지운다. */
+	// 준비된 깊이/스텐실을 1/0으로 지운다. DSV의 유효성은 초기화·리사이즈 성공 흐름이 보장한다.
 	HRESULT Clear_DepthStencil_View();
 
 	/* 후면 버퍼를 전면버퍼로 교체한다.(백버퍼를 화면에 직접 보여준다.) */
+	// Render_End가 동기 간격 0으로 화면을 제출한다. 실패 코드를 그대로 반환하고 CPU 소요 시간을 측정한다.
 	HRESULT Present();
 
+	// GameInstance가 Target_Manager의 출력 참조를 놓은 뒤 호출한다. 크기는 물리 픽셀이다.
+	// 새 깊이 자원을 먼저 준비하고 백버퍼 교체 실패는 가능한 범위에서 복원하며, 복원 실패도 반환한다.
 	HRESULT Resize_BackBuffer(uint32_t width, uint32_t height);
+	// ClientWindowDisplay의 요청을 GameInstance가 전달한다. 모드 전환 후 백버퍼 실제 교체는 별도 단계다.
+	// 진행 중인 DXGI 상태는 E_PENDING으로 바꾸며 실패 시 이전 전체 화면/출력 모드 복원을 시도한다.
 	HRESULT Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height);
+	// GameInstance 종료에서 context 바인딩을 비우고 전체 화면을 해제한 뒤 소유 COM 참조를 놓는다.
 	void Shutdown();
 
 private:	
@@ -86,6 +100,8 @@ private:
 	ComPtr<ID3D11RenderTargetView>		m_pBackBufferRTV = { nullptr };
 	ComPtr<ID3D11DepthStencilView>		m_pDepthStencilView = { nullptr };
 
+	// 모드 전환이나 실패 복원 뒤에는 같은 픽셀 크기여도 버퍼를 다시 구성해야 한다.
+	// 폭/높이는 마지막으로 채택한 백버퍼 크기이며 모드 전환 요청값과 구분한다.
 	bool m_bBackBufferResizePending = false;
 	int32_t								m_iWinSizeX = {};
 	int32_t								m_iWinSizeY = {};
@@ -93,13 +109,18 @@ private:
 private:
 	/* 스왑체인에게 필수적으로 필요한 데이터는 백버퍼가 필요하여 백버퍼를 생성하기위한 정보를 던져준다. */
 	/* 스왑체인객체를 만들었다 == 백버퍼(텍스쳐)가 생성된다. */
+	// 현재 장치의 DXGI factory로 창의 swap chain을 만든다. 자동 Alt+Enter 전환은 막고 앱 설정이 모드를 소유한다.
 	HRESULT Ready_SwapChain(HWND hWnd, WINMODE isWindowed, int32_t iWinCX, int32_t iWinCY);
+	// swap chain의 0번 버퍼를 일시 차용해 RTV를 만든다. 로컬 texture 참조는 반환하면서 해제된다.
 	HRESULT Ready_BackBufferRenderTargetView();	
+	// 백버퍼와 같은 픽셀 크기의 D24S8 texture/DSV를 준비한다. 실제 소유 참조는 멤버 DSV에 남는다.
 	HRESULT Ready_DepthStencilView(int32_t iWinCX, int32_t iWinCY);
+	// 기본 RTV/DSV와 마지막 채택 크기의 viewport를 immediate context에 설정한다.
 	HRESULT Bind_MainRenderTarget();
 
 
 public:
+	// GameInstance가 생성 결과를 단독 소유한다. 초기화 실패는 nullptr이며 임시 객체의 COM 멤버가 해제된다.
 	static unique_ptr<CGraphic_Device> Create(HWND hWnd, WINMODE eWinMode, D3D_DRIVER_TYPE eDriverType,
 		int32_t iWinSizeX, int32_t iWinSizeY, ComPtr<ID3D11Device>& pOutDevice,
 		ComPtr<ID3D11DeviceContext>& pOutContext);

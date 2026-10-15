@@ -196,7 +196,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 	}
 	{
 		SERVER_WORLD_ENTITY boss{};
-		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 		boss.iNetEntityId = 99801u; boss.iCurrentHp = boss.iMaximumHp = 1000u;
 		boss.iPatternSequence = 1u; boss.strPatternId = "test.combat.success"; boss.strActionId = "test.combat.window";
 		CBossCombatRuntime::Set_StaggerGauge(boss.BossCombat, 100u);
@@ -254,7 +254,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 			}
 			if (path) skill->Projectiles.push_back(projectile);
 			SERVER_WORLD_ENTITY boss{};
-			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+			boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS; boss.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 			boss.iNetEntityId = 99851u; boss.fPositionZ = 1.f; boss.fCollisionRadius = 1.f;
 			boss.iCurrentHp = boss.iMaximumHp = 10000000u;
 			boss.iKoukuDamageReductionWindows = reduction ? 1u : 0u;
@@ -281,7 +281,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 	{
 		SERVER_WORLD_ENTITY largeSaydon{};
 		largeSaydon.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		largeSaydon.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON";
+		largeSaydon.strArchetypeId = "BOSS_KOUKUSAYDON_G2_BIG_SAYDON";
 		largeSaydon.iNetEntityId = 99901u;
 		largeSaydon.iCurrentHp = largeSaydon.iMaximumHp = 100000u;
 		largeSaydon.fPositionZ = 1.f; largeSaydon.fCollisionRadius = 1.f;
@@ -323,7 +323,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_SkillStages(TESTS& test
 				projectile.Hits.push_back(hit); skill->Projectiles.push_back(projectile);
 			}
 			auto kouku = largeSaydon;
-			kouku.strArchetypeId = "BOSS_KAKULSAYDON_G2_KOUKU";
+			kouku.strArchetypeId = "BOSS_KOUKUSAYDON_G2_KOUKU";
 			kouku.iNetEntityId = 99902u; kouku.fPositionZ = 2.f;
 			kouku.BossCombat = {};
 			std::vector<SERVER_WORLD_ENTITY> targets{ largeSaydon, kouku };

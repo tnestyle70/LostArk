@@ -358,14 +358,14 @@ void Client::CMapTool::Render_IntegratedCutsceneView()
 	ICompositionWorkbenchSession* selected = nullptr;
 	if ("LV_LUT_HEARTRB_ED" == sessionAreaId)
 		selected = m_pValtanCompositionSession;
-	else if (KAKUL_AREA_ID == sessionAreaId)
+	else if (KOUKU_AREA_ID == sessionAreaId)
 		selected = m_pSequenceCompositionSession;
 	if (nullptr == selected)
 	{
 		if (sessionAreaId.empty())
 			ImGui::TextDisabled("편집 중인 Area가 없어 컷신을 열 수 없습니다.");
 		else if ("LV_LUT_HEARTRB_ED" == sessionAreaId ||
-			KAKUL_AREA_ID == sessionAreaId)
+			KOUKU_AREA_ID == sessionAreaId)
 		{
 			ImGui::TextDisabled(
 				"이 Area의 Composition 저작 세션을 이 빌드에서 사용할 수 없습니다: %s",

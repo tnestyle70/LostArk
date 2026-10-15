@@ -1,37 +1,48 @@
 #include "Effect_ProductPrewarmQueue.h"
 
+// 입력 ID 검사·큐 재정렬, 토큰 오용의 fail-fast, 소유권 이동에 필요한 표준 API다.
 #include <algorithm>
 #include <exception>
 #include <utility>
 
-bool Client::EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT::Is_Valid() const
+NS_BEGIN(Client)
+
+bool EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT::Is_Valid() const
 {
 	return 0u != iCatalogRevision && !strEffectAssetId.empty() &&
 		0 != iRootCode && !strRootMessage.empty();
 }
 
-Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
+EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
 EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN(
 	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&& Other) noexcept
 {
 	*this = std::move(Other);
 }
 
-Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
+// 유효한 예약을 조용히 버리면 외부 게시 결과와 큐가 어긋난다. 호출자는 먼저 commit/abort해야 한다.
+EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
 ~EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN() noexcept
 {
 	if (Is_Valid())
+	{
 		std::terminate();
+	}
 }
 
-Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&
-Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::operator=(
+// 기존 예약을 덮어쓰지 않고 한 토큰에만 처리 의무를 남긴다. 이동된 원본은 즉시 무효화한다.
+EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&
+EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::operator=(
 	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&& Other) noexcept
 {
 	if (this == &Other)
+	{
 		return *this;
+	}
 	if (Is_Valid())
+	{
 		std::terminate();
+	}
 	m_pOwner = Other.m_pOwner;
 	m_iReservationNonce = Other.m_iReservationNonce;
 	m_iCatalogRevision = Other.m_iCatalogRevision;
@@ -41,30 +52,30 @@ Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::operator=(
 	return *this;
 }
 
-bool Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Is_Valid() const
+bool EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Is_Valid() const
 {
 	return nullptr != m_pOwner && 0u != m_iReservationNonce &&
 		0u != m_iCatalogRevision;
 }
 
-uint64_t Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
+uint64_t EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
 Get_CatalogRevision() const
 {
 	return m_iCatalogRevision;
 }
 
-uint64_t Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Get_JobEpoch() const
+uint64_t EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Get_JobEpoch() const
 {
 	return m_iJobEpoch;
 }
 
-bool Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
+bool EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::
 Is_PreparedOutcome() const
 {
 	return m_bPrepared;
 }
 
-void Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Invalidate() noexcept
+void EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Invalidate() noexcept
 {
 	m_pOwner = nullptr;
 	m_iReservationNonce = 0u;
@@ -73,7 +84,8 @@ void Client::EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN::Invalidate() noexcept
 	m_bPrepared = false;
 }
 
-bool Client::Is_ProductPrewarmTargetActivationReady(
+// 등록 실패를 상위 서비스가 격리한 경우도 허용하되 이전 catalog revision은 통과시키지 않는다.
+bool Is_ProductPrewarmTargetActivationReady(
 	const EFFECT_PRODUCT_PREWARM_TARGET_PROBE& Probe,
 	const bool bTargetRegistrationFailureIsolated)
 {
@@ -81,18 +93,24 @@ bool Client::Is_ProductPrewarmTargetActivationReady(
 		(Probe.bSettled || bTargetRegistrationFailureIsolated);
 }
 
-void Client::CEffectProductPrewarmQueue::Reset_ForCatalogRevision(
+// 새 catalog에 이전 prepared/failed 판정이 섞이지 않도록 revision 경계에서 기록을 초기화한다.
+void CEffectProductPrewarmQueue::Reset_ForCatalogRevision(
 	const uint64_t iCatalogRevision)
 {
 	if (m_iCatalogRevision == iCatalogRevision)
+	{
 		return;
+	}
 	if (m_FrontReservation.has_value())
+	{
 		std::terminate();
+	}
 	Clear();
 	m_iCatalogRevision = iCatalogRevision;
 }
 
-bool Client::CEffectProductPrewarmQueue::Enqueue(
+// 등록 검증 뒤 새 ID만 pending으로 추가한다. 기존 terminal 결과는 같은 revision 동안 재사용한다.
+bool CEffectProductPrewarmQueue::Enqueue(
 	const std::vector<std::string>& EffectAssetIds,
 	std::string& strOutStatus)
 {
@@ -119,19 +137,24 @@ bool Client::CEffectProductPrewarmQueue::Enqueue(
 	{
 		m_Targets.insert(EffectAssetId);
 		if (m_Records.contains(EffectAssetId))
+		{
 			continue;
+		}
 		m_Records.emplace(EffectAssetId, TARGET_RECORD{});
 		m_Pending.push_back(EffectAssetId);
 		++iQueuedCount;
 	}
 	if (0u != iQueuedCount)
+	{
 		m_bYieldNextFrame = true;
+	}
 	strOutStatus = "Queued " + std::to_string(iQueuedCount) +
 		" new Product Effect targets for incremental prewarm.";
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Enqueue_Priority(
+// 우선 요청의 중복을 제거하되 이미 진행 중인 Loading 묶음은 앞으로 추월하지 않는다.
+bool CEffectProductPrewarmQueue::Enqueue_Priority(
 	const std::vector<std::string>& EffectAssetIds,
 	std::string& strOutStatus)
 {
@@ -175,9 +198,7 @@ bool Client::CEffectProductPrewarmQueue::Enqueue_Priority(
 		PriorityPending.push_back(EffectAssetId);
 	}
 
-	/* Loading owns an immutable front block.  Later normal priority
-	   registration must not move an unowned target ahead of that block or the
-	   Loading consumer could no longer reach its reserved FIFO front. */
+	// Loading 소유 묶음을 먼저 보존한다. 새 일반 우선 요청이 이를 추월하면 해당 epoch가 선두에 도달하지 못한다.
 	std::deque<std::string> Reordered;
 	for (const std::string& EffectAssetId : m_Pending)
 	{
@@ -210,20 +231,25 @@ bool Client::CEffectProductPrewarmQueue::Enqueue_Priority(
 	m_Pending = std::move(Reordered);
 
 	if (0u != iQueuedCount)
+	{
 		m_bYieldNextFrame = true;
+	}
 	strOutStatus = "Queued " + std::to_string(iQueuedCount) +
 		" new and prioritized " + std::to_string(PriorityPending.size()) +
 		" pending Product Effect targets.";
 	return true;
 }
 
-Client::EFFECT_PRODUCT_PREWARM_STEP_RESULT
-Client::CEffectProductPrewarmQueue::Begin_Frame(
+// 일반 준비 루프는 소유자 없는 선두만 받는다. READY 뒤의 작업 성공/실패가 commit할 때 FIFO가 줄어든다.
+EFFECT_PRODUCT_PREWARM_STEP_RESULT
+CEffectProductPrewarmQueue::Begin_Frame(
 	std::string& strOutEffectAssetId)
 {
 	strOutEffectAssetId.clear();
 	if (m_Pending.empty() || m_FrontReservation.has_value())
+	{
 		return EFFECT_PRODUCT_PREWARM_STEP_RESULT::IDLE;
+	}
 	if (m_bYieldNextFrame)
 	{
 		m_bYieldNextFrame = false;
@@ -240,18 +266,23 @@ Client::CEffectProductPrewarmQueue::Begin_Frame(
 	return EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY;
 }
 
+// 한 worker 창에 전달할 일반 pending 연속 구간을 복사한다. 다른 Loading 점유를 만나면 거기서 멈춘다.
 std::vector<std::string>
-Client::CEffectProductPrewarmQueue::Collect_PendingFrontTargets(
+CEffectProductPrewarmQueue::Collect_PendingFrontTargets(
 	const size_t iMaximumCount) const
 {
 	std::vector<std::string> Targets;
 	if (m_FrontReservation.has_value() || 0u == m_iCatalogRevision)
+	{
 		return Targets;
+	}
 	Targets.reserve((std::min)(iMaximumCount, m_Pending.size()));
 	for (const std::string& EffectId : m_Pending)
 	{
 		if (Targets.size() == iMaximumCount)
+		{
 			break;
+		}
 		const auto Record = m_Records.find(EffectId);
 		if (m_Records.end() == Record ||
 			TARGET_STATE::PENDING != Record->second.eState ||
@@ -264,8 +295,9 @@ Client::CEffectProductPrewarmQueue::Collect_PendingFrontTargets(
 	return Targets;
 }
 
-Client::EFFECT_PRODUCT_PREWARM_STEP_RESULT
-Client::CEffectProductPrewarmQueue::Begin_LoadingFrame(
+// Loading 결과를 반영할 때도 현재 선두와 epoch를 확인해 이전 작업의 완료가 다음 대상을 소비하지 못하게 한다.
+EFFECT_PRODUCT_PREWARM_STEP_RESULT
+CEffectProductPrewarmQueue::Begin_LoadingFrame(
 	const uint64_t iJobEpoch,
 	std::string& strOutEffectAssetId)
 {
@@ -291,7 +323,9 @@ Client::CEffectProductPrewarmQueue::Begin_LoadingFrame(
 	return EFFECT_PRODUCT_PREWARM_STEP_RESULT::READY;
 }
 
-bool Client::CEffectProductPrewarmQueue::Claim_LoadingTargets(
+// PresentationService가 작업 묶음을 열 때 현재 pending ID를 한 epoch에 배정한다.
+// 다른 epoch와 겹치거나 같은 epoch의 대상 집합이 달라지면 큐를 재배치하기 전에 거부한다.
+bool CEffectProductPrewarmQueue::Claim_LoadingTargets(
 	const uint64_t iJobEpoch,
 	const uint64_t iExpectedCatalogRevision,
 	const std::vector<std::string>& EffectAssetIds,
@@ -343,7 +377,9 @@ bool Client::CEffectProductPrewarmQueue::Claim_LoadingTargets(
 			return false;
 		}
 		if (ClaimedTargets.insert(EffectAssetId).second)
+		{
 			OrderedClaimedTargets.push_back(EffectAssetId);
+		}
 	}
 
 	const auto ExistingOwner = m_LoadingOwnerTargets.find(iJobEpoch);
@@ -355,13 +391,18 @@ bool Client::CEffectProductPrewarmQueue::Claim_LoadingTargets(
 		return false;
 	}
 
+	// 요청 순서를 Loading 선두로 만들고 나머지 일반 pending의 상대 순서는 유지한다.
 	std::deque<std::string> Reordered;
 	for (const std::string& EffectAssetId : OrderedClaimedTargets)
+	{
 		Reordered.push_back(EffectAssetId);
+	}
 	for (const std::string& EffectAssetId : m_Pending)
 	{
 		if (!ClaimedTargets.contains(EffectAssetId))
+		{
 			Reordered.push_back(EffectAssetId);
+		}
 	}
 
 	if (!ClaimedTargets.empty() &&
@@ -370,7 +411,9 @@ bool Client::CEffectProductPrewarmQueue::Claim_LoadingTargets(
 		m_LoadingOwnerTargets.emplace(iJobEpoch, ClaimedTargets);
 	}
 	for (const std::string& EffectAssetId : ClaimedTargets)
+	{
 		m_Records.find(EffectAssetId)->second.iLoadingOwnerEpoch = iJobEpoch;
+	}
 	m_Pending = std::move(Reordered);
 	strOutStatus = "Claimed " + std::to_string(ClaimedTargets.size()) +
 		" pending Product Effect targets for Loading epoch " +
@@ -378,7 +421,8 @@ bool Client::CEffectProductPrewarmQueue::Claim_LoadingTargets(
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Release_LoadingOwner(
+// 작업 중단 시 소유권만 반납한다. pending을 임의로 성공/실패 처리하지 않아 후속 준비가 다시 맡을 수 있다.
+bool CEffectProductPrewarmQueue::Release_LoadingOwner(
 	const uint64_t iJobEpoch,
 	const EFFECT_PRODUCT_LOADING_OWNER_RELEASE eDisposition,
 	std::string& strOutStatus)
@@ -426,13 +470,13 @@ bool Client::CEffectProductPrewarmQueue::Release_LoadingOwner(
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Has_LoadingOwner(
+bool CEffectProductPrewarmQueue::Has_LoadingOwner(
 	const uint64_t iJobEpoch) const
 {
 	return 0u != iJobEpoch && m_LoadingOwnerTargets.contains(iJobEpoch);
 }
 
-uint64_t Client::CEffectProductPrewarmQueue::Get_LoadingOwnerEpoch(
+uint64_t CEffectProductPrewarmQueue::Get_LoadingOwnerEpoch(
 	const std::string& strEffectAssetId) const
 {
 	const auto Record = m_Records.find(strEffectAssetId);
@@ -440,7 +484,8 @@ uint64_t Client::CEffectProductPrewarmQueue::Get_LoadingOwnerEpoch(
 		Record->second.iLoadingOwnerEpoch;
 }
 
-bool Client::CEffectProductPrewarmQueue::Prevalidate_Front(
+// 메인 스레드 게시 직전 호출한다. 대상·revision·epoch·실패 영수증이 모두 일치할 때만 예약을 발급한다.
+bool CEffectProductPrewarmQueue::Prevalidate_Front(
 	const std::string& strEffectAssetId,
 	const uint64_t iExpectedCatalogRevision,
 	const uint64_t iJobEpoch,
@@ -494,19 +539,26 @@ bool Client::CEffectProductPrewarmQueue::Prevalidate_Front(
 		return false;
 	}
 
+	// 실패 영수증과 선두 예약의 문자열 저장은 여기서 끝낸다. 이후 terminal commit에는 새 할당이 필요하지 않다.
 	uint64_t iNonce = m_iNextReservationNonce++;
 	if (0u == iNonce)
 	{
 		iNonce = m_iNextReservationNonce++;
 		if (0u == iNonce)
+		{
 			std::terminate();
+		}
 	}
 	Record->second.iReservationNonce = iNonce;
 	Record->second.bReservedPrepared = bPrepared;
 	if (bPrepared)
+	{
 		Record->second.Failure.reset();
+	}
 	else
+	{
 		Record->second.Failure = *pFailure;
+	}
 	m_FrontReservation = FRONT_RESERVATION{
 		iNonce, iExpectedCatalogRevision, iJobEpoch,
 		strEffectAssetId, bPrepared };
@@ -519,11 +571,14 @@ bool Client::CEffectProductPrewarmQueue::Prevalidate_Front(
 	return true;
 }
 
-void Client::CEffectProductPrewarmQueue::Commit_PrevalidatedFront(
+// catalog/renderer 게시가 끝난 뒤 동일 예약을 종결한다. 무효 토큰은 복구 가능한 대상 실패와 구분한다.
+void CEffectProductPrewarmQueue::Commit_PrevalidatedFront(
 	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&& Token) noexcept
 {
 	if (!Is_ReservationTokenCurrent(Token))
+	{
 		std::terminate();
+	}
 	const FRONT_RESERVATION& Reservation = *m_FrontReservation;
 	auto Record = m_Records.find(Reservation.strEffectAssetId);
 	if (m_Records.end() == Record || m_Pending.empty() ||
@@ -533,6 +588,7 @@ void Client::CEffectProductPrewarmQueue::Commit_PrevalidatedFront(
 		std::terminate();
 	}
 
+	// 결과 기록·FIFO 제거·Loading 점유 반환을 같은 메인 스레드 단계에서 끝내고 토큰을 무효화한다.
 	Record->second.eState = Reservation.bPrepared ?
 		TARGET_STATE::PREPARED : TARGET_STATE::FAILED;
 	Record->second.iReservationNonce = 0u;
@@ -550,7 +606,8 @@ void Client::CEffectProductPrewarmQueue::Commit_PrevalidatedFront(
 	Token.Invalidate();
 }
 
-bool Client::CEffectProductPrewarmQueue::Abort_PrevalidatedFront(
+// 외부 게시 rollback 뒤 예약과 임시 실패 값만 버린다. 원래 pending 대상과 Loading 소유자는 그대로다.
+bool CEffectProductPrewarmQueue::Abort_PrevalidatedFront(
 	EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN&& Token,
 	std::string& strOutStatus)
 {
@@ -574,7 +631,8 @@ bool Client::CEffectProductPrewarmQueue::Abort_PrevalidatedFront(
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Complete_Front(
+// 원인 영수증을 받지 않는 기존 일반 큐 호출도 동일한 예약/종결 계약으로 처리한다.
+bool CEffectProductPrewarmQueue::Complete_Front(
 	const std::string& strEffectAssetId,
 	const bool bPrepared,
 	std::string& strOutStatus)
@@ -604,7 +662,8 @@ bool Client::CEffectProductPrewarmQueue::Complete_Front(
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Commit_AllPrepared(
+// 이미 준비된 전체 ID 집합으로 큐 기록을 교체한다. 이 경로에서는 모든 대기와 Loading 점유를 비운다.
+bool CEffectProductPrewarmQueue::Commit_AllPrepared(
 	const std::set<std::string, std::less<>>& EffectAssetIds,
 	std::string& strOutStatus)
 {
@@ -637,7 +696,8 @@ bool Client::CEffectProductPrewarmQueue::Commit_AllPrepared(
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Commit_HotReloadPrepared(
+// 선택 Effect 하나의 준비 성공만 반영한다. Loading이 점유한 대상은 그 작업의 commit 순서를 보존한다.
+bool CEffectProductPrewarmQueue::Commit_HotReloadPrepared(
 	const std::string& strEffectAssetId,
 	std::string& strOutStatus)
 {
@@ -668,13 +728,15 @@ bool Client::CEffectProductPrewarmQueue::Commit_HotReloadPrepared(
 	Record->second = {};
 	Record->second.eState = TARGET_STATE::PREPARED;
 	if (0u != iLoadingOwnerEpoch)
+	{
 		Remove_LoadingOwnerTarget(iLoadingOwnerEpoch, strEffectAssetId);
+	}
 	strOutStatus =
 		"Committed selected Product Effect target as hot-reload prepared.";
 	return true;
 }
 
-bool Client::CEffectProductPrewarmQueue::Is_Prepared(
+bool CEffectProductPrewarmQueue::Is_Prepared(
 	const std::string& strEffectAssetId) const
 {
 	const auto Record = m_Records.find(strEffectAssetId);
@@ -682,8 +744,8 @@ bool Client::CEffectProductPrewarmQueue::Is_Prepared(
 		TARGET_STATE::PREPARED == Record->second.eState;
 }
 
-const Client::EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT*
-Client::CEffectProductPrewarmQueue::Find_FailureReceipt(
+const EFFECT_PRODUCT_PREWARM_FAILURE_RECEIPT*
+CEffectProductPrewarmQueue::Find_FailureReceipt(
 	const std::string& strEffectAssetId) const
 {
 	const auto Record = m_Records.find(strEffectAssetId);
@@ -696,19 +758,20 @@ Client::CEffectProductPrewarmQueue::Find_FailureReceipt(
 	return &*Record->second.Failure;
 }
 
-uint64_t Client::CEffectProductPrewarmQueue::Get_CatalogRevision() const
+uint64_t CEffectProductPrewarmQueue::Get_CatalogRevision() const
 {
 	return m_iCatalogRevision;
 }
 
 const std::set<std::string, std::less<>>&
-Client::CEffectProductPrewarmQueue::Get_Targets() const
+CEffectProductPrewarmQueue::Get_Targets() const
 {
 	return m_Targets;
 }
 
-Client::EFFECT_PRODUCT_PREWARM_QUEUE_PROBE
-Client::CEffectProductPrewarmQueue::Get_Probe() const
+// 전체 큐 진단은 ID별 상태로 집계한다. 실패 대상도 삭제하지 않아 같은 revision의 결과를 조회할 수 있다.
+EFFECT_PRODUCT_PREWARM_QUEUE_PROBE
+CEffectProductPrewarmQueue::Get_Probe() const
 {
 	EFFECT_PRODUCT_PREWARM_QUEUE_PROBE Probe;
 	Probe.iCatalogRevision = m_iCatalogRevision;
@@ -716,18 +779,25 @@ Client::CEffectProductPrewarmQueue::Get_Probe() const
 	for (const auto& [EffectAssetId, Record] : m_Records)
 	{
 		if (TARGET_STATE::PENDING == Record.eState)
+		{
 			++Probe.iPendingCount;
+		}
 		else if (TARGET_STATE::PREPARED == Record.eState)
+		{
 			++Probe.iPreparedCount;
+		}
 		else if (TARGET_STATE::FAILED == Record.eState)
+		{
 			++Probe.iFailedCount;
+		}
 	}
 	Probe.bYieldNextFrame = m_bYieldNextFrame;
 	return Probe;
 }
 
-Client::EFFECT_PRODUCT_PREWARM_TARGET_PROBE
-Client::CEffectProductPrewarmQueue::Get_TargetProbe(
+// 선택 대상만 중복 없이 집계한다. 무관한 background pending은 진입 완료 조건에 넣지 않는다.
+EFFECT_PRODUCT_PREWARM_TARGET_PROBE
+CEffectProductPrewarmQueue::Get_TargetProbe(
 	const std::vector<std::string>& EffectAssetIds,
 	const uint64_t iExpectedCatalogRevision) const
 {
@@ -742,27 +812,37 @@ Client::CEffectProductPrewarmQueue::Get_TargetProbe(
 	for (const std::string& EffectAssetId : EffectAssetIds)
 	{
 		if (!UniqueTargets.insert(EffectAssetId).second)
+		{
 			continue;
+		}
 		++Probe.iTargetCount;
 		const auto Record = m_Records.find(EffectAssetId);
 		if (m_Records.end() == Record)
+		{
 			++Probe.iUnavailableCount;
+		}
 		else if (TARGET_STATE::PENDING == Record->second.eState)
+		{
 			++Probe.iPendingCount;
+		}
 		else if (TARGET_STATE::PREPARED == Record->second.eState)
+		{
 			++Probe.iPreparedCount;
+		}
 		else if (TARGET_STATE::FAILED == Record->second.eState)
+		{
 			++Probe.iFailedCount;
+		}
 	}
 
-	/* Unavailable targets are terminal presentation failures for the current
-	   revision. They remain visible but do not hold a Level transition. */
+	// 미등록·실패 대상도 현재 revision에서 종결된 표시 실패로 센다. pending이 없으면 레벨 전환을 붙잡지 않는다.
 	Probe.bSettled = Probe.bCatalogRevisionCurrent &&
 		0u == Probe.iPendingCount;
 	return Probe;
 }
 
-bool Client::CEffectProductPrewarmQueue::Is_ReservationTokenCurrent(
+// 큐 주소뿐 아니라 nonce·revision·epoch·결과를 대조해 이전 예약 토큰의 재사용을 거부한다.
+bool CEffectProductPrewarmQueue::Is_ReservationTokenCurrent(
 	const EFFECT_PRODUCT_PREWARM_FRONT_COMMIT_TOKEN& Token) const
 {
 	return Token.Is_Valid() && Token.m_pOwner == this &&
@@ -773,22 +853,30 @@ bool Client::CEffectProductPrewarmQueue::Is_ReservationTokenCurrent(
 		Token.m_bPrepared == m_FrontReservation->bPrepared;
 }
 
-void Client::CEffectProductPrewarmQueue::Remove_LoadingOwnerTarget(
+// 한 대상 종결 후 남은 소유 ID가 없으면 epoch 항목도 제거해 다음 Loading 작업이 점유할 수 있게 한다.
+void CEffectProductPrewarmQueue::Remove_LoadingOwnerTarget(
 	const uint64_t iJobEpoch,
 	const std::string& strEffectAssetId) noexcept
 {
 	const auto Owner = m_LoadingOwnerTargets.find(iJobEpoch);
 	if (m_LoadingOwnerTargets.end() == Owner)
+	{
 		return;
+	}
 	Owner->second.erase(strEffectAssetId);
 	if (Owner->second.empty())
+	{
 		m_LoadingOwnerTargets.erase(Owner);
+	}
 }
 
-void Client::CEffectProductPrewarmQueue::Clear()
+// 외부 결과 게시 도중 기록이 사라지면 안 되므로 활성 예약을 먼저 해소해야 한다.
+void CEffectProductPrewarmQueue::Clear()
 {
 	if (m_FrontReservation.has_value())
+	{
 		std::terminate();
+	}
 	m_iCatalogRevision = 0u;
 	m_Pending.clear();
 	m_Targets.clear();
@@ -797,3 +885,5 @@ void Client::CEffectProductPrewarmQueue::Clear()
 	m_iNextReservationNonce = 1u;
 	m_bYieldNextFrame = false;
 }
+
+NS_END

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+import sys as _cpp_domain_sys
+from pathlib import Path as _CppDomainPath
+_cpp_domain_sys.path.insert(0, str(_CppDomainPath(__file__).resolve().parents[1] / "Build"))
+from cpp_source_domains import read_source_text
 
 import unittest
 import re
@@ -36,7 +40,7 @@ class ActionCompositionSequencerOccurrenceTimingContractTests(unittest.TestCase)
     @classmethod
     def setUpClass(cls) -> None:
         cls.header = WORKBENCH_H.read_text(encoding="utf-8")
-        cls.source = WORKBENCH_CPP.read_text(encoding="utf-8")
+        cls.source = read_source_text(WORKBENCH_CPP, encoding="utf-8")
         cls.balance_header = BALANCE_H.read_text(encoding="utf-8")
         cls.balance_source = BALANCE_CPP.read_text(encoding="utf-8")
         cls.sound_source = SOUND_CPP.read_text(encoding="utf-8")

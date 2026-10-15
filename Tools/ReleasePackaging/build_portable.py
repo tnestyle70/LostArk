@@ -62,8 +62,8 @@ def data_revisions(root=ROOT):
     presentation = read(root / 'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json')['sourceRevision']
     sequence = read(root / 'Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json')['revision']
     rows = [line.split('\t') for line in (root / 'Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap').read_text(encoding='utf-8-sig').splitlines()]
-    products = [int(row[3]) for row in rows if len(row) == 4 and row[0] == 'KOUKUSAYDONPRODUCTREVISION' and row[1] == 'ENCOUNTER_KAKULSAYDON_G1']
-    gates = [int(row[5]) for row in rows if len(row) > 5 and row[0] == 'RAIDGATE' and row[1] == 'ENCOUNTER_KAKULSAYDON_G1']
+    products = [int(row[3]) for row in rows if len(row) == 4 and row[0] == 'KOUKUSAYDONPRODUCTREVISION' and row[1] == 'ENCOUNTER_KOUKUSAYDON_G1']
+    gates = [int(row[5]) for row in rows if len(row) > 5 and row[0] == 'RAIDGATE' and row[1] == 'ENCOUNTER_KOUKUSAYDON_G1']
     assert products and action > 0 and action == encounter == presentation and all(p == action for p in products), 'Kouku source/Product mismatch'
     assert sequence > 0 and len(gates) == 4 and all(g == sequence for g in gates), 'Kouku Sequence/Server mismatch'
     return dict(sourceRevision=action, sequenceRevision=sequence)

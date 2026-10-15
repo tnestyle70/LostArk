@@ -45,7 +45,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 	Run_KoukuMarioEntryContact(tests);
 	Run_KoukuRaidIntegration(tests);
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         room->m_Players.clear(); room->m_PlayerIdBySessionId.clear(); room->m_iServerTick = 120u;
         tests.Require(room->m_eCooldownMode == COOLDOWN_MODE::DEBUG_THREE_SECONDS,
             "Every room starts with the 3s policy in Debug and Release builds");
@@ -70,13 +70,13 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
                 room->m_PlayerIdBySessionId.emplace(player.iSessionId, id);
                 room->m_Players.emplace(id, std::move(player));
             }
-            C2S_SET_COOLDOWN_MODE request{ 1u, WORLD_ID::KAKULSAYDON_ARENA, COOLDOWN_MODE::RELEASE_AUTHORED };
+            C2S_SET_COOLDOWN_MODE request{ 1u, WORLD_ID::KOUKUSAYDON_ARENA, COOLDOWN_MODE::RELEASE_AUTHORED };
             tests.Require(room->Apply_SetCooldownMode(999u, request) == SET_COOLDOWN_MODE_RESULT::INVALID_PLAYER,
                 "Cooldown policy rejects a session outside the room");
             request.eWorldId = WORLD_ID::BERN;
             tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::WRONG_WORLD,
                 "Cooldown policy rejects stale world requests");
-            request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+            request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
             tests.Require(room->Apply_SetCooldownMode(91u, request) == SET_COOLDOWN_MODE_RESULT::ACCEPTED &&
                 room->m_eCooldownMode == COOLDOWN_MODE::RELEASE_AUTHORED,
                 "Any admitted party member can select the shared room policy");
@@ -97,7 +97,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
     }
 
     {
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         room->m_WorldEntities.clear();
         SERVER_PLAYER player{}; player.iPlayerId = 91u; player.iSessionId = 92u;
         room->m_Players.emplace(player.iPlayerId, player);
@@ -110,18 +110,18 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
             boss.iOwnerBossNetEntityId = dependent ? 41u : INVALID_NET_ENTITY_ID;
             room->m_WorldEntities.push_back(std::move(boss));
         };
-        add("boss.kakulsaydon.g2.big-saydon", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", 41u);
-        add("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU", 42u);
-        add("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON", 43u);
-        add("summon.test", "BOSS_KAKULSAYDON_G2_KOUKU", 44u, true);
-        C2S_DEBUG_KILL_GATE_BOSSES request{1u, WORLD_ID::KAKULSAYDON_ARENA, "BOSS_KAKULSAYDON_G2_KOUKU"};
+        add("boss.koukusaydon.g2.big-saydon", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON", 41u);
+        add("boss.koukusaydon.g2.kouku", "BOSS_KOUKUSAYDON_G2_KOUKU", 42u);
+        add("boss.koukusaydon.g3.saydon", "BOSS_KOUKUSAYDON_G3_SAYDON", 43u);
+        add("summon.test", "BOSS_KOUKUSAYDON_G2_KOUKU", 44u, true);
+        C2S_DEBUG_KILL_GATE_BOSSES request{1u, WORLD_ID::KOUKUSAYDON_ARENA, "BOSS_KOUKUSAYDON_G2_KOUKU"};
         std::uint8_t count = 99u;
         tests.Require(room->Apply_DebugKillGateBosses(999u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::INVALID_PLAYER && !count,
             "Kill Gate Boss rejects an unauthenticated room player");
         request.eWorldId = WORLD_ID::VALTAN_ARENA;
         tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::WRONG_WORLD,
             "Kill Gate Boss rejects another world");
-        request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         tests.Require(room->Apply_DebugKillGateBosses(92u, request, count) == DEBUG_KILL_GATE_BOSSES_RESULT::ACCEPTED && count == 2u &&
             !room->m_WorldEntities[0].iCurrentHp && !room->m_WorldEntities[1].iCurrentHp &&
             room->m_WorldEntities[0].eAction == SERVER_ENTITY_ACTION::DEAD &&
@@ -233,7 +233,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				std::string::npos != room->m_strStatus.find("World map travel landing was refused"),
 				"A landing blocked during the song leaves the player where they stand");
 		}
-		auto koukuRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto koukuRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		SERVER_NAV_POINT noLanding{};
 		auto koukuStorage = std::make_unique<SERVER_PLAYER>();
 		koukuStorage->iCurrentHp = koukuStorage->iMaximumHp = 100u;
@@ -398,7 +398,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				"Solo map departure keeps the remaining Colosseum party member and its binding");
 		}
 	}
-		for (const WORLD_ID world : { WORLD_ID::BERN, WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		for (const WORLD_ID world : { WORLD_ID::BERN, WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			auto room = std::make_unique<CGameRoom>(world);
 			const auto* spawn = room->Find_AvailablePlayerSpawn();
@@ -507,8 +507,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			}
 		}
 		{
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
-			const auto* spawn = room->Find_Placement("player.spawn.kakul.party01");
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
+			const auto* spawn = room->Find_Placement("player.spawn.kouku.party01");
 			SERVER_NAV_POINT start{};
 			const bool ready = room->Is_Ready() && spawn && room->m_ServerNavigation.Sample_Position(spawn->fPositionX, spawn->fPositionZ, start);
 			tests.Require(ready, "Arena start resolves the authored stable spawn ID");
@@ -524,7 +524,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				peer.fPositionX = start.x + 30.f; peer.fPositionY = start.y; peer.fPositionZ = start.z;
 				// Gate entry cinematics now keep the authoring boss disabled. This cleanup
 				// fixture explicitly enables a copy through the real entity builder.
-				const auto* bossPlacement = room->Find_Placement("boss.kakulsaydon.g1.kouku");
+				const auto* bossPlacement = room->Find_Placement("boss.koukusaydon.g1.kouku");
 				if (bossPlacement && std::none_of(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
 					[&](const auto& entity) { return entity.strPlacementId == bossPlacement->strPlacementId; }))
 				{
@@ -538,7 +538,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					}
 				}
 				const auto initialBoss = std::find_if(room->m_WorldEntities.begin(), room->m_WorldEntities.end(),
-					[](const auto& entity) { return entity.strPlacementId == "boss.kakulsaydon.g1.kouku" &&
+					[](const auto& entity) { return entity.strPlacementId == "boss.koukusaydon.g1.kouku" &&
 						entity.eKind == WORLD_BOOTSTRAP_KIND::BOSS && !entity.isEstherSummon && entity.iCurrentHp != 0u; });
 				tests.Require(initialBoss != room->m_WorldEntities.end(), "Arena start fixture explicitly includes a live enabled boss");
 				const auto ownerId = initialBoss != room->m_WorldEntities.end() ? initialBoss->iNetEntityId : INVALID_NET_ENTITY_ID;
@@ -642,8 +642,8 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			}
 		}
 		{
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
-			const auto* center = room->Find_Placement("stage.kakul.sl03");
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
+			const auto* center = room->Find_Placement("stage.kouku.sl03");
 			SERVER_NAV_POINT ground{};
 			const bool ready = room->Is_Ready() && center && room->m_ServerNavigation.Project_Point(
 				center->fPositionX, center->fPositionZ, ground, center->fPositionY);
@@ -685,7 +685,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 		// Challenge choice belongs to the entrant and is independent of an outside captive.
 		for (std::uint32_t count = 1u; count <= 4u; ++count)
 		{
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			room->m_Players.clear();
 			for (std::uint32_t id = 1u; id <= count; ++id)
 			{
@@ -724,12 +724,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 		   A packet carries no destination, and acceptance cannot skip its flight. */
 		for (std::uint8_t stage = 1u; stage <= 4u; ++stage)
 		{
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			const char* terminals[] = { "", "Mario1_Trigger_5", "Mario2_Trigger_7", "Mario3_Trigger_12", "Mario4_Tigger_13" };
 			const auto* entrance = room->Find_Placement("Mario" + std::to_string(stage) + "_go");
 			const auto* terminal = room->Find_Placement(terminals[stage]);
 			const auto* intro = room->Find_Placement("Mario" + std::to_string(stage) + "_Intro");
-			const auto* gate3 = room->Find_Placement("stage.kakul.sl05");
+			const auto* gate3 = room->Find_Placement("stage.kouku.sl05");
 			SERVER_NAV_POINT origin{}, landing{};
 			const bool ready = room->Is_Ready() && entrance && entrance->TriggerActions.size() == 1u &&
 				terminal && terminal->TriggerActions.size() == 1u && gate3 && intro &&
@@ -848,7 +848,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				}
 				return false;
 			};
-			C2S_MARIO_RETURN request{}; request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			C2S_MARIO_RETURN request{}; request.iClientSequence = 1u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			std::vector<std::uint8_t> matchingSlots;
 			std::uint16_t wrongColourMask = 0u;
 			for (const auto& ball : room->m_WorldBootstrap.Get_MarioBalls())
@@ -886,7 +886,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			request.iClientSequence = 10u;
 			const auto accepted = room->Apply_MarioReturn(player, request);
 			tests.Require(accepted.eResult == MARIO_RETURN_RESULT::ACCEPTED && accepted.iClientSequence == 10u &&
-				accepted.eWorldId == WORLD_ID::KAKULSAYDON_ARENA && player.TriggerMove.isActive &&
+				accepted.eWorldId == WORLD_ID::KOUKUSAYDON_ARENA && player.TriggerMove.isActive &&
 				player.TriggerMove.strSourcePlacementId == terminal->strPlacementId &&
 				player.TriggerMove.fStartX == origin.x && player.TriggerMove.fStartZ == origin.z &&
 				player.TriggerMove.fTargetX == action.fTargetX && player.TriggerMove.fTargetY == landing.y &&
@@ -934,7 +934,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			request.iClientSequence = 11u; request.eWorldId = WORLD_ID::BERN;
 			tests.Require(room->Apply_MarioReturn(player, request).eResult == MARIO_RETURN_RESULT::REJECTED_WRONG_WORLD &&
 				sameState(player, original), "Cross-world Return cannot change the current Mario state");
-			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			for (unsigned state = 0u; state < 6u; ++state)
 			{
 				player = original;
@@ -997,7 +997,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 		for (const char* entranceId : { "Mario1_go", "Mario2_go", "Mario3_go", "Mario4_go" })
 		{
 			const std::uint8_t stage = static_cast<std::uint8_t>(entranceId[5] - '0');
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			const auto* entrance = room->Find_Placement(entranceId);
 			tests.Require(room->Is_Ready() && nullptr != entrance &&
 				!entrance->TriggerActions.empty(), "Mario jump loads authored entrance");
@@ -1173,7 +1173,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				}
 				room->m_iServerTick = 1000u;
 				C2S_INTERACTION_SLOT press{};
-				press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+				press.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 				press.eSlot = static_cast<INTERACTION_SLOT>(0);
 				press.iRequestSequence = player.iLastKoukuInteractionSequence + 1u;
 				room->Handle_InteractionSlot(player.iSessionId, press);
@@ -1233,7 +1233,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					player.eAction = PLAYER_ACTION_STATE::NONE;
 					room->m_iServerTick += 100u;
 					C2S_INTERACTION_SLOT press{};
-					press.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					press.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 					press.eSlot = static_cast<INTERACTION_SLOT>(0);
 					press.iRequestSequence = player.iLastKoukuInteractionSequence + 1u;
 					room->Handle_InteractionSlot(player.iSessionId, press);
@@ -1273,7 +1273,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				room->m_TickDamageEvents = std::move(savedDamage);
 			}
 			C2S_DEBUG_MARIO_JUMP request{};
-			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			request.iClientSequence = 1u;
 			request.eDirection = MARIO_DIRECTION::RIGHT;
 #ifndef _DEBUG
@@ -1357,7 +1357,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 				DEBUG_MARIO_JUMP_RESULT::REJECTED_PLAYER_STATE, "Mario jump rejects air chaining");
 			C2S_MARIO_MOVE arrows{};
 			arrows.iClientSequence = 1u;
-			arrows.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			arrows.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			arrows.eDirection = MARIO_DIRECTION::RIGHT;
 			room->Handle_MarioMove(player.iSessionId, arrows);
 			tests.Require(player.iMarioMoveExpiryTick == 0u && player.eAction == PLAYER_ACTION_STATE::TRIGGER_MOVE,
@@ -1415,7 +1415,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 			request.eWorldId = WORLD_ID::BERN;
 			tests.Require(room->Apply_DebugMarioJump(player, request).eResult ==
 				DEBUG_MARIO_JUMP_RESULT::REJECTED_WRONG_WORLD, "Mario jump rejects another world");
-			request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			++request.iClientSequence;
 			WORLD_BOOTSTRAP_PLACEMENT blocker = membershipBox;
 			blocker.eKind = WORLD_BOOTSTRAP_KIND::COLLISION_BOX;
@@ -1475,7 +1475,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 #endif
 		}
 		{
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			struct EXPECTED_LANE { std::uint8_t stage; const char* arrival; const char* exit; float sign; };
 			const EXPECTED_LANE lanes[]{
 				{1u,"Mario1_go","Mario1_Trigger_1",1.f},
@@ -1539,7 +1539,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					room->m_PlayerIdBySessionId[walker.iSessionId] = walker.iPlayerId;
 					room->Refresh_PlayerBlockingBodies();
 					C2S_MARIO_MOVE movement{};
-					movement.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					movement.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 					movement.eDirection = lane.sign > 0.f ? MARIO_DIRECTION::RIGHT : MARIO_DIRECTION::LEFT;
 					unsigned stationaryTicks = 0u;
 					unsigned walkedTicks = 0u;
@@ -1654,7 +1654,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 					room->m_PlayerIdBySessionId[walker.iSessionId] = walker.iPlayerId;
 					room->Refresh_PlayerBlockingBodies();
 					C2S_MARIO_MOVE movement{};
-					movement.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					movement.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 					movement.eDirection = MARIO_DIRECTION::RIGHT;
 					std::vector<SERVER_WORLD_TRANSFER_REQUEST> transfers;
 					std::vector<SERVER_INTERACT_PROMPT_EDGE> prompts;
@@ -1728,7 +1728,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_DebugTeleport(TESTS& tes
 						(player.fPositionZ - player.fMarioRailOriginZ) * player.fMarioRailRightX);
 				};
 				C2S_MARIO_MOVE intent{};
-				intent.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+				intent.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 				bool stableDepth = true;
 				for (unsigned cycle = 0; cycle < 30u; ++cycle)
 				{

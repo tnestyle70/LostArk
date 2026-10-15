@@ -1,10 +1,8 @@
 #include "Renderer.h"
+#include "GpuSceneVisibility.h"
 #include "OcclusionCuller.h"
 #include "BlendSortKey.h"
-#pragma push_macro("new")
-#undef new
 #include "DirectXTK/DDSTextureLoader.h"
-#pragma pop_macro("new")
 #include "Engine_RenderTypes.h"
 #include "Engine_VertexTypes.h"
 #include "Material.h"
@@ -120,6 +118,16 @@ namespace
 			weight += layer.fWeight;
 		}
 		return source.LutLayers.empty() || fabsf(weight - 1.f) < 0.0001f;
+	}
+
+	// 최종 합성과 효과의 역보정이 같은 source tone 입력을 사용하도록 packing을 공유한다.
+	float4_t PackSourceToneCurve(const SOURCE_POST_PROCESS_SETTINGS& source)
+	{
+		const float scale = (std::max)(0.000001f, source.fToneScale);
+		const float inverseScale = 1.f / scale;
+		const float curveA = .22f * inverseScale;
+		const float curveB = 1.f / (source.fToneRange / (source.fToneRange + curveA));
+		return float4_t(curveA, curveB, sqrtf(curveB * curveA * inverseScale) - curveA, scale);
 	}
 
 	bool_t SameSourceGrading(const SOURCE_POST_PROCESS_SETTINGS& a, const SOURCE_POST_PROCESS_SETTINGS& b)
@@ -277,7 +285,7 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-    // Source character direct lighting needs UV and its full tangent basis.
+    // 원본 캐릭터 직접광 계산에는 UV와 전체 tangent basis가 필요하다.
     if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_CharacterSurface"), vViewportSize.x, vViewportSize.y,
         DXGI_FORMAT_R32G32B32A32_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))) ||
         FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_CharacterGeometry"), vViewportSize.x, vViewportSize.y,
@@ -300,12 +308,12 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	// One shared full-resolution contribution target for all effects, never one per skill.
+	// 모든 이펙트가 하나의 전체 해상도 contribution target을 공유한다.
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_SceneBloom"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	/* Refractive effects read this snapshot while SceneHDR remains the output. */
+	/* 굴절 이펙트는 이 snapshot을 읽고 결과는 SceneHDR에 쓴다. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_EffectSceneColor"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
@@ -314,7 +322,7 @@ HRESULT CRenderer::Initialize()
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
 
-	/* Signed offsets: RG for ordinary effects, BA for receiver-isolated noise. */
+	/* 부호 있는 변위의 RG는 일반 이펙트, BA는 receiver를 분리한 noise용이다. */
 	if (FAILED(CGameInstance::Get().Add_RenderTarget(TEXT("Target_Distortion"), vViewportSize.x, vViewportSize.y,
 		DXGI_FORMAT_R16G16B16A16_FLOAT, float4_t(0.f, 0.f, 0.f, 0.f))))
 		return E_FAIL;
@@ -525,12 +533,12 @@ void CRenderer::Commit_ViewportResize(CTarget_Manager& targets, VIEWPORT_RESIZE_
     }
     m_iScenePostWidth = staged.Width; m_iScenePostHeight = staged.Height;
     m_iScenePostFinalTarget = 0u;
-    // Keep a pending scene-color capture request for the next draw at the new size.
+    // 대기 중인 scene-color capture 요청은 크기 변경 뒤 다음 draw로 넘긴다.
     XMStoreFloat4x4(&m_WorldMatrix, XMMatrixScaling(static_cast<f32_t>(staged.Width),
         static_cast<f32_t>(staged.Height), 1.f));
     XMStoreFloat4x4(&m_ProjMatrix, XMMatrixOrthographicLH(static_cast<f32_t>(staged.Width),
         static_cast<f32_t>(staged.Height), 0.f, 1.f));
-    // Quality, source LUTs, scene environment and fixed-resolution shadow resources survive.
+    // quality·원본 LUT·scene 환경·고정 해상도 그림자 자원은 크기 변경 때 유지한다.
 }
 
 HRESULT CRenderer::Request_Portrait(PORTRAIT_REQUEST Request)
@@ -662,8 +670,7 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 	if (!IsValidRenderQualitySettings(Settings))
 		return E_INVALIDARG;
 
-    // Load the optional program before committing any settings. A missing or
-    // invalid program rejects the experiment while retaining the prior profile.
+    // 설정 commit 전에 선택 program을 읽는다. 누락·오류면 이전 profile을 유지하고 실험을 거절한다.
     if ((Settings.bSSGIEnabled || Settings.bSSREnabled) && !m_pScreenSpaceLightingShader)
     {
         auto stagedShader = CShader::Create(m_pDevice, m_pContext,
@@ -689,17 +696,34 @@ HRESULT CRenderer::Apply_RenderQualitySettings(
 			const HRESULT result = Stage_SourceGradingLut(Settings.SourcePostProcess,
 				Settings.fGamma, stagedLut);
 			if (FAILED(result)) return result;
-			// Keep the prior resource available for profile/region rollback. This
-			// bounded cache retains immutable source pixels along with each key.
+			// profile·region rollback에 쓸 이전 자원을 유지한다. 상한 있는 cache가 key와 불변 원본 pixel을 보관한다.
 			m_SourceGradingCache.push_back({Settings.SourcePostProcess, Settings.fGamma, stagedLut});
 			if (m_SourceGradingCache.size() > 8u) m_SourceGradingCache.erase(m_SourceGradingCache.begin());
 		}
 	}
 	m_pSourceGradingLut = stagedLut;
-	// Masked static casters sample the same surface mips as their color pass.
+	// masked 정적 그림자는 색상 pass와 같은 surface mip을 읽는다.
 	if (m_RenderQualitySettings.iTextureMinMip != Settings.iTextureMinMip)
 		m_bStaticShadowCacheValid = false;
 	m_RenderQualitySettings = Settings;
+	return S_OK;
+}
+
+HRESULT CRenderer::Bind_ActiveSceneColorTransform(CShader* shader) const
+{
+	if (nullptr == shader) return E_INVALIDARG;
+	const auto& source = m_RenderQualitySettings.SourcePostProcess;
+	const int32_t enabled = source.bEnabled ? 1 : 0;
+	if (enabled != 0 && !m_pSourceGradingLut) return E_FAIL;
+	const float4_t curve = PackSourceToneCurve(source);
+	const float exposure = m_RenderQualitySettings.fExposure;
+	// Render thread가 commit한 설정과 LUT를 함께 차용한다. 실패는 호출자의 draw를 중단하며,
+	// source OFF도 매번 바인딩해 이전 occurrence의 활성 상태나 LUT가 남지 않게 한다.
+	if (FAILED(shader->Bind_RawValue("g_iSourcePostProcessEnabled", &enabled, sizeof(enabled))) ||
+		FAILED(shader->Bind_RawValue("g_vSourceToneCurve", &curve, sizeof(curve))) ||
+		FAILED(shader->Bind_RawValue("g_fSourceToneToe", &source.fToneToe, sizeof(source.fToneToe))) ||
+		FAILED(shader->Bind_RawValue("g_fToneMapExposure", &exposure, sizeof(exposure))) ||
+		FAILED(shader->Bind_Texture("g_SourceGradingLut", m_pSourceGradingLut))) return E_FAIL;
 	return S_OK;
 }
 
@@ -746,6 +770,8 @@ namespace
 	}
 }
 
+// RenderingProfileService가 Resources의 RGBM DDS cube와 색·회전을 후보로 준비한다. SRV 검증 실패 시 outState와 활성 환경을 유지한다.
+// 같은 경로는 기존 ComPtr를 공유하며 forceReload일 때만 다시 읽는다. SH 계수는 호출자가 후보에 별도로 채운 뒤 Commit한다.
 HRESULT CRenderer::Stage_RenderEnvironment(const wstring_t& cubePath,
     const float4_t& color, const float4_t& rotationIntensity,
     RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload) const
@@ -766,7 +792,7 @@ HRESULT CRenderer::Stage_RenderEnvironment(const wstring_t& cubePath,
     if (!cubePath.empty() && !forceReload && cubePath == m_RenderEnvironment.strCubePath &&
         m_RenderEnvironment.pCube)
     {
-        // Quality edits and mood changes in the same scene retain its staged cube.
+        // 같은 scene의 quality·분위기 편집에서는 준비한 cube를 유지한다.
         staged.pCube = m_RenderEnvironment.pCube;
     }
     else if (!cubePath.empty())
@@ -787,6 +813,7 @@ HRESULT CRenderer::Stage_RenderEnvironment(const wstring_t& cubePath,
     return S_OK;
 }
 
+// 준비된 cube의 COM 참조와 값 데이터를 Renderer의 활성 환경으로 복사한다. 파일 저장이나 cube/SH 재생성은 수행하지 않는다.
 void CRenderer::Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state)
 {
     m_RenderEnvironment = state;
@@ -860,8 +887,7 @@ void CRenderer::Advance_PresentationClock(f32_t fTimeDelta)
 	if (!std::isfinite(fTimeDelta) || fTimeDelta < 0.f)
 		return;
 
-	/* Wrapping keeps the drift phase exact after long sessions instead of
-	   letting float precision quantise the sine input. */
+	/* 위상을 감아 장시간 실행에서도 sine 입력의 float 정밀도 손실을 줄인다. */
 	constexpr f32_t CLOCK_WRAP_SECONDS = 3600.f;
 	m_fPresentationClock = fmodf(
 		m_fPresentationClock + fTimeDelta, CLOCK_WRAP_SECONDS);
@@ -917,9 +943,7 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_Shadow", hResult);
-	/* Portraits borrow the world G-buffer before the world fills it: Begin_MRT clears every
-	target, so Render_NonBlend below starts from a clean sheet whatever a portrait wrote. A
-	portrait failure is isolated -- the queue is dropped and the world frame continues. */
+	/* portrait는 world 전에 G-buffer를 차용한다. 이후 world Begin_MRT가 target을 비우며 portrait 실패는 queue만 버리고 world frame을 계속한다. */
 	{
 		CProfilerScope scope(pProfiler, "Render.Portraits");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.Portraits", true);
@@ -933,7 +957,7 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 	}
 	if (FAILED(hResult))
 		return FailFrame("Render_NonBlend", hResult);
-	// Preserve only opaque depth before forward effects or UI can write to it.
+	// forward 이펙트·UI가 depth를 쓰기 전에 opaque depth만 보관한다.
 	hResult = Capture_PickingDepth();
 	if (FAILED(hResult))
 		return FailFrame("Capture_PickingDepth", hResult);
@@ -953,9 +977,7 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 	if (FAILED(hResult))
 		return FailFrame("Render_Lights", hResult);
 
-	/* Scene colour is accumulated in FP16 so lighting and effect values above 1 */
-	/* survive until tone mapping. Sky/background join the same target, or the   */
-	/* final blit would overwrite them with black.                               */
+	/* 조명·이펙트의 1 초과 HDR 값을 FP16에 유지하고 sky·배경도 같은 target에 합친 뒤 tone mapping한다. */
 	hResult = CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"));
 	if (FAILED(hResult))
 		return FailFrame("Begin_MRT_SceneHDR", hResult);
@@ -984,18 +1006,17 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 		if (SUCCEEDED(hSceneResult))
 			hSceneResult = Render_Blend();
 
-		// Opt-in cinematic UI participates in scene post effects (e.g. glass).
-		// Ordinary HUD/UI stays in display space after the final composite.
+		// 명시적으로 선택한 cinematic UI는 scene 후처리에 참여하고 일반 HUD는 최종 합성 뒤 display 공간에 그린다.
 		for (const auto& object : m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)])
             if (object && SUCCEEDED(hSceneResult))
             {
-                // Presentation UI is optional; a failed sprite cannot discard the world frame.
+                // 선택적 presentation UI의 실패가 world frame 전체를 버리지 않게 한다.
                 const HRESULT uiResult = object->Render_Group(RENDERGROUP::SCENE_UI);
                 if (FAILED(uiResult)) WriteRendererFailure("Render_SceneUI_Isolated", uiResult);
             }
 		m_RenderObjects[ETOUI(RENDERGROUP::SCENE_UI)].clear();
 
-		/* Always restore the back-buffer/DSV pair after entering the HDR MRT. */
+		/* HDR MRT에 진입한 뒤에는 back buffer·DSV 쌍을 항상 복원한다. */
 		hEndSceneResult = CGameInstance::Get().End_MRT();
 	}
 	if (FAILED(hSceneResult) || FAILED(hEndSceneResult))
@@ -1037,7 +1058,7 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 	if (FAILED(hResult))
 		return FailFrame("Render_DisplayOverlays", hResult);
 
-	/* UI is authored in display space, so it stays out of the HDR target. */
+	/* UI는 display 공간에서 저작하므로 HDR target 밖에서 그린다. */
 	{
 		CProfilerScope scope(pProfiler, "Render.UI");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.UI", true);
@@ -1054,8 +1075,7 @@ HRESULT CRenderer::Draw(const bool staticOcclusionAllowed)
 	if (FAILED(hResult))
 		return FailFrame("Render_Debug", hResult);
 
-	// PickPos also carries deferred surface data. All visual consumers must finish
-	// before forward-only receivers replace its positions for the next input frame.
+	// PickPos의 deferred 표면 정보를 모두 사용한 뒤 다음 입력 프레임용 forward receiver 위치로 교체한다.
 	{
 		CProfilerScope scope(pProfiler, "Render.Picking");
 		CProfilerGpuScope gpuScope(pProfiler, "Render.Picking");
@@ -1083,8 +1103,7 @@ HRESULT CRenderer::Render_Priority()
     CProfiler* const profiler = CGameInstance::Get().Get_Profiler();
     CProfilerScope cpuScope(profiler, "Render.Priority");
     CProfilerGpuScope gpuScope(profiler, "Render.Priority");
-	// Index iteration permits callbacks to append without retaining vector
-	// iterators or element references; the queue still owns every object.
+	// callback이 queue에 추가할 수 있어 iterator·원소 참조를 유지하지 않고 index로 순회한다. 객체 수명은 queue가 유지한다.
 	for (size_t renderIndex = 0; renderIndex < m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)].size(); ++renderIndex)
 	{
 		CGameObject* const pRenderObject = m_RenderObjects[ETOUI(RENDERGROUP::PRIORITY)][renderIndex].get();
@@ -1164,8 +1183,7 @@ HRESULT CRenderer::Render_Shadow()
         return E_FAIL;
     }
 
-    // Keep the existing target manager's saved output pair. Only unbind the
-    // depth target for CopyResource; beginning another pass would clear it.
+    // target manager의 저장된 출력 쌍을 유지한다. CopyResource 동안 depth만 unbind해 새 pass 시작에 의한 clear를 피한다.
     const auto copyDepth = [&](ID3D11Texture2D* destination, ID3D11Texture2D* source)
     {
         CProfilerScope scope(game.Get_Profiler(), "Render.Shadow.CacheCopy");
@@ -1241,8 +1259,7 @@ HRESULT CRenderer::Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SE
         settings.NpcPoseReuseEnabled == m_RenderOptimization.NpcPoseReuseEnabled &&
         settings.ParticleRootCacheEnabled == m_RenderOptimization.ParticleRootCacheEnabled &&
         settings.ParticleWorkersEnabled == m_RenderOptimization.ParticleWorkersEnabled) return S_OK;
-    // The caller's revision is not an authority. Equal repeated applications
-    // must preserve warm caches, including profile preview's per-frame update.
+    // 호출자의 revision만으로 변경을 확정하지 않는다. 동일한 반복 적용은 준비된 cache를 유지한다.
     const uint64_t revision = m_RenderOptimization.Revision + 1u;
     m_RenderOptimization = settings;
     m_RenderOptimization.Revision = revision ? revision : 1u;
@@ -1256,7 +1273,9 @@ HRESULT CRenderer::Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& se
     if (!std::isfinite(settings.DistanceScale) || settings.DistanceScale < .25f || settings.DistanceScale > 4.f ||
         !std::isfinite(settings.DistanceMaxPixels) || settings.DistanceMaxPixels < 4.f || settings.DistanceMaxPixels > 128.f)
         return E_INVALIDARG;
-    if (settings.OcclusionEnabled == m_MapVisibility.OcclusionEnabled &&
+    if (settings.GpuVisibilityEnabled == m_MapVisibility.GpuVisibilityEnabled &&
+        settings.GpuHiZEnabled == m_MapVisibility.GpuHiZEnabled &&
+        settings.OcclusionEnabled == m_MapVisibility.OcclusionEnabled &&
         settings.DistanceEnabled == m_MapVisibility.DistanceEnabled &&
         settings.ParallelPreparationEnabled == m_MapVisibility.ParallelPreparationEnabled && settings.DistanceScale == m_MapVisibility.DistanceScale &&
         settings.DistanceMaxPixels == m_MapVisibility.DistanceMaxPixels) return S_OK;
@@ -1297,8 +1316,7 @@ void CRenderer::Cull_StaticOcclusion()
             const float area = radius * radius * projection->_11 * projection->_22 / (depth * depth);
             const size_t slot = m_OcclusionCandidates.size();
             m_OcclusionCandidates.push_back({i, desc, area / std::sqrt(float((std::max)(1u, desc.OccluderTriangles)))});
-            // Tiny screen coverage cannot repay rasterization overhead. Large
-            // near-plane envelopes remain safe: the kernel clips/rejects them.
+            // 화면 점유가 너무 작으면 rasterization을 생략한다. near-plane을 크게 가로지르는 경계는 kernel에서 clip·거부한다.
             if (desc.OccluderTriangles && std::isfinite(area) && area >= .002f) m_OccluderOrder.push_back(slot);
         }
         if (profiler) profiler->Add_Counter(EProfilerCounter::MapOcclusionCandidates, m_OcclusionCandidates.size());
@@ -1337,8 +1355,7 @@ void CRenderer::Cull_StaticOcclusion()
                 for (const size_t slot : m_OccluderOrder)
                 {
                     if (occluders >= maximumOccluders || m_OcclusionCuller->GetInputTriangles() >= triangleBudget) break;
-                    // A bounded partial depth buffer is always safe; it can only
-                    // miss opportunities. Never carry an old camera's hidden set.
+                    // 일부 depth만 채운 경우 가림 제거 기회만 줄어든다. 이전 카메라의 hidden 집합은 재사용하지 않는다.
                     if (std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() > 1.5) break;
                     const auto& candidate = m_OcclusionCandidates[slot];
                     const auto count = objects[candidate.Index]->Rasterize_StaticOccluder(*m_OcclusionCuller,
@@ -1351,7 +1368,7 @@ void CRenderer::Cull_StaticOcclusion()
                 profiler->Add_Counter(EProfilerCounter::MapOcclusionOccluders, occluders);
                 profiler->Add_Counter(EProfilerCounter::MapOcclusionRasterizedTriangles, m_OcclusionCuller->GetRasterizedTriangles());
             }
-            // Cache a visible-only result too when the same camera produced no depth.
+            // 같은 카메라에서 depth가 없어 모두 visible이었던 결과도 cache한다.
         }
         uint64_t rejected = 0u, draws = 0u, indices = 0u, tested = 0u;
         {
@@ -1380,8 +1397,7 @@ void CRenderer::Cull_StaticOcclusion()
             m_OcclusionCacheValid = true;
         }
         if (!rejected) return;
-        // Commit one stable queue after every test. Original shadow/forward
-        // queues and owners survive, and adjacent instance batching still runs.
+        // 모든 검사를 끝낸 뒤 안정된 queue를 commit한다. 원래 그림자·forward queue와 소유 참조, 인접 instance batch는 유지한다.
         m_OcclusionVisibleQueue.reserve(objects.size() - size_t(rejected));
         for (size_t i = 0; i < objects.size(); ++i)
             if (m_OcclusionHidden[i] != 1u) m_OcclusionVisibleQueue.push_back(objects[i]);
@@ -1397,8 +1413,125 @@ void CRenderer::Cull_StaticOcclusion()
     catch (...) { m_OcclusionVisibleQueue.clear(); } // Keep the original queue on preparation failure.
 }
 
+void CRenderer::Register_GpuSceneVisibility(const shared_ptr<CGpuSceneVisibility>& scene)
+{
+    if (!scene) return;
+    for (auto it = m_GpuScenes.begin(); it != m_GpuScenes.end();)
+    {
+        auto existing = it->lock();
+        if (!existing) it = m_GpuScenes.erase(it);
+        else { if (existing == scene) return; ++it; }
+    }
+    m_GpuScenes.emplace_back(scene);
+}
+
+void CRenderer::Unregister_GpuSceneVisibility(const CGpuSceneVisibility* scene)
+{
+    std::erase_if(m_GpuScenes, [scene](const auto& weak)
+    { const auto locked = weak.lock(); return !locked || locked.get() == scene; });
+}
+
+bool CRenderer::Prepare_GpuSceneVisibility(bool staticOcclusionAllowed)
+{
+    if (m_GpuScenes.empty()) return false;
+    auto& game = CGameInstance::Get();
+    CProfiler* profiler = game.Get_Profiler();
+    CProfilerScope scope(profiler, "Render.GpuScene.Prepare");
+    std::vector<shared_ptr<CGpuSceneVisibility>> scenes;
+    for (auto it = m_GpuScenes.begin(); it != m_GpuScenes.end();)
+    {
+        if (auto scene = it->lock()) { scene->Invalidate_Frame(); scenes.push_back(std::move(scene)); ++it; }
+        else it = m_GpuScenes.erase(it);
+    }
+    if (!m_MapVisibility.GpuVisibilityEnabled) return false;
+    const auto* view = game.Get_Transform(D3DTS::VIEW);
+    const auto* projection = game.Get_Transform(D3DTS::PROJ);
+    const auto* camera = game.Get_CamPosition();
+    const auto viewport = game.Get_ViewportSize();
+    if (!view || !projection || !camera || viewport.x <= 0 || viewport.y <= 0) return false;
+    CGpuSceneVisibility::FRAME frame;
+    frame.View = *view; frame.Projection = *projection;
+    frame.Camera = {camera->x,camera->y,camera->z};
+    frame.Width = static_cast<uint32_t>(viewport.x); frame.Height = static_cast<uint32_t>(viewport.y);
+    if (++m_GpuVisibilityFrame == 0u) ++m_GpuVisibilityFrame;
+    frame.FrameId = m_GpuVisibilityFrame;
+    frame.DistanceEnabled = m_MapVisibility.DistanceEnabled;
+    frame.DistanceScale = m_MapVisibility.DistanceScale;
+    frame.MeshLodEnabled = m_RenderOptimization.MeshLodEnabled;
+    frame.FrustumEnabled = m_RenderOptimization.FrustumEnabled;
+    frame.HiZEnabled = staticOcclusionAllowed && m_MapVisibility.OcclusionEnabled && m_MapVisibility.GpuHiZEnabled;
+    std::erase_if(scenes,[&frame](const auto& scene) { return scene->Prepare_Frame(frame) != S_OK; });
+    if (scenes.empty()) return false;
+
+    ID3D11ShaderResourceView* depth = nullptr;
+    uint32_t mipCount = 0u;
+    uint64_t ownerCount = 0u, binCount = 0u;
+    for (const auto& scene : scenes)
+    { ownerCount += scene->Get_Statistics().ActiveOwners; binCount += scene->Get_Statistics().Bins; }
+    // 상주 맵 전체 크기는 기본 카메라에서도 같으므로 HiZ 이득 판단에 쓰지 않는다.
+    // mesh별 active lane 중 같은 instance는 한 번만 세고 기존 가림자 draw/triangle 예산을 함께 제한한다.
+    if (frame.HiZEnabled && ownerCount >= 128u && binCount >= 8u)
+    {
+        CProfilerScope depthScope(profiler,"Render.GpuScene.StaticDepthHiZ");
+        CProfilerGpuScope depthGpuScope(profiler,"Render.GpuScene.StaticDepthHiZ",true);
+        if (!m_GpuHiZ && !m_GpuHiZUnavailable)
+        {
+            auto candidate = std::make_unique<CGpuVisibilityHiZ>(m_pDevice.Get(),m_pContext.Get());
+            if (SUCCEEDED(candidate->Initialize())) m_GpuHiZ = std::move(candidate);
+            else m_GpuHiZUnavailable = true;
+        }
+        struct Candidate { shared_ptr<CGameObject> Object; CGameObject::STATIC_OCCLUSION_DESC Desc; float Score; };
+        std::vector<Candidate> candidates;
+        if (m_GpuHiZ)
+        {
+            for (const auto& object : m_RenderObjects[ETOUI(RENDERGROUP::NONBLEND)])
+            {
+                CGameObject::STATIC_OCCLUSION_DESC desc{};
+                if (!object || !object->Try_GetVisibilityDepthDesc(desc) || !desc.OccluderTriangles || !desc.Draws || desc.Draws > 32u) continue;
+                const float3_t center{(desc.BoundsMin.x+desc.BoundsMax.x)*.5f,(desc.BoundsMin.y+desc.BoundsMax.y)*.5f,(desc.BoundsMin.z+desc.BoundsMax.z)*.5f};
+                const float dx = desc.BoundsMax.x-desc.BoundsMin.x, dy = desc.BoundsMax.y-desc.BoundsMin.y, dz = desc.BoundsMax.z-desc.BoundsMin.z;
+                const float ex = center.x-camera->x, ey = center.y-camera->y, ez = center.z-camera->z;
+                const float score = (dx*dx+dy*dy+dz*dz)/std::max(1.f,ex*ex+ey*ey+ez*ez)/std::sqrt(static_cast<float>(desc.OccluderTriangles));
+                if (std::isfinite(score) && score > 0.f) candidates.push_back({object,desc,score});
+            }
+            std::stable_sort(candidates.begin(),candidates.end(),[](const auto& a,const auto& b) { return a.Score > b.Score; });
+            if (!candidates.empty() && SUCCEEDED(m_GpuHiZ->Begin_Depth(frame.Width,frame.Height)))
+            {
+                uint32_t triangles = 0u, draws = 0u;
+                bool valid = true;
+                const auto begin = std::chrono::steady_clock::now();
+                for (const auto& candidate : candidates)
+                {
+                    if (draws+candidate.Desc.Draws > 32u || triangles >= 80000u) continue;
+                    uint32_t drawn = 0u;
+                    const HRESULT hr = candidate.Object->Render_VisibilityDepth(80000u-triangles,drawn);
+                    if (FAILED(hr) || drawn > 80000u-triangles) { valid = false; break; }
+                    if (hr == S_OK && drawn) { triangles += drawn; draws += candidate.Desc.Draws; }
+                    if (std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count() >= 2.) break;
+                }
+                if (m_GpuHiZ->End_Depth(valid && triangles != 0u) == S_OK)
+                { depth = m_GpuHiZ->Get_SRV(); mipCount = m_GpuHiZ->Get_MipCount(); }
+            }
+        }
+    }
+    bool dispatched = false;
+    {
+        CProfilerScope dispatchScope(profiler,"Render.GpuScene.Dispatch");
+        CProfilerGpuScope dispatchGpuScope(profiler,"Render.GpuScene.Dispatch");
+        for (const auto& scene : scenes)
+        {
+            if (scene->Dispatch(frame,depth,mipCount) == S_OK) dispatched = true;
+            else scene->Invalidate_Frame();
+        }
+    }
+    return dispatched;
+}
+
 HRESULT CRenderer::Render_NonBlend(const bool staticOcclusionAllowed)
 {
+    // GPU는 호환 cohort만 소유한다. 준비 성공으로 잔여 CPU 배치의 기존 가림까지
+    // 건너뛰지 않는다. GPU-ready callback은 객체의 descriptor가 명시적으로 거절한다.
+    Prepare_GpuSceneVisibility(staticOcclusionAllowed);
     if (staticOcclusionAllowed) Cull_StaticOcclusion();
     CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 	/* Diffuse + Normal */
@@ -1427,8 +1560,7 @@ HRESULT CRenderer::Render_NonBlend(const bool staticOcclusionAllowed)
 		renderIndex += consumed;
 	}
 
-	/* Deferred overlays must run after every opaque object while the complete
-	   game-object MRT, including Target_Emissive, is still bound. */
+	/* 모든 opaque 객체 뒤에 Target_Emissive를 포함한 game-object MRT가 바인딩된 상태로 deferred overlay를 그린다. */
 	for (size_t renderIndex = 0; renderIndex < DeferredOverlayObjects.size(); ++renderIndex)
 	{
 		CGameObject* const pRenderObject = DeferredOverlayObjects[renderIndex].get();
@@ -1545,10 +1677,7 @@ HRESULT CRenderer::Render_SSAOPass(
 	return hResult;
 }
 
-/* A portrait is the deferred frame run once more with the portrait camera, before the world
-fills the same targets. Every stage below the subject draw is the world's own, called rather
-than copied, so the portrait lands on the same lighting, the same SourceCharacter light passes
-and the same tone curve as the field. */
+/* world 전에 같은 target을 portrait 카메라로 렌더한다. 조명·SourceCharacter pass·tone mapping은 world의 기존 함수를 재사용한다. */
 HRESULT CRenderer::Render_Portraits()
 {
 	if (m_PortraitRequests.empty())
@@ -1573,34 +1702,26 @@ HRESULT CRenderer::Render_Portraits()
 	uint32_t iPreviousViewportCount = D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 	D3D11_VIEWPORT PreviousViewports[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]{};
 	m_pContext->RSGetViewports(&iPreviousViewportCount, PreviousViewports);
-	/* The last resolve leaves a portrait target bound. Begin_MRT saves whatever is bound as the
-	target it restores on End_MRT, so the world pass that follows would adopt the portrait
-	texture as its back buffer and draw the rest of the frame into it. */
+	/* portrait resolve가 남긴 target을 복원해야 이후 world Begin_MRT가 portrait texture를 back buffer로 저장하지 않는다. */
 	ID3D11RenderTargetView* PreviousRTVs[D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT]{};
 	ComPtr<ID3D11DepthStencilView> pPreviousDSV;
 	m_pContext->OMGetRenderTargets(_countof(PreviousRTVs), PreviousRTVs, &pPreviousDSV);
-	/* Target_SSAOBlur still holds the world's occlusion, computed from a G-buffer the portrait
-	is about to overwrite, and a portrait is too small for its own SSAO pass to be worth a frame.
-	The lighting pass reads this flag, so it is cleared for the duration. */
+	/* portrait가 G-buffer를 덮어쓰므로 이전 world SSAO를 사용할 수 없다. portrait 렌더 동안 SSAO 사용을 끈다. */
 	const bool_t bPreviousSSAO = m_RenderQualitySettings.bSSAOEnabled;
 	m_RenderQualitySettings.bSSAOEnabled = false;
 
 	HRESULT hLastFailure = S_OK;
 	for (const PORTRAIT_REQUEST& Request : m_PortraitRequests)
 	{
-		// Every request borrows the full-size targets. The preceding resolve changed
-		// both viewport and depth binding to the small portrait destination.
+		// 각 요청은 전체 크기 target을 차용한다. 이전 resolve가 바꾼 작은 viewport·depth 바인딩을 다시 설정한다.
 		m_pContext->OMSetRenderTargets(_countof(PreviousRTVs), PreviousRTVs, pPreviousDSV.Get());
 		SetUp_ViewportDesc(m_iScenePostWidth, m_iScenePostHeight);
 		CGameInstance::Get().Set_Transform(D3DTS::VIEW, XMLoadFloat4x4(&Request.ViewMatrix));
 		CGameInstance::Get().Set_Transform(D3DTS::PROJ, XMLoadFloat4x4(&Request.ProjMatrix));
-		/* Lighting and the combine rebuild world position from the inverse matrices and the
-		camera position, and those are derived once per frame from whatever was last set. Without
-		this the portrait is shaded as if the world camera were still the one looking at it. */
+		/* portrait 카메라의 역행렬·위치를 다시 계산해 world 카메라 기준으로 조명·합성되는 것을 막는다. */
 		CGameInstance::Get().Refresh_CameraState();
 
-		/* The frame depth buffer is shared. Handing it to Begin_MRT clears it, which gives the
-		subject a clean depth test and keeps the previous portrait out of this one. */
+		/* 공유 depth를 Begin_MRT에 전달해 비우고 이전 portrait의 depth가 다음 대상을 가리지 않게 한다. */
 		if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_GameObject"), pPreviousDSV)))
 		{
 			hLastFailure = E_FAIL;
@@ -1614,11 +1735,7 @@ HRESULT CRenderer::Render_Portraits()
 			continue;
 		}
 
-		/* Render_Lights itself, not a reduced copy of it. Its ordinary pass skips the marker the
-		SourceCharacter materials write, so the mask and per-material passes that follow are the
-		only thing that lights a playable body; without them the subject resolves to an unlit
-		silhouette. It also consumes the source material frame list the subject draw just filled,
-		which the world pass would otherwise inherit and light a second time. */
+		/* world와 같은 Render_Lights를 호출해 SourceCharacter mask·재질별 조명까지 처리하고 이번 대상의 재질 목록을 소비한다. */
 		const HRESULT hLights = Render_Lights();
 		if (FAILED(hLights))
 		{
@@ -1626,16 +1743,14 @@ HRESULT CRenderer::Render_Portraits()
 			continue;
 		}
 
-		/* Target_Shade and Target_Specular hold only the lighting terms; Render_Combined mixes
-		them with the G-buffer into MRT_SceneHDR, which is still pre-tone-map FP16. */
+		/* Shade·Specular 조명 항을 G-buffer와 결합해 tone mapping 전의 FP16 SceneHDR을 만든다. */
 		if (FAILED(CGameInstance::Get().Begin_MRT(TEXT("MRT_SceneHDR"))))
 		{
 			hLastFailure = E_FAIL;
 			continue;
 		}
 		HRESULT hCombined = Render_Combined(true);
-		// Use the same opaque-forward and translucent material programs as the field,
-		// with the subject depth still bound. SceneHDR alpha accumulates UI coverage.
+		// 대상 depth를 유지한 채 world와 같은 opaque-forward·반투명 program을 쓴다. SceneHDR alpha에는 UI coverage를 누적한다.
 		if (SUCCEEDED(hCombined) && Request.DrawForward)
 			hCombined = Request.DrawForward(RENDERGROUP::NONLIGHT, nullptr);
 		if (SUCCEEDED(hCombined) && Request.DrawForward)
@@ -1647,10 +1762,7 @@ HRESULT CRenderer::Render_Portraits()
 			continue;
 		}
 
-		/* The portrait resolve tone maps through a full-screen quad, so binding the caller's
-		target and shrinking the viewport resamples the whole subject into it. That keeps the
-		portrait on the field's tone curve without a second tone map path, and its own pass drops
-		the pixels the subject never wrote so the UI frame shows through. */
+		/* 목적 target·작은 viewport로 전체 대상을 축소 resolve한다. world tone curve를 재사용하고 대상 밖 pixel은 버려 UI 배경을 보인다. */
 		ID3D11RenderTargetView* pPortraitTarget = Request.pDestination.Get();
 		m_pContext->OMSetRenderTargets(1u, &pPortraitTarget, nullptr);
 		D3D11_VIEWPORT DestinationViewport{};
@@ -1675,8 +1787,7 @@ HRESULT CRenderer::Render_Portraits()
 	for (auto* pTarget : PreviousRTVs) if (pTarget) pTarget->Release();
 	m_pContext->RSSetViewports(iPreviousViewportCount,
 		iPreviousViewportCount ? PreviousViewports : nullptr);
-	/* The world starts its own depth from scratch. Begin_MRT does not clear a depth buffer it
-	was not handed, so the last subject would otherwise reject the geometry standing behind it. */
+	/* world 시작 전에 공유 depth를 비운다. depth를 전달하지 않은 Begin_MRT는 이전 portrait의 depth를 지우지 않는다. */
 	if (pPreviousDSV)
 		m_pContext->ClearDepthStencilView(pPreviousDSV.Get(),
 			D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.f, 0);
@@ -1684,6 +1795,7 @@ HRESULT CRenderer::Render_Portraits()
 	return hLastFailure;
 }
 
+// G-buffer의 표면 입력과 scene/transient 광원을 연결해 Shade·Specular에 누적한다. marker별 PBR·native character 계산은 Deferred shader가 선택한다.
 HRESULT CRenderer::Render_Lights()
 {
 	/* Shade */
@@ -1741,13 +1853,11 @@ HRESULT CRenderer::Render_Lights()
 		hResult = E_FAIL;
 	}
 
-    // The ordinary pass skips marker-5 pixels. Only materials submitted by
-    // visible mesh draws get a source light pass; prototypes never enter here.
+    // 일반 pass는 marker 5를 건너뛴다. 보이는 mesh draw가 제출한 재질에만 source light pass를 수행한다.
     const uint32_t sourceCount = CMaterial::Get_SourceCharacterFrameCount();
     if (SUCCEEDED(hResult) && sourceCount != 0u)
     {
-        // Effect outlines own the scene stencil. Only this separate DSV receives
-        // the marker-5 mask, and the original light targets are restored on failure.
+        // scene stencil은 이펙트 outline이 사용하므로 marker 5 mask는 별도 DSV에 쓴다. 실패하면 원래 light target을 복원한다.
         ID3D11RenderTargetView* rawTargets[2]{};
         ComPtr<ID3D11DepthStencilView> originalDepth;
         m_pContext->OMGetRenderTargets(2u, rawTargets, originalDepth.GetAddressOf());
@@ -1792,13 +1902,14 @@ HRESULT CRenderer::Render_Lights()
         hResult = E_FAIL;
     CMaterial::Reset_SourceCharacterFrame(m_fPresentationClock);
 
-	/* Always restore the back buffer even when a light bind or draw fails. */
+	/* light 바인딩·draw가 실패해도 back buffer를 복원한다. */
 	if (FAILED(CGameInstance::Get().End_MRT()))
 		hResult = E_FAIL;
 
 	return hResult;
 }
 
+// 누적 직접광과 표면 단계의 간접광을 SceneHDR로 합친다. project SH는 저장된 계수만 평가하며 native PBR indirect 선택 시 중복 추가를 끈다.
 HRESULT CRenderer::Render_Combined(bool_t bPortrait)
 {
 	const uint32_t portrait = bPortrait ? 1u : 0u;
@@ -1845,9 +1956,7 @@ HRESULT CRenderer::Render_Combined(bool_t bPortrait)
 	if (FAILED(m_pShader->Bind_Matrix("g_ProjMatrix", &m_ProjMatrix)))
 		return E_FAIL;
 
-	/* Height fog reuses the world position the combine step can rebuild from
-	   the depth target, so it needs the same inverse matrices and camera the
-	   lighting pass already binds. */
+	/* height fog가 depth로 world 위치를 복원하므로 조명 pass와 같은 역행렬·카메라를 바인딩한다. */
 	if (FAILED(CGameInstance::Get().Bind_RT_SRV(
 			TEXT("Target_Depth"), m_pShader, "g_DepthTexture")) ||
 		FAILED(m_pShader->Bind_Matrix("g_ViewMatrixInverse",
@@ -1889,7 +1998,7 @@ HRESULT CRenderer::Ready_SSGIHalfTarget(uint32_t width, uint32_t height)
     if (SUCCEEDED(result)) result = m_pDevice->CreateRenderTargetView(texture.Get(), nullptr, target.GetAddressOf());
     if (SUCCEEDED(result)) result = m_pDevice->CreateShaderResourceView(texture.Get(), nullptr, resource.GetAddressOf());
     if (FAILED(result)) return result;
-    // A resize only replaces this lazy scratch after every resource succeeds.
+    // 크기 변경용 scratch 자원이 모두 준비된 뒤에만 교체한다.
     m_pSSGIHalfTexture = std::move(texture);
     m_pSSGIHalfRTV = std::move(target);
     m_pSSGIHalfSRV = std::move(resource);
@@ -1910,8 +2019,7 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
     const auto bloom = game.Get_RT_SRV(TEXT("Target_SceneBloom"));
     if (!scene || !bloom) return E_FAIL;
 
-    // Validate every resource before changing the output bindings. Scratch
-    // targets already participate in the transactional viewport resize path.
+    // 출력 바인딩 전에 모든 자원을 검증한다. scratch도 viewport 크기 변경의 준비·commit 절차에 포함된다.
     ComPtr<ID3D11Resource> originalScene, originalBloom, scratchBloom[2];
     scene->GetResource(originalScene.GetAddressOf());
     bloom->GetResource(originalBloom.GetAddressOf());
@@ -2052,8 +2160,7 @@ HRESULT CRenderer::Render_ScreenSpaceLighting()
     {
         CProfilerScope copyCpu(profiler, "Render.ScreenSpaceLighting.Copy");
         CProfilerGpuScope copyGpu(profiler, "Render.ScreenSpaceLighting.Copy");
-        // Commit only after both passes succeed. The distortion target and all
-        // authored lighting inputs remain unchanged.
+        // 두 pass 모두 성공해야 commit하며 distortion target·저작 조명 입력은 유지한다.
         m_pContext->CopyResource(originalScene.Get(), m_pScenePostTextures[writtenTargets - 1u].Get());
         m_pContext->CopyResource(originalBloom.Get(), scratchBloom[writtenTargets - 1u].Get());
         if (profiler)
@@ -2163,8 +2270,7 @@ HRESULT CRenderer::Capture_SceneColorSnapshot()
     if (SUCCEEDED(result) && profiler)
     {
         profiler->Add_Counter(EProfilerCounter::SceneColorCopies, 2u);
-        // Both named targets are created as RGBA16F. Count the copied logical
-        // payload, not read+write bus traffic or driver allocation overhead.
+        // 두 target은 RGBA16F다. 복사한 논리 데이터량만 세며 read·write 버스 왕복량이나 driver 할당량은 아니다.
         uint64_t pixels = 0;
         uint32_t width = sourceDesc.Width;
         uint32_t height = sourceDesc.Height;
@@ -2191,19 +2297,7 @@ HRESULT CRenderer::Render_Blend()
     CProfilerGpuScope gpuScope(profiler, "Render.Blend", true);
 	HRESULT hFirstFailure = S_OK;
 
-	/* Translucent surfaces have to be drawn far to near or they overwrite each
-	   other in submission order, which is what made overlapping water sheets
-	   and their props flip depending on which placement happened to be added
-	   first. The queue itself is left alone; only the draw order is sorted, so
-	   nothing else that walks the render group sees a different sequence.
-
-	   An object may request an earlier slot through Get_BlendSortPriority():
-	   lower priorities draw first and equal priorities keep far-to-near order.
-	   Without a camera every distance ties, so only the priority reorders and
-	   stable_sort keeps the submission order.
-
-	   The scratch buffer is a function-local static because rendering runs on
-	   one thread and the alternative is a heap allocation every frame. */
+	/* 반투명 draw는 낮은 우선순위부터, 동률이면 먼 순서로 정렬한다. 원래 queue·거리 동률의 제출 순서는 유지하며 단일 렌더 thread가 static 임시 배열을 재사용한다. */
 	struct BLEND_ENTRY final
 	{
 		Engine::BLEND_SORT_KEY key;
@@ -2221,8 +2315,7 @@ HRESULT CRenderer::Render_Blend()
 		CGameObject* const pRenderObject = BlendObjects[renderIndex].get();
 		if (nullptr == pRenderObject)
 			continue;
-		/* No transform is not an error here: the object still has to draw,
-		   it just cannot be placed in the ordering, so it goes first. */
+		/* Transform이 없어도 그리기는 수행한다. 거리 정렬을 할 수 없으므로 먼저 배치한다. */
 		f32_t fDistanceSquared = FLT_MAX;
 		if (nullptr != pCamPosition)
 		{
@@ -2631,7 +2724,7 @@ HRESULT CRenderer::Render_DisplayOverlays()
 	{
 		if (!overlay.bDisplaySpace)
 			continue;
-		// No scene SRV is sampled: alpha blend directly over the final display.
+		// scene SRV를 읽지 않고 최종 display 위에 alpha blend한다.
 		if (FAILED(m_pShader->Bind_Texture("g_PostProcessTexture", nullptr)) ||
 			FAILED(Render_ScreenOverlay(overlay)))
 		{
@@ -2671,7 +2764,7 @@ HRESULT CRenderer::Render_Bloom()
 			DEFERRED::BLOOM_BLUR_V);
 	}
 
-	/* Restore every viewport exactly as it was before the half-resolution pass. */
+	/* 절반 해상도 pass 전에 있던 viewport를 모두 복원한다. */
 	if (0 < iViewportCount)
 		m_pContext->RSSetViewports(iViewportCount, OriginalViewports);
 	else
@@ -2724,16 +2817,14 @@ HRESULT CRenderer::Render_BloomPass(const wstring_t& strMRTTag,
 		hResult = E_FAIL;
 	}
 
-	/* Keep render-target state balanced even if binding or drawing failed. */
+	/* 바인딩·draw가 실패해도 render target의 시작·종료 상태를 맞춘다. */
 	if (FAILED(CGameInstance::Get().End_MRT()))
 		hResult = E_FAIL;
 
 	return hResult;
 }
 
-/* bPortrait resolves an offscreen portrait instead of the frame: it reads Target_SceneHDR
-directly because the screen post chain has not run for it, drops bloom and any material debug
-view, and selects the pass that leaves the background transparent. */
+/* portrait는 SceneHDR을 직접 읽어 별도로 resolve한다. bloom·재질 debug를 제외하고 배경을 투명하게 남기는 pass를 사용한다. */
 HRESULT CRenderer::Render_Final(bool_t bPortrait)
 {
 	const uint32_t portrait = bPortrait ? 1u : 0u;
@@ -2759,11 +2850,7 @@ HRESULT CRenderer::Render_Final(bool_t bPortrait)
 
 	const auto& source = m_RenderQualitySettings.SourcePostProcess;
 	const int32_t sourceEnabled = source.bEnabled ? 1 : 0;
-	const float scale = (std::max)(0.000001f, source.fToneScale);
-	const float inverseScale = 1.f / scale;
-	const float curveA = .22f * inverseScale;
-	const float curveB = 1.f / (source.fToneRange / (source.fToneRange + curveA));
-	const float4_t sourceCurve(curveA, curveB, sqrtf(curveB * curveA * inverseScale) - curveA, scale);
+	const float4_t sourceCurve = PackSourceToneCurve(source);
 	if (FAILED(m_pShader->Bind_RawValue("g_iSourcePostProcessEnabled", &sourceEnabled, sizeof(sourceEnabled))) ||
 		FAILED(m_pShader->Bind_RawValue("g_vSourceToneCurve", &sourceCurve, sizeof(sourceCurve))) ||
 		FAILED(m_pShader->Bind_RawValue("g_fSourceToneToe", &source.fToneToe, sizeof(source.fToneToe))) ||
@@ -2840,11 +2927,7 @@ HRESULT CRenderer::Render_Final(bool_t bPortrait)
 
 HRESULT CRenderer::Render_UI()
 {
-	/* UI surfaces submit in the order their owners update, which is creation order and says
-	nothing about which one is in front. Drawing follows Get_UISortLayer instead, and
-	stable_sort keeps submission order inside one layer so a document's own slots still draw
-	in their authored sequence. The scratch buffer is function-local static for the same
-	reason the blend one is: rendering is single-threaded and this runs every frame. */
+	/* UI는 Get_UISortLayer 순서로 그리고 같은 layer에서는 제출 순서를 유지한다. 렌더 스레드가 static scratch를 프레임마다 재사용한다. */
 	static std::vector<CGameObject*> SortedUIObjects;
 	SortedUIObjects.clear();
 	SortedUIObjects.reserve(m_RenderObjects[ETOUI(RENDERGROUP::UI)].size());
@@ -3050,8 +3133,7 @@ HRESULT CRenderer::Ready_Shadow_Resources()
     m_CandidateStaticShadowCasters.clear();
     m_pStaticShadowDepthTexture.Reset();
     m_pStaticShadowSRV.Reset();
-    // Read the existing static cache to distinguish moving occluders from
-    // shadows already baked into RNM. Failure preserves ordinary shadows.
+    // 정적 cache로 이동하는 occluder와 RNM에 이미 구운 그림자를 구분한다. 조회 실패 시 일반 그림자 경로를 유지한다.
     TextureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     if (SUCCEEDED(m_pDevice->CreateTexture2D(&TextureDesc, nullptr,
         m_pStaticShadowDepthTexture.GetAddressOf())))

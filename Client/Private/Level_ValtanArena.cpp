@@ -27,6 +27,7 @@ below is a real Release-build feature, so the include is no longer guarded. */
 #include "LevelRegistry.h"
 #include "LevelTransitionService.h"
 #include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "MapAssetRenderUtils.h"
 #include "NetworkManager.h"
 #include "NetworkPlayerCommandSink.h"
@@ -2799,7 +2800,7 @@ void CLevel_ValtanArena::Update_DeadScene(
 			if (router.Is_Clicked(spectateX, spectateY, spectateWidth, spectateHeight, width, height) &&
 				m_Replication.Cycle_SpectateTarget())
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				Bind_CameraToLocalCharacter();
 			}
 		}
@@ -2818,7 +2819,7 @@ void CLevel_ValtanArena::Update_DeadScene(
 		Router.Claim_Mouse_This_Frame();
 		if (Router.Is_Clicked(fX, fY, fWidth, fHeight, fResolutionWidth, fResolutionHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_PlayerController.Request_Revive();
 		}
 	}

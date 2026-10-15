@@ -17,6 +17,7 @@ namespace
 	constexpr float TWO_PI = 6.28318531f;
 	constexpr float WAYPOINT_REACHED_DISTANCE = 0.12f;
 
+	// 최근접/고정 대상 조회와 Mario 순찰이 같은 인간 플레이어 참가 조건을 사용한다. 사망/낙하/잡힘은 제외한다.
 	bool IsAvailableCombatTarget(const LostArk::Server::SERVER_PLAYER& player)
 	{
 		return player.Is_Human() && 0u != player.iCurrentHp && player.isCombatReady &&
@@ -25,6 +26,7 @@ namespace
 			LostArk::Shared::PLAYER_ACTION_STATE::GRABBED != player.eAction;
 	}
 
+	// 이전 tick에 저장한 NetEntityId를 현재 players에서 재조회한다. 포인터는 map 요소를 차용하며 없으면 nullptr다.
 	LostArk::Server::SERVER_PLAYER* FindPlayerByEntityId(
 		std::map<LostArk::Shared::PLAYER_ID,
 			LostArk::Server::SERVER_PLAYER>& players,
@@ -41,6 +43,8 @@ namespace
 		return nullptr;
 	}
 
+	// 참가 가능한 대상 중 XZ 거리 제곱이 제한 안에 있는 가장 가까운 대상을 찾는다.
+	// 찾지 못하면 nullptr와 거리 0을 남긴다. 유한 위치와 검증된 profile 범위는 호출 측 상태의 전제다.
 	LostArk::Server::SERVER_PLAYER* FindNearestPlayer(
 		const LostArk::Server::SERVER_WORLD_ENTITY& monster,
 		std::map<LostArk::Shared::PLAYER_ID,
@@ -69,6 +73,7 @@ namespace
 		return nearest;
 	}
 
+	// 몬스터/대상의 월드 XZ 거리 제곱(m²)을 구한다. Y 차이는 Mario 등 필요한 경로가 별도로 검사한다.
 	float DistanceSquared(
 		const LostArk::Server::SERVER_WORLD_ENTITY& monster,
 		const LostArk::Server::SERVER_PLAYER& player)
@@ -78,6 +83,7 @@ namespace
 		return deltaX * deltaX + deltaZ * deltaZ;
 	}
 
+	// 회전 차이를 360도 주기로 접어 가까운 방향을 고른다. 비유한 입력은 0으로 반환한다.
 	float NormalizeDegrees(const float value)
 	{
 		if (!std::isfinite(value))
@@ -85,6 +91,7 @@ namespace
 		return std::remainder(value, 360.f);
 	}
 
+	// 가속/감속에서 한 tick의 최대 변화량 delta만큼 목표값에 접근한다. 양수 delta 사용이 호출 전제다.
 	float Approach(const float current, const float target, const float delta)
 	{
 		if (current < target)
@@ -92,6 +99,8 @@ namespace
 		return (std::max)(current - delta, target);
 	}
 
+	// 행동을 바꾸며 경과 시간과 한 번 타격 소비 상태를 초기화한다. CHASE 이외의 상태에서는 이동 속도도 비운다.
+	// 대기/추적은 action ID를 지우고 공격 예고는 공용 기본 공격 ID를 설정한다.
 	void Transition(LostArk::Server::SERVER_WORLD_ENTITY& monster,
 		const LostArk::Server::SERVER_ENTITY_ACTION action,
 		const std::uint32_t serverTick)
@@ -109,6 +118,9 @@ namespace
 			monster.strActionId.clear();
 	}
 
+	// Mario stage가 지정된 몬스터는 일반 자유 추적 대신 저작된 한 축을 왕복한다.
+	// 같은 Mario stage/높이의 대상만 검사하고, 방향 회전을 마친 뒤 전방 공격을 시작한다.
+	// 이동 실패나 끝점 도달은 순찰 방향을 바꾸며 피해 처리는 공용 runtime에 전달한다.
 	void UpdateMarioPatrol(LostArk::Server::SERVER_WORLD_ENTITY& monster,
 		std::map<LostArk::Shared::PLAYER_ID, LostArk::Server::SERVER_PLAYER>& players,
 		const LostArk::Server::CGameplayCatalog& catalog,
@@ -119,6 +131,7 @@ namespace
 	{
 		using namespace LostArk::Server;
 		using namespace LostArk::Shared;
+		// 순찰 대상은 일반 참가 조건 외에 같은 Mario 번호, trigger 이동 아님, 높이 차 0.8m 이하가 필요하다.
 		const auto validTarget = [&monster](const SERVER_PLAYER& player) {
 			return IsAvailableCombatTarget(player) && player.iMarioStage == monster.iMarioPatrolStage &&
 				!player.TriggerMove.isActive && std::abs(player.fPositionY - monster.fPositionY) <= .8f;
@@ -131,7 +144,8 @@ namespace
 		if (attacking)
 		{
 			for (auto& [id, player] : players)
-				if (player.iNetEntityId == monster.iTargetEntityId && validTarget(player)) target = &player;
+				if (player.iNetEntityId == monster.iTargetEntityId && validTarget(player))
+					target = &player;
 			if (monster.eAction == SERVER_ENTITY_ACTION::PATTERN_WINDUP &&
 				monster.fActionElapsedSeconds >= monster.iPatternTelegraphMs * MILLISECONDS_TO_SECONDS)
 				Transition(monster, SERVER_ENTITY_ACTION::PATTERN_ACTIVE, tick);
@@ -146,16 +160,20 @@ namespace
 						const float dx = target->fPositionX - monster.fPositionX;
 						const float dz = target->fPositionZ - monster.fPositionZ;
 						const float yaw = monster.fYawDegrees * DEGREES_TO_RADIANS;
-						// A locked forward strike, not a hit behind the turned model.
+						// 고정된 전방을 기준으로 타격하여 모델 뒤로 넘어간 대상은 맞히지 않는다.
 						if (dx * std::sin(yaw) + dz * std::cos(yaw) >= 0.f)
 						{
 							SERVER_WORLD_TO_PLAYER_HIT hit{};
 							hit.iRawDamage = monster.iAttackPower;
-							hit.fSourceX = monster.fPositionX; hit.fSourceZ = monster.fPositionZ;
-							hit.fPushRangeM = monster.fAttackPushRangeM; hit.iPushMs = monster.iAttackPushMs;
-							hit.bKnockdown = monster.bAttackKnockdown; hit.iDownMs = monster.iAttackDownMs;
+							hit.fSourceX = monster.fPositionX;
+							hit.fSourceZ = monster.fPositionZ;
+							hit.fPushRangeM = monster.fAttackPushRangeM;
+							hit.iPushMs = monster.iAttackPushMs;
+							hit.bKnockdown = monster.bAttackKnockdown;
+							hit.iDownMs = monster.iAttackDownMs;
 							hit.iServerTick = tick;
-							if (monster.strArchetypeId == "MONSTER_MARIO_REUP") Configure_MarioHazardLaunch(hit);
+							if (monster.strArchetypeId == "MONSTER_MARIO_REUP")
+								Configure_MarioHazardLaunch(hit);
 							(void)CServerCombatHitRuntime::Apply_WorldToPlayer(*target, hit, catalog, damageEvents);
 						}
 					}
@@ -171,9 +189,14 @@ namespace
 		float nearest = monster.fEngageDistance * monster.fEngageDistance;
 		for (auto& [id, player] : players)
 		{
-			if (!validTarget(player)) continue;
+			if (!validTarget(player))
+				continue;
 			const float distance = DistanceSquared(monster, player);
-			if (distance <= nearest) { nearest = distance; target = &player; }
+			if (distance <= nearest)
+			{
+				nearest = distance;
+				target = &player;
+			}
 		}
 		float direction = monster.bMarioPatrolForward ? 1.f : -1.f;
 		if (target)
@@ -190,7 +213,8 @@ namespace
 		monster.fYawDegrees = NormalizeDegrees(monster.fYawDegrees + (std::clamp)(difference, -maxTurn, maxTurn));
 		if (std::abs(NormalizeDegrees(desiredYaw - monster.fYawDegrees)) > 2.f)
 		{
-			if (monster.eAction != SERVER_ENTITY_ACTION::IDLE) Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
+			if (monster.eAction != SERVER_ENTITY_ACTION::IDLE)
+				Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
 			return;
 		}
 		if (target)
@@ -209,7 +233,8 @@ namespace
 			Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
 			return;
 		}
-		if (monster.eAction != SERVER_ENTITY_ACTION::CHASE) Transition(monster, SERVER_ENTITY_ACTION::CHASE, tick);
+		if (monster.eAction != SERVER_ENTITY_ACTION::CHASE)
+			Transition(monster, SERVER_ENTITY_ACTION::CHASE, tick);
 		monster.fCurrentMoveSpeed = Approach(monster.fCurrentMoveSpeed, monster.fMoveSpeed,
 			monster.fMoveAcceleration * deltaSeconds);
 		const float next = along + direction * (std::min)(std::abs(goal - along), monster.fCurrentMoveSpeed * deltaSeconds);
@@ -228,11 +253,14 @@ namespace
 			Transition(monster, SERVER_ENTITY_ACTION::IDLE, tick);
 			return;
 		}
-		// Never accept collision tangent sliding off the Mario line.
-		monster.fPositionX = ground.x; monster.fPositionY = ground.y; monster.fPositionZ = ground.z;
+		// Mario 순찰선에서 옆으로 미끄러지지 않도록 검증한 navigation 점을 그대로 확정한다.
+		monster.fPositionX = ground.x;
+		monster.fPositionY = ground.y;
+		monster.fPositionZ = ground.z;
 	}
 }
 
+// 충돌 저장소를 받지 않은 호출도 같은 Update 구현을 사용한다. 임시 빈 충돌 시스템은 이 호출 동안만 산다.
 void LostArk::Server::CMonsterBrain::Update(
 	SERVER_WORLD_ENTITY& monster,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -247,6 +275,8 @@ void LostArk::Server::CMonsterBrain::Update(
 		fixedDeltaSeconds, serverTick, outDamageEvents);
 }
 
+// GameRoom이 몬스터의 밀림 처리 후 호출한다. 사망→stun→Mario 특수 순찰→일반 대상/추적/공격 순서다.
+// fixedDeltaSeconds는 초다. 유효하지 않은 delta이면 즉시 반환하고, 피해는 출력 event vector 뒤에 추가한다.
 void LostArk::Server::CMonsterBrain::Update(
 	SERVER_WORLD_ENTITY& monster,
 	std::map<LostArk::Shared::PLAYER_ID, SERVER_PLAYER>& players,
@@ -269,7 +299,7 @@ void LostArk::Server::CMonsterBrain::Update(
 		return;
 	}
 
-	/* A stunned monster holds its ground: no chase, no attack, no facing. */
+	// stun 동안 추적/공격/방향 갱신은 멈추지만 action의 경과 시간은 더한다.
 	if (serverTick < monster.iStunEndTick)
 	{
 		monster.fActionElapsedSeconds += fixedDeltaSeconds;
@@ -282,6 +312,7 @@ void LostArk::Server::CMonsterBrain::Update(
 		return;
 	}
 
+	// 공격 중에는 저장한 대상만 재확인한다. 대기/추적에서만 기존 대상 이탈 거리와 새 교전 거리를 적용한다.
 	const bool attackInProgress =
 		SERVER_ENTITY_ACTION::PATTERN_WINDUP == monster.eAction ||
 		SERVER_ENTITY_ACTION::PATTERN_ACTIVE == monster.eAction ||
@@ -348,6 +379,7 @@ void LostArk::Server::CMonsterBrain::Update(
 		{
 			monster.MovePath.clear();
 			monster.iMovePathIndex = 0;
+			// entity ID와 황금각으로 목표 주변 접근점을 분산한다. 충돌 회피를 보장하는 값은 아니며 이후 navigation/충돌 검사를 거친다.
 			const float approachAngle = std::fmod(
 				static_cast<float>(monster.iNetEntityId) *
 					GOLDEN_ANGLE_RADIANS,
@@ -371,6 +403,7 @@ void LostArk::Server::CMonsterBrain::Update(
 			navigation.Smooth_Path(
 				monster.fPositionX, monster.fPositionZ,
 				goalX, goalZ, monster.MovePath);
+			// 매 tick 전체 경로를 다시 찾지 않도록 재탐색을 15~24 tick 뒤에 예약한다. 막힌 경우에는 아래에서 즉시 재계획 표시를 남긴다.
 			monster.iNextPathReplanTick = serverTick + 15u +
 				static_cast<std::uint32_t>(monster.iNetEntityId % 10u);
 		}
@@ -399,6 +432,7 @@ void LostArk::Server::CMonsterBrain::Update(
 			monster.fYawDegrees = NormalizeDegrees(monster.fYawDegrees +
 				(std::clamp)(yawDelta, -maximumYawStep, maximumYawStep));
 
+			// 마지막 경로 점 근처에서는 도착 반경으로 감속하고, 현재 속도는 가속/감속 제한을 따라 변한다.
 			float desiredSpeed = monster.fMoveSpeed;
 			if (monster.iMovePathIndex + 1u == monster.MovePath.size())
 			{
@@ -423,6 +457,7 @@ void LostArk::Server::CMonsterBrain::Update(
 				std::sin(yawRadians) * moveDistance;
 			const float proposedZ = monster.fPositionZ +
 				std::cos(yawRadians) * moveDistance;
+			// 제안 이동을 navigation→몸체 충돌→최종 navigation 순으로 검증한 뒤에만 위치에 반영한다.
 			SERVER_NAV_POINT navigationStep{};
 			if (!navigation.Resolve_TraversalStep(
 				monster.fPositionX, monster.fPositionZ,
@@ -485,7 +520,7 @@ void LostArk::Server::CMonsterBrain::Update(
 			if (LostArk::Shared::CombatCollision::Circles_Overlap(
 				attackCircle, targetBody))
 			{
-				// The common hit owner applies damage, death and reactions once.
+				// 공용 hit runtime이 피해/사망/플레이어 반응을 처리한다. 이 Brain은 판정 기회를 한 번만 연다.
 				SERVER_WORLD_TO_PLAYER_HIT incoming{};
 				incoming.iRawDamage = monster.iAttackFixedDamage ? monster.iAttackFixedDamage : monster.iAttackPower;
 				incoming.bIgnoreDefense = monster.iAttackFixedDamage != 0u;
@@ -499,6 +534,7 @@ void LostArk::Server::CMonsterBrain::Update(
 				(void)CServerCombatHitRuntime::Apply_WorldToPlayer(
 					*target, incoming, catalog, outDamageEvents);
 			}
+			// 실제 HP 피해나 명중 여부와 무관하게 이번 기본 공격의 한 번 판정 기회를 소비한다.
 			monster.hasAppliedPatternDamage = true;
 		}
 		if (monster.fActionElapsedSeconds >=
@@ -514,6 +550,7 @@ void LostArk::Server::CMonsterBrain::Update(
 	}
 }
 
+// 별도 충돌 시스템이 없는 호출을 같은 밀림 처리로 연결한다.
 bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 	SERVER_WORLD_ENTITY& monster,
 	const CServerNavigation& navigation,
@@ -524,6 +561,8 @@ bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 		monster, navigation, noCollision, fixedDeltaSeconds);
 }
 
+// GameRoom이 일반 Update 전에 호출한다. 남은 밀림 시간과 delta 중 작은 구간만 이동한다.
+// 이동을 막아도 그 tick은 소비한 것으로 true를 반환한다. 실제 위치 성공 여부와 bool을 혼동하지 않는다.
 bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 	SERVER_WORLD_ENTITY& monster,
 	const CServerNavigation& navigation,
@@ -587,7 +626,7 @@ bool LostArk::Server::CMonsterBrain::Advance_Knockback(
 	monster.fKnockbackRemainingSeconds = wasClamped ?
 		0.f : (wasBodyBlocked ? 0.f :
 			monster.fKnockbackRemainingSeconds - step);
-	/* Pattern timers keep running so a windup is not frozen by a hit. */
+	// 밀림 tick에도 action 시간은 흐른다. 다음 Update가 이어진 경과 시간으로 공격 단계 마감을 판단한다.
 	monster.fActionElapsedSeconds += fixedDeltaSeconds;
 	return true;
 }

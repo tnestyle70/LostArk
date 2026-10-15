@@ -1,35 +1,38 @@
-#include "RaidGateProgressView.h"
+﻿#include "RaidGateProgressView.h"
 
-#pragma push_macro("new")
-#undef new
+// HUD·확인창 문구의 White/Orange/Yellow 색상을 사용한다.
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
+// viewport와 글자 높이를 조회한다.
 #include "GameInstance.h"
-#include "MainApp.h"
+// 버튼 클릭 및 투표 요청 효과음을 재생한다.
+#include "UISoundPlayer.h"
+// 버튼 hit test와 모달의 gameplay 포인터 차단을 처리한다.
 #include "UIInputRouter.h"
+// 화면 픽셀 기준의 중앙 정렬 글자를 그린다.
 #include "UILabelFont.h"
+// 패널·투표창 슬롯의 이미지·rect·표시 상태를 갱신한다.
 #include "UILayoutRuntime.h"
+// HUD와 MODAL 글자 계층 및 배경 가림 영역을 등록한다.
 #include "UITextOcclusion.h"
 
+// 관문 수 상한과 알림 잔여 시간 하한을 적용한다.
 #include <algorithm>
+// 아이콘 크기 차이, 유한 시간 검사와 초 올림을 처리한다.
 #include <cmath>
 
 namespace
 {
-	/* Retail stage px -> this project's 1280x720 reference, the scale every runtime UI uses. */
+	// 1920×1080 원본 픽셀을 1280×720 UI 기준 좌표로 바꾸는 배율이다.
 	constexpr f32_t STAGE_TO_REF = 2.f / 3.f;
-	/* Measured on the retail 1080p capture of the live frame (frame top-left at the screen's
-	   (0,52)): dungeonName centred at (141,28) with 15 px cap height (a 16 px LOA font here),
-	   the yellow "[difficulty]" line at (141,52), the button label 16 px centred in the button.
-	   Frame-local retail px scaled below. */
+	// 원본 패널 내부의 이름·난이도·버튼 문구 위치와 크기를 기준 좌표로 환산한다.
 	constexpr f32_t NAME_PX = 16.f * STAGE_TO_REF;
 	constexpr f32_t NAME_X = 141.f * STAGE_TO_REF;
 	constexpr f32_t NAME_Y = 28.f * STAGE_TO_REF;
 	constexpr f32_t DIFFICULTY_PX = 13.f * STAGE_TO_REF;
 	constexpr f32_t DIFFICULTY_Y = 52.f * STAGE_TO_REF;
 	constexpr f32_t BUTTON_PX = 16.f * STAGE_TO_REF;
-	/* The active-gate glow is 92x88 art drawn centred on the 59x65 icon rect. */
+	// 현재 관문은 일반 아이콘보다 큰 glow 이미지를 같은 중심에 놓는다.
 	constexpr f32_t ICON_W = 59.f * STAGE_TO_REF;
 	constexpr f32_t ICON_H = 65.f * STAGE_TO_REF;
 	constexpr f32_t GLOW_W = 92.f * STAGE_TO_REF;
@@ -49,10 +52,7 @@ namespace
 	constexpr const char* SLOT_BUTTON = "RGP_Button";
 	constexpr const char* PROMPT_SLOTS[] = { "RGV_Panel", "RGV_ConfirmButton", "RGV_CancelButton" };
 
-	/* GameMsg sys.commander.progress_vote / progress_vote_dialog_desc / _desc_1,
-	   sys.common.annihilate_itself_vote_progress_btn (restart) / annihilate_itself_vote_title,
-	   sys.common.exit_btn, confirm / cancel, accept / decline. Wide hex escapes keep this file
-	   ASCII. */
+	// 진행·재시작·퇴장·투표 GameMsg 문구를 wide escape로 보관한다.
 	constexpr const wchar_t* TEXT_PROGRESS = L"\xB358\xC804 \xC9C4\xD589";
 	constexpr const wchar_t* TEXT_RESTART = L"\xC7AC\xC2DC\xC791";
 	constexpr const wchar_t* TEXT_ENTER_GATE3 = L"3\xAD00\xBB38 \xC785\xC7A5";
@@ -76,7 +76,7 @@ namespace
 	constexpr const wchar_t* TEXT_APPLIED_RESTART = L"\xB2D8\xC774 \xC7AC\xC2DC\xC791 \xD22C\xD45C\xB97C \xC2E0\xCCAD\xD558\xC600\xC2B5\xB2C8\xB2E4.";
 
 	const wstring_t FONT_YOON = TEXT("Font_YoonGasiIIM");
-	const fvector_t COLOR_DIFFICULTY = DirectX::XMVectorSet(1.f, 0.82f, 0.f, 1.f);   // #FFD200 like the retail label
+	const fvector_t COLOR_DIFFICULTY = DirectX::XMVectorSet(1.f, 0.82f, 0.f, 1.f);   // 난이도 문구의 노란색이다.
 
 	bool_t Is_RestartPrompt(const Client::CRaidGateProgressView::PROMPT ePrompt)
 	{
@@ -100,8 +100,7 @@ namespace
 	void Draw_Centered(const wstring_t& strFont, const wchar_t* pText, const f32_t fRefX, const f32_t fRefY,
 		const f32_t fRefPx, const fvector_t vColor)
 	{
-		/* Baked size at 1:1 on whole pixels (UILabelFont): scaling the family atlas down was
-		   what made this panel's labels blurry. */
+		// 기준 좌표를 화면 픽셀로 변환하고 UILabelFont가 맞는 크기·픽셀 정렬을 선택한다.
 		const float2_t vViewport = CGameInstance::Get().Get_ViewportSize();
 		if (vViewport.x <= 0.f || vViewport.y <= 0.f)
 			return;
@@ -111,6 +110,7 @@ namespace
 	}
 }
 
+// 소유 Level의 Layer_UI에 두 레이아웃을 준비하고 처음에는 투표창·버튼을 감춘다.
 void Client::CRaidGateProgressView::Initialize(
 	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext, const uint32_t iOwnerLevelIndex)
 {
@@ -127,21 +127,20 @@ void Client::CRaidGateProgressView::Set_Raid(
 	const wstring_t& strName, const wstring_t& strDifficulty, const uint8_t iGateCount)
 {
 	m_strName = strName;
-	/* The catalog's difficulty text already carries its brackets ("[normal]"). */
+	// 난이도 문구는 catalog가 제공한 대괄호까지 그대로 사용한다.
 	m_strDifficulty = strDifficulty;
 	m_iGateCount = (std::min<uint8_t>)(iGateCount, 3u);
 	Set_Progress(m_iCurrentGate, m_iClearedMask);
 }
 
+// Level이 전달한 현재 관문과 완료 mask를 저장하고 대응 이미지·크기를 바꾼다.
 void Client::CRaidGateProgressView::Set_Progress(const uint8_t iCurrentGate, const uint8_t iClearedMask)
 {
 	m_iCurrentGate = iCurrentGate;
 	m_iClearedMask = iClearedMask;
 	if (nullptr == m_pWidget)
 		return;
-	/* EpicGateCommanderProgressFrame::setGate: a dungeon with fewer than three gates hides the
-	middle icon and uses the outer ones, so a two-gate raid reads as a pair rather than as two
-	of three. */
+	// 두 관문은 가운데 슬롯을 비우고 바깥쪽 두 슬롯을 사용한다.
 	uint8_t iSlotOfGate[3] = { 0u, 1u, 2u };
 	if (m_iGateCount < 3u)
 		iSlotOfGate[1] = 2u;
@@ -159,7 +158,7 @@ void Client::CRaidGateProgressView::Set_Progress(const uint8_t iCurrentGate, con
 		const bool_t bCleared = 0u != (m_iClearedMask & (1u << i));
 		const bool_t bCurrent = !bCleared && m_iCurrentGate == i + 1u;
 		m_pWidget->Set_SlotTexture(strSlot, bCleared ? ART_ICON_CHECK : (bCurrent ? ART_ICON_ACTIVE : ART_ICON_INACTIVE));
-		/* The glow art is larger than the icon: keep the same centre, swap the size. */
+		// 현재 슬롯의 중심을 유지하면서 일반 아이콘/glow 크기를 교체한다.
 		f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 		if (!m_pWidget->Get_SlotRect(strSlot, fX, fY, fW, fH))
 			continue;
@@ -210,10 +209,9 @@ void Client::CRaidGateProgressView::Set_PromptVisible(const bool_t bVisible)
 
 void Client::CRaidGateProgressView::Open_Prompt(const PROMPT eKind, const wstring_t& strProposerName)
 {
-	/* A vote prompt is the accept / decline popup a party member receives: sound it once when it
-	   opens, not on every refresh of the same prompt. */
+	// 투표창이 아닌 상태에서 투표창으로 들어갈 때만 요청 효과음을 재생한다.
 	if (Is_VotePrompt(eKind) && !Is_VotePrompt(m_ePrompt))
-		CMainApp::Play_PopupRequestSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::POPUP_REQUEST);
 	m_ePrompt = eKind;
 	m_strProposer = strProposerName;
 	Set_PromptVisible(PROMPT::NONE != eKind);
@@ -231,11 +229,12 @@ void Client::CRaidGateProgressView::Show_Notice(const wstring_t& strText, const 
 	m_fNoticeSeconds = fSeconds;
 }
 
+// 알림 시간을 줄이고 가림 영역을 등록한다. 확인창이 열렸으면 패널 버튼보다 먼저 처리한다.
 Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update(const f32_t fTimeDelta)
 {
 	if (m_fNoticeSeconds > 0.f)
 		m_fNoticeSeconds = (std::max)(0.f, m_fNoticeSeconds - fTimeDelta);
-	/* Text stacking: the panel is a HUD surface, the prompt a modal one. */
+	// 패널과 확인창을 각각 HUD·MODAL 텍스트 가림 영역으로 등록한다.
 	if (nullptr != m_pWidget)
 		CUITextOcclusion::Get().Add_SlotOccluder(UI_TEXT_LAYER::HUD, *m_pWidget, "RGP_Bg");
 	if (PROMPT::NONE != m_ePrompt && nullptr != m_pPrompt)
@@ -245,11 +244,12 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update(cons
 	return Update_Button();
 }
 
+// 클릭을 INTENT로만 반환한다. 실제 Server 투표·복귀 요청은 호출 Level이 처리한다.
 Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Prompt()
 {
 	if (nullptr == m_pPrompt)
 		return INTENT::NONE;
-	/* A modal: nothing underneath sees the pointer while it is up. */
+	// 확인창이 열려 있으면 gameplay 마우스를 해당 프레임에서 차단한다.
 	CUIInputRouter& Router = CUIInputRouter::Get();
 	Router.Claim_Mouse_This_Frame();
 	const f32_t fRefWidth = m_pPrompt->Get_ResolutionWidth();
@@ -265,7 +265,7 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Prom
 		m_pPrompt->Set_SlotTexture(pSlot, bHovered ? ART_BUTTON_HOVER : ART_BUTTON);
 		if (bHovered && Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			bPressed = true;
 			const bool_t bConfirm = 0 == strcmp(pSlot, "RGV_ConfirmButton");
 			if (Is_VotePrompt(m_ePrompt))
@@ -302,7 +302,7 @@ Client::CRaidGateProgressView::INTENT Client::CRaidGateProgressView::Update_Butt
 	Router.Claim_Mouse_This_Frame();
 	if (!Router.Is_Clicked(fX, fY, fW, fH, fRefWidth, fRefHeight))
 		return INTENT::NONE;
-	CMainApp::Play_UIButtonClickSound();
+	Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 	switch (m_eButton)
 	{
 	case BUTTON::ENTER_GATE3:
@@ -376,7 +376,7 @@ void Client::CRaidGateProgressView::Render_Text() const
 	f32_t fX = 0.f, fY = 0.f, fW = 0.f, fH = 0.f;
 	if (m_pPrompt->Get_SlotRect("RGV_Panel", fX, fY, fW, fH))
 	{
-		/* Same title / description bands as the party invite modal on this panel art. */
+		// 패널의 제목·설명 영역에 확인 또는 투표 문구를 배치한다.
 		Draw_Centered(FONT_YOON, bEntry ? TEXT_ENTER_GATE3 : bBingoEntry ? TEXT_ENTER_BINGO : bExit ? TEXT_EXIT_VOTE : bRestart ? TEXT_RESTART_VOTE : TEXT_PROGRESS, fX + fW * 0.5f, fY + 23.f,
 			PROMPT_TITLE_PX, DirectX::Colors::White);
 		const wchar_t* pAsk = bEntry ? TEXT_ASK_ENTER_GATE3 : bBingoEntry ? TEXT_ASK_ENTER_BINGO : bExit ? TEXT_ASK_EXIT : bRestart ? TEXT_ASK_RESTART : TEXT_ASK_ADVANCE;

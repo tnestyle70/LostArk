@@ -46,7 +46,7 @@ namespace
 			LostArk::Shared::WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
 			(vehicleId == LostArk::Shared::ANCIENT_SEA_VEHICLE_ID &&
 			 (worldId == LostArk::Shared::WORLD_ID::VALTAN_ARENA ||
-			  worldId == LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA));
+			  worldId == LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA));
 	}
 
 	std::uint32_t Vehicle_TicksFromMs(const std::uint32_t milliseconds)

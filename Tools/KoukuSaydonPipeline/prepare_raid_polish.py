@@ -14,9 +14,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSITION = Path('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json')
 WORLDS = Path('Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json')
-PREFIX = 'KAKULSAYDON_G1_PATTERN_'
-TRIGGER = 'kakulsaydon.g1.logic.508'
-RESULT = 'kakulsaydon.g1.logic.98'
+PREFIX = 'KOUKUSAYDON_G1_PATTERN_'
+TRIGGER = 'koukusaydon.g1.logic.508'
+RESULT = 'koukusaydon.g1.logic.98'
 
 
 def read(path):
@@ -64,7 +64,7 @@ def prepare(document):
     def resource(name, shape, **geometry):
         ordinal = out['nextPresentationResourceOrdinal']
         out['nextPresentationResourceOrdinal'] += 1
-        rid = f'kakulsaydon.g1.presentation.{ordinal}'
+        rid = f'koukusaydon.g1.presentation.{ordinal}'
         value = dict(resourceId=rid, displayName=name, defaultAnchorKind='BOSS', kind='COLLIDER',
                      assetId='', resourceKind='GROUP', elementId='', durationMs=100,
                      colliderKind='GEOMETRY', shape=shape, halfExtents=[1,.5,1], radiusM=1,
@@ -94,7 +94,7 @@ def prepare(document):
         return hit
 
     assert logics[TRIGGER]['triggerKind'] == 'ENTER_AREA'
-    rain = logics['kakulsaydon.g1.logic.131']
+    rain = logics['koukusaydon.g1.logic.131']
     assert rain['randomScaleMin'] == 1 and rain['randomScaleMax'] == 2
     rain['randomScaleMax'] = 4
     changes.append(dict(kind='card-rain-scale', minimum=1, maximum=4, spawnIntervalMs=rain['randomSpawnIntervalMs']))
@@ -166,7 +166,7 @@ def prepare(document):
             shared=hit['logicOccurrenceId']
     pat(62)['displayName'] = '세이튼_눈 레이저'
     flow = next(f for f in out['patternFlows'] if f['gateId']=='GATE3')
-    flow['entries'].insert(-1, dict(entryId='kakulsaydon.flow.gate3.0924.laser',kind='PATTERN',targetId=PREFIX+'62',waitAfterMs=0))
+    flow['entries'].insert(-1, dict(entryId='koukusaydon.flow.gate3.0924.laser',kind='PATTERN',targetId=PREFIX+'62',waitAfterMs=0))
     parent = pat(96)
     duration = sum(s['durationMs'] for s in pat(123)['stages'])
     children = []

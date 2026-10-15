@@ -26,9 +26,9 @@ namespace
 	{
 		if (state.isPlayer) return 0u;
 		const auto& id = state.strArchetypeId;
-		if (id == "BOSS_KAKULSAYDON_G1_SAYDON" || id == "BOSS_KAKULSAYDON_G3_SAYDON" ||
-			id == "BOSS_KAKULSAYDON_BINGO_SAYDON") return 2u;
-		if (id == "BOSS_KAKULSAYDON_G1_KOUKU" || id == "BOSS_KAKULSAYDON_G2_KOUKU") return 3u;
+		if (id == "BOSS_KOUKUSAYDON_G1_SAYDON" || id == "BOSS_KOUKUSAYDON_G3_SAYDON" ||
+			id == "BOSS_KOUKUSAYDON_BINGO_SAYDON") return 2u;
+		if (id == "BOSS_KOUKUSAYDON_G1_KOUKU" || id == "BOSS_KOUKUSAYDON_G2_KOUKU") return 3u;
 		if (id == "BOSS_VALTAN" || id == "BOSS_VALTAN_GHOST") return 4u;
 		return 1u;
 	}
@@ -36,7 +36,7 @@ namespace
 	bool HealthBarHidden(const Client::HUD_WORLD_HEALTH_BAR_STATE& state, const bool cardMazeActive)
 	{
 		const auto& id = state.strArchetypeId;
-		if (id == "BOSS_KAKULSAYDON_G2_BIG_SAYDON") return true;
+		if (id == "BOSS_KOUKUSAYDON_G2_BIG_SAYDON") return true;
 		const bool cardSoldier = id == "MONSTER_KOUKU_CARD_HEART" || id == "MONSTER_KOUKU_CARD_DIAMOND" ||
 			id == "MONSTER_KOUKU_CARD_CLUB" || id == "MONSTER_KOUKU_CARD_SPADE";
 		return cardMazeActive && (state.isPlayer || cardSoldier);

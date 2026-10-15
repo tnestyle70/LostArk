@@ -382,7 +382,7 @@
       ]
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G1_KOUKU",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_KOUKU",
       "visualAssetId": "KOUKUSAYDON_MN_RPCZ_00",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
@@ -397,8 +397,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
-      "serverProfileId": "boss.kakulsaydon.g1.kouku.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.g1.kouku.client.v1",
+      "serverProfileId": "boss.koukusaydon.g1.kouku.server.v1",
+      "clientPresentationId": "boss.koukusaydon.g1.kouku.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "rpcz00_idle_battle_1",
@@ -413,7 +413,7 @@
       "weaponModelPreRotationDegrees": null
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
@@ -428,8 +428,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "serverProfileId": "boss.kakulsaydon.g1.saydon.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.g1.saydon.client.v1",
+      "serverProfileId": "boss.koukusaydon.g1.saydon.server.v1",
+      "clientPresentationId": "boss.koukusaydon.g1.saydon.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "rpct00_idle_battle_1",
@@ -448,7 +448,7 @@
       ]
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_06",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
@@ -463,8 +463,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_06/MN_RPCT_06.wmodel",
-      "serverProfileId": "boss.kakulsaydon.g2.big-saydon.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.g2.big-saydon.client.v1",
+      "serverProfileId": "boss.koukusaydon.g2.big-saydon.server.v1",
+      "clientPresentationId": "boss.koukusaydon.g2.big-saydon.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "mn_rpct_06_sk.ao_idle_battle_1",
@@ -483,7 +483,7 @@
       ]
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "archetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
       "visualAssetId": "KOUKUSAYDON_MN_RPCZ_00",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
@@ -498,8 +498,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCZ_00/MN_RPCZ_00.wmodel",
-      "serverProfileId": "boss.kakulsaydon.g2.kouku.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.g2.kouku.client.v1",
+      "serverProfileId": "boss.koukusaydon.g2.kouku.server.v1",
+      "clientPresentationId": "boss.koukusaydon.g2.kouku.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "rpcz00_idle_battle_1",
@@ -514,7 +514,7 @@
       "weaponModelPreRotationDegrees": null
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
@@ -529,8 +529,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "serverProfileId": "boss.kakulsaydon.g3.saydon.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.g3.saydon.client.v1",
+      "serverProfileId": "boss.koukusaydon.g3.saydon.server.v1",
+      "clientPresentationId": "boss.koukusaydon.g3.saydon.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "rpct00_idle_battle_1",
@@ -549,7 +549,7 @@
       ]
     },
     {
-      "archetypeId": "BOSS_KAKULSAYDON_BINGO_SAYDON",
+      "archetypeId": "BOSS_KOUKUSAYDON_BINGO_SAYDON",
       "visualAssetId": "KOUKUSAYDON_MN_RPCT_05",
       "presentationScale": 1,
       "bodyModel": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
@@ -564,8 +564,8 @@
         }
       ],
       "animationSetId": "Character/KoukuSaton/MN_RPCT_05/MN_RPCT_05.wmodel",
-      "serverProfileId": "boss.kakulsaydon.bingo.saydon.server.v1",
-      "clientPresentationId": "boss.kakulsaydon.bingo.saydon.client.v1",
+      "serverProfileId": "boss.koukusaydon.bingo.saydon.server.v1",
+      "clientPresentationId": "boss.koukusaydon.bingo.saydon.client.v1",
       "presentationStatus": "complete",
       "presentationClips": {
         "idle": "rpct00_idle_battle_1",

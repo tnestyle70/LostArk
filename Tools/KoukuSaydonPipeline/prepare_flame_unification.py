@@ -16,9 +16,11 @@ import re
 import subprocess
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 sys.path.insert(0, str(ROOT / 'Tools/EffectPipeline'))
 from install_kouku_effect_library import identity, replace_root_value
 
@@ -123,10 +125,10 @@ def wave_pattern(composition, profile, action_id, name, resource):
     chosen = [next(s for s in action['stages'] if s['stageId'] == key) for key in ('stage-001', 'stage-003')]
     ordinal = composition['nextPatternOrdinal']
     composition['nextPatternOrdinal'] += 1
-    pattern_id = 'KAKULSAYDON_G1_PATTERN_' + str(ordinal)
+    pattern_id = 'KOUKUSAYDON_G1_PATTERN_' + str(ordinal)
     gate = 'GATE1' if profile == 'MN_RPCT_05' else 'GATE3'
     p = dict(patternId=pattern_id, actorProfileId='MN_RPCT_05', gateId=gate,
-             targetBossPlacementId='boss.kakulsaydon.' + ('g1' if gate == 'GATE1' else 'g3') + '.saydon',
+             targetBossPlacementId='boss.koukusaydon.' + ('g1' if gate == 'GATE1' else 'g3') + '.saydon',
              displayName=name, authoringStatus='DRAFT', category='MECHANIC',
              nextStageOrdinal=3, nextAnimationOrdinal=3, nextLogicOccurrenceOrdinal=1,
              nextSummonOccurrenceOrdinal=1, nextWorldOccurrenceOrdinal=1,
@@ -220,7 +222,7 @@ def prepare(manifests, output):
             raise ValueError(f'Unknown candidate parent: {parent}')
         references[('V1', asset)] = dict(kind='V1', assetId=asset, displayName=name, parentId=parent)
         if asset not in resources:
-            resource = dict(resourceId='kakulsaydon.effect.' + identity(asset), displayName=name,
+            resource = dict(resourceId='koukusaydon.effect.' + identity(asset), displayName=name,
                             defaultAnchorKind=row.get('defaultAnchorKind', 'BOSS'), kind='EFFECT',
                             assetId=asset, resourceKind='V1_EFFECT', elementId='', durationMs=row['durationMs'],
                             shape='BOX', colliderKind='GEOMETRY', halfExtents=[1, 1, 1], radiusM=3,
@@ -237,7 +239,7 @@ def prepare(manifests, output):
         staged[relative] = replace_root_value(original, 'displayName', '불뿜기')
 
     changed_patterns = []
-    p49 = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_49')
+    p49 = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_49')
     start, length = clip_start(p49, 'rpct00_att_battle_10_02')
     kouku_wave = resources[KOUKU_WAVE]
     if any(o['resourceId'] == kouku_wave['resourceId'] for o in p49['presentationOccurrences']):
@@ -249,7 +251,7 @@ def prepare(manifests, output):
         p49['durationMs'] = wave_end
     occurrence(p49, kouku_wave, start + 1904, kouku_wave['durationMs'])
     changed_patterns.append(p49['patternId'])
-    p43 = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_43')
+    p43 = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_43')
     start, length = clip_start(p43, 'rpct00_att_battle_9_02')
     if any(o['resourceId'] == resources[SHARED]['resourceId'] for o in p43['presentationOccurrences']):
         raise ValueError('Backstep integration already exists; inspect instead of duplicating')
@@ -299,24 +301,10 @@ def prepare(manifests, output):
     value = replace_root_value(snapshots[tree_path], 'nodes', tree['nodes'], rows=True)
     staged[tree_path] = replace_root_value(value, 'references', tree['references'], rows=True)
     staged[catalog_path] = payload(catalog)
-    for suffix in ('', '.filters'):
-        relative = 'Client/Default/Client.vcxproj' + suffix
-        original = snapshot(relative)
-        text = original.decode('utf-8-sig')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        entries = []
-        for row in rows:
-            include = '..\\..\\' + row['path'].replace('/', '\\')
-            if 'Include="' + include + '"' not in text:
-                entries.append('    <None Include="' + include + '">' +
-                               ('<Filter>96.DataFiles</Filter>' if suffix else '') + '</None>')
-        if entries:
-            prefix, close, tail = text.rpartition('</Project>')
-            if not close or tail.strip():
-                raise ValueError('Invalid Client project closure')
-            text = prefix + '  <ItemGroup>' + newline + newline.join(entries) + newline + '  </ItemGroup>' + newline + close + tail
-        ET.fromstring(text)
-        staged[relative] = (b'\xef\xbb\xbf' if original.startswith(b'\xef\xbb\xbf') else b'') + text.encode('utf-8')
+    for path, before, after in stage_data_solution(ROOT, [ROOT / row['path'] for row in rows]):
+        relative = path.relative_to(ROOT).as_posix()
+        snapshots[relative] = before
+        staged[relative] = after
 
     files = []
     for relative, after in staged.items():

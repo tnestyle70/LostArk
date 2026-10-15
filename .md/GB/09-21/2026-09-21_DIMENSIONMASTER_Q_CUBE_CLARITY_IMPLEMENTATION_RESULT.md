@@ -370,3 +370,635 @@ Q CSO SHA256은 `b2fbeafbc347a4eb29a95d56fe043f155624c1fbdb4f463aadeb62c7c285dcb
 검증 대상은 Q의 밝은 황금색 면과 테두리, V 시작 큰 유리의 투과·가장자리, T 소환체의 맵 조명
 반응이다. R 수정과 T 전체 원본 복원은 이번 빌드에 포함하지 않았다. 실제 화면의 사용자 판정은
 남아 있으며 정상 ALT V/A의 데이터를 바꾸지 않았다.
+
+## G12. 2026-10-12 Q·R·A 큐브의 Bloom 누락 재분석
+
+이번 대상은 실제 Q의 금색 큐브, R의 보라 큐브와 같은 재질을 사용하는 A의 보라 큐브다.
+사용자는 프로젝트 종료 시점의 코드로 반복 수정 원인을 다시 분석하고 수정하도록 요청했다.
+기존 G01~G11은 당시 증거로 보존한다. 현재 작업은 `codex/warlord-altv-radial-render-fix`에서
+진행하며 시작 HEAD는 origin/main과 같았다. 다른 세션의 큰 dirty 변경은 보존하고 자동
+stage/commit/push하지 않았다. 만료된 팀 LAN sync와 Client/UI 실행은 수행하지 않았다.
+
+### 실제 소비 경로와 확인된 원인
+
+`DimensionMaster.skillbindings.json`의2050100/Q,2050180/R,2050210/A는
+`DimensionMaster.animevents`의 nailstrike/foldcut/willowrend에서 각각 아래 문서를 소비한다.
+
+| 실제 문서 | CubeSample 요소 | 현재 저작 입력 |
+|---|---|---|
+| `effect.dimensionmaster.skill.2050100.tuning.restore` | `authored.source-particle.b4984eeabefb0fc93783ecda` | clarity1, emissive1, root Bloom 생략 기본1.3 |
+| `effect.dimensionmaster.skill.2050180.tuning.restore` | `authored.tuning.dimensionmaster.r.purple-glass-sequence` | clarity 생략0, MIC `(2,.65,4,1)`, emissive1 |
+| `effect.dimensionmaster.skill.2050210.a1.full.restore` | `authored.composition.dimensionmaster.a.hit-1-purple-cube`부터 hit-4까지 | 같은 보라 CubeSample, clarity 생략0 |
+
+Q 비교용 `2050100.restore`의 Bloom16은 실제 Q tuning 문서의 값이 아니다. 현재
+`Effect_DocumentRenderer_MaterialBinding.cpp`는 `g_EmissiveIntensity`를 바인딩하며
+`Shader_EffectCubeSampleScene.hlsli`도 이를 곱한다. Q clarity의 독립 면 발광까지
+현재 남아 있으므로 'Emissive 변수가 누락돼 Q 전체가0'이라는 원인 설명은 틀리다.
+
+원본 CubeSample의 배경 입력은 현재 화면 HDR의 굴절 샘플이다. IBL 환경 cube를 선택하는
+표준 Schlick Fresnel 구현과 혼동하지 않는다. 시선각 `facing=abs(normalize(V).z)`에 따라
+`lerp(5*C^5,C,facing)`를 계산하고 MIC tint와 emissive를 곱한다. particle색의 원본
+기여는 주로 edge이며 Q의 추가 faceEmission은 후속 프로젝트 보정이다.
+
+Git `3fc23750` 이전에는 Deferred가 합성된 HDR에 `Extract_Bloom`을 적용했다. 이후
+스킬별 Bloom 분리는 SceneColor reader에 `F(B)-F(black)+Write_SceneBloom(F(black))`을
+적용했다. 이 식은 재질이 배경을 증폭하여 새로 threshold를 넘긴 기여를 잃는다.
+또한 비선형 C^5에 이미 다른 문서의 배율을 적용한 B를 대입하므로 배경 Bloom 전달이
+그 배율에 선형이지 않다. 이는 원본 RT0 수식 자체나 Fresnel 계수를 다시 추출해도
+고쳐지지 않는 프로젝트 합성 경계의 결함이다.
+
+09-15의 source tone/LUT 복원은 별도 변화다. 밝은 색 차이를 tone shoulder로 압축하고
+일부 맵 LUT는 보라색을 회전시킨다. 09-21은 Q 본체 제한과 독립 면 발광으로 외관을
+조정했지만 위 분리식을 남겼으며 R/A에는 Q clarity를 적용하지 않았다. 당시 최종
+사용자 화면 PASS도 문서에 없다. 과거 개인 화면을 이번에 다시 관찰했다는 뜻은 아니다.
+
+### 실제 수정
+
+제품 수정은 `Shader_EffectCubeSampleScene.hlsli`와
+`Shader_EffectMeshFamilyCarrier.hlsli` 두 파일이다. RT0 색·alpha·clip·메시·배치·재질
+입력은 그대로 두고 CubeSample의 RT2만 현재 비음수 HDR 배경 C에서 계산한다.
+
+```text
+T = 현재 C와 기존 clarity에서 얻은 RGB 전달 계수
+B = 이미 소유자별 가중치가 반영된 배경 Bloom
+I = 현재 효과 문서의 Bloom 배율
+X = 기존 배율 없는 Extract_SceneBloom
+Bloom = clamp(T*B + I*max(X(F(C))-T*X(C),0), 0,60000)
+```
+
+첫 항은 기존 빛 번짐의 전달, 두 번째 항은 현재 재질이 새로 만든 bright-pass다.
+항등 전달은 억제된 배경 Bloom을 재생성하지 않고 검은 배경에서는 자체 발광 추출을
+유지한다. 이번에 추가한 invocation-local `g_CubeSampleBloomWritten` 표식으로 실제
+CubeSample 분기가 RT2를 완성했음을 carrier에 전달한다. profile 번호만
+검사하여 상위 StandardColor/RuntimeV2/reconstructed 분기를 가로채지 않는다.
+다른 family의 출력 정책과 CBuffer·pass·프로젝트 등록은 변경하지 않았다.
+
+이 식은 프로젝트의 개별 Bloom 소유권 정책 보완이며 원본 UE3 보조 MRT 복원이라고
+표현하지 않는다. Q의 금색과 R/A 보라색을 모든 맵에서 똑같이 보장하는 색 보정도 아니다.
+JSON·Resources·전역 rendering profile은 이번에 변경하지 않았다.
+
+### 수치 검증과 화면 경계
+
+`out/CubeBloom20261012`의 임시 창 없는 D3D11 WARP 비교는 실제 production include의
+수정 전/후와 Engine의 기존 Bloom 함수, 설치된 caustic BC1 sRGB DDS를 사용했다.
+648개 재질·clarity·배경·시선·UV·문서 배율 조합과6개 emissive 표본,32개 고HDR 경계에서
+6,084개 조건이 통과했다. RT0 RGB·alpha의 최대 상대 차이는0, 고정 기능 alpha 합성 오차도0이며,
+intensity0에서 가중 배경 Bloom 전달 선형성의 최대 상대 오차는1.472e-7이다.
+
+배경 RGB0.4, 배경 Bloom0, 정면 중앙, threshold0.7/knee1, 문서 배율1.3의 GPU 표본:
+
+| 입력 | 변경 전후 동일한 RT0 RGB | 이전 Bloom RGB | 수정 Bloom RGB |
+|---|---|---|---|
+| R/A 보라 emissive1 | `(.8,.26,1.6)` | `(0,0,0)` | `(.268124,.087140,.536249)` |
+| R/A 보라 emissive2 | `(1.6,.52,3.2)` | `(0,0,0)` | `(.988002,.321101,1.976003)` |
+| Q clarity1 emissive1 | `(3.792191,2.802927,.181306)` | `(2.275,1.587857,.034821)` | `(3.485490,2.536075,.134938)` |
+
+따라서 보라 면의 발광 조절 무반응을 변경 전에 재현했고 수정 뒤 양의 응답을 확인했다.
+Q에는 이미 자체 발광이 있었으며 누락된 추가 기여를 보완한 것으로 구분한다.
+항등 재질의 배경 Bloom0 유지, 문서 배율0, clarity0/.5/1, alpha0/.6/1과 기존 blend
+계산도 확인했다. 요약은 `summary.json`, 원시 결과는 `readback.csv`와
+`minimal-emissive-response.csv`다. 이 검사는 실제 mesh의 raster/depth/시간별 입자·최종
+tone/LUT·blur·게임 화면을 포함하지 않는다.
+
+추가한 배경 HDR16/60000, clarity0/1, 배경 Bloom0/1, emissive1/0 경계는
+`high-hdr-readback.csv`에 있다. RT0·alpha는 변경 전후 같고 RT2는 유한한0~60000으로
+제한되며 실제 상한60000에 도달했다. emissive0은 색과 Bloom 모두0이다. FP32 시험
+타깃에서 원래 RT0의 큰 값을 보존한 검사이며 제품 FP16의 원래 RT0 포화 개선을 뜻하지 않는다.
+
+현재 `LevelRegistry.cpp`가 선택하는 Character Select warm-high-key, Bern neutral-day,
+Kouku g1.base의 저작 및 게시 profile은 모두 `bloomEnabled=false`다. 실행 중 사용자
+임시 설정은 이번에 관찰하지 않았다. Renderer의 Bloom pass와 최종 합성은 이 gate를
+따르므로 OFF에서는 수정된 RT2도 화면 halo로 합쳐지지 않는다. 전역 설정을 임의로
+켜지 않았으며, 사용자 비교는 Bloom ON/OFF 조건을 구분해야 한다. source tone/LUT로
+인한 면의 색·대비와 Bloom 누락 해결은 서로 다른 판정이다.
+
+변경 파일의 `git diff --check`는 통과했다. 전체 worktree 검사는 사용자/다른 세션의
+기존 C++ 주석·선언12줄의 trailing whitespace로 실패했으며 해당 파일은 수정하지 않았다.
+이번 변경에 JSON/XML은 없다. 제품 빌드와 실제 소비 CSO 검증은 아래 후속 항목에서
+완료된 결과만 기록한다. Client/UI 실행과 최종 사용자 화면 판정은 미수행이다.
+
+화면 비교는 Debug Client의 F1 → Rendering Workbench → Saved Settings →
+Live rendering comparison의 `Bloom`을 세션 한정으로 켜고 실제 차원술사의 Q/R/A를
+사용한다. 이 비교 체크는 Save Authored/Publish를 요구하지 않으며 `Reset comparison`으로
+복귀할 수 있다. Effect Tool의 비교용 Q 대신 실제 `Q_튜닝`을 대조하고, R 보라 큐브와
+A의4개 보라 큐브의 면/모서리·fade·겹침을 확인한다. 전역 옵션 저장 변경과 실제 플레이는
+사용자 영역이며 에이전트는 실행하지 않았다.
+
+## G13. 실제 제품 CSO의 변경 전후 출력
+
+독립 검토는 include 단독 검사와 별도로 실제
+`Client/Bin/Debug/Shader_VtxEffectMeshPreview.cso`를 FX11로 열어 VS·입력 레이아웃과
+`AlphaTwoSidedDepthRead` pass,3개 MRT를 통해 창 없이 그렸다. 면 중앙의 평면 triangle을
+사용하므로 이 검사는 설치 cube mesh의 방향·가림·전체 재생을 대신하지 않는다.
+
+변경 전 설치 CSO(SHA256 `86480cd2e3f9248b5fbd037f9b61849d0b326cc0e96215de1777cd37e9625257`)는
+24개 조건 중 보라 emissive1/2와 alpha.7/1의4개 조건에서 예상한 누락을 재현했다.
+HDR 출력이 `(.8,.26,1.6)` 또는 `(1.6,.52,3.2)`인데 RT2는0이었다. 이는 코드 식을
+CPU에서 다시 쓴 결과가 아니라 실제 변경 전 제품 PS_MAIN의 출력이다.
+
+정상 Product Build가2026-10-12 14:17:31 KST에 갱신한 generic CSO
+(SHA256 `792438d43ef386d728166031841b15879e0063c24225589530fbe15a13818424`)는
+같은24개 조건에서 실패0이었다. 변경 전후24개 RT0 RGB의 최대 절대 오차는0이다.
+보라 emissive1/2의 RT2가 G12 표와 일치하고 alpha.7에서 한 번만 가중되며 alpha0과
+intensity0에서는 해당 기여가0이다. Q는 기존 자체 발광과 추가 기여를 함께 출력한다.
+따라서 실제 carrier가 CubeSample의 RT2를 보존하는 연결까지 확인했다.
+
+증거는 `out/CubeBloom20261012/actual-fx11-baseline.csv`,
+`actual-fx11-current.csv`와 별도 FX11 probe source다. 현재 함수 분리·backend 우선순위와
+검증 oracle도 독립 검토했으며 확인된 추가 결함은 없었다. 최종 Client 링크·배포 결과와
+화면 승인은 별도이며, 이 시점은 generic shader 설치와 headless 출력 검증 완료다.
+
+## G14. 2026-10-12 Product Debug 빌드 완료
+
+`Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug -Profile Product`는
+exit0/PASS로 완료됐다. 전체779987ms이며 Engine795ms, Shared2041ms,
+Server72648ms, Client701291ms다. Client는227개 OBJ,74개 CSO와 EXE를 갱신했다.
+공통 carrier를 포함하는 shader의 정상 의존성 빌드이며 Clean/Rebuild, 수동 CSO 복사나
+데이터 publish는 하지 않았다. 다른 기존 dirty 소스도 현재 작업 트리 그대로 빌드했다.
+
+정본 receipt는 `out/BuildPipeline/runs/20261012T052159699Z-debug-product.json`이다.
+필수 runtime 입력 누락0, 유효성 실패0이며42개 runtime data check가 통과했다.
+확인 범위는 runner가 제공하는 파일 존재, Navigation 참조 및 Item/Valtan reward catalog
+검사다. 모든 runtime domain의 플레이 검증을 뜻하지 않는다. 기존 FXC 경고, C4819/C4828
+인코딩 경고와 DirectXTK PDB LNK4099 경고는 있으며 이 작업에서 광역 수정하지 않았다.
+
+G13의 새 제품 CSO는 이 빌드가 설치한 산출물이다. Debug 컴파일·링크·배포와 창 없는
+출력 검증은 완료했으며 Release 빌드, Client/Server 실행, 사용자의 Q/R/A 최종 화면
+판정은 수행하지 않았다. 따라서 Bloom 출력 누락 수정 완료와 최종 외관 승인 대기를 구분한다.
+
+## G15. 2026-10-12 Debug·Release 전체 반영 빌드 후속 검증
+
+사용자가 두 구성의 빌드·검증을 모두 요청했다. 현재 작업 트리의 다른 변경을 보존하고
+Product Build와 구성별 설치 파일·실제 CSO 검사를 수행한다. Client/Server/UI 실행과
+최종 화면은 사용자 영역이며 rendering profile 저장값은 변경하지 않는다.
+
+### Debug 완료
+
+`out/BuildPipeline/runs/20261012T062459526Z-debug-product.json`은 exit0/PASS다.
+총2484554ms, Engine446337ms, Shared322ms, Server61956ms, Client1972990ms이며
+Engine CSO29개와 Client OBJ260개·CSO94개·EXE를 갱신했다. 기존 다른 변경의 Deferred와
+모델 재질 의존성도 정상 Build에 포함됐다. 필수 runtime 입력 누락0·유효성 실패0,
+runtime data check42개 PASS다. Clean/Rebuild나 수동 산출물 복사는 하지 않았다.
+
+설치된 generic CSO를 다시 사용한 FX11 검사24조건은 실패0이며 이전 baseline 대비
+RT0 차이0이다. CubeSample 소스 SHA256은 G12 검증본과 같은
+`47149e61eb31abd7defb6d8ad7e8ddcdc3dc7a03298408bd4aea21eaca2cd183`이고,
+CSO SHA256은 G13과 같은 `792438d43ef386d728166031841b15879e0063c24225589530fbe15a13818424`다.
+증거는 `out/CubeBloom20261012/debug-release/Debug/receipt.json`과 `actual-fx11.csv`다.
+
+전체 Product shader closure는 active producer260개, Client consumer171개,
+family program148개, resource-root8조건과 V1/V2 각각1352픽셀 WARP 검사를 통과했다.
+정본 `Test-CompiledShaderClosure.ps1`의 VS 탐색이 Preview를 제외하므로 out 전용 wrapper가
+메모리 실행본의 `vswhere -prerelease`와 임시 출력 경로만 각각1회 보완했다. 원본 검사와
+assert 본문은 유지하고 역치환 일치·원본 SHA256 전후 일치를 확인했다. 따라서 순정 스크립트
+그대로의 실행 PASS가 아니라 같은 검증 로직의 실행 환경 보완 결과다. 저장소 도구 원본과
+제품 설치 파일에는 쓰지 않았다. 증거는 `out/CubeBloom20261012/InstallClosure/Debug/`다.
+
+첫 배포 fingerprint 검사는 다른 작업의 후속 Debug 빌드가 Engine DLL/PDB를 갱신하고
+Client 배포를 끝내기 전이어서 두 쌍의 불일치를 기록했다. 외부 runner 부모 프로세스는
+15:20:43 KST에 시작했지만 Engine MSBuild는 우리 Product 종료15:24:59 뒤인15:25:00에
+시작했다. 실제 컴파일이 동시에 실행됐다고 해석하지 않는다. 해당 외부 빌드도
+`out/BuildPipeline/runs/20261012T062923993Z-debug-product.json`의 PASS로 끝났다.
+
+그 배포 후15:31:08 KST 재검사는 필수 산출물30개·배포 쌍14개 모두 PASS다.
+`deployment-fingerprint-post-external-product-pass.json`과
+`post-external-product-continuity.json`에 별도 보존했고 중간 불일치 증거도 삭제하지 않았다.
+외부 Product의 네 단계는 모두 shaderWrites0이며 기존에 기록한 CSO13개와 실제 cube CSO의
+hash도 동일하다. 전체260개 CSO의 전후 hash 목록을 새로 비교했다고 주장하지 않는다.
+
+### Release 완료와 두 구성의 최종 대조
+
+`out/BuildPipeline/runs/20261012T072341452Z-release-product.json`은 exit0/PASS다.
+총3103589ms, Engine539256ms, Shared2346ms, Server67942ms, Client2491008ms이며
+Engine OBJ75개·PCH1개·CSO29개, Shared OBJ9개·PCH1개, Server OBJ100개,
+Client OBJ360개·CSO168개를 갱신했다. Client의 binaryWrites2는 EXE와 배포 DLL의
+출력 변경 계수이며 실행 성공 횟수가 아니다. 필수 runtime 입력 누락0·유효성 실패0,
+runtime data check42개 PASS다. 기존 경고는 남아 있지만 빌드 오류는 없다.
+
+Release generic CSO SHA256은
+`c8bf28d829cbc7bd95bc633a13b8ee9f07aaa345392a39dfc63b43854374a678`이다.
+15:49:04 KST에 정상 FXC가 생성한 뒤 기존 probe EXE로 사전 검사했고, Product 배포 완료 후
+hash 불변을 확인하고 Debug·Release 각각24조건을 다시 실행했다. 모두 exit0·실패0이며
+두 구성의 RT0와 RT2 최대 차이는0이다. 각 `debug-release/<Configuration>/`의
+`actual-fx11-final.csv`는 기존 CSV와 byte 단위로도 같다. `receipt.json`에 최종 Product
+완료 근거와 배포 후 검증을 기록했다. Debug CSO도 기존 hash를 유지한다.
+
+Release shader closure도 Debug와 같은 producer260개·Client consumer171개·
+family program148개·resource-root8조건·V1/V2 각각1352픽셀을 통과했다. 실행 환경
+보완의 범위와 원본 hash 불변 검사는 위 Debug와 동일하다. Release 검사는16:24:38 KST에
+완료됐으며 `out/CubeBloom20261012/InstallClosure/Release/receipt.json`에 기록했다.
+
+이후 read-only 최종 배포 검사는 Release29개 산출물·13쌍, Debug30개 산출물·14쌍 모두
+PASS다. 각 `InstallClosure/<Configuration>/deployment-fingerprint-final-debug-release.json`에
+보존했다. 검사 도구는 제품 파일을 다시 빌드하거나 복사하지 않았다. 큐브 소스 두 파일의
+hash도 이 후속 작업 시작 때와 동일하며 전역 rendering profile과 Resources를 변경하지 않았다.
+
+이번 기능의 변경 파일 `git diff --check`는 PASS다. 전체 작업 트리에서는 다른 기존 C++
+주석·선언11줄의 trailing whitespace가 남아 있으며 이를 이유로 해당 파일을 정리하지 않았다.
+생성한 검사 receipt는 JSON parse를 확인했고 제품 JSON/XML 변경은 없다. 임시 probe와
+출력은 out 아래에 두며 빌드 산출물·검사 로그를 소스 commit에 넣지 않았다.
+
+### 사용자 화면 확인 경계
+
+Debug·Release 제품 컴파일·링크·배포와 설치·수치 검증은 완료됐다. Client/Server/UI는
+실행하지 않았으며 원본 cube mesh의 실제 가림·재생과 최종 tone/LUT 이후 Q/R/A 화면은
+사용자 확인이 남아 있다. 전역 Bloom OFF는 유지했다. 빛 번짐 비교는 G12의 Debug
+세션 한정 Bloom 비교를 사용하며, Release에 같은 authoring 창이 있다고 안내하지 않는다.
+
+확인할 실행 파일은 `Client/Bin/Debug/Client.exe`, `Client/Bin/Release/Client.exe`이며
+직접 실행의 작업 디렉터리는 `Client/Default`다. Server도 각각
+`Server/Bin/Debug/Server.exe`, `Server/Bin/Release/Server.exe`로 빌드돼 있다.
+F5/Ctrl+F5는 VS 설정에 따라 Build를 수행할 수 있으므로 무빌드 실행이라고 표현하지 않는다.
+
+## G16. 2026-10-12 초기 큐브 색감과 현재 후처리의 대조
+
+사용자는 Bloom 누락 수정과 별도로, 전역 렌더링 설정을 유지하면서 Q/R/A 큐브만 최초 복구
+당시의 색감에 가깝게 만드는 후속 작업을 요청했다. 명시 요청에 따라 Astra가 초기 기록과
+합성 경계를 독립 조사했다. 이 항목은 조사와 후보 검증 기록이며, G15의 제품 빌드 성공을
+아직 반영하지 않은 색 보정의 빌드 성공으로 확대하지 않는다.
+
+### 최초 비교 기준
+
+09-08 `CHARACTER_MATERIAL_AND_EFFECT_ROUND2_ESTIMATE_RESULT`의 첫 사용자 확인과
+`사용자 화면 피드백과 Q/W 손튜닝 방향 검토`에 성공 Q2, 큰 노란 직사각형 유리와 발광 띠가
+기록돼 있다. 당시 이미지 short ID는 `196df995`다. 이 PC에서 이미지 실물과 당시
+`out/DimensionMasterQRestore20260908`는 찾지 못했으므로 이번에 당시 이미지를 직접
+열람했다고 기록하지 않는다. 사용자에게 남아 있는 캡처를 요청했지만 조사의 선행 조건은 아니다.
+
+가장 이른 Git 보관본은 `c1e7b50c91f4ac42c7b2b39e023649d650cb1cfe`의 09-09 02:36 KST다.
+해당 CubeSample RT0는 현재 R/A 기본식과 같고 Q의 후속 clarity는 없다. 당시 Character Select
+warm-high-key는 Hable, whitePoint1, gamma1.90499997, 명목 실효 exposure 약0.6351이었다.
+Bloom은 ON, threshold2.74000001/knee1, 명목 실효 intensity 약2.2185이며 LUT 경로가 없었다.
+이는 당시 저장된 설정이며 그 화면의 미저장 세션값까지 증명하지 않는다. 현재 보존된
+before-restoration profile의 Bloom1.3을 당시 Git의2.61과 같다고 취급하지 않는다.
+
+A의 보라 큐브는 `c67a47b2`의 09-10 보관본과 ROUND2 RESULT의 R donor 복사 기록을 따른다.
+이는 원본 A emitter를 그대로 복원한 것이 아니라 R 재질을 사용하는 사용자 저작 조합이다.
+이번 대상은 실제 Q tuning의 cube1개, R tuning의 purple-glass-sequence1개, A a1.full의
+hit-1~4-purple-cube4개다. 같은 element ID가 있는 비교용 Q 전체를 자동 변경하지 않는다.
+
+### 현재 후처리와 후보의 경계
+
+`Shader_Deferred.hlsl::Resolve_FinalLDR`는 합성 HDR와 선택된 blurred Bloom을 더한 뒤
+exposure, source tone, baked grading LUT를 적용한다. Character Select는 빈 원본 LUT라도
+source tone을 받으며, 일부 쿠크 프로필은 실제 LUT로 보라색 방향을 바꾼다. Renderer의
+BGRA8 grading atlas와 source tone의 saturate는 비가역일 수 있다. 따라서 단순 재질 RGB에
+역 LUT를 적용하는 것을 모든 맵에서 정확한 초기 색을 복원하는 해법이라고 설명하지 않는다.
+
+임시 `out/CubeColor20261012/analyze.cjs`는 실제 게시 프로필6개와 LUT DDS, 앞선 production
+CubeSample의 GPU readback108행을 사용하여 CPU 근사3,888조건을 비교했다. source tone
+역계산의 왕복 최대 오차는1.20e-11, 중성 LUT 격자 오차는0이다. 현재 검사 자체는 GPU final
+shader나 실제 게임 화면 검증이 아니다. 초기 Bloom을 다시 켜지 않고 색 변환 차이를 분리한다.
+
+추가 후보는 현재 배경의 표시색에 초기 Hable에서의 큐브 기여만 더하는 local-delta target과
+비음수 재질 출력 제약을 포함한 역보정이다. 굴절 샘플 C와 실제 픽셀 배경 D를 구분한다.
+한 occurrence의 모든 입자가 동일 snapshot을 공유하므로 같은 occurrence 안에서 큐브가
+겹치면 D와 실제 blend 목적지가 달라진다. 단일 표본 오차 감소만으로 적용을 승인하지 않고
+겹침, alpha fade, 색 방향과 대비를 별도 대조한다. 이 조사 뒤의 제품 연결은 G17에 기록한다.
+
+## G17. 2026-10-12 Q/R/A 국소 색 응답 반영
+
+### 실제 원인과 이전 시도의 차이
+
+이번 문제는 두 단계로 구분한다. G15는 HDR SceneColor의 재질 증폭이 Bloom RT2에 누락된
+합성 결함을 수정했다. G17은 그 뒤에도 남는 표시색 문제다. emissive 바인딩 자체가 사라진
+것은 아니다. CubeSample의 배경 의존 `C^5`, MIC 색, caustic/edge에 emissive를 곱한 뒤,
+복원된 `Resolve_FinalLDR`의 exposure/source tone/saturate/graded LUT를 통과한다.
+채널이 포화되거나 LUT에서 비슷한 값으로 압축되면 emissive 증가가 색 차이·발광감을
+회복하지 못한다. 원본 환경 cubemap의 Schlick Fresnel 오류라고 단정하지 않는다.
+
+초기 성공 보관본 `c1e7b50c`(09-09)은 native CubeSample과 Hable/gamma를 조합했고,
+`3fc23750`(09-13)의 공용 Bloom 분리, `579d9b90`(09-15, rendering restore)의 source
+tone/LUT 연결을 거쳤다. Q에는 `f291f886`(09-21)에서 clarity 보정도 들어갔다. 최초 문제가 관찰된 정확한
+commit이나 당시 화면의 미저장 설정까지 확인한 것은 아니다. 이번 변경은 또 다른 emissive
+배수나 전역 exposure/LUT OFF를 적용하지 않고, 현재 후처리를 읽어 큐브의 국소 기여를
+초기 Hable 기준에 가깝게 만든다. 원본 수식과 오늘의 표시 변환을 분리한 것이 차이다.
+
+### 코드 연결
+
+`Renderer::Bind_ActiveSceneColorTransform`은 현재 commit된 quality와 이미 생성된
+grading SRV를 읽기 전용으로 제공한다. `Render_Final`과 source curve packing helper를
+공유한다. LUT의 생성·수명·캐시·전역 설정은 바꾸지 않는다. GameInstance는 forwarding만 한다.
+
+Client `Bind_MaterialInputs`는 generic mesh의 매 draw에서 선택 flag를 재설정한다.
+실제 Q/R/A effect ID, Q1/R1/A4의 element ID, CubeSample profile42와 one/two-sided
+alpha depth-read blend로 범위를 제한한다. 같은 ID의 additive/multiply 편집은 제외한다.
+다른 CubeSample, 비교용 Q 문서, 도화가 F나 다른 클래스에는 자동 전파하지 않는다.
+
+새 `Shader_EffectCubeColorResponse.hlsli`의 핵심은 다음 식이다. D는 굴절되지 않은 현재
+픽셀 배경, S0는 Q clarity 이전의 native CubeSample 출력, a0는 원래 alpha, a는 현재
+alpha, H는 초기 Hable, G는 현재 source tone/LUT다.
+
+```text
+target = saturate(G(D) + H(lerp(D,S0,a0)) - H(D))
+G(lerp(D,S',a)) ~= target, 0 <= S' <= 60000
+```
+
+RGB만의 최근접 해가 모서리 휘도를 뒤집는 반례가 있어 RGB와 휘도 오차를 함께 쓰는
+bounded 8회 solver를 적용했다. 비대상·alpha0·source OFF는 기존 RGB를 유지하며,
+비유한 해나 기존보다 가중 오차가 큰 후보도 사용하지 않는다. Final과 같은 노출 전후
+HDR60000 범위를 적용하고, NaN/INF 검사는 FXC fast-math에도 남도록 지수 bit를 검사한다.
+기존 RT2를 먼저 계산한
+뒤 RT0 RGB만 바꾸므로 앞선 Bloom 수식, alpha/clip/굴절 UV/깊이 상태는 보존한다.
+
+### 확인 범위
+
+현재 반영 코드에 대한 GPU·설치 CSO·Debug/Release 증거는 이 절의 후속 검증 기록으로
+구분한다. G15 빌드를 새 색 보정의 빌드 성공으로 대신하지 않는다. Client/Server/UI는
+실행하지 않았으며 최종 시각 판정은 사용자가 직접 한다.
+
+LUT가 표현하지 못하는 색, 같은 occurrence 내부의 고정 snapshot 겹침, FXAA와 공간 Bloom,
+현재 조명·배경과 과거 장면의 차이는 남는다. 전역 Bloom OFF를 유지했으므로 초기 ON 때의
+halo 전체를 재현했다고 하지 않는다. 초기 캡처 실물이 없어 이번 기준은 보존된 코드·설정·
+사용자 피드백 기록이며, 과거 이미지와 픽셀 단위 비교를 수행한 결과가 아니다.
+
+### 최종 제품 함수 GPU 검증
+
+`out/CubeColor20261012/gpu/final-receipt.json`은 제품 include SHA256
+`792a20762fd3bdad84ca66e1d5ff6aeb110ea0355b5b01262adf49aa33743ee2`의 실제 함수로 검사했다.
+실제 Deferred 함수와 게시 DDS에서 BGRA8 grading atlas를 만들고 HDR32/16 alpha blend를
+각각7,872조건, 합계15,744출력으로 대조했다. 각 설정에는 유색 배경0~60000와 native
+RGB1e10~1e30의 고휘도1,920조건이 포함된다. finite·출력 범위·flag/source OFF·alpha0
+무변경·GPU 내부의 기존 가중 오차 보호 계약 실패는0이다. 별도의 O3 검사는 native/배경
+각 채널의 NaN/Inf, subnormal, 최대 유한값 등72개 bit-pattern 조건을 통과했다.
+
+실제 alpha·단일 합성의 평균 최대 RGB 채널 오차는 아래와 같다. 0~1 표시색에서 위의
+역사 기여 target과 비교한 수치이며 과거 스크린샷과의 오차가 아니다. 각 칸은36표본이다.
+
+| 프로필 | Q 금색 전 → 후 | R/A 보라 전 → 후 |
+|---|---:|---:|
+| Character Select warm-high-key | .23364 → .00029 | .05932 → .00027 |
+| Bern neutral-day | .21077 → .00016 | .05078 → .00017 |
+| 쿠크 G1 | .22037 → .00680 | .06889 → .00639 |
+| 쿠크 G3 | .27253 → .04165 | .10929 → .03804 |
+| Bern region106 | .22969 → .00092 | .06038 → .00341 |
+| Bern region107 | .22563 → .00224 | .06726 → .00417 |
+
+G3 유색 표본의 평균 hue 오차는 Q34.76°→5.01°, 보라53.90°→4.20°다. 단, G3 Q의
+scene.5/facing.5에서는 edge−face 휘도가 단일−.0008342, 2겹−.0001931로 조금 반전된다.
+각 차이는1/255보다 작지만 완전한 명암 보존 성공으로 기록하지 않는다. 5겹에서는 유의한
+target 대비 반전은 없었다. 겹침 뒤의 목표 오차를 모두 줄였다는 보장도 없다. GPU solver와
+CPU double solver는 float·LUT 미분·분기 및 역 tone 구현 차이가 있으므로 CPU 후보 일치 자체를 통과 조건으로
+삼지 않았다. 관련 상세는 `production-outcomes.json`, `production-receipt.json`에 있다.
+
+AMD Radeon 840M에서 별도 창 없는 timestamp 검사는256×256의 단색 synthetic 입력으로
+최종 solver만 측정했다. ON 중앙값 범위.03336~.12849ms/draw, 추가 비용.03001~.12528ms/draw,
+108 timed batch의 disjoint0이다. scene copy·실제 mesh·carrier·가림·파형별 분기 비용을
+포함한 게임 프레임 측정이 아니므로 FPS 개선이나 실제 최악 비용으로 환산하지 않는다.
+FXC X4000의 첫 guard 반환 경고는 남고 실제 경계 검사는 통과했다. 기존 경고를 숨기기 위해
+전역 compiler 옵션을 바꾸지 않았다.
+
+최종 독립 검토에서는 새 구현 결함을 확인하지 못했다. 다만 ON/OFF timestamp 비교는 같은
+새 generic shader 안에서 수행했다. 공유 PS의 bytecode/register footprint 증가가 비선택
+generic mesh에 주는 이전 shader 대비 비용은 분리 측정하지 않았다. 선택 픽셀 solver의
+위 수치를 모든 이펙트에 대한 성능 무영향 보장으로 사용하지 않는다.
+
+### 선택 조건 검증
+
+`out/CubeColor20261012/installed/selector-run-receipt.json`은 실제 Client의 selector 식과
+실제 enum을 추출·컴파일한120조건을 실패0으로 통과했다. 6개 exact ID와 두 alpha profile,
+잘못된 문서/element, profile0/41/43/127, opaque/additive/multiply/END를 포함한다.
+원래 데이터의 animevents1543/1546/1547와 direct-authored document staging도 대조했다.
+준비 문서의 ID 일치 검사 때문에 다른 V2 ID로 바뀌어 selector를 놓치는 경로는 확인되지 않았다.
+
+### 설치된 Debug/Release FX11 검증
+
+정식 빌드가 설치한 `Shader_VtxEffectMeshPreview.cso`를 D3D11 WARP의 실제 FX11
+`AlphaOneSidedDepthRead` pass로 실행했다. Debug/Release 각각288 draw, 실패0이다.
+warm/Bern/G3, 금색/보라, emissive1/2, Bloom0/1.3, alpha0/.7/1과 OFF/ON/OFF/source OFF를
+대조했다. 선택된 RT0 RGB는 바뀌고 RT0 alpha, RT1 RGBA, RT2 RGBA는 구성별 memcmp로
+bit-exact 보존됐다. OFF 복귀와 source OFF/null LUT도 이전 출력으로 bit-exact 복귀한다.
+
+두 구성의288개 readback 행을 대조한 최대 절대 차이는 모든 출력에서0이다. 이 구성 간
+비교는 float round-trip9자리 CSV 기준이며, 구성 내부 bit-exact 검사와 구분한다.
+각 검사 전후 CSO hash도 동일했다.
+
+| 구성 | 설치 CSO SHA256 |
+|---|---|
+| Debug | `C31E7044609EBA6ABEB2A54A1D9D3DB1745FE394CE8395C726595BE75B4DDD80` |
+| Release | `04361461ADCF3B0A236EA6820E9A6535CA4CB3FB150495A05875F1EC5FC42C94` |
+
+증거는 `out/CubeColor20261012/installed/receipt-debug.json`, `receipt-release.json`,
+`cross-configuration.json`이다. 이 검사는 synthetic triangle과 RGBA32F MRT의 실제
+carrier 소비자 검사다. final tone/LUT 및 HDR16 합성은 앞 절의 별도 GPU 검증에 포함한다.
+게임의 실제 메시·가림·공간 Bloom·화면을 검증한 것으로 확대하지 않는다.
+
+### 최종 Product 빌드와 보존 검사
+
+최종 소스 기준 x64 Product Build는 Debug/Release 모두 PASS다. Clean/Rebuild나
+수동 CSO 복사는 하지 않았다. 두 구성 모두 Engine/Shared/Server/Client 단계 PASS,
+runtimeDataChecks42개 PASS, missingRuntimeInputs0, invalidRuntimeInputs0이다.
+
+| 구성 | 최종 receipt | 시작 → 완료 KST |
+|---|---|---|
+| Debug | `out/BuildPipeline/runs/20261012T090723606Z-debug-product.json` | 17:59:04 → 18:07:23 |
+| Release | `out/BuildPipeline/runs/20261012T092048478Z-release-product.json` | 18:09:06 → 18:20:48 |
+
+Release는 이번 작업에서 `Invoke-BuildAndRegression.ps1 -Configuration Release -Profile
+Product -MaxCompilerProcesses 4`로 실행했다. Debug의 최초 Product Build도 성공했지만,
+최종 경계 수정 뒤 재실행은 다른 작업의 headless Server 점유와 공유 Debug build lock
+대기로 각각 중단됐다. 해당 프로세스를 종료하거나 잠금을 우회하지 않았다. 대신 같은
+workspace에서 최종 수정 뒤 실행된 CodeReadability 작업의 위 Debug Product receipt를
+확인하고, 그 설치 CSO를 별도의288-draw 검사로 재검증했다. 잠금 timeout을 컴파일 성공으로
+기록하지 않는다. Debug 로그는 `out/CodeReadability/session-20261012/product-debug-4.log`,
+Release 로그는 `out/CubeColor20261012/release-final-build.log`다.
+
+빌드 완료 뒤 제품 include와 두 설치 CSO의 hash는 위 GPU/설치 receipt와 일치했다.
+PLAN의 G17 전문과 실제7개 소스 hash도 일치한다. `Client.vcxproj`와 `.filters` XML parse,
+새 include의 단일 등록을 확인했다. 변경한 shader/Client/project/문서는 `git diff --check`
+PASS다. Engine 파일의 기존 무관한 변경에는 `GameInstance.cpp:80`, `GameInstance.h:32`의
+trailing whitespace2건이 남아 있어 전체 Engine diff를 무경고라고 하지 않는다. 이번 API
+추가 행과 신규 include에는 trailing whitespace가 없다. 기존 C4819/C4828 등 인코딩 경고와
+FXC X4000은 남지만 빌드 오류는 없다. 기존 C++ 인코딩을 일괄 변환하지 않았다.
+
+조사 시작 receipt의 hash와 비교하여 저작/게시 RenderingProfiles, Deferred shader,
+RenderingProfileService, 실제 G1/G3 LUT DDS가 모두 그대로임을 다시 확인했다. 이 작업은
+effect JSON이나 Resources를 수정하거나 publish하지 않았다. 전역 Bloom/exposure/LUT/
+FXAA/안개 및 팀장 튜닝값도 변경하지 않았다. 사용자와 다른 작업의 변경은 보존했다.
+
+### 사용자 화면 확인 경계
+
+구현·컴파일·설치 셰이더 소비자·수치 검증까지 완료했다. Client/Server/UI를 이 작업에서
+실행하지 않았으므로 최종 화면 확인은 미완료다. 사용자는 현재 빌드에서 Q 금색 면/테두리,
+R 보라 큐브, A의4회 보라 큐브를 같은 카메라와 배경에서 확인한다. 특히 어두운 배경과 밝은
+배경, 큐브 겹침과 사라지는 구간의 색·명암을 함께 확인해야 한다. 기존 EXE가 실행 중이면
+새 바이너리의 반영 여부와 화면 판정을 구분한다.
+
+최초 캡처 실물은 찾지 못했으므로 코드·설정 기록 기반의 색 기여 복원이다. LUT의 표현 범위와
+고정 snapshot 겹침 때문에 과거 화면과 완전 일치를 보장하지 않으며, 현재 Bloom OFF를
+유지하는 조건에서 초기 Bloom ON의 공간적인 빛 번짐까지 복원했다고 설명하지 않는다.
+
+## G18. 2026-10-13 Q 복구 확인과 Q/R/A 강한 발광 반영
+
+### 사용자 판정과 실제 원인
+
+사용자가 G17 이후 Q는 잘 나오는 것 같다고 복구를 확인했고 R/A 보라 큐브는 이전과 같다고
+알렸다. 후속 지시는 emissive를 소폭이 아닌 크게 올리고, 실제 수정 데이터·수치·코드 위치와
+Debug/Release 빌드까지 제공하는 것이다. G17 Q 확인과 이번 강화 후보의 화면 승인은 구분한다.
+
+현재 `DimensionMaster.animevents`1543/1546/1547 → EffectCatalog의 DIRECT_AUTHORED_DOCUMENT
+→ exact document/element → SourceProfile42 → GENERIC/MESH → CubeSample까지 재대조했다.
+R/A의 selector 누락이나 새 material packet으로 조용히 우회하는 경로는 확인되지 않았다.
+Product registry는 빈 registry이며 document ID는 요청 ID와 일치해야 준비된다. 설치된 두
+CSO도 G17 기록의 hash와 같았다. 과거 out 검증 파일은 없어 이번 실행 증거로 재사용하지 않았다.
+
+문제는 보정 기준의 한계였다. R/A는 `project_clarity_strength`가 생략되어0이고, 정면 중앙의
+본체는 배경 의존값이다. 검은 배경에서는 caustic과 edge가 없는 중심의 RGB도0이므로
+emissive4/8을 곱해도0이다. Q에는 별도 faceEmission이 있지만 G17은 clarity 이전의
+nativeColor/sourceAlpha를 목표로 삼아 그 저작 발광을 다시 약화하거나 제거할 수 있었다.
+한편 초기 Hable 기준은 HDR 약1.574555부터 각 채널이1로 포화해 밝은 면에서 gain만 늘려도
+흰색 target이 그대로 남는다. 이는 emissive GPU 바인딩 실패와 다른 문제다.
+
+### 실제 변경 데이터
+
+수정한 정본은 다음 세 파일이다. 공통 수정 필드는 해당 stable element의
+`detail.color.emissiveIntensity`이며 **1 → 4**다. 일반 particle color, lifetime, transform,
+텍스처, 발생 수와 다른 element는 변경하지 않았다.
+
+| 정본 파일: Data/Effects/Authored/ 아래 | 대상 element | 추가 변경 |
+|---|---|---|
+| `effect.dimensionmaster.skill.2050100.tuning.restore.effect.json` | `authored.source-particle.b4984eeabefb0fc93783ecda` | Q clarity1 유지 |
+| `effect.dimensionmaster.skill.2050180.tuning.restore.effect.json` | `authored.tuning.dimensionmaster.r.purple-glass-sequence` | clarity 생략0 → 1 |
+| `effect.dimensionmaster.skill.2050210.a1.full.restore.effect.json` | `authored.composition.dimensionmaster.a.hit-1-purple-cube`부터 hit-4까지4개 | 각각 clarity 생략0 → 1 |
+
+R/A의 추가 필드는 `material.sourceProfile.scalars`에 들어가는 기존 named scalar다.
+
+```json
+{ "name": "project_clarity_strength", "group": "Project tuning", "value": 1 }
+```
+
+강도 조절은 위 emissive 수치를 수정하면 된다. `detail.linearLerp.emissiveIntensity=false`이므로
+같은 이름의 boolean이나 현재 미사용 `endEmissiveIntensity=1`은 증폭값이 아니다. 이펙트 문서의
+Bloom intensity나 전역 exposure/Bloom을 대신 올리지 않았다. 비교용 Q restore는 별도 문서이며
+이번에는 실제 스킬 cue가 소비하는 tuning 정본을 변경했다.
+
+4배는 입력 HDR 에너지 배수이며 화면 밝기가4배라는 뜻이 아니다. 8배 후보는 CS 정면 중심의
+회색 배경.5에서 보라 target이[1,1,1]로 포화해 제외했다. 같은 조건의4배도[1,.85191,1]로 밝은
+연보라가 되므로 모든 배경의 진한 보라를 보장하지 않는다.
+
+### 실제 수정 코드와 유지한 소비자
+
+`Client/Bin/ShaderFiles/Shader_EffectCubeSampleScene.hlsli::Shade_EffectCubeSampleScene`은
+clarity 이전의 `nativeColor` 임시변수를 없애고, RT2 계산 뒤 현재 저작 SceneColor RGB/alpha를
+`CubeColor_Resolve`에 전달한다. clarity는 배경 transmission을 제한하고 faceEmission을 더한다.
+원래 sourceAlpha clip은 유지한다.
+
+`Client/Bin/ShaderFiles/Shader_EffectCubeColorResponse.hlsli::CubeColor_Resolve`는
+nativeMaterial/nativeAlpha 인자를 제거하고 현재 재질과 실제 alpha로 아래 목표를 계산한다.
+solver 반복·오차 보호·현재 LUT 입력·전역 후처리는 바꾸지 않는다.
+
+```text
+target = saturate(G(D) + H(lerp(D,Sauthored,a)) - H(D))
+```
+
+G17의 원본 기준 보정에서 현재 저작 결과를 존중하는 PROJECT_TUNED 색 응답으로 바뀐다.
+Q의 승인된 금색 면도 더 밝게 만드는 의도적인 변화이며 완전한 외형 불변으로 설명하지 않는다.
+R/A clarity는 독립 면 발광뿐 아니라 밝은 배경에서 중간 alpha를최대0.7→0.91로 강화한다.
+fade0/1과 원본 clip은 유지한다. 따라서 어제 재질 대비 alpha/RT2가 불변인 수정은 아니다.
+색 solver 직전·직후의 alpha/RT2만 동일하다.
+
+검토했지만 수정하지 않은 소비자는 다음과 같다.
+
+- `Effect_DocumentCodec_MaterialValidation.cpp`: 기존 named scalar finite/unique 및 clarity0~1 검증.
+- `Effect_DocumentRenderer_ResourceStaging.cpp`: profile42에서 named clarity를 `vSourceScalars0.w`에 저장.
+- `Effect_DocumentRenderer_MaterialBinding.cpp::Bind_MaterialInputs`: exact Q/R/A selector,
+  `g_SourceScalars0`, `g_EmissiveIntensity`와 Renderer의 현재 tone/LUT를 바인딩.
+
+큐브 기능의 새 C++/schema/shader constant/project 등록은 없다. 두 shader와 데이터3개가
+큐브 변경 범위이며, 각 코드 전문과 데이터 교체 블록은 같은 PLAN의 G18에 있다.
+별도로 전체 빌드를 막은 `Client/Public/BossLogicFlowView.h:8`의 잘린
+`#include <string_vie`를 `#include <string_view>`로 한 줄만 복구했다.
+UTF-8 BOM과 다른 작업의 기존 변경은 보존했다. 이 수정은 큐브 로직과 무관한 문법 복구다.
+
+### 저장·구조·GPU 검증
+
+사용자의 반영 요청에 따라 현재 디스크 정본으로 후보를 만들고 직전 hash 재확인·백업·원자
+교체했다. `out/CubeColor20261013/data-applied.json`과 `data-backup/`에 기록했다. 미저장
+메모리 draft의 자동 병합·Reload는 하지 않았다. direct-authored 문서이므로 별도 publish나
+DataFiles/Resources 복사는 필요하지 않으며 실제로 하지 않았다.
+
+독립 검사 `candidate-independent-review.json`: 세 문서6개 요소에서 emissive6개와 clarity5개,
+정확히11개 필드 변화만 허용했다. 그 밖의 구조는 동일하다. 기존 문서별 validator5종과
+CubeSample 계약/finite·unique scalar/범위/selector 검사를 통과했고, 문서별 리소스8/18/45개는
+모두 존재·nonempty이며 참조 목록이 그대로다. 적용 직후 hash도 검증 후보와 일치한다.
+
+최종 제품 함수 자체를 컴파일한 별도 창 없는 D3D11 WARP 검사는 O3의2,160 draw를 실패0으로
+통과했다. 현재6개 profile, Q/보라, 배경0/.1/1/4/16, 면/edge, facing1/.5, alpha실제/0/1,
+ON/selector OFF/source OFF를 대조했다. shader hash는 CubeSample
+`be4a7f82fe588669e6a6a5b50971883dd0c19756f9a019467d0a72b407b1e770`, ColorResponse
+`9c8ee99e9497034b03dc4fbce8e01d435b9e060b0996244811245ebeb8a1047e`다.
+
+solver 전후 RT2와 alpha2,160건 및 비활성/alpha0의1,680건은 bit-exact 동일했다. 활성480건 중
+474건은 target 가중 오차가 감소했고6건은 동일하며 비유한값·범위·기존 오차 악화는0건이다.
+CS의 보라 정면 중앙 alpha.7에서 실제 GPU 표시색은 다음과 같다.
+
+| 배경 HDR | 최종 RGB |
+|---|---|
+| 0 | [.592708, .337224, .817995] |
+| 1 | [.899203, .655974, 1] |
+| 4 | [.952604, .688787, .973934] |
+
+증거는 `out/CubeColor20261013/gpu/receipt.json`이다. 실제 제품 HLSLI 함수, 실제 DDS의
+CPU grading bake와 GPU 합성식/tone을 검사했지만, synthetic constant caustic이며 설치 FX11
+CSO·고정기능 blend·게임 장면의 검사와 같지 않다. HDR16에서는 target 자체가 흰색으로
+포화하고 G3 보라의 평균 최대채널 오차.06845가 남는다. 면/edge120쌍의 edge 휘도 차이 최솟값은
+-.0000881이며 완전한 대비 보존을 주장하지 않는다. 최종 화면과 실제 게임 성능은 미확인이다.
+
+### 파일별 검토·수정 위치 요약
+
+| 구분 | 실제 파일과 위치 | 책임과 이번 변경 |
+|---|---|---|
+| 수정 | `Data/Effects/Authored/effect.dimensionmaster.skill.2050100.tuning.restore.effect.json:25` | Q 실제 cue의 `detail.color.emissiveIntensity` 1→4 |
+| 수정 | `Data/Effects/Authored/effect.dimensionmaster.skill.2050180.tuning.restore.effect.json:186` | R 보라 emissive 1→4, 같은 요소의 material scalar clarity1 추가 |
+| 수정 | `Data/Effects/Authored/effect.dimensionmaster.skill.2050210.a1.full.restore.effect.json:17378,17591,17804,18017` | A hit-1~4 보라의 emissive를 각각1→4, 각 material scalar clarity1 추가 |
+| 수정 | `Client/Bin/ShaderFiles/Shader_EffectCubeSampleScene.hlsli:130` | clarity·faceEmission·coverage 적용 결과를 solver로 전달 |
+| 수정 | `Client/Bin/ShaderFiles/Shader_EffectCubeColorResponse.hlsli:94` | `CubeColor_Resolve` 목표를 현재 저작 RGB/alpha로 계산 |
+| 검토·유지 | `Client/Bin/ShaderFiles/Shader_EffectCubeSampleScene.hlsli:100` | 면 발광의 실제 계산식과 emissive 곱셈. 기존 계수는 유지 |
+| 검토·유지 | `Client/Private/Effect_DocumentCodec_MaterialValidation.cpp:791` | 기존 clarity0~1 검증 |
+| 검토·유지 | `Client/Private/Effect_DocumentRenderer_ResourceStaging.cpp:535` | clarity를 `g_SourceScalars0.w` 입력으로 준비 |
+| 검토·유지 | `Client/Private/Effect_DocumentRenderer_MaterialBinding.cpp:1103` | `Color.fEmissiveIntensity`를 `g_EmissiveIntensity`에 실제 바인딩 |
+| 별도 문법 복구 | `Client/Public/BossLogicFlowView.h:8` | 잘린 표준 헤더 include 한 줄 복구. 큐브 동작 변경 아님 |
+
+### 최종 Debug·Release Product Build
+
+공식 명령 `Tools/Build/Invoke-BuildAndRegression.ps1 -Configuration Debug/Release -Profile
+Product -MaxCompilerProcesses 4`를 각각 실행했다. Clean/Rebuild, 수동 CSO 복사와 데이터
+publish는 하지 않았다. 최종 두 회차 모두 Engine/Shared/Server/Client PASS이며,
+runtimeDataChecks42/42 PASS, missingRuntimeInputs0, invalidRuntimeInputs0이다.
+
+| 구성 | 최종 receipt | 시작 → 완료 KST |
+|---|---|---|
+| Debug | `out/BuildPipeline/runs/20261013T101845630Z-debug-product.json` | 19:17:08 → 19:18:45 |
+| Release | `out/BuildPipeline/runs/20261013T102104331Z-release-product.json` | 19:21:00 → 19:21:04 |
+
+Debug 최초 회차 `20261013T101536055Z-debug-product.json`은 shader 컴파일 뒤 위 include 오류로
+FAIL이었다. 한 줄 수정 후 최종 Debug에서 Client OBJ29개와 바이너리2개가 생성됐다.
+Release는 동일 workspace의 앞선 실패 회차에서 최종 shader가 생성됐고, 수정 뒤 다른 작업의
+`20261013T102027662Z-release-product.json` PASS가 Client 바이너리2개를 생성했다.
+이 작업의 최종 Release 실행은 그 상태를 정상 증분 Build로 재확인해 PASS이며 output writes0이다.
+실패 회차를 전체 빌드 성공으로 기록하거나 최종 Release에서 전부 재컴파일했다고 설명하지 않는다.
+
+설치된 `Client/Bin/Debug/Shader_VtxEffectMeshPreview.cso`는19:15:06 KST 생성,
+3,137,504 bytes, SHA256 `41d062e32e02e5bde74fabd71d4f7012b2044501b63fc839819e93e96a95e84d`다.
+Release의 같은 CSO는19:16:39 생성, 601,032 bytes,
+`29c3a3ceea2c9ca4310d67b054e9a05043dcdb13dd10a6448e15f8d6b443e3a9`다.
+둘 다 최종 HLSLI 수정 이후 생성됐고 최종 PASS가 최신으로 인정한 구성별 산출물이다.
+Debug/Release hash는 서로 다르며 정상적인 구성 차이를 동일 hash라고 쓰지 않는다.
+이 CSO의 실제 Client draw까지 검사한 것은 아니다.
+
+로그는 `out/CubeColor20261013/build-debug-final.log`, `build-release-final.log`다.
+기존 C4828 인코딩, DirectXTK PDB LNK4099 및 shader X4000 경고는 남아 있다.
+제품 함수 GPU receipt의 sourceHashes4개와 최종 파일이 일치하고, global-before의 저작/게시
+RenderingProfiles, Deferred shader, RenderingProfileService, G1/G3 LUT6개 hash도 모두 같다.
+전역 tone/LUT/Bloom/FXAA/안개 및 Resources는 이 작업에서 변경하지 않았다.
+적용 데이터3개의 최종 hash·JSON parse·6개 대상 emissive4/clarity1, PLAN에 싣는 소스3개의
+hash를 다시 확인했다. 변경 범위 `git diff --check`와 미추적 ColorResponse 파일의 별도
+trailing whitespace 검사도 PASS다. 무관한 전체 작업 트리의 무경고를 주장하지 않는다.
+
+### 남은 사용자 화면 확인
+
+코드·데이터 반영, 구조·GPU 수치 검사와 두 구성 빌드는 완료했다. Client/Server/UI는 실행하지
+않았다. 새 실행 파일에서 Q 금색과 R/A 보라의 면·테두리·fade를 밝고 어두운 배경에서 확인한다.
+실행 중 도구의 미저장 draft를 자동 Reload하지 않았으므로 설치 파일 반영과 메모리 상태는 별도다.
+전역 Bloom OFF는 유지했으므로 공간적인 빛 번짐을 켰다는 뜻이 아니다. 이번4배 저작값의
+최종 색감·눈부심·겹침 판정은 사용자 확인을 기다린다.

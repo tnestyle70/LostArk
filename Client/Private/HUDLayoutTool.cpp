@@ -1,10 +1,7 @@
 ﻿#include <WinSock2.h>
 #include "imgui.h"
-#pragma push_macro("new")
-#undef new
 #include "DirectXTK/DDSTextureLoader.h"
 #include "DirectXTK/WICTextureLoader.h"
-#pragma pop_macro("new")
 
 #include "HUDLayoutTool.h"
 #include "DataJson.h"

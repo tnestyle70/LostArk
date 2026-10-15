@@ -367,7 +367,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
             }
         }
 		CWorldBootstrap bootstrap;
-		tests.Require(bootstrap.Load(WORLD_ID::KAKULSAYDON_ARENA) && !bootstrap.Get_SequenceInstanceIds().empty(),
+		tests.Require(bootstrap.Load(WORLD_ID::KOUKUSAYDON_ARENA) && !bootstrap.Get_SequenceInstanceIds().empty(),
 			"Viewer loads published Kouku sequence IDs with the world");
 		CWorldBootstrap valtanOnly;
 		tests.Require(valtanOnly.Load(WORLD_ID::VALTAN_ARENA) && bootstrap.Load(WORLD_ID::VALTAN_ARENA) &&
@@ -420,7 +420,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 		{
 			// Exercise the real broadcast boundary: stale bootstrap rows cannot revive
 			// the old actor or move the party before the Client rejects the cue.
-			auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			auto& player = room->m_Players[1u];
 			player.iPlayerId = 1u;
 			player.iCurrentHp = player.iMaximumHp = 100u;
@@ -450,9 +450,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 		}
 		{
 			C2S_DEBUG_WORLD_PLAYBACK request{};
-			request.iRequestSequence = 17u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+			request.iRequestSequence = 17u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 			request.eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER;
-			request.strTargetId = "KAKULSAYDON_G1_PATTERN_4";
+			request.strTargetId = "KOUKUSAYDON_G1_PATTERN_4";
 			request.strOccurrenceId = request.strTargetId + ".logic.51";
 			request.iRunEpoch = 9u; request.iRoomPlayerSlot = 3u;
 			request.fPositionX = -1.156042f; request.fPositionY = 1.3176255f; request.fPositionZ = 742.512031f;
@@ -505,7 +505,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 					{-3.290587f,742.070391f}, {-5.324063f,738.528281f}, {-1.156042f,742.512031f} }};
 				for (unsigned count = 1u; count <= 4u; ++count)
 				{
-					auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+					auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 					std::vector<std::shared_ptr<CClientSession>> sessions;
 					const auto join = [&](PLAYER_ID id)
 					{
@@ -529,9 +529,9 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 					tests.Require(nativeGround, "Arrival samples all four authored fireworks XZ on actual Server navigation");
 					if (!nativeGround) continue;
 					C2S_DEBUG_WORLD_PLAYBACK request{};
-					request.iRequestSequence = 1u; request.iRunEpoch = 1u; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					request.iRequestSequence = 1u; request.iRunEpoch = 1u; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 					request.eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER;
-					request.strTargetId = "KAKULSAYDON_G1_PATTERN_4";
+					request.strTargetId = "KOUKUSAYDON_G1_PATTERN_4";
 					const auto position = [&](unsigned slot)
 					{
 						request.iRoomPlayerSlot = static_cast<std::uint8_t>(slot);
@@ -571,7 +571,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_WorldPlayback(TESTS& tes
 					request.eWorldId = WORLD_ID::BERN;
 					tests.Require(room->Apply_DebugRoomPlayerArrival(1010u, request) == R::WRONG_WORLD && first.hasMoveGoal,
 						"Arrival cannot cross the requesting room's world boundary");
-					request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+					request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 					if (count > 1u)
 					{
 						// Epoch 2 already captured PlayerId 20; replacing its room binding cannot retarget that slot.

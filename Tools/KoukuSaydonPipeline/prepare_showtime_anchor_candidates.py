@@ -129,7 +129,7 @@ def prepare(output):
     source_path = ROOT / COMPOSITION
     composition = read(source_path)
     world = read(ROOT / WORLD)
-    original = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_35')
+    original = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_35')
     pattern = copy.deepcopy(original)
     resources = {r['assetId']: r for r in composition['presentationResources'] if r['kind'] == 'EFFECT'}
     by_occurrence = {o['occurrenceId'].rsplit('.', 1)[-1]: o for o in pattern['presentationOccurrences']}
@@ -148,7 +148,7 @@ def prepare(output):
         write(path, document)
         asset = document['effectAssetId']
         template = copy.deepcopy(resources[PREFIX + ('gun.muzzle' if '.gun.' in asset else 'target.fixed')])
-        template.update(resourceId='kakulsaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20],
+        template.update(resourceId='koukusaydon.effect.' + hashlib.sha256(asset.encode()).hexdigest()[:20],
                         displayName=document['displayName'], assetId=asset, durationMs=duration(document),
                         defaultAnchorKind='WORLD' if '.gun.' in asset else 'MAP')
         added_resources.append(template)

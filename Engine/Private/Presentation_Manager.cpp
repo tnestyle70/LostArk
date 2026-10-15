@@ -1,27 +1,33 @@
+// 프레임 제출 후보의 소유·검증·확정/폐기를 구현한다.
 #include "Presentation_Manager.h"
+// 광원 종류/수신 대상과 설명 필드를 검증한다.
 #include "Engine_RenderTypes.h"
 
+// 빛과 화면 합성 수치의 유한성을 검사한다.
 #include <cmath>
 
 namespace
 {
-	// Initial reservations avoid common allocations; they are not admission caps.
+	// 흔한 크기를 위한 초기 capacity 예약이다. 제출 허용 개수의 상한은 아니다.
 	constexpr size_t INITIAL_PRESENTATION_PROVIDERS = 256u;
 	constexpr size_t INITIAL_TRANSIENT_LIGHTS = 384u;
 	constexpr size_t INITIAL_SCREEN_POSTS = 64u;
 	constexpr size_t INITIAL_SCREEN_OVERLAYS = 64u;
 
+	// 색상·방향 등 네 성분이 유한한지 확인한다.
 	bool IsFinite4(const float4_t& Value)
 	{
 		return std::isfinite(Value.x) && std::isfinite(Value.y) &&
 			std::isfinite(Value.z) && std::isfinite(Value.w);
 	}
 
+	// 화면 위치·크기·UV drift 두 성분이 유한한지 확인한다.
 	bool IsFinite2(const float2_t& Value)
 	{
 		return std::isfinite(Value.x) && std::isfinite(Value.y);
 	}
 
+	// 일시적 빛의 종류·색상·기하·감쇠를 검증한다. 설명 값을 정규화하거나 현재 조명 옵션을 바꾸지 않는다.
 	bool IsValidTransientLight(const LIGHT_DESC& Light)
 	{
 		if (Light.staticShadowChannel > 15u || (Light.eReceiver != LIGHT_RECEIVER::ALL &&
@@ -57,6 +63,7 @@ namespace
 			 Light.fSpotOuterCos < 1.f && Light.fSpotInnerCos <= 1.f);
 	}
 
+	// overlay의 선언 색 공간과 SRV format을 맞추는 sRGB 목록이다.
 	bool IsSrgbFormat(const DXGI_FORMAT eFormat)
 	{
 		switch (eFormat)
@@ -74,6 +81,7 @@ namespace
 		}
 	}
 
+	// 선택한 coverage 성분이 형식에 존재하는지 확인한다. R은 UNKNOWN 이외 형식을 허용하고 다른 성분은 명시 목록으로 판정한다.
 	bool HasOverlayCoverageChannel(
 		const DXGI_FORMAT eFormat,
 		const PRESENTATION_SCREEN_OVERLAY_CHANNEL eChannel)
@@ -114,7 +122,7 @@ namespace
 			eFormat == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB ||
 			eFormat == DXGI_FORMAT_R16G16B16A16_FLOAT ||
 			eFormat == DXGI_FORMAT_R32G32B32A32_FLOAT ||
-			// BC1 supplies alpha too: opaque blocks return 1, transparent mode 0/1.
+			// BC1도 alpha를 제공한다. 불투명 block은 1, 투명 mode는 0/1을 반환한다.
 			eFormat == DXGI_FORMAT_BC1_UNORM ||
 			eFormat == DXGI_FORMAT_BC1_UNORM_SRGB ||
 			eFormat == DXGI_FORMAT_BC2_UNORM ||
@@ -125,6 +133,7 @@ namespace
 			eFormat == DXGI_FORMAT_BC7_UNORM_SRGB;
 	}
 
+	// descriptor 수치와 Texture2D SRV, coverage 채널, 색 공간의 일치를 검사한다. GPU view를 생성하거나 texture 내용을 읽지는 않는다.
 	bool IsValidScreenOverlay(
 		const PRESENTATION_SCREEN_OVERLAY_DESC& Desc)
 	{
@@ -163,6 +172,7 @@ namespace
 				PRESENTATION_SCREEN_OVERLAY_COLOR_SPACE::SRGB);
 	}
 
+	// 시도 수를 늘리고 정확한 S_OK/S_FALSE만 accepted/suppressed로 분류한다. 그 외 HRESULT는 failed다.
 	void Record_SubmissionResult(
 		PRESENTATION_CHANNEL_SUBMISSION_STATS& Stats,
 		const HRESULT hResult)
@@ -176,6 +186,7 @@ namespace
 			++Stats.iFailed;
 	}
 
+	// expected≤configured와 실제 시도 수의 일치, 모든 시도가 accepted/suppressed인지 확인한다.
 	bool Is_CompleteChannelSubmission(
 		const PRESENTATION_CHANNEL_SUBMISSION_STATS& Stats)
 	{
@@ -186,6 +197,7 @@ namespace
 	}
 }
 
+// 초기 capacity를 예약한다. 이후 frame의 제출 개수에 이 값을 상한으로 적용하지 않는다.
 CPresentation_Manager::CPresentation_Manager()
 {
 	m_FrameProviders.reserve(INITIAL_PRESENTATION_PROVIDERS);
@@ -194,12 +206,14 @@ CPresentation_Manager::CPresentation_Manager()
 	m_ScreenOverlays.reserve(INITIAL_SCREEN_OVERLAYS);
 }
 
+// process 수명의 singleton을 반환한다. 개별 frame 종료는 Clear_Frame으로 소비 참조를 정리한다.
 CPresentation_Manager& CPresentation_Manager::Get()
 {
 	static CPresentation_Manager Instance;
 	return Instance;
 }
 
+// 객체 주소로 중복을 구분하고 소유 참조를 등록한다. null은 다음 Submit까지 전역 실패로 기억한다.
 HRESULT CPresentation_Manager::Add_FrameProvider(
 	shared_ptr<IPresentationProvider> pProvider)
 {
@@ -221,8 +235,10 @@ HRESULT CPresentation_Manager::Add_FrameProvider(
 	return S_OK;
 }
 
+// Renderer가 frame 렌더 전에 호출한다. 앞선 frame 후보를 비우고 이번 provider 기여를 transaction으로 모은다.
 HRESULT CPresentation_Manager::Submit_FrameProviders()
 {
+	// 보류 실패는 한 번 소비한다. 마지막 집계와 candidate 배열을 이번 제출 기준으로 초기화한다.
 	const HRESULT hPendingProviderFailure = m_hPendingProviderFailure;
 	m_hPendingProviderFailure = S_OK;
 	m_LastSubmissionStats = {};
@@ -234,10 +250,12 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 	m_TransientLights.clear();
 	m_ScreenPosts.clear();
 	m_ScreenOverlays.clear();
+	// 등록된 provider 목록을 지역 소유로 인계한다. Finalize가 끝날 때까지 객체가 살아 있게 한다.
 	vector<shared_ptr<IPresentationProvider>> Providers =
 		std::move(m_FrameProviders);
 	m_FrameProviders.clear();
 	bool_t bIsolatedProviderFailureSeen = false;
+	// 아직 참여 중인 provider에 한 번씩 결과를 통지한다. 격리 취소한 항목은 reset되어 아래 반복에서 제외된다.
 	const auto FinalizeProviders =
 		[&Providers](const bool_t bCommitted)
 		{
@@ -253,6 +271,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 		if (nullptr != Provider)
 			Provider->Begin_PresentationSubmission();
 	}
+	// 등록 오류가 있으면 Begin으로 준비한 모든 provider를 false로 종료하고 이번 후보를 폐기한다.
 	if (FAILED(hPendingProviderFailure))
 	{
 		++m_LastSubmissionStats.iProviderFailures;
@@ -277,8 +296,8 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 			Clear_Frame();
 			return E_FAIL;
 		}
-		// Each provider stages one contribution. An isolated local rejection must
-		// not discard a healthy capture, light or overlay from another owner.
+		// 각 provider의 기여 직전 크기와 집계를 기록한다. 격리 가능한 local 실패는
+		// 해당 기여만 취소해 다른 소유자의 정상 capture·빛·overlay를 보존한다.
 		const size_t iLightCheckpoint = m_TransientLights.size();
 		const size_t iPostCheckpoint = m_ScreenPosts.size();
 		const size_t iOverlayCheckpoint = m_ScreenOverlays.size();
@@ -288,9 +307,9 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 		{
 			const PRESENTATION_FAILURE_SCOPE eFailureScope =
 				Provider->Get_PresentationFailureScope();
-			// The provider owns failure provenance.  Preserve that exact scope
-			// through frame finalization; the HRESULT value must never be used to
-			// guess whether the failure is object-local or shared runtime state.
+			// 실패 원인을 아는 provider의 범위를 frame 확정까지 그대로 보존한다.
+			// HRESULT 값만으로 객체의 local 실패인지 공유 runtime 실패인지
+			// 추측하지 않는다.
 			m_eLastFailureScope = eFailureScope;
 			const bool_t bIsolatedProviderFailure =
 				Provider->Is_PresentationFailureIsolated() &&
@@ -305,7 +324,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 				++m_LastSubmissionStats.iProviderFailures;
 				bIsolatedProviderFailureSeen = true;
 				Provider->Finalize_PresentationSubmission(false);
-				// Already finalized: later global rollback must not finalize it twice.
+				// 이미 false로 종료했으므로 이후 전역 취소가 다시 Finalize하지 않도록 참조를 비운다.
 				Provider.reset();
 				continue;
 			}
@@ -318,6 +337,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 			return hProviderResult;
 		}
 	}
+	// 채널별 제출 약속이 맞지 않으면 전역 실패로 취소한다. 일부 수락된 후보도 함께 버린다.
 	if (!Is_CompleteChannelSubmission(m_LastSubmissionStats.Lights) ||
 		!Is_CompleteChannelSubmission(m_LastSubmissionStats.ScreenPosts) ||
 		!Is_CompleteChannelSubmission(m_LastSubmissionStats.ScreenOverlays))
@@ -333,6 +353,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 	}
 	m_iLastTransientLightCount = static_cast<uint32_t>(m_TransientLights.size());
 	m_iLastScreenPostCount = static_cast<uint32_t>(m_ScreenPosts.size());
+	// overlay의 source order를 맞추고 같은 순서는 제출 순서를 보존한다. GPU 그리기는 이후 Renderer가 수행한다.
 	std::stable_sort(m_ScreenOverlays.begin(), m_ScreenOverlays.end(),
 		[](const PRESENTATION_SCREEN_OVERLAY_DESC& Left,
 			const PRESENTATION_SCREEN_OVERLAY_DESC& Right)
@@ -342,6 +363,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 	m_iLastScreenOverlayCount =
 		static_cast<uint32_t>(m_ScreenOverlays.size());
 	m_LastSubmissionStats.bCompleted = true;
+	// 후보 배열을 소비 가능 상태로 확정하고 provider에 통지한다. 억제/격리 실패가 있으면 S_FALSE로 결과의 차이를 알린다.
 	m_LastSubmissionStats.bCommitted = true;
 	m_bSubmissionTransactionActive = false;
 	FinalizeProviders(true);
@@ -352,6 +374,7 @@ HRESULT CPresentation_Manager::Submit_FrameProviders()
 		0u < m_LastSubmissionStats.ScreenOverlays.iSuppressed ? S_FALSE : S_OK;
 }
 
+// provider가 제출한 빛을 검증 후 복사한다. 채널이 꺼져 있으면 입력 검증 전에 S_FALSE로 억제한다.
 HRESULT CPresentation_Manager::Add_TransientLight(
 	const LIGHT_DESC& LightDesc)
 {
@@ -376,6 +399,7 @@ HRESULT CPresentation_Manager::Add_TransientLight(
 	return hResult;
 }
 
+// profile과 준비 재질의 짝, 시간/강도/seed를 검사한 뒤 소유 descriptor를 보관한다.
 HRESULT CPresentation_Manager::Add_ScreenPost(
 	const PRESENTATION_SCREEN_POST_DESC& ScreenPostDesc)
 {
@@ -412,6 +436,7 @@ HRESULT CPresentation_Manager::Add_ScreenPost(
 	return hResult;
 }
 
+// 화면 합성 descriptor를 검증하고 texture COM 참조를 복사해 이번 frame 동안 유지한다.
 HRESULT CPresentation_Manager::Add_ScreenOverlay(
 	const PRESENTATION_SCREEN_OVERLAY_DESC& ScreenOverlayDesc)
 {
@@ -437,6 +462,7 @@ HRESULT CPresentation_Manager::Add_ScreenOverlay(
 	return hResult;
 }
 
+// 활성 transaction에서만 빛/후처리의 configured/expected를 누적한다. 이 함수 자체는 수락 여부를 판정하지 않는다.
 void CPresentation_Manager::Register_ProviderSubmissionExpectation(
 	const uint64_t iConfiguredLightCount,
 	const uint64_t iExpectedLightCount,
@@ -452,6 +478,7 @@ void CPresentation_Manager::Register_ProviderSubmissionExpectation(
 	m_LastSubmissionStats.ScreenPosts.iExpected += iExpectedScreenPostCount;
 }
 
+// overlay 제출의 예상 수를 별도로 누적해 frame 종료의 약속 검사에 사용한다.
 void CPresentation_Manager::Register_ProviderScreenOverlayExpectation(
 	const uint64_t iConfiguredScreenOverlayCount,
 	const uint64_t iExpectedScreenOverlayCount)
@@ -464,6 +491,7 @@ void CPresentation_Manager::Register_ProviderScreenOverlayExpectation(
 		iExpectedScreenOverlayCount;
 }
 
+// Add 전에 거부된 빛 입력도 제출 실패 수에 포함한다. 실패 범위는 항상 local contract로 기록한다.
 void CPresentation_Manager::Record_TransientLightValidationFailure()
 {
 	m_eLastFailureScope =
@@ -472,6 +500,7 @@ void CPresentation_Manager::Record_TransientLightValidationFailure()
 		Record_SubmissionResult(m_LastSubmissionStats.Lights, E_INVALIDARG);
 }
 
+// provider의 선행 후처리 검증 실패를 현재 transaction 집계에 전달한다.
 void CPresentation_Manager::Record_ScreenPostValidationFailure()
 {
 	m_eLastFailureScope =
@@ -480,6 +509,7 @@ void CPresentation_Manager::Record_ScreenPostValidationFailure()
 		Record_SubmissionResult(m_LastSubmissionStats.ScreenPosts, E_INVALIDARG);
 }
 
+// provider의 선행 overlay 검증 실패를 현재 transaction 집계에 전달한다.
 void CPresentation_Manager::Record_ScreenOverlayValidationFailure()
 {
 	m_eLastFailureScope =
@@ -489,21 +519,25 @@ void CPresentation_Manager::Record_ScreenOverlayValidationFailure()
 			m_LastSubmissionStats.ScreenOverlays, E_INVALIDARG);
 }
 
+// 보관한 빛만 비운다. 최근 제출 집계와 표시용 개수는 유지한다.
 void CPresentation_Manager::Clear_TransientLights()
 {
 	m_TransientLights.clear();
 }
 
+// 소비가 끝난 후처리 descriptor와 그 재질 소유 참조를 놓는다.
 void CPresentation_Manager::Clear_ScreenPosts()
 {
 	m_ScreenPosts.clear();
 }
 
+// 소비가 끝난 overlay descriptor와 texture COM 참조를 놓는다.
 void CPresentation_Manager::Clear_ScreenOverlays()
 {
 	m_ScreenOverlays.clear();
 }
 
+// Renderer의 frame 종료/실패 경로가 후보와 대기 provider를 비운다. 보류 등록 실패나 마지막 집계는 이 함수에서 지우지 않는다.
 void CPresentation_Manager::Clear_Frame()
 {
 	m_FrameProviders.clear();

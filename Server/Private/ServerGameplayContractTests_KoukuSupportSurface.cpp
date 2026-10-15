@@ -3,6 +3,7 @@
 #include "GameplayCatalog.h"
 #include "KoukuSaydonBrain.h"
 #include "BossCombatRuntime.h"
+#include "ServerCombatHitRuntime.h"
 #include "GameRoom.h"
 #include "Network/PacketReader.h"
 #include "Network/PacketWriter.h"
@@ -46,7 +47,7 @@ namespace
         CGameplayCatalog catalog;
         if (!catalog.Load()) { tests.Require(false, "Load gameplay for mechanic gauge verdict contracts"); return; }
         BOSS_PATTERN_DEFINITION pattern;
-        pattern.strPatternId = "KAKULSAYDON_GAUGE_CONTRACT";
+        pattern.strPatternId = "KOUKUSAYDON_GAUGE_CONTRACT";
         BOSS_PATTERN_LOGIC_WINDOW window;
         window.strWindowId = "gauge.stagger"; window.eKind = BOSS_PATTERN_LOGIC_KIND::STAGGER_WINDOW;
         window.iStartMs = 1000u; window.iDurationMs = 2000u; window.iThreshold = 115000u;
@@ -64,20 +65,40 @@ namespace
             "Stagger gauge stays hidden before the authoritative window opens");
         CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 130u, damage, output);
         CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 130u, view);
+        const auto commonMaximum = catalog.Get_RaidStaggerMaximum();
+        if (!commonMaximum) { tests.Require(false, "The active raid stagger policy must be nonzero"); return; }
         tests.Require(view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::STAGGER &&
-            view.iCurrentMechanicGauge == 115000u && view.iMaximumMechanicGauge == 115000u,
-            "Stagger starts at five nominal Lance Master basic hits");
+            view.iCurrentMechanicGauge == commonMaximum && view.iMaximumMechanicGauge == commonMaximum &&
+            boss.iKoukuItemStaggerMaximum == commonMaximum && boss.iKoukuItemStaggerCredit == 0u,
+            "Stagger opens with the active common maximum and zero independent credit");
+        // 이 함수는 Logic 판정의 단위 경계다. HP 변화가 credit 입력을 대신하지 못함을 확인한 뒤,
+        // 호출자가 누적한 credit의 문턱 직전/도달 상태를 명시한다. 실제 명중 입력은 아래 Mario fixture가 검증한다.
         boss.iCurrentHp -= 4u * 23000u;
         CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 131u, damage, output);
         CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 131u, view);
-        tests.Require(view.iCurrentMechanicGauge == 23000u && !output.bStaggerSuccess,
-            "Four nominal hits leave exactly one hit and do not succeed early");
-        boss.iCurrentHp -= 23000u;
+        tests.Require(view.iCurrentMechanicGauge == commonMaximum && boss.iKoukuItemStaggerCredit == 0u &&
+            !output.bStaggerSuccess && !output.bEndPatternEarly && damage.empty(),
+            "HP loss alone never contributes to the independent stagger gauge or verdict");
+        const auto hpBeforeCredit = boss.iCurrentHp;
+        boss.iKoukuItemStaggerCredit = commonMaximum - 1u;
         CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 132u, damage, output);
         CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 132u, view);
+        tests.Require(view.iCurrentMechanicGauge == 1u && !output.bStaggerSuccess &&
+            !output.bEndPatternEarly && damage.empty() && boss.iCurrentHp == hpBeforeCredit,
+            "One credit below the active maximum preserves the open window without HP damage or success");
+        ++boss.iKoukuItemStaggerCredit;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 133u, damage, output);
+        CKoukuSaydonLogicRuntime::Project_MechanicGauge(boss, pattern, ledger, 133u, view);
         tests.Require(output.bStaggerSuccess && output.bEndPatternEarly &&
-            view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE,
-            "Fifth nominal hit closes the real stagger window and hides its gauge");
+            view.eMechanicGaugeKind == BOSS_MECHANIC_GAUGE_KIND::NONE && ledger.Windows.front().bClosed &&
+            boss.iCurrentHp == hpBeforeCredit && !boss.iKoukuItemStaggerMaximum && !boss.iKoukuItemStaggerCredit &&
+            damage.size() == 1u && damage.front().isStaggerSuccess && !damage.front().iAmount && !damage.front().iStaggerAmount,
+            "Reaching the active maximum closes the window once and clears only its independent credit");
+        KOUKUSAYDON_LOGIC_OUTPUT repeated;
+        CKoukuSaydonLogicRuntime::Update(boss, pattern, ledger, players, catalog, nullptr, 134u, damage, repeated);
+        tests.Require(damage.size() == 1u && !repeated.bStaggerSuccess && !repeated.bEndPatternEarly &&
+            !boss.iKoukuItemStaggerMaximum && !boss.iKoukuItemStaggerCredit && boss.iCurrentHp == hpBeforeCredit,
+            "A later tick cannot reuse closed-window credit or repeat the success notification");
 
         pattern.LogicWindows.clear();
         for (const std::uint32_t detonationMs : {13000u, 24828u})
@@ -110,7 +131,7 @@ namespace
         }
         S2C_WORLD_SNAPSHOT message;
         message.iServerTick = 1u; message.ActiveGameplayRevision = catalog.Get_ActiveRevision();
-        message.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        message.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         PLAYER_SNAPSHOT player; player.iNetEntityId = 42u;
         player.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
         message.Players.push_back(player);
@@ -192,7 +213,7 @@ REGION "blocked" "closed" 0 1
 		// A wall can truncate a root step after crossing the exact raised-floor edge.
 		CServerCollisionSystem collision;
 		collision.Set_BlockingBodies({ { 4.25f, 6.f, .05f } });
-		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KAKULSAYDON_ROOT_SUPPORT_CONTRACT";
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KOUKUSAYDON_ROOT_SUPPORT_CONTRACT";
 		pattern.Stages.emplace_back(); pattern.Stages.front().iDurationMs = 1000u;
 		pattern.Stages.front().Motion.RootMotion = { {0u, 0.f, 0.f, 0.f}, {1000u, 0.f, .4f, 0.f} };
 		SERVER_WORLD_ENTITY boss; boss.strPatternId = pattern.strPatternId;
@@ -222,23 +243,23 @@ REGION "blocked" "closed" 0 1
 	nav.Set_RuntimeSupportSurfaces({}, status);
 	{
 		// This common fixture exercises the published counter in Debug and Release.
-		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 1u;
 		room->m_ServerNavigation = nav;
 		room->m_ServerCollisionSystem.Initialize({}, status);
 		room->m_WorldEntities.clear();
 		SERVER_WORLD_ENTITY boss{};
 		boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-		boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-		boss.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+		boss.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1";
+		boss.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 		boss.iCurrentHp = 100u; boss.fPositionX = boss.fPositionZ = 6.f;
 		room->m_WorldEntities.push_back(std::move(boss));
 	for (const unsigned scenario : {0u, 1u, 2u, 3u, 4u})
 	{
 		const bool withFollowup = scenario != 0u, savedSource = scenario >= 2u, stagger = scenario == 4u;
-		const std::string sourceId = stagger ? "KAKULSAYDON_G1_PATTERN_33" : scenario == 3u ? "KAKULSAYDON_G1_PATTERN_118" : "KAKULSAYDON_G1_PATTERN_81";
-		const std::string groggyId = scenario >= 3u ? "KAKULSAYDON_G1_PATTERN_42" : "KAKULSAYDON_G1_PATTERN_4";
-		const std::string pursuitId = scenario >= 3u ? "KAKULSAYDON_G1_PATTERN_124" : "KAKULSAYDON_G1_PATTERN_101";
+		const std::string sourceId = stagger ? "KOUKUSAYDON_G1_PATTERN_33" : scenario == 3u ? "KOUKUSAYDON_G1_PATTERN_118" : "KOUKUSAYDON_G1_PATTERN_81";
+		const std::string groggyId = scenario >= 3u ? "KOUKUSAYDON_G1_PATTERN_42" : "KOUKUSAYDON_G1_PATTERN_4";
+		const std::string pursuitId = scenario >= 3u ? "KOUKUSAYDON_G1_PATTERN_124" : "KOUKUSAYDON_G1_PATTERN_101";
 		const auto& sourceCatalog = room->m_GameplayCatalog.Active();
 		const auto* source = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, sourceId, status) : nullptr;
 		const auto* groggy = savedSource ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(sourceCatalog, groggyId, status) : nullptr;
@@ -254,10 +275,10 @@ REGION "blocked" "closed" 0 1
 		const auto counterBossBefore = std::make_unique<SERVER_WORLD_ENTITY>(counterBoss);
 		const auto counterTickBefore = room->m_iServerTick;
 		const auto counterStatusBefore = room->m_strStatus;
-		counterBoss.strPatternId = savedSource ? sourceId : "KAKULSAYDON_COUNTER_LANDING"; counterBoss.strActionId = "counter.action";
+		counterBoss.strPatternId = savedSource ? sourceId : "KOUKUSAYDON_COUNTER_LANDING"; counterBoss.strActionId = "counter.action";
 		if (savedSource)
 		{
-			counterBoss.strArchetypeId = "BOSS_KAKULSAYDON_" + std::string(scenario == 2u ? "G1" : "G3") + "_SAYDON"; counterBoss.strEncounterId = source->strEncounterId;
+			counterBoss.strArchetypeId = "BOSS_KOUKUSAYDON_" + std::string(scenario == 2u ? "G1" : "G3") + "_SAYDON"; counterBoss.strEncounterId = source->strEncounterId;
 			counterBoss.strPlacementId = source->strTargetBossPlacementId; counterBoss.iCurrentHp = stagger ? 10000u : 100u;
 		}
 		counterBoss.iPatternSequence = 91u; counterBoss.fPositionY = 3.9f; counterBoss.fCollisionRadius = .5f;
@@ -296,14 +317,52 @@ REGION "blocked" "closed" 0 1
 		}
 		else if (withFollowup)
 			counterWindow.OnSuccess.push_back({BOSS_PATTERN_LOGIC_RESULT_KIND::FOLLOWUP_PATTERN, 0u, 0u, groggyId});
-		if (stagger) counterBoss.iCurrentHp = counterBoss.iMaximumHp = counterWindow.iThreshold + 1u;
+		if (stagger) counterBoss.iCurrentHp = counterBoss.iMaximumHp = 10000u;
 		counterPattern.LogicWindows = {counterWindow};
 		auto& counterLedger = room->m_KoukuSaydonPatternAudition.Members.front().LogicLedger;
 		KOUKUSAYDON_LOGIC_OUTPUT counterOutput; std::vector<DAMAGE_EVENT> counterDamage;
 		CKoukuSaydonLogicRuntime::Build(counterPattern, counterBoss, 120u, counterLedger);
 		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 			room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
-		if (stagger) counterBoss.iCurrentHp -= counterWindow.iThreshold;
+		if (stagger)
+		{
+			// 실제 아이템 catalog의 무력화 입력을 기존 공용 명중 경로로 보낸다. 아이템 사용/쿨다운이나
+			// 투사체 도형을 흉내 내지 않고, 이미 승인된 명중 세 건의 credit 및 Logic 결과만 검증한다.
+			const auto* grenade = room->m_ItemCatalog.Find_Item("BATTLE_WHIRLWIND_GRENADE");
+			const auto maximum = room->m_GameplayCatalog.Active().Get_RaidStaggerMaximum();
+			const bool ready = grenade && grenade->BattleUse.iSkillId &&
+				grenade->BattleUse.iStaggerMaximumDivisor == 3u && maximum > 2u &&
+				counterBoss.iKoukuItemStaggerMaximum == maximum && !counterBoss.iKoukuItemStaggerCredit;
+			tests.Require(ready, "Mario fixture opens the current common stagger policy and admits the published whirlwind input");
+			if (ready)
+			{
+				SERVER_PLAYER_TO_WORLD_HIT hit{};
+				hit.iSourcePlayerId = 1u; hit.iSkillId = grenade->BattleUse.iSkillId;
+				hit.iStaggerMaximumDivisor = grenade->BattleUse.iStaggerMaximumDivisor; hit.iServerTick = 120u;
+				const auto third = maximum / 3u + (maximum % 3u ? 1u : 0u);
+				bool creditCorrect = true;
+				for (unsigned count = 1u; count <= 3u; ++count)
+				{
+					const auto result = CServerCombatHitRuntime::Apply_PlayerToWorld(counterBoss, hit, counterDamage);
+					const auto expected = (std::min)(maximum, count * third);
+					std::uint64_t totalCredit = 0u;
+					for (const auto& event : counterDamage) {
+						creditCorrect = creditCorrect && event.iTargetNetEntityId == counterBoss.iNetEntityId &&
+							event.isOutgoing && !event.iAmount && !event.isStaggerSuccess;
+						totalCredit += event.iStaggerAmount;
+					}
+					creditCorrect = creditCorrect && result == SERVER_COMBAT_HIT_RESULT::LANDED &&
+						counterBoss.iCurrentHp == 10000u && counterBoss.iKoukuItemStaggerCredit == expected &&
+						counterDamage.size() == count && totalCredit == expected;
+					if (count < 3u) {
+						CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
+							room->m_GameplayCatalog, nullptr, 120u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
+						creditCorrect = creditCorrect && !counterOutput.bStaggerSuccess && !counterOutput.bEndPatternEarly;
+					}
+				}
+				tests.Require(creditCorrect, "Three admitted whirlwind hits contribute one capped third each without HP loss, duplicate credit or early success");
+			}
+		}
 		const bool counterHit = stagger || CBossCombatRuntime::Try_TriggerCounter(counterBoss, 121u);
 		CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 			room->m_GameplayCatalog, nullptr, 121u, counterDamage, counterOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
@@ -318,7 +377,9 @@ REGION "blocked" "closed" 0 1
 			KOUKUSAYDON_LOGIC_OUTPUT repeatedOutput;
 			CKoukuSaydonLogicRuntime::Update(counterBoss, counterPattern, counterLedger, room->m_Players,
 				room->m_GameplayCatalog, nullptr, 122u, counterDamage, repeatedOutput, &room->m_ServerNavigation, &room->m_ServerCollisionSystem);
-			tests.Require(successCount() == 1, "A closed authored stagger window never repeats its success notification on later ticks");
+			tests.Require(successCount() == 1 && !repeatedOutput.bStaggerSuccess && !repeatedOutput.bEndPatternEarly &&
+				!counterBoss.iKoukuItemStaggerMaximum && !counterBoss.iKoukuItemStaggerCredit && counterBoss.iCurrentHp == 10000u,
+				"A closed authored stagger window never reuses credit or repeats success on later ticks");
 		}
 		room->m_iServerTick = 121u;
 		const bool completed = counterHit && room->Apply_KoukuLogicOutput(counterOutput, counterBoss, 121u);
@@ -435,7 +496,7 @@ REGION "blocked" "closed" 0 1
 #ifdef _DEBUG
 	CServerGameplayContractRunner::Run_RuntimeSupportPrediction(tests, nav);
 	// The same owned schedule methods used before walking also cover stationary players and cleanup.
-	auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+	auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 	room->m_ServerNavigation = nav;
 	// This isolated grid owns its actors; the real bootstrap may already spawn G1 Kouku.
 	room->m_WorldEntities.clear();
@@ -444,8 +505,8 @@ REGION "blocked" "closed" 0 1
 	room->m_Players[1u] = player;
 	auto supportedBoss = std::make_unique<SERVER_WORLD_ENTITY>();
 	supportedBoss->iNetEntityId = 700u; supportedBoss->eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-	supportedBoss->strEncounterId = "ENCOUNTER_KAKULSAYDON_G1";
-	supportedBoss->strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON";
+	supportedBoss->strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1";
+	supportedBoss->strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON";
 	supportedBoss->iCurrentHp = 100u; supportedBoss->fPositionX = 6.f; supportedBoss->fPositionZ = 6.f; supportedBoss->fPositionY = 1.f;
 	room->m_WorldEntities.push_back(std::move(*supportedBoss));
 	auto outsideBoss = std::make_unique<SERVER_WORLD_ENTITY>(room->m_WorldEntities.front());
@@ -493,12 +554,12 @@ REGION "blocked" "closed" 0 1
 
 	for (const bool alreadyCaptured : { false, true })
 	{
-		auto rootRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto rootRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		rootRoom->m_ServerNavigation = nav;
 		rootRoom->m_WorldEntities.clear();
 		auto rootBoss = std::make_unique<SERVER_WORLD_ENTITY>(room->m_WorldEntities.front());
 		rootBoss->fPositionY = 1.f; rootBoss->fCollisionRadius = .05f;
-		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KAKULSAYDON_ROOT_FLOOR_LIFECYCLE"; pattern.bFixedTimelineClock = true;
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId = "KOUKUSAYDON_ROOT_FLOOR_LIFECYCLE"; pattern.bFixedTimelineClock = true;
 		pattern.Stages.emplace_back(); pattern.Stages.front().iDurationMs = 1000u;
 		pattern.Stages.front().Motion.RootMotion = {{0u, 0.f, 0.f, 0.f}, {1000u, 0.f, 0.f, .3f}};
 		rootBoss->strPatternId = pattern.strPatternId; rootBoss->iPatternStartTick = 100u;
@@ -531,8 +592,8 @@ REGION "blocked" "closed" 0 1
 	for (const bool skippedTicks : { false, true })
 	{
 		// Production Whirlwind is a 10 m / 3204 ms Logic charge, not source root motion.
-		BOSS_PATTERN_DEFINITION chargePattern; chargePattern.strPatternId = "KAKULSAYDON_G1_PATTERN_24";
-		BOSS_PATTERN_LOGIC_WINDOW charge; charge.strWindowId = "KAKULSAYDON_G1_PATTERN_24.logic.1";
+		BOSS_PATTERN_DEFINITION chargePattern; chargePattern.strPatternId = "KOUKUSAYDON_G1_PATTERN_24";
+		BOSS_PATTERN_LOGIC_WINDOW charge; charge.strWindowId = "KOUKUSAYDON_G1_PATTERN_24.logic.1";
 		charge.eKind = BOSS_PATTERN_LOGIC_KIND::ENTER_AREA; charge.iDurationMs = 3204u; charge.fBossChargeDistanceM = 10.f;
 		chargePattern.LogicWindows = {charge};
 		auto chargeBoss = std::make_unique<SERVER_WORLD_ENTITY>(room->m_WorldEntities.front());
@@ -570,7 +631,7 @@ REGION "blocked" "closed" 0 1
 	// Albion uses this same ground authority and the existing combat-object transaction.
 	room->m_CombatObjectRuntime.Reset();
 	auto& albionOwner = room->m_WorldEntities.front();
-	albionOwner.strPatternId = "KAKULSAYDON_TEST_ALBION";
+	albionOwner.strPatternId = "KOUKUSAYDON_TEST_ALBION";
 	albionOwner.iPatternSequence = 1u;
 	albionOwner.PinnedDefinitionRevision = room->m_GameplayCatalog.Get_ActiveRevision();
 	room->m_Players.clear();
@@ -643,7 +704,7 @@ REGION "blocked" "closed" 0 1
 	for (const bool completed : { true, false })
 	{
 		room->m_CombatObjectRuntime.Reset();
-		albionOwner.strPatternId = "KAKULSAYDON_TEST_ALBION";
+		albionOwner.strPatternId = "KOUKUSAYDON_TEST_ALBION";
 		albionOwner.iPatternSequence = 2u;
 		queueAlbion(1400u);
 		room->m_KoukuSaydonPatternAudition.Members.clear();
@@ -657,7 +718,7 @@ REGION "blocked" "closed" 0 1
 
 	// A blue-circle wave freezes one selected player and five independent nav points.
 	room->m_CombatObjectRuntime.Reset();
-	albionOwner.strPatternId = "KAKULSAYDON_TEST_ALBION";
+	albionOwner.strPatternId = "KOUKUSAYDON_TEST_ALBION";
 	albionOwner.iPatternSequence = 3u;
 	albionOwner.fSpawnPositionX = 8.f; albionOwner.fSpawnPositionY = 1.f; albionOwner.fSpawnPositionZ = 8.f;
 	room->m_ServerNavigation.Set_RuntimeSupportSurfaces({ { "albion.floor", 8.f, 8.f, 30.f, 1.6f } }, status);
@@ -777,7 +838,7 @@ REGION "blocked" "closed" 0 1
 		target.iPlayerId = 1u; target.iNetEntityId = 101u; target.iCurrentHp = target.iMaximumHp = 100u;
 		target.isCombatReady = true; target.fPositionX = 10000.f; target.fPositionZ = 10000.f;
 		albionOwner.iCurrentHp = 100u; albionOwner.eAction = SERVER_ENTITY_ACTION::IDLE;
-		albionOwner.strPatternId = "KAKULSAYDON_TEST_PURSUIT"; albionOwner.iPatternSequence = 70u;
+		albionOwner.strPatternId = "KOUKUSAYDON_TEST_PURSUIT"; albionOwner.iPatternSequence = 70u;
 		albionOwner.iPatternTargetEntityId = target.iNetEntityId;
 		albionOwner.fPositionX = albionOwner.fPositionZ = 0.f;
 		BOSS_PATTERN_MECHANIC_TRIGGER pursuit;
@@ -962,7 +1023,7 @@ REGION "blocked" "closed" 0 1
 		target.fMoveSpeed = id == 2u ? 12.f : 6.f;
 	}
 	BOSS_PATTERN_DEFINITION showtime;
-	showtime.strPatternId = "KAKULSAYDON_TEST_SHOWTIME";
+	showtime.strPatternId = "KOUKUSAYDON_TEST_SHOWTIME";
 	BOSS_PATTERN_MECHANIC_TRIGGER targets{};
 	targets.strTriggerId = "test.showtime.duration"; targets.eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::SHOWTIME_PLAYER_TARGETS;
 	targets.iDurationMs = 5000u; targets.strFixedVisualId = "test.showtime.fixed";
@@ -1124,7 +1185,7 @@ REGION "blocked" "closed" 0 1
 			showtime.MechanicTriggers.front().strTriggerId = "test.boss.track.duration";
 			showtime.MechanicTriggers.front().eKind = BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TRACK_TARGET;
 			showtime.MechanicTriggers.front().iDurationMs = durationMs;
-			albionOwner.strPatternId = showtime.strPatternId; albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+			albionOwner.strPatternId = showtime.strPatternId; albionOwner.strArchetypeId = "BOSS_KOUKUSAYDON_G1_KOUKU";
 			albionOwner.fPositionX = albionOwner.fPositionZ = 8.f; albionOwner.fYawDegrees = yaw;
 			albionOwner.iPatternTargetEntityId = albionOwner.iTargetEntityId = 101u;
 			CKoukuSaydonLogicRuntime::Build(showtime, albionOwner, 5000u, showtimeLedger);
@@ -1158,10 +1219,10 @@ REGION "blocked" "closed" 0 1
 		setDirection(90.f); beginFacing(0.f, 1000u); updateTargets(5014u); setDirection(-90.f); updateTargets(5015u);
 		tests.Require(nearYaw(albionOwner.fYawDegrees, -30.0029985f) && albionOwner.iPatternTargetEntityId == 101u,
 			"A moving selected target is followed from the current yaw using the remaining duration");
-		setDirection(90.f); beginFacing(-90.f, 1000u); albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G2_BIG_SAYDON"; updateTargets(5014u);
+		setDirection(90.f); beginFacing(-90.f, 1000u); albionOwner.strArchetypeId = "BOSS_KOUKUSAYDON_G2_BIG_SAYDON"; updateTargets(5014u);
 		tests.Require(nearYaw(albionOwner.fYawDegrees, -0.0089955f), "Big Saydon keeps its existing minus-ninety-degree model forward basis during interpolation");
-		for (const auto* archetype : { "BOSS_KAKULSAYDON_G1_SAYDON", "BOSS_KAKULSAYDON_G3_SAYDON",
-			"BOSS_KAKULSAYDON_BINGO_SAYDON", "BOSS_KAKULSAYDON_G2_BIG_SAYDON" })
+		for (const auto* archetype : { "BOSS_KOUKUSAYDON_G1_SAYDON", "BOSS_KOUKUSAYDON_G3_SAYDON",
+			"BOSS_KOUKUSAYDON_BINGO_SAYDON", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON" })
 			for (const bool immediate : { false, true })
 				for (const float heading : { 0.f, 90.f, 180.f, -90.f })
 				{
@@ -1180,7 +1241,7 @@ REGION "blocked" "closed" 0 1
 		// Movement-enabled tracking still commits the body yaw before its root/navigation step.
 		beginFacing(0.f, 8582u); setDirection(90.f);
 		showtime.MechanicTriggers.front().fFollowSpeedScale = 1.f;
-		albionOwner.strArchetypeId = "BOSS_KAKULSAYDON_G1_SAYDON"; albionOwner.fYawDegrees = -90.f;
+		albionOwner.strArchetypeId = "BOSS_KOUKUSAYDON_G1_SAYDON"; albionOwner.fYawDegrees = -90.f;
 		albionOwner.fPositionY = 1.f; albionOwner.fCollisionRadius = .1f;
 		albionOwner.iPatternStartTick = 5000u; albionOwner.iPatternStageIndex = 0u;
 		albionOwner.iPatternStageFirstEvaluationTick = 5000u;
@@ -1330,7 +1391,7 @@ REGION "blocked" "closed" 0 1
 		room->m_Players.clear();
 		SERVER_PLAYER target; target.iPlayerId=1u; target.iNetEntityId=401u; target.iCurrentHp=100u; target.isCombatReady=true;
 		target.fPositionX=10.f; target.fPositionY=1.f; target.fPositionZ=10.f; room->m_Players[1u]=target;
-		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId="KAKULSAYDON_AIRBORNE_CONTRACT"; pattern.bFixedTimelineClock=true;
+		BOSS_PATTERN_DEFINITION pattern; pattern.strPatternId="KOUKUSAYDON_AIRBORNE_CONTRACT"; pattern.bFixedTimelineClock=true;
 		pattern.Stages.emplace_back(); pattern.Stages.front().iDurationMs=8000u;
 		albionOwner.strPatternId=pattern.strPatternId; albionOwner.iPatternSequence=73u; albionOwner.iPatternStageIndex=0u;
 		albionOwner.iPatternStartTick=12000u; albionOwner.iActionStartTick=12000u; albionOwner.iPatternStageFirstEvaluationTick=12000u;
@@ -1509,7 +1570,7 @@ REGION "blocked" "closed" 0 1
 		room->m_ServerCollisionSystem.Initialize({}, status);
 		room->m_ServerCollisionSystem.Set_BlockingBodies({});
 		room->m_ServerNavigation.Set_RuntimeSupportSurfaces({ { "teleport.ground", 10.f, 10.f, 2.f, 1.6f } }, status);
-		BOSS_PATTERN_DEFINITION teleportPattern; teleportPattern.strPatternId = "KAKULSAYDON_TEST_TELEPORT_XZ";
+		BOSS_PATTERN_DEFINITION teleportPattern; teleportPattern.strPatternId = "KOUKUSAYDON_TEST_TELEPORT_XZ";
 		teleportPattern.Stages.emplace_back(); teleportPattern.Stages.front().iDurationMs = 1000u;
 		teleportPattern.Stages.front().Motion.RootMotion = { {0u, 0.f, 0.f, 0.f}, {1000u, 0.f, 3.f, 2.f} };
 		albionOwner.strPatternId = teleportPattern.strPatternId; albionOwner.iPatternSequence = 22u;
@@ -1619,9 +1680,9 @@ REGION "blocked" "closed" 0 1
 		const auto savedNavigation = room->m_ServerNavigation;
 		CServerNavigation publishedNavigation;
 		const auto* showtime = CKoukuSaydonBrain::Find_AnimationOnlyPattern(room->m_GameplayCatalog,
-			"KAKULSAYDON_G1_PATTERN_35", status);
+			"KOUKUSAYDON_G1_PATTERN_35", status);
 		const auto center = showtime ? std::find_if(showtime->MechanicTriggers.begin(), showtime->MechanicTriggers.end(),
-			[](const auto& trigger) { return trigger.strTriggerId == "KAKULSAYDON_G1_PATTERN_35.logic.17"; }) :
+			[](const auto& trigger) { return trigger.strTriggerId == "KOUKUSAYDON_G1_PATTERN_35.logic.17"; }) :
 			std::vector<BOSS_PATTERN_MECHANIC_TRIGGER>::const_iterator{};
 		const bool ready = showtime && center != showtime->MechanicTriggers.end() &&
 			center->eKind == BOSS_PATTERN_MECHANIC_TRIGGER_KIND::BOSS_TELEPORT_GROUNDED &&
@@ -1685,14 +1746,14 @@ REGION "blocked" "closed" 0 1
 		std::ifstream baselineInput(fs::path(dataRootBuffer.data()) / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
 		std::string baseline((std::istreambuf_iterator<char>(baselineInput)), std::istreambuf_iterator<char>());
 		if (!baseline.empty() && baseline.back() != '\n') baseline += '\n';
-		const std::string encounter = "ENCOUNTER_KAKULSAYDON_G1", patternId = "KAKULSAYDON_G1_SHOWTIME_CONTRACT";
+		const std::string encounter = "ENCOUNTER_KOUKUSAYDON_G1", patternId = "KOUKUSAYDON_G1_SHOWTIME_CONTRACT";
 		baseline += "PATTERN\t" + encounter + "\t" + patternId + "\t" + patternId + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0\n";
-		baseline += "PATTERNBOSS\t" + encounter + "\t" + patternId + "\tBOSS_KAKULSAYDON_G3_SAYDON\n";
+		baseline += "PATTERNBOSS\t" + encounter + "\t" + patternId + "\tBOSS_KOUKUSAYDON_G3_SAYDON\n";
 		baseline += "PATTERNPOLICY\t" + encounter + "\t" + patternId + "\tNORMAL\t1\t1\tNONE\tNONE\n";
 		baseline += "PATTERNSOURCE\t" + encounter + "\t" + patternId + "\t1\t0\t0\t0\t0\t0\t0\n";
 		baseline += "PATTERNSTAGE\t" + encounter + "\t" + patternId + "\t0\tSTAGE_1\t" + patternId + ".stage.1\tACTIVE\t5000\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
 		baseline += "PATTERNSTAGEBRANCH\t" + encounter + "\t" + patternId + "\t" + patternId + ".stage.1\tTIMEOUT\t-\n";
-		baseline += "PATTERNTARGET\t" + patternId + "\tGATE3\tboss.kakulsaydon.g3.saydon\n";
+		baseline += "PATTERNTARGET\t" + patternId + "\tGATE3\tboss.koukusaydon.g3.saydon\n";
 		fs::create_directories(fixture / L"Gameplay");
 		CGameplayCatalog parsedTargets;
 		const auto loadSupplement = [&](const std::string& row) {
@@ -1869,7 +1930,7 @@ REGION "blocked" "closed" 0 1
 
 		// The actual dependent-boss spawn transaction consumes the optional MAP pose and all ten rows.
 		{
-			const std::string childId = "KAKULSAYDON_G1_SUMMON_CONTRACT_CHILD";
+			const std::string childId = "KOUKUSAYDON_G1_SUMMON_CONTRACT_CHILD";
 			const auto start = baseline.find("PATTERN\t" + encounter + "\t" + patternId + "\t");
 			std::string childRows = baseline.substr(start);
 			for (std::size_t pos = 0u; (pos = childRows.find(patternId, pos)) != std::string::npos; pos += childId.size())
@@ -1891,7 +1952,7 @@ REGION "blocked" "closed" 0 1
 				if (!tailLoaded) std::cout << "Tail admission: " << parsedTargets.Get_Status() << '\n';
 				if (tailLoaded) for (const bool explicitStop : {false, true})
 				{
-					auto tailRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+					auto tailRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 					tailRoom->m_WorldEntities.clear(); tailRoom->m_ServerNavigation = nav;
 					tailRoom->m_ServerCollisionSystem.Initialize({}, status);
 					auto& run = tailRoom->m_KoukuSaydonPatternAudition;
@@ -1903,8 +1964,8 @@ REGION "blocked" "closed" 0 1
 					run.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(parsedTargets);
 					const auto* definition = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
 					WORLD_BOOTSTRAP_PLACEMENT place;
-					place.eKind = WORLD_BOOTSTRAP_KIND::BOSS; place.strPlacementId = "boss.kakulsaydon.g3.saydon";
-					place.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON"; place.strEncounterId = encounter;
+					place.eKind = WORLD_BOOTSTRAP_KIND::BOSS; place.strPlacementId = "boss.koukusaydon.g3.saydon";
+					place.strArchetypeId = "BOSS_KOUKUSAYDON_G3_SAYDON"; place.strEncounterId = encounter;
 					place.fPositionX = place.fPositionZ = 8.f; place.fPositionY = 1.f;
 					SERVER_WORLD_ENTITY primary;
 					const bool ready = definition && tailRoom->Build_WorldEntity(place, 900u, primary) &&
@@ -1930,16 +1991,30 @@ REGION "blocked" "closed" 0 1
 					// A newer body occurrence must not steal the old row origin, identity or ledger.
 					auto& newer = tailRoom->m_WorldEntities.front(); newer.strPatternId = childId;
 					newer.iPatternSequence = 77u; newer.fPositionX = newer.fPositionZ = 14.f;
+					// 새 플레이어의 10% 기준 피해는 9..11의 일반 피격 표본이다. 구간만 느슨하게 비교하지 않고
+					// 각 대상의 event·HP 감소·serial을 함께 확인해 잘못된 대상과 다음 tick의 중복도 거부한다.
+					const auto hasOneTailHit = [&](const SERVER_PLAYER& target) {
+						std::uint32_t amount = 0u;
+						std::size_t count = 0u;
+						for (const auto& hit : tailRoom->m_TickDamageEvents) {
+							if (hit.iTargetNetEntityId != target.iNetEntityId) continue;
+							if (hit.isOutgoing || hit.eHitFlag != DAMAGE_HIT_FLAG::NORMAL || hit.iAmount < 9u || hit.iAmount > 11u)
+								return false;
+							amount += hit.iAmount; ++count;
+						}
+						return count == 1u && target.iIncomingDamageSampleSerial == 1u &&
+							target.iCurrentHp <= 100u && amount == 100u - target.iCurrentHp;
+					};
 					tailRoom->Update_KoukuPatternTails(10180u); tailRoom->Commit_KoukuMechanicTriggers(10180u);
 
-					tests.Require(player.iCurrentHp == 90u && follower.iCurrentHp == 90u && run.WorldPlays.size() == 1u &&
+					tests.Require(hasOneTailHit(player) && hasOneTailHit(follower) && tailRoom->m_TickDamageEvents.size() == 2u && run.WorldPlays.size() == 1u &&
 						run.WorldPlays.front().iPatternSequence == primary.iPatternSequence &&
 						run.WorldPlays.front().iStartTick == 10180u && tailRoom->m_WorldEntities.size() == 2u &&
 						tailRoom->m_WorldEntities.front().iPatternSequence == 77u && tailRoom->m_WorldEntities.front().fPositionX == 14.f,
 						"Late Logic preserves BOSS_SPAWN and follows BOSS_CURRENT; World keeps its clock and Summon leaves the newer Pattern intact");
 					tailRoom->Update_KoukuPatternTails(10181u); tailRoom->Commit_KoukuMechanicTriggers(10181u);
 					tailRoom->Update_KoukuGazeClones(10181u);
-					tests.Require(player.iCurrentHp == 90u && follower.iCurrentHp == 90u && run.WorldPlays.size() == 1u && tailRoom->m_WorldEntities.size() == 2u,
+					tests.Require(hasOneTailHit(player) && hasOneTailHit(follower) && tailRoom->m_TickDamageEvents.size() == 2u && run.WorldPlays.size() == 1u && tailRoom->m_WorldEntities.size() == 2u,
 						"Later ticks neither duplicate row outputs nor remove the summon when the primary sequence has advanced");
 					{
 						const auto oldPin = run.PinnedGameplayRevision;
@@ -1983,10 +2058,10 @@ REGION "blocked" "closed" 0 1
 						auto& body = tailRoom->m_WorldEntities.front(); body.strPatternId.clear(); body.strActionId.clear();
 						C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST request;
 						request.iRequestSequence = 1u; request.eOperation = KOUKUSAYDON_PATTERN_AUDITION_OPERATION::PLAY_SELECTED;
-						request.strPatternId = childId; request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+						request.strPatternId = childId; request.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 						request.Scope.strEncounterId = encounter; request.Scope.strGateId = "GATE3";
-						request.Scope.strBossPlacementId = "boss.kakulsaydon.g3.saydon";
-						request.Scope.strBossArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+						request.Scope.strBossPlacementId = "boss.koukusaydon.g3.saydon";
+						request.Scope.strBossArchetypeId = "BOSS_KOUKUSAYDON_G3_SAYDON";
 						request.Scope.ExpectedGameplayRevision = run.PinnedGameplayRevision;
 						request.Scope.iExpectedSourceRevision = run.iPinnedSourceRevision;
 						S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT result;
@@ -2033,7 +2108,7 @@ REGION "blocked" "closed" 0 1
 				"An invalid spawn anchor preserves the admitted catalog");
 			tests.Require(loadSupplement(spawnRows(10u, "")), "Legacy ten-field summon rows retain the BOSS anchor default");
 			tests.Require(loadSupplement(spawnRows(10u, "\tMAP")), "Catalog admits ten independently placed MAP actors");
-			auto summonRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+			auto summonRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 			summonRoom->m_WorldEntities.clear(); summonRoom->m_ServerNavigation = nav;
 			summonRoom->m_ServerCollisionSystem.Initialize({}, status); summonRoom->m_ServerCollisionSystem.Set_BlockingBodies({});
 			auto& run = summonRoom->m_KoukuSaydonPatternAudition;
@@ -2043,8 +2118,8 @@ REGION "blocked" "closed" 0 1
 			run.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(parsedTargets);
 			const auto* parent = CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsedTargets, patternId, status);
 			WORLD_BOOTSTRAP_PLACEMENT placement;
-			placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS; placement.strPlacementId = "boss.kakulsaydon.g3.saydon";
-			placement.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON"; placement.strEncounterId = encounter;
+			placement.eKind = WORLD_BOOTSTRAP_KIND::BOSS; placement.strPlacementId = "boss.koukusaydon.g3.saydon";
+			placement.strArchetypeId = "BOSS_KOUKUSAYDON_G3_SAYDON"; placement.strEncounterId = encounter;
 			placement.fPositionX = placement.fPositionZ = 8.f; placement.fPositionY = 1.f; placement.fYawDegrees = 120.f;
 			SERVER_WORLD_ENTITY primary;
 			const bool ready = parent && parent->MechanicTriggers.size() == 1u &&
@@ -2091,7 +2166,7 @@ REGION "blocked" "closed" 0 1
 int LostArk::Server::CServerGameplayContractRunner::Run_ShowtimeBombs()
 {
     TESTS tests;
-    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
     tests.Require(room->Is_Ready(), "Showtime bomb fixture admits the installed gameplay catalog");
     if (!room->Is_Ready()) return 1;
     // Exercise the exact eighteen-field row through the real catalog parser.
@@ -2103,15 +2178,15 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ShowtimeBombs()
         if (!length || length >= 32768u) return 1;
         std::ifstream input(fs::path(configured) / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
         std::string baseline{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
-        const std::string owner = "ENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT";
+        const std::string owner = "ENCOUNTER_KOUKUSAYDON_G1\tKOUKUSAYDON_G1_SHOWTIME_BOMB_CONTRACT";
         if (!baseline.empty() && baseline.back() != '\n') baseline += '\n';
         baseline += "PATTERN\t" + owner + "\tbomb.action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0\n";
-        baseline += "PATTERNBOSS\t" + owner + "\tBOSS_KAKULSAYDON_G3_SAYDON\n";
+        baseline += "PATTERNBOSS\t" + owner + "\tBOSS_KOUKUSAYDON_G3_SAYDON\n";
         baseline += "PATTERNPOLICY\t" + owner + "\tNORMAL\t1\t1\tNONE\tNONE\n";
         baseline += "PATTERNSOURCE\t" + owner + "\t1\t0\t0\t0\t0\t0\t0\n";
         baseline += "PATTERNSTAGE\t" + owner + "\t0\tSTAGE_1\tbomb.stage.1\tACTIVE\t5000\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
         baseline += "PATTERNSTAGEBRANCH\t" + owner + "\tbomb.stage.1\tTIMEOUT\t-\n";
-        baseline += "PATTERNTARGET\tKAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT\tGATE3\tboss.kakulsaydon.g3.saydon\n";
+        baseline += "PATTERNTARGET\tKOUKUSAYDON_G1_SHOWTIME_BOMB_CONTRACT\tGATE3\tboss.koukusaydon.g3.saydon\n";
         baseline += "PATTERNMECHANICTRIGGER\t" + owner + "\tbomb.track\tBOSS_TRACK_TARGET\t1000\t1000\t0\t0\t0\t0\t-\t0\t0\t0\t1\n";
         const std::string row = "PATTERNTRACKBOMB\t" + owner + "\tbomb.track\t0\tbomb.body\tbomb.explosion\t2801\t12\t1\t8\t0\t0\t0\t90\t24.2\t13.75\t22.5\n";
         const auto fixture = fs::temp_directory_path() / (L"LostArkShowtimeBomb-" + std::to_wstring(_getpid()));
@@ -2130,7 +2205,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ShowtimeBombs()
         };
         std::string status;
         const bool accepted = load(row);
-        const auto* saved = accepted ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsed, "KAKULSAYDON_G1_SHOWTIME_BOMB_CONTRACT", status) : nullptr;
+        const auto* saved = accepted ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(parsed, "KOUKUSAYDON_G1_SHOWTIME_BOMB_CONTRACT", status) : nullptr;
         if (!saved) std::cout << "Bomb row admission: " << parsed.Get_Status() << " / " << status << std::endl;
         tests.Require(saved && saved->MechanicTriggers.size() == 1u && saved->MechanicTriggers.front().ShowtimeBomb &&
             saved->MechanicTriggers.front().ShowtimeBomb->strBodyVisualId == "bomb.body" &&
@@ -2164,12 +2239,12 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ShowtimeBombs()
         if (raid) { room->m_KoukuRaid.State.ePhase = KOUKUSAYDON_RAID_PHASE::COMBAT; room->m_KoukuRaid.PlayerIds = {1u,2u,3u,4u}; }
         boss = {};
         boss.iNetEntityId = 700u; boss.eKind = WORLD_BOOTSTRAP_KIND::BOSS;
-        boss.strEncounterId = "ENCOUNTER_KAKULSAYDON_G1"; boss.strArchetypeId = "BOSS_KAKULSAYDON_G3_SAYDON";
+        boss.strEncounterId = "ENCOUNTER_KOUKUSAYDON_G1"; boss.strArchetypeId = "BOSS_KOUKUSAYDON_G3_SAYDON";
         boss.iCurrentHp = boss.iMaximumHp = 100u; boss.PinnedDefinitionRevision = room->m_GameplayCatalog.Get_ActiveRevision();
         boss.fPositionX = boss.fPositionZ = 8.f; boss.fPositionY = 1.f;
         boss.iPatternSequence = 71u; boss.iPatternStartTick = birth;
         boss.iPatternTargetEntityId = boss.iTargetEntityId = 101u;
-        pattern = {}; pattern.strPatternId = boss.strPatternId = "KAKULSAYDON_TEST_SHOWTIME_BOMBS";
+        pattern = {}; pattern.strPatternId = boss.strPatternId = "KOUKUSAYDON_TEST_SHOWTIME_BOMBS";
         for (unsigned wave = 0u; wave < waves; ++wave)
         {
             BOSS_PATTERN_MECHANIC_TRIGGER trigger;

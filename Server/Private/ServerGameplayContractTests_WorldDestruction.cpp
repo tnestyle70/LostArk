@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
 #include "EncounterPropRuntime.h"
@@ -556,7 +556,7 @@ int LostArk::Server::CServerGameplayContractRunner::Run_ValtanArenaSupport()
 		tests.Require(snapshotHasPulse(pulseTick + 2u, 0u),
 			"A player leaving combat readiness cannot retransmit its old invulnerable text occurrence");
 		snapshotPlayer = snapshotSeed;
-		room.m_eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+		room.m_eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 		tests.Require(snapshotHasPulse(pulseTick + 2u, 0u),
 			"The new Bahuntur retention window does not extend another world's one-tick protection pulse");
 		room.m_eWorldId = WORLD_ID::VALTAN_ARENA;
@@ -735,7 +735,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 		is back in the raid. Drive the real room handler and tick instead of
 		setting isCombatReady by hand, because the latter used to let the Brain
 		test pass while the live room kept Valtan latched in IDLE. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID REVIVED_PLAYER = 211u;
@@ -832,7 +832,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 		away from a player, and it kills. Navigation owns where the hole is; the
 		room owns the descent and the death tick. This runs in both configurations
 		because a fall is product gameplay, not a Debug audition. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID FALL_PLAYER = 79u;
@@ -981,7 +981,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 		remains Server state. The authoritative subwindows must carry the body
 		from TAKEOFF through DROP to the authored placement before the joined
 		IMPACT -> WIDE_REVEAL roar sequence can begin. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr PLAYER_ID LEAP_PLAYER = 78u;
@@ -1365,7 +1365,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 		arena through Stage_Boss_ArenaEntry instead, and the 159 wall's own
 		passage is proved inside the ring by the FRACTURED collision test above.
 		All bearings here were measured against the published navgrid. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr float ARENA_CENTER_X = 156.03f;
@@ -1702,13 +1702,13 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldDestruction(TESTS&
 	}
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto valtanRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& valtanRoom = *valtanRoomStorage;
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto bernRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::BERN);
 		CGameRoom& bernRoom = *bernRoomStorage;
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto charSelectRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& charSelectRoom = *charSelectRoomStorage;
 		tests.Require(
@@ -1963,8 +1963,8 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     TESTS& tests, const CGameplayCatalog& catalog)
 {
     auto generation = std::make_shared<CGameplayCatalog>(catalog);
-    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
-    auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA, generation);
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA, generation);
+    auto otherRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA, generation);
     tests.Require(room->Is_Ready() && otherRoom->Is_Ready(), "Inanna fixtures admit two independent Kouku rooms");
     if (!room->Is_Ready() || !otherRoom->Is_Ready()) return;
     constexpr SESSION_ID casterSession = 741u;
@@ -2069,7 +2069,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_InannaProtection(
     audition.PinnedGameplayRevision = room->m_GameplayCatalog.Get_ActiveRevision();
     audition.pProductGeneration = generation;
     audition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
-    const auto* placement = room->Find_Placement("boss.kakulsaydon.bingo.saydon");
+    const auto* placement = room->Find_Placement("boss.koukusaydon.bingo.saydon");
     SERVER_WORLD_ENTITY boss;
     const bool ready = placement && room->Build_WorldEntity(*placement, 900u, boss) && room->Resolve_KoukuProductCatalog();
     tests.Require(ready, "Inanna black-hole fixture uses the admitted Bingo boss and pinned Product catalog");

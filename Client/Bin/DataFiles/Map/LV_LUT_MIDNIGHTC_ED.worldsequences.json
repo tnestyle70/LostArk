@@ -339,7 +339,7 @@
       "animated": false,
       "scale": [2.5, 2.5, 2.5],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
       "anchorBone": "b_wp_1",
       "defaultMotionInstanceId": "world.object.instance.kouku.trumpet"
     },
@@ -353,7 +353,7 @@
       "animated": false,
       "scale": [2, 2, 2],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
       "anchorBone": "b_wp_1",
       "defaultMotionInstanceId": "world.object.instance.kouku.laser_cannon"
     },
@@ -367,7 +367,7 @@
       "animated": false,
       "scale": [1.5, 1.5, 1.5],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "anchorBone": "b_wp_2",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon_showtime_gun_left",
       "materialSourceModelAssetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07l_sk.wmodel"
@@ -382,7 +382,7 @@
       "animated": false,
       "scale": [1.5, 1.5, 1.5],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "anchorBone": "b_wp_1",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon_showtime_gun_right",
       "materialSourceModelAssetId": "Character/KoukuSaton/WP_MN_RPCT_07/wp_mn_rpct_07l_sk.wmodel"
@@ -397,7 +397,7 @@
       "animated": false,
       "scale": [2, 2, 2],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G2_KOUKU",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G2_KOUKU",
       "anchorBone": "b_wp_1",
       "defaultMotionInstanceId": "world.object.instance.kouku.whirlwind_hammer"
     },
@@ -430,7 +430,7 @@
     {
       "objectId": "world.object.kouku.gate2.intro.table",
       "displayName": "Table",
-      "modelAssetId": "Map/KakulSaydon/Gate2Intro/Table/Table.wmodel",
+      "modelAssetId": "Map/KoukuSaydon/Gate2Intro/Table/Table.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
@@ -446,7 +446,7 @@
     {
       "objectId": "world.object.kouku.gate2.intro.book",
       "displayName": "Book",
-      "modelAssetId": "Map/KakulSaydon/Gate2Intro/Book/Book.wmodel",
+      "modelAssetId": "Map/KoukuSaydon/Gate2Intro/Book/Book.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
@@ -463,7 +463,7 @@
     {
       "objectId": "world.object.kouku.gate2.intro.handbook",
       "displayName": "HandBook",
-      "modelAssetId": "Map/KakulSaydon/Gate2Intro/HandBook/HandBook.wmodel",
+      "modelAssetId": "Map/KoukuSaydon/Gate2Intro/HandBook/HandBook.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
@@ -570,7 +570,7 @@
     {
       "objectId": "world.object.kouku.gate2.intro.carderuption",
       "displayName": "월드 오브젝트_카드분출",
-      "modelAssetId": "Map/KakulSaydon/Gate2Intro/CardEruption/CardEruption.wmodel",
+      "modelAssetId": "Map/KoukuSaydon/Gate2Intro/CardEruption/CardEruption.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
@@ -616,7 +616,7 @@
     {
       "objectId": "world.object.kouku.gate1.full.book",
       "displayName": "1관문_통합_시퀀스 / Book",
-      "modelAssetId": "Map/KakulSaydon/SourceSequences/kouku.gate1.full/Book/Book.wmodel",
+      "modelAssetId": "Map/KoukuSaydon/SourceSequences/kouku.gate1.full/Book/Book.wmodel",
       "anchorKind": "WORLD",
       "diffuseTextureAssetId": "",
       "modelPreScale": 0.00999999978,
@@ -6470,7 +6470,7 @@
       "animated": false,
       "scale": [2.03999996, 2.03999996, 2.03999996],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "anchorBone": "bip002-r-hand",
       "defaultMotionInstanceId": "world.object.instance.kouku.g3.bazooka"
     },
@@ -6484,7 +6484,7 @@
       "animated": false,
       "scale": [1.86999989, 1.86999989, 1.86999989],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
       "anchorBone": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon.rolling.ball"
     },
@@ -6498,7 +6498,7 @@
       "animated": false,
       "scale": [1.35999966, 1.35999966, 1.35999966],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
       "anchorBone": "b_wp_2",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon.eaten.ball",
       "materialProfile": {
@@ -6618,7 +6618,7 @@
       "animated": true,
       "scale": [1.70000005, 1.70000005, 1.70000005],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G1_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G1_SAYDON",
       "anchorBone": "b_wp_1",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon_hat_right",
       "materialSourceModelAssetId": "Character/KoukuSaton/WP_MN_RPCT_08/wp_mn_rpct_08_sk.wmodel"
@@ -6745,7 +6745,7 @@
       "animated": false,
       "scale": [1.86999989, 1.86999989, 1.86999989],
       "sequenceInstanceId": "",
-      "anchorBossArchetypeId": "BOSS_KAKULSAYDON_G3_SAYDON",
+      "anchorBossArchetypeId": "BOSS_KOUKUSAYDON_G3_SAYDON",
       "anchorBone": "",
       "defaultMotionInstanceId": "world.object.instance.kouku.saydon.rolling.ball.g3"
     },

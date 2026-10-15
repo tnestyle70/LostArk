@@ -1,13 +1,10 @@
 #include "ShopWindowView.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "ItemCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
@@ -320,7 +317,7 @@ void Client::CShopWindowView::Update_Buttons()
 		float4_t(1.4f, 1.4f, 1.4f, 1.f) : vNormal);
 	if (bCloseClicked)
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 		return;
 	}
@@ -333,7 +330,7 @@ void Client::CShopWindowView::Update_Buttons()
 		!bCanBuy ? vDimmed : (bHovered ? vHover : vNormal));
 	if (bBuyClicked && bCanBuy)
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		m_PendingEntries.clear();
 		for (const BASKET_LINE& Line : m_Basket)
 			m_PendingEntries.push_back({ Line.strItemId, Line.iQuantity });
@@ -346,7 +343,7 @@ void Client::CShopWindowView::Update_Buttons()
 	m_pBackgroundView->Set_SlotTintMultiplier(EMPTY_BUTTON_ID, bHovered ? vHover : vNormal);
 	if (bEmptyClicked && !m_Basket.empty())
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		m_Basket.clear();
 		m_bIconsDirty = true;
 	}
@@ -396,7 +393,7 @@ void Client::CShopWindowView::Update_Stock()
 			m_Basket.push_back({ Stock.strItemId, 1u, Stock.iPrice });
 			m_bIconsDirty = true;
 		}
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 	}
 
 	/* Page plates: prev/next when there is more than one page. The Server sees only item ids,
@@ -412,7 +409,7 @@ void Client::CShopWindowView::Update_Stock()
 		m_pBackgroundView->Set_SlotTintMultiplier(pId, !bEnabled ? vDimmed : (bHovered ? vHover : vNormal));
 		if (bEnabled && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_iPage = static_cast<uint32_t>(static_cast<int32_t>(m_iPage) + iDelta);
 			m_bIconsDirty = true;
 		}
@@ -447,7 +444,7 @@ void Client::CShopWindowView::Update_Basket()
 			continue;
 		m_Basket.erase(m_Basket.begin() + iSlot);
 		m_bIconsDirty = true;
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		break;
 	}
 }

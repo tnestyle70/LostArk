@@ -90,11 +90,11 @@ def patch_composition(document):
     patterns = {p['patternId']: p for p in result['patterns']}
     definitions = {p['logicId']: p for p in result['logics']}
     resources = {p['resourceId']: p for p in result['presentationResources']}
-    p78 = patterns['KAKULSAYDON_G1_PATTERN_78']
-    original = definitions['kakulsaydon.g1.logic.73']
+    p78 = patterns['KOUKUSAYDON_G1_PATTERN_78']
+    original = definitions['koukusaydon.g1.logic.73']
     assert original['judgementKind'] == 'PURSUIT_PROJECTILES'
     for index, ordinal in enumerate(range(125, 129)):
-        identity = f'kakulsaydon.g1.logic.{ordinal}'
+        identity = f'koukusaydon.g1.logic.{ordinal}'
         target = definitions[identity]
         for key, value in original.items():
             if key not in ('logicId', 'displayName', 'logicType', 'judgementKind', 'spawnIntervalMs'):
@@ -107,26 +107,26 @@ def patch_composition(document):
             occurrence['rotationDegrees'][1] += 180
     # Isolate the dice impact tuning from the spinning card's shared impact.
     contact = copy.deepcopy(resources[original['contactVisualId']])
-    contact['resourceId'] = 'kakulsaydon.effect.card-dice-contact'
+    contact['resourceId'] = 'koukusaydon.effect.card-dice-contact'
     contact['displayName'] = '주사위 추적카드 접촉 폭발'
     contact['assetId'] = 'effect.kouku.card.match.contact.recovery'
     if contact['resourceId'] not in resources:
         result['presentationResources'].append(contact)
     for ordinal in range(125, 129):
-        definitions[f'kakulsaydon.g1.logic.{ordinal}']['contactVisualId'] = contact['resourceId']
-    medusa = patterns['KAKULSAYDON_G1_PATTERN_94']
+        definitions[f'koukusaydon.g1.logic.{ordinal}']['contactVisualId'] = contact['resourceId']
+    medusa = patterns['KOUKUSAYDON_G1_PATTERN_94']
     medusa['animationRootVerticalScale'] = 0
     face_resource = next(r for r in result['presentationResources']
                          if r.get('assetId') == 'effect.kouku.bingo.medusa.face.full.restore')
     if not any(o['resourceId'] == face_resource['resourceId'] for o in medusa['presentationOccurrences']):
         ordinal = medusa['nextPresentationOccurrenceOrdinal']
-        face_id = f'KAKULSAYDON_G1_PATTERN_94.presentation.{ordinal}'
+        face_id = f'KOUKUSAYDON_G1_PATTERN_94.presentation.{ordinal}'
         face = copy.deepcopy(next(o for o in medusa['presentationOccurrences']
                                   if resources[o['resourceId']].get('assetId') == 'effect.kouku.bingo.medusa.attack.full.restore'))
         face.update(occurrenceId=face_id, resourceId=face_resource['resourceId'], startMs=3167, durationMs=3261)
         medusa['presentationOccurrences'].append(face)
         medusa['nextPresentationOccurrenceOrdinal'] = ordinal + 1
-    p11 = patterns['KAKULSAYDON_G1_PATTERN_11']
+    p11 = patterns['KOUKUSAYDON_G1_PATTERN_11']
     red_end = max(o['startMs'] + o['durationMs'] for o in p11['presentationOccurrences']
                   if resources[o['resourceId']].get('assetId') == 'boss.kouku.medusa.red')
     for occurrence in p11['presentationOccurrences']:
@@ -182,7 +182,7 @@ def prepare():
         stage('effect.kouku.bingo.blackhole.' + suffix, hold_blackhole)
     composition_path = ROOT / 'Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'
     composition = json.loads(composition_path.read_bytes())
-    resource_id = next(l for l in composition['logics'] if l['logicId'] == 'kakulsaydon.g1.logic.73')['contactVisualId']
+    resource_id = next(l for l in composition['logics'] if l['logicId'] == 'koukusaydon.g1.logic.73')['contactVisualId']
     contact_asset = next(r for r in composition['presentationResources'] if r['resourceId'] == resource_id)['assetId']
     stage(contact_asset, tune_contact, 'effect.kouku.card.match.contact.recovery')
     write(OUTPUT / 'composition.candidate.json', patch_composition(composition))

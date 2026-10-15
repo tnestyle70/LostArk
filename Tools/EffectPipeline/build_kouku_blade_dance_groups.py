@@ -155,7 +155,7 @@ def build(evidence):
                 sourceDamageSkillEffectId=group['damageSkillEffectId'], sourceKind=source_kind,
                 sourceNotifies=group['sourceNotifies'], removedCasterRelativeOffsetM=[1.5, 0, 0],
                 sourceCircleWarning=contract['sourceCircleWarning'],
-                resourceId='kakulsaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20]))
+                resourceId='koukusaydon.effect.' + hashlib.sha256(asset_id.encode()).hexdigest()[:20]))
     warning.install_independent_documents(documents)
     write(evidence / 'source_contract.json', contract)
     manifest = dict(schema='lostark.independent-pattern-effect-groups', formatVersion=1,

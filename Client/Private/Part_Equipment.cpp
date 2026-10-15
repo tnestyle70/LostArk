@@ -1,22 +1,27 @@
-#include "Part_Equipment.h"
+﻿#include "Part_Equipment.h"
+// 비소유 캐릭터의 월드 표현 숨김 상태를 읽는다.
 #include "Character.h"
+// surface family와 sourceCharacter program을 검사한다.
 #include "BinaryAsset/ModelAssetData.h"
+// 장비 재질의 반투명·양면 mask 분류를 재사용한다.
 #include "SourceEquipmentMaterialPrograms.h"
 
+// 프로필별 재질 입력·masked hair·hover 표시를 기존 경로로 그린다.
 #include "DeferredMaterialRenderUtils.h"
+// 렌더 그룹 등록과 카메라·그림자 행렬을 사용한다.
 #include "GameInstance.h"
+// source character용 forward 조명 상수를 전달한다.
 #include "MapAssetRenderUtils.h"
+// 소켓 offset 유한성·범위를 검사한다.
 #include <cmath>
+// 재질 pass와 mesh index의 고정 크기 정수 타입을 사용한다.
 #include <cstdint>
 
 namespace
 {
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
 
-	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
-	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
-	as a dither, so they read as stipple dots; the forward pass blends them after
-	scene lighting instead. */
+	// SOURCE_CHARACTER의 지정 program과 장비 반투명 program을 forward pass로 분류한다.
 	uint32_t Resolve_TranslucentSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
@@ -44,6 +49,7 @@ HRESULT CPart_Equipment::Initialize_Prototype()
 	return S_OK;
 }
 
+// desc 값과 차용 포인터를 저장한 뒤 소켓·Component를 검사한다. 실패한 복제본은 Clone에서 정리한다.
 HRESULT CPart_Equipment::Initialize(void* pArg)
 {
 	if (nullptr == pArg)
@@ -61,8 +67,7 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	m_strMaterialProfileId = pDesc->strMaterialProfileId;
 	m_pEmissiveOverride = pDesc->pEmissiveOverride;
 
-	/* Both kinds need the body's model: a socketed piece reads one bone from it,
-	a skinned piece borrows its whole palette. */
+	// 소켓은 본 하나, 스키닝은 현재 palette를 읽으므로 두 방식 모두 본체 Model이 필요하다.
 	if (nullptr == m_pSkeletonModelCom)
 		return E_FAIL;
 	if (!m_strSocketBoneName.empty() &&
@@ -74,18 +79,14 @@ HRESULT CPart_Equipment::Initialize(void* pArg)
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
 
-	/* Costume-only bones -- the chains a hairstyle or a dress adds to the class skeleton --
-	have no slot in the body's palette, so a piece that has any must be drawn from its own.
-	Measured across the installed sets, 76 of them do; the rest keep binding the body's palette
-	exactly as before. */
+	// 본체에 없는 장비 전용 본이 하나라도 있으면 자체 palette를 사용하는 방식으로 전환한다.
 	if (m_strSocketBoneName.empty() && nullptr != m_pModelCom)
 	{
 		for (const string& strBone : m_pModelCom->Get_BoneNames())
 		{
 			if (m_pSkeletonModelCom->Has_Bone(strBone.c_str()))
 				continue;
-			/* The exporter writes the mesh's own root node into the bone list; it deforms
-			nothing and is not a reason to leave the shared palette. */
+			// 이름이 _sk로 끝나는 mesh root는 추가 변형 본 검사에서 제외한다.
 			if (strBone.size() > 3 && strBone.compare(strBone.size() - 3, 3, "_sk") == 0)
 				continue;
 			m_hasOwnBones = true;
@@ -116,14 +117,12 @@ bool_t CPart_Equipment::Set_SocketTransform(const float3_t& positionMeters, cons
 	return true;
 }
 
+// 장비 local→선택적 소켓 본→선택적 본체 local→부모 순으로 합성한다. 본체가 먼저 갱신되어야 한다.
 void CPart_Equipment::Update(f32_t fTimeDelta)
 {
 	matrix_t ChildMatrix = XMLoadFloat4x4(m_pTransformCom->Get_WorldMatrixPtr());
 
-	/* A socketed piece rides one bone, and that bone's matrix already carries the
-	body's pre-transform. A skinned piece adds no bone of its own: its deformation
-	lives entirely in the bone palette bound at render time. Either way the piece
-	still has to land in the frame the body model is drawn in. */
+	// 소켓 장비만 본 행렬을 곱한다. 스키닝 변형은 Render의 palette가 맡고 이 함수는 최종 배치 행렬을 만든다.
 	if (!m_strSocketBoneName.empty())
 	{
 		ChildMatrix =
@@ -134,8 +133,8 @@ void CPart_Equipment::Update(f32_t fTimeDelta)
 			ChildMatrix = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_vSocketRotationDegrees.x),
 				XMConvertToRadians(m_vSocketRotationDegrees.y), XMConvertToRadians(m_vSocketRotationDegrees.z)) * ChildMatrix;
 		ChildMatrix = ChildMatrix * socket;
-		// Bone matrices already contain model preScale. Metre offsets use its
-		// normalized axes so the Valtan .0001 import scale is not applied twice.
+		// 본 행렬에는 model preScale이 이미 포함되어 있으므로 meter 이동에는 정규화한 축을 쓴다.
+		// 축 길이가 유효하지 않으면 그 프레임의 추가 위치 offset은 적용하지 않는다.
 		if (m_vSocketPositionMeters.x != 0.f || m_vSocketPositionMeters.y != 0.f || m_vSocketPositionMeters.z != 0.f)
 		{
 			matrix_t axes = socket;
@@ -195,6 +194,7 @@ HRESULT CPart_Equipment::Render_Group(RENDERGROUP group)
 	return RENDERGROUP::BLEND == group ? Render_Translucent() : Render();
 }
 
+// 현재 palette와 forward 조명을 바인딩해 반투명으로 분류된 mesh만 그린다.
 HRESULT CPart_Equipment::Render_Translucent(ID3D11BlendState* pCoverageBlend)
 {
 	if (!Is_Visible())
@@ -248,12 +248,7 @@ HRESULT CPart_Equipment::Render_Pass(
 	if (FAILED(Bind_ShaderResources()))
 		return E_FAIL;
 
-	/* The cooked path gives every skinned mesh the same skeleton-wide palette, so
-	one bind covers all of this piece's meshes and any body mesh index produces it.
-
-	A piece that carries costume-only bones cannot use the body's palette: those bones have no
-	slot in it, and every vertex weighted to one reads past the end. Such a piece poses its own
-	skeleton from the body by name and binds its own palette per mesh instead. */
+	// 추가 본이 없으면 본체 palette를 한 번 바인딩한다. 추가 본이 있으면 자체 자세를 동기화하고 mesh별로 바인딩한다.
 	const bool_t isSkinned = m_strSocketBoneName.empty();
 	if (isSkinned && !m_hasOwnBones &&
 		FAILED(m_pSkeletonModelCom->Bind_BoneMatrices(
@@ -272,7 +267,7 @@ HRESULT CPart_Equipment::Render_Pass(
 
 		uint32_t materialPass = iPassIndex;
 		const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-		/* BLEND draws these forward in both field and portrait captures. */
+		// 기본 pass의 반투명 스키닝 mesh는 masked 부분을 그린다. 반투명 색상은 별도 BLEND 단계가 맡는다.
 		if (iPassIndex == 0u && 0u != Resolve_TranslucentSourcePass(surface))
 		{
 			if (!isSkinned) continue;
@@ -309,6 +304,7 @@ HRESULT CPart_Equipment::Render_Pass(
 	return S_OK;
 }
 
+// 같은 본체/자체 palette와 숨김 mask를 사용해 스키닝 또는 static 그림자 pass로 그린다.
 HRESULT CPart_Equipment::Render_Shadow()
 {
     if (!Is_Visible()) return S_OK;
@@ -359,7 +355,7 @@ HRESULT CPart_Equipment::Render_Shadow()
 			Resolve_DeferredMaterialProfile(
 				m_strMaterialProfileId,
 				m_pModelCom->Get_MaterialName(i));
-		// The static socket shader keeps its surface branches; skinned shadow reads only alpha.
+		// 소켓의 static 셰이더는 재질 분기를 유지하고 스키닝 그림자는 diffuse alpha를 사용한다.
 		const HRESULT materialResult = m_strSocketBoneName.empty() ?
 			m_pModelCom->Bind_Material(m_pShaderCom, "g_DiffuseTexture",
 				i, aiTextureType_DIFFUSE, 0) :
@@ -398,7 +394,7 @@ bool CPart_Equipment::Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view)
 {
     if (!Is_Visible() || !m_pModelCom || !m_pShaderCom) return false;
     if (m_hasOwnBones && m_strSocketBoneName.empty()) m_pModelCom->Pose_BonesFrom(*m_pSkeletonModelCom);
-    // Recompute the same socket/root composition for post-update tool pose edits.
+    // Update 이후 도구의 자세 변경도 반영하도록 소켓·root 합성을 다시 계산한다.
     Update(0.f);
     view.model = m_pModelCom; view.shader = m_pShaderCom; view.world = m_CombinedWorldMatrix;
     view.socketed = !m_strSocketBoneName.empty(); view.hiddenMeshMask = m_iHiddenMeshMask;
@@ -406,6 +402,7 @@ bool CPart_Equipment::Get_AfterimageView(CSkeletalAfterimage::MODEL_VIEW& view)
     return true;
 }
 
+// 합성 World·카메라 행렬을 전달하고 소켓 static mesh에는 법선용 역전치 행렬을 추가한다.
 HRESULT CPart_Equipment::Bind_ShaderResources()
 {
 	if (FAILED(__super::Bind_WorldMatrix(m_pShaderCom, "g_WorldMatrix")) ||
@@ -429,6 +426,7 @@ HRESULT CPart_Equipment::Bind_ShaderResources()
 	return S_OK;
 }
 
+// World와 그림자 광원의 View/Projection만 바인딩한다.
 HRESULT CPart_Equipment::Bind_ShadowShaderResources()
 {
 	if (FAILED(__super::Bind_WorldMatrix(

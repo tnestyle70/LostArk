@@ -220,6 +220,7 @@ namespace
 	}
 }
 
+//MainApp이 생성한다. 명령 sink의 공유 수명을 유지하고 BalanceTool은 생성자에서 차용한다.
 Client::CValtanBossTool::CValtanBossTool(
 	std::shared_ptr<IPlayerCommandSink> CommandSink,
 	CBalanceTool* const pBalanceTool)
@@ -228,6 +229,7 @@ Client::CValtanBossTool::CValtanBossTool(
 {
 }
 
+//MainApp의 도구 선택·Workbench 연결에서 창을 열고 최초 graph 로드만 요청한다.
 void Client::CValtanBossTool::Open()
 {
 	m_bOpen = true;
@@ -258,6 +260,7 @@ bool_t Client::CValtanBossTool::Consume_LogicPatternOpenRequest()
 	return true;
 }
 
+//MainApp 프레임에서 준비 작업을 먼저 진행한다. 표시 중인 창은 live 관찰을 갱신하고 Boss 창의 Repeat만 별도 처리한다.
 void Client::CValtanBossTool::Update(
 	const bool_t bValtanBossToolVisible,
 	const bool_t bLogicPatternVisible)
@@ -280,9 +283,8 @@ void Client::CValtanBossTool::Update(
 	Synchronize_LiveSelection();
 	Update_LogicFlowObservation();
 	Refresh_PresentationFreshness();
-	/* Valtan Logic Pattern observes the admitted graph and replicated cursor only.
-	   Keeping that standalone window open must never keep Valtan Boss Tool Repeat or
-	   any other mutation lifecycle alive after the Valtan Boss Tool route is hidden. */
+	//Logic Pattern만 열린 경우에도 graph·복제 커서는 관찰하되, 숨겨진 Boss 창의 Repeat는 이어가지 않는다.
+	//제출 전 자원 준비는 이 분기 앞 Update_PlayPreparation에서 별도로 처리한다.
 	if (!bValtanBossToolVisible || !m_bOpen)
 	{
 		m_bRepeat = false;
@@ -350,6 +352,7 @@ void Client::CValtanBossTool::Schedule_CanonicalReloadRetry()
 		ImGui::GetTime() + CANONICAL_RELOAD_RETRY_SECONDS;
 }
 
+//Open·Reload·저장 후 호출한다. 정본과 파생 목록을 지역값으로 검증한 뒤 함께 교체하고 실패 시 이전 표시 자료를 보존한다.
 bool_t Client::CValtanBossTool::Reload_Graph()
 {
     Cancel_PlayPreparation("The pattern inventory was reloaded.");
@@ -357,9 +360,7 @@ bool_t Client::CValtanBossTool::Reload_Graph()
 	m_strActionFeedback.clear();
 	m_bGraphLoadAttempted = true;
 	m_bCanonicalReloadRetryPending = false;
-	/* A reload attempt revokes mutation admission immediately. The last good
-	   graph remains available for diagnosis, but it cannot authorize commands
-	   unless this exact staging transaction commits. */
+	//다시 읽기를 시작하면 변경 권한부터 회수한다. 이전 graph는 진단용으로 보존하고 이번 검증이 commit돼야 명령을 허용한다.
 	m_eGraphAdmission = Can_DisplayValtanView(m_eGraphAdmission) ?
 		VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
 		VALTAN_VIEW_ADMISSION::UNLOADED;
@@ -471,9 +472,7 @@ bool_t Client::CValtanBossTool::Reload_Graph()
 			L"Encounters/Valtan/ValtanCinematicCamera.json"),
 		StagedEncounter,
 		CameraStatus);
-	/* The sequence now lives inside the canonical gameplay source covered by
-	   this same shared admission.  One final generation check protects the
-	   Pattern tree, Flow projection and verification views as one snapshot. */
+	//같은 정본 읽기 권한 아래 구성한 Pattern·Flow·검증 자료를 commit 직전 세대로 다시 확인한다.
 	std::string FinalAdmissionStatus;
 	if (!CanonicalAdmission.Validate_StillCurrent(FinalAdmissionStatus))
 	{
@@ -615,6 +614,7 @@ void Client::CValtanBossTool::Refresh_PresentationFreshness(const bool_t bForce)
 		"Re-enter Valtan to load the active Server revision.";
 }
 
+//Play 버튼·Workbench·Repeat가 선택한 Pattern의 자원 준비를 시작한다. 최종 Server Submit은 준비 완료 Update에서 한 번 수행한다.
 bool_t Client::CValtanBossTool::Submit_SelectedPattern()
 {
 	m_bReviveFeedbackPending = false;
@@ -641,8 +641,7 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
     LostArk::Shared::GameplayDataRevision expectedActiveRevision{};
     VALTAN_PATTERN_SOUND_SOURCE_RECEIPT PinnedSoundReceipt;
     CValtanPatternSoundSourceReadAdmission SoundAdmission;
-    // A missing boss may be prepared, but exact consumer admission remains
-    // mandatory after its reliable spawn and again before Pattern submission.
+    //보스가 없어도 준비는 시작할 수 있다. Server 스폰 복제 뒤와 패턴 제출 직전에 연출 소비자를 다시 검증한다.
     const bool admitted = arena->Has_DebugValtanBoss() ?
         Acquire_ServerPlaybackAdmission(expectedActiveRevision, PinnedSoundReceipt, SoundAdmission, Status) :
         (Get_ServerActivePatternRevision(expectedActiveRevision, Status) &&
@@ -668,6 +667,7 @@ bool_t Client::CValtanBossTool::Submit_SelectedPattern()
     return true;
 }
 
+//선택·접속·정본 변경 또는 실패로 준비를 취소하고 결과를 보관한다. 아직 제출하지 않은 Pattern의 Server 중지 명령은 보내지 않는다.
 void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
 {
     if (!m_PlayPreparation) return;
@@ -678,6 +678,7 @@ void Client::CValtanBossTool::Cancel_PlayPreparation(const std::string& reason)
     if (auto* arena = CLevel_ValtanArena::Get_Active()) arena->Debug_ResetCompletePlayPreparation();
 }
 
+//매 Update에서 고정한 선택·월드·revision을 검사하고 아레나 자원을 준비한다. 완료 직전 Sound까지 다시 검증해 단일 Pattern을 제출한다.
 void Client::CValtanBossTool::Update_PlayPreparation()
 {
     if (!m_PlayPreparation) return;
@@ -711,8 +712,8 @@ void Client::CValtanBossTool::Update_PlayPreparation()
     if (!Acquire_ServerPlaybackAdmission(revision,sound,admission,reason,true) ||
         revision != pending.revision || sound != pending.sound)
     { Cancel_PlayPreparation("Final Product/Sound admission changed. " + reason); return; }
-    // Clear local ownership before one typed submit. No Server request/deadline
-    // exists during resource preparation and subsequent Update cannot resubmit.
+    //단일 패턴 typed 명령을 보내기 전에 준비 점유를 해제해 다음 Update의 중복 제출을 막는다.
+    //자원 준비 중에는 이 패턴 재생 요청의 Server 응답 대기·기한이 아직 시작되지 않는다.
     m_PlayPreparation.reset(); m_bPreparationTerminal = false;
     if (!CValtanPatternAuditionService::Get().Submit(CONSUMER_ID,BOSS_PLACEMENT_ID,
         pending.patternId,revision,sound,reason))
@@ -869,7 +870,7 @@ bool_t Client::CValtanBossTool::Queue_NextServerPattern(
 		return false;
 	}
 
-	/* An explicit Next reservation owns the continuation decision. */
+	//명시적인 Next 예약이 다음 진행을 결정하므로 자동 Repeat를 해제한다.
 	m_bRepeat = false;
 	m_strRepeatPatternId.clear();
 	const bool_t bQueued = Service.Queue_NextPattern(
@@ -1191,8 +1192,7 @@ bool_t Client::CValtanBossTool::Set_ServerArenaPreset(
 	{
 		return false;
 	}
-	// Arena state has its own typed Server admission and destruction transaction.
-	// An unpublished Pattern draft must not block these environment presets.
+	//아레나 상태는 별도 typed Server 검증·파괴 트랜잭션을 사용한다. 미게시 Pattern draft로 환경 preset을 막지 않는다.
 	CLevel_ValtanArena* const arena = CLevel_ValtanArena::Get_Active();
 	if (nullptr == arena)
 	{
@@ -1478,10 +1478,8 @@ bool_t Client::CValtanBossTool::Restart_SavedFlow()
 	if (!Reload_FlowDocument())
 		return false;
 
-	/* Restart is a disk-backed command. Resolve the activation expectation only
-	   after Reload has committed the exact canonical saved baseline that will be
-	   copied into FLOW_START. This avoids rejecting a newly saved one-slot Flow
-	   from an older in-memory Current Patterns count. */
+	//저장본 Reload가 commit된 뒤 그 Flow의 활성화 조건을 확인한다.
+	//이전 메모리의 슬롯 수로 새 저장본의 재시작을 거절하지 않게 한다.
 	CValtanTuningCommandService& TuningService =
 		CValtanTuningCommandService::Get();
 	TuningService.Update();
@@ -1654,8 +1652,7 @@ bool_t Client::CValtanBossTool::Save_FlowDocument()
 		"The running Flow was not changed. Restart Saved Flow (Fresh Arena) is admitted only after that exact saved Product revision is Server-active.";
 	if (bActivationPrepared)
 	{
-		/* Same refresh the Balance Tool's Publish Server Data button performs,
-		   so the next Server start already loads this saved Flow. */
+		//BalanceTool의 기존 서버 데이터 게시 경로를 사용해 저장한 Flow를 다음 Server 로드에도 연결한다.
 		std::string PublishStatus;
 		std::string PublishRevision;
 		std::string RevisionStatus;
@@ -1703,9 +1700,7 @@ bool_t Client::CValtanBossTool::Retry_FlowProductPublishApply()
 		return false;
 	}
 
-	/* Publication does not mutate the saved Flow. If the prior source commit
-	   succeeded but a transient Product reopen revoked this window's mutation
-	   admission, retry the ordinary read-only graph staging as well. */
+	//게시는 저장한 Flow를 바꾸지 않는다. 저장 성공 뒤 일시적인 Product 재열기가 권한을 회수했다면 graph 검증도 재시도한다.
 	const bool_t bGraphReopened =
 		Can_MutateValtanView(m_eGraphAdmission) || Reload_Graph();
 	m_strFlowStatus = std::move(RetryStatus);
@@ -1738,6 +1733,8 @@ bool_t Client::CValtanBossTool::Retry_FlowProductPublishApply()
 	return true;
 }
 
+//표시 중 Update가 HUD의 Server Pattern/action을 현재 audition graph에 대조한다.
+//관찰 ID만 갱신하며 수동 Inspector 선택이나 Server 재생 상태는 바꾸지 않는다.
 void Client::CValtanBossTool::Synchronize_LiveSelection()
 {
 	const HUD_BOSS_STATE& Boss = CCombatHUDViewModel::Get().Get_Boss();
@@ -2109,6 +2106,7 @@ void Client::CValtanBossTool::Render_LogicPatternInspector(
 	const bool_t bLivePattern)
 {
 	ImGui::SeparatorText("Live snapshot");
+
 	if (bLivePattern)
 	{
 		ImGui::TextWrapped("Pattern %s", Boss.strPatternId.c_str());
@@ -2156,11 +2154,14 @@ void Client::CValtanBossTool::Render_LogicPatternInspector(
 		if (nullptr != pSelected)
 			InspectorActionId = pSelected->strActionId;
 	}
+
 	const auto NodeAt = std::find_if(
 		m_LogicFlowView.Nodes.begin(), m_LogicFlowView.Nodes.end(),
 		[&InspectorActionId](const BOSS_LOGIC_FLOW_NODE_VIEW& Node)
 		{ return Node.strActionId == InspectorActionId; });
+
 	ImGui::SeparatorText("Stage conditions");
+
 	if (m_LogicFlowView.Nodes.end() == NodeAt)
 	{
 		ImGui::TextDisabled("Click a Stage or branch to inspect it.");
@@ -2196,6 +2197,7 @@ void Client::CValtanBossTool::Render_LogicPatternInspector(
 					Edge.eOrigin ? " (derived)" : "");
 		}
 	}
+
 	if (BOSS_LOGIC_FLOW_SELECTION_KIND::BRANCH ==
 		m_LogicFlowSelection.eKind &&
 		m_LogicFlowSelection.strPatternId == Pattern.strPatternId)
@@ -2272,9 +2274,8 @@ bool_t Client::CValtanBossTool::Fail_GraphReload(
 {
 	if (m_bGraphReady)
 	{
-		/* Never replace a fully joined display snapshot with the reduced Product
-		   projection.  Its command admission was revoked by Reload_Graph(), so the
-		   preserved graph remains diagnosis-only until a strict reload succeeds. */
+		//완전히 결합된 이전 graph를 축소된 Product 자료로 덮어쓰지 않는다.
+		//Reload가 변경 권한을 회수했으므로 엄격한 재검증 성공 전에는 진단 표시만 허용한다.
 		m_eGraphAdmission = VALTAN_VIEW_ADMISSION::STALE_PRESERVED;
 		m_strStatus =
 			"Canonical graph STALE_PRESERVED; previous rows are display-only: " +
@@ -2283,9 +2284,7 @@ bool_t Client::CValtanBossTool::Fail_GraphReload(
 	}
 	if (nullptr == pCanonicalAdmission)
 	{
-		/* Acquire failure (including a publisher writer window) provides no
-		   generation pin.  Never open Product files outside an admission and risk
-		   displaying a mixed transaction. */
+		//읽기 권한 획득 실패 시 고정된 세대가 없다. Product 파일을 따로 열어 서로 다른 저장 세대를 섞지 않는다.
 		m_eGraphAdmission = m_bProductFallbackReady ?
 			VALTAN_VIEW_ADMISSION::STALE_PRESERVED :
 			VALTAN_VIEW_ADMISSION::REJECTED;
@@ -2369,6 +2368,7 @@ bool_t Client::CValtanBossTool::Fail_GraphReload(
 	return false;
 }
 
+//HUD tick·Pattern sequence·action을 읽어 관찰된 graph edge 이력을 갱신한다. 분기를 실행하거나 Server 결과를 추측하지 않는다.
 void Client::CValtanBossTool::Update_LogicFlowObservation()
 {
 	BOSS_LOGIC_FLOW_LIVE_SNAPSHOT Snapshot;
@@ -2546,8 +2546,7 @@ void Client::CValtanBossTool::Render_PatternFlowTab()
 		"Choose Pattern order, the next Pattern, and the wait between them." :
 		"Edit the simple ordered list.");
 
-	/* Keep Next independent of draft admission and selection. Small windows
-	   scroll this parent; both right-side children retain usable minimums. */
+	//Next는 draft의 변경 허용·선택 상태와 분리해 표시한다. 작은 창에서도 오른쪽 두 영역의 최소 크기를 유지한다.
 	const float fNextCardHeight = 280.f;
 	const float fColumnHeight = (std::max)(
 		480.f, ImGui::GetContentRegionAvail().y);
@@ -2732,8 +2731,7 @@ void Client::CValtanBossTool::Render_NextPatternPicker()
 	CValtanPatternAuditionService& Service = CValtanPatternAuditionService::Get();
 	std::string SelectionStatus;
 	LostArk::Shared::GameplayDataRevision ExpectedRevision{};
-	/* Popup rendering must remain memory-only. The exact typed-source/Sound
-	   admission runs once when Queue_NextServerPattern submits the command. */
+	//팝업 표시는 메모리 자료만 사용한다. typed source·Sound의 최종 검증은 Queue_NextServerPattern 제출 때 수행한다.
 	const bool_t bPlaybackAdmitted = Observe_ServerActivePatternRevision(
 		ExpectedRevision, SelectionStatus);
 	ImGui::BeginDisabled(
@@ -2762,7 +2760,7 @@ void Client::CValtanBossTool::Render_NextPatternPicker()
 			ImGui::PushID(PatternId.c_str());
 			if (ImGui::Selectable(Label.c_str(), false))
 			{
-				/* Selecting Next owns this decision even if the Server rejects it. */
+				//Next를 선택했다면 Server가 거절해도 그 결정을 자동 Repeat로 대체하지 않는다.
 				m_bRepeat = false;
 				m_strRepeatPatternId.clear();
 				(void)Queue_NextServerPattern(
@@ -2801,8 +2799,7 @@ void Client::CValtanBossTool::Render_FlowGraphEditor()
 	if (ImGui::Button("Add From Pattern Slot..."))
 		ImGui::OpenPopup("##addBossFlowGraphNode");
 	ImGui::EndDisabled();
-	/* Inserting a node replaces the document draft.  Do not dereference the
-	   pre-popup Flow pointer again in the same frame. */
+	//노드 추가는 문서 draft를 교체하므로 팝업 전에 얻은 Flow 포인터를 이 프레임에서 다시 사용하지 않는다.
 	if (Render_AddPatternNodePopup())
 		return;
 	if (CValtanPatternFlowDocument::Has_LegacyLinearProjection(*pFlow))
@@ -4081,6 +4078,7 @@ void Client::CValtanBossTool::Normalize_CurrentFlowSelection()
 		m_strSelectedCurrentFlowSlotId = pSavedFlow->Slots.front().strSlotId;
 }
 
+//패턴 목록 클릭의 수동 선택을 공유 도구 선택과 맞춘다. Stage는 첫 항목으로 두고 Follow Live·다른 Pattern의 Repeat를 해제한다.
 void Client::CValtanBossTool::Select_Pattern(const VALTAN_PATTERN_VIEW& Pattern)
 {
 	const bool_t bSelectionChanged =
@@ -4392,9 +4390,8 @@ void Client::CValtanBossTool::Render_CurrentPatternList()
 
 void Client::CValtanBossTool::Render_PatternList()
 {
-	/* Selection made in Effect/Workbench/F1 is reflected here before the list
-	   renders.  Repeat is a Boss-only lifecycle and must not silently continue
-	   against a different shared selection. */
+	//Effect·Workbench·F1의 공유 선택을 목록을 그리기 전에 반영한다.
+	//다른 Pattern으로 바뀌면 이 Boss 도구의 Repeat를 중지한다.
 	if (CMainApp* const pApp = CMainApp::Get_Active())
 	{
 		const std::string& strSharedPatternId =
@@ -4656,8 +4653,7 @@ void Client::CValtanBossTool::Render_SelectedPattern()
 			m_strLiveStageId.empty() ?
 				"stage unresolved" : m_strLiveStageId.c_str());
 	}
-	/* A successful ring Save reloads m_Graph and invalidates pPattern/pStage.
-	   End this frame before either pre-reload pointer is consumed again. */
+	//링 저장 성공은 m_Graph를 다시 읽어 pPattern/pStage를 무효화한다. 이전 포인터를 다시 쓰지 않도록 이 프레임을 끝낸다.
 	if (Render_SelectedPatternRingAuthoring(*pPattern))
 		return;
 	Render_ConnectionSummary(*pPattern, *pStage);
@@ -4701,9 +4697,7 @@ bool_t Client::CValtanBossTool::Render_SelectedPatternRingAuthoring(
 		Has_ValtanAuthoringTransactionBarrier(m_pBalanceTool);
 	const double Step = 0.1;
 	const double FastStep = 1.0;
-	/* Draft reads remain visible for diagnosis, but no numeric authoring control
-	   may submit a second mutation while Save or runtime publish owns the
-	   canonical transaction. */
+	//진단용 draft는 표시하되 정본 저장·runtime 게시가 점유한 동안 다른 수치 저작 명령을 제출하지 않는다.
 	ImGui::BeginDisabled(bAuthoringTransactionBlocked);
 	for (const VALTAN_STAGE_VIEW& Stage : Pattern.Stages)
 	{
@@ -5237,6 +5231,7 @@ std::vector<std::string> Client::CValtanBossTool::Build_AdmittedPatternIds() con
 	return PatternIds;
 }
 
+//HUD actionId를 이 Pattern의 Stage actionId에 대조해 첫 일치 항목을 차용한다. stable Stage ID는 그 항목에서 읽는다.
 const Client::VALTAN_STAGE_VIEW* Client::CValtanBossTool::Find_LiveStage(
 	const VALTAN_PATTERN_VIEW& Pattern) const
 {
@@ -5255,6 +5250,7 @@ const Client::VALTAN_STAGE_VIEW* Client::CValtanBossTool::Find_LiveStage(
 	return Stage == Pattern.Stages.end() ? nullptr : &*Stage;
 }
 
+//수동 Inspector의 stable Stage ID로 선택 항목을 찾는다. 반환 포인터는 graph reload 전까지만 유효하다.
 const Client::VALTAN_STAGE_VIEW* Client::CValtanBossTool::Find_SelectedStage(
 	const VALTAN_PATTERN_VIEW& Pattern) const
 {

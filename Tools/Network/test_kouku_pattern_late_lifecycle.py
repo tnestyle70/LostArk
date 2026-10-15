@@ -36,9 +36,9 @@ auto& service = CKoukuSaydonPatternAuditionService::Get();
 std::string status;
 void Begin() {
     net.Close_ServerConnection(); Connected = true; FakeNow = 100u; Sent.clear(); service.Reset();
-    net.m_eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
-    service.Set_TargetBoss("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU");
-    Check(service.Play_Selected("KAKULSAYDON_G1_PATTERN_25", Revision(), 2166u, status), "submit pizza");
+    net.m_eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
+    service.Set_TargetBoss("boss.koukusaydon.g2.kouku", "BOSS_KOUKUSAYDON_G2_KOUKU");
+    Check(service.Play_Selected("KOUKUSAYDON_G1_PATTERN_25", Revision(), 2166u, status), "submit pizza");
 }
 auto Result() {
     const auto& request = Sent.front(); S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT r;
@@ -68,7 +68,7 @@ void LateActive() {
     Begin(); DelayWithRawPrefix();
     Check(service.Get_Snapshot().eState == AUDITION_STATE::REQUEST_PENDING, "deadline must preserve exact pending request");
     Check(!service.Play_Selected("other", Revision(), 2166u, status), "unresolved request cannot be replaced");
-    Pump(); Check(service.Get_Snapshot().Is_Live("KAKULSAYDON_G1_PATTERN_25", 2166u), "late exact ACTIVE is consumed");
+    Pump(); Check(service.Get_Snapshot().Is_Live("KOUKUSAYDON_G1_PATTERN_25", 2166u), "late exact ACTIVE is consumed");
 }
 void QueuedDelay() {
     Begin(); QueueResult(Result()); QueueLife(Lifecycle(LIFE::PENDING)); Pump();

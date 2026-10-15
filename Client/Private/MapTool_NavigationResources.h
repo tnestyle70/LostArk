@@ -1,11 +1,8 @@
 #pragma once
 #include "MapTool.h"
-#pragma push_macro("new")
-#undef new
 #include "DirectXTK/PrimitiveBatch.h"
 #include "DirectXTK/VertexTypes.h"
 #include "DirectXTK/Effects.h"
-#pragma pop_macro("new")
 
 
 struct Client::CMapTool::NAVIGATION_RENDER_RESOURCES final

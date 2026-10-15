@@ -33,7 +33,7 @@ class PlaytestCombatCandidateTests(unittest.TestCase):
     def test_every_card_has_its_own_suit_and_ninety_percent_damage(self):
         suits = set()
         for ordinal in range(125, 129):
-            card = self.logics[f"kakulsaydon.g1.logic.{ordinal}"]
+            card = self.logics[f"koukusaydon.g1.logic.{ordinal}"]
             self.assertEqual(1, len(card["cardSymbols"]))
             suits.update(card["cardSymbols"])
             self.assertTrue(all(h["damagePercent"] == 90 for h in card["projectileHits"]))

@@ -1,9 +1,9 @@
 """Build the G12 cutscene targets (2026-09-13) from source Matinees.
 
 Targets:
-  P3 KAKULSAYDON_G1_PATTERN_3  2관문_진입      camera shots regenerated from SCENE04A Matinee2
-  P7 KAKULSAYDON_G1_PATTERN_7  3관문_진입      full SCENE02A Matinee10 window (0..35368ms)
-  P8 KAKULSAYDON_G1_PATTERN_8  빙고_최종엔딩씬  new pattern from SCENE01B Matinee0 (0..49083ms)
+  P3 KOUKUSAYDON_G1_PATTERN_3  2관문_진입      camera shots regenerated from SCENE04A Matinee2
+  P7 KOUKUSAYDON_G1_PATTERN_7  3관문_진입      full SCENE02A Matinee10 window (0..35368ms)
+  P8 KOUKUSAYDON_G1_PATTERN_8  빙고_최종엔딩씬  new pattern from SCENE01B Matinee0 (0..49083ms)
 
 Cameras and source props use the same generator functions as build_source_sequences
 (make_cameras/static_worlds). P7 actors reuse the 2관문_클리어 baked worlds, which
@@ -46,7 +46,7 @@ PHYSICAL = {  # logical scene -> obfuscated package in the installed game
     'SCENE01B': 'B9AVB2VAZIQRPQCJVKAVYRAVOKYPY8FD.upk',
 }
 P7_TIME_SHIFT_MS = 16710  # former source window start; existing P7 boxes keep their source clock
-P7_ACTOR_DONORS = ['kakulsaydon.g1.world.28', 'kakulsaydon.g1.world.29', 'kakulsaydon.g1.world.30']
+P7_ACTOR_DONORS = ['koukusaydon.g1.world.28', 'koukusaydon.g1.world.29', 'koukusaydon.g1.world.30']
 CONFIGS = [
     dict(id=3, name='2관문_진입', prefix='kouku.gate2.intro', scene='SCENE04A', matinee=329, data=394,
          duration=27000, start=0, gate='GATE2', combat=True, mode='cameras'),
@@ -61,8 +61,8 @@ STABLE_ID = re.compile(r'^[A-Za-z0-9._-]{1,128}$')
 DEFAULT_MOTION = dict(velocity=[0, 0, 0], acceleration=[0, 0, 0], angularVelocityDegrees=[0, 0, 0],
                       revolutionDegreesPerSecond=[0, 0, 0], revolutionOffset=[0, 0, 0], count=1, intervalMs=0, spreadDegrees=0, seed=0)
 P7_SCALED_ACTORS = [  # SCENE02A actors whose active DrawScale float track the P5 bake did not apply
-    dict(group=152, actor=69, donor='kakulsaydon.g1.world.28', label='LargeSaydon', tag='largesaydon'),
-    dict(group=135, actor=70, donor='kakulsaydon.g1.world.29', label='Kouku', tag='kouku'),
+    dict(group=152, actor=69, donor='koukusaydon.g1.world.28', label='LargeSaydon', tag='largesaydon'),
+    dict(group=135, actor=70, donor='koukusaydon.g1.world.29', label='Kouku', tag='kouku'),
 ]
 
 
@@ -98,10 +98,10 @@ def replace_cameras(docs, pattern, config, rows):
 
 
 def new_pattern(config):
-    pid = 'KAKULSAYDON_G1_PATTERN_' + str(config['id'])
+    pid = 'KOUKUSAYDON_G1_PATTERN_' + str(config['id'])
     return dict(patternId=pid, actorProfileId='MN_RPCT_05' if config['gate'] != 'GATE2' else 'MN_RPCZ_00',
                 gateId=config['gate'],
-                targetBossPlacementId='boss.kakulsaydon.' + GATE_BOSS[config['gate']],
+                targetBossPlacementId='boss.koukusaydon.' + GATE_BOSS[config['gate']],
                 displayName=config['name'], authoringStatus='DRAFT', category='MECHANIC', enterCombatOnFinish=config['combat'],
                 nextStageOrdinal=2, nextAnimationOrdinal=1, nextLogicOccurrenceOrdinal=1, nextSummonOccurrenceOrdinal=1,
                 nextWorldOccurrenceOrdinal=1, nextSceneProfileOccurrenceOrdinal=1, nextPresentationOccurrenceOrdinal=1,
@@ -388,7 +388,7 @@ def load_world_inputs():
 
 def install_backdrops(install):
     config = CONFIGS[0]
-    pid = 'KAKULSAYDON_G1_PATTERN_' + str(config['id'])
+    pid = 'KOUKUSAYDON_G1_PATTERN_' + str(config['id'])
     paths, baseline, world_doc, composition = load_world_inputs()
     pattern = next(p for p in composition['patterns'] if p['patternId'] == pid)
     assert pattern['stages'][0]['durationMs'] == config['duration']
@@ -461,7 +461,7 @@ def install_p7_scale(install):
     The shared P5 rows stay untouched; P7 references the copies.
     """
     config = CONFIGS[1]
-    pid = 'KAKULSAYDON_G1_PATTERN_' + str(config['id'])
+    pid = 'KOUKUSAYDON_G1_PATTERN_' + str(config['id'])
     paths, baseline, world_doc, composition = load_world_inputs()
     pattern = next(p for p in composition['patterns'] if p['patternId'] == pid)
     assert pattern['stages'][0]['durationMs'] == config['duration']
@@ -476,9 +476,9 @@ def install_p7_scale(install):
         if any(registry[o['worldId']]['sequenceInstanceId'] == instance_id for o in pattern['worldOccurrences']):
             print(json.dumps(dict(installed=False, p7Scale='already placed', instanceId=instance_id), ensure_ascii=False), flush=True)
             return
-        # The composition reader accepts only generated ids (kakulsaydon.g1.world.<ordinal>
+        # The composition reader accepts only generated ids (koukusaydon.g1.world.<ordinal>
         # below nextWorldOrdinal) or the gate2 source-import pair for World definitions.
-        world_id = f"kakulsaydon.g1.world.{composition['nextWorldOrdinal']}"
+        world_id = f"koukusaydon.g1.world.{composition['nextWorldOrdinal']}"
         composition['nextWorldOrdinal'] += 1
         donor_world = registry[spec['donor']]
         donor_instance = instances[donor_world['sequenceInstanceId']]
@@ -561,7 +561,7 @@ def main():
     summaries = []
     for config in CONFIGS:
         rows = scene_rows(config)
-        pid = 'KAKULSAYDON_G1_PATTERN_' + str(config['id'])
+        pid = 'KOUKUSAYDON_G1_PATTERN_' + str(config['id'])
         duration = config['duration'] - config['start']
         summary = dict(patternId=pid, name=config['name'], sourceScene=config['scene'], sourceMatinee=config['matinee'],
                        durationMs=duration, mode=config['mode'])
@@ -579,7 +579,7 @@ def main():
         if config['mode'] == 'new':
             # The tool lists patterns by gate; the bingo ending belongs to the BINGO gate.
             pattern['gateId'] = config['gate']
-            pattern['targetBossPlacementId'] = 'boss.kakulsaydon.' + GATE_BOSS[config['gate']]
+            pattern['targetBossPlacementId'] = 'boss.koukusaydon.' + GATE_BOSS[config['gate']]
             pattern['enterCombatOnFinish'] = config['combat']
         # A rerun finds the window already widened; only the first run moves boxes.
         if config['mode'] == 'full-window' and pattern['stages'][0]['durationMs'] == duration:

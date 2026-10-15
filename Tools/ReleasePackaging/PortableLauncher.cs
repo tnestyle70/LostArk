@@ -140,9 +140,9 @@ internal static class PortableLauncher
         foreach (string line in File.ReadLines(BundlePath("Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap")))
         {
             string[] fields = line.Split('\t');
-            if (fields.Length == 4 && fields[0] == "KOUKUSAYDONPRODUCTREVISION" && fields[1] == "ENCOUNTER_KAKULSAYDON_G1")
+            if (fields.Length == 4 && fields[0] == "KOUKUSAYDONPRODUCTREVISION" && fields[1] == "ENCOUNTER_KOUKUSAYDON_G1")
             { if (Convert.ToUInt64(fields[3]) != action) throw new IOException("Server Action revision mismatch."); product = true; }
-            if (fields.Length > 5 && fields[0] == "RAIDGATE" && fields[1] == "ENCOUNTER_KAKULSAYDON_G1")
+            if (fields.Length > 5 && fields[0] == "RAIDGATE" && fields[1] == "ENCOUNTER_KOUKUSAYDON_G1")
             { if (Convert.ToUInt64(fields[5]) != sequence) throw new IOException("Server Sequence revision mismatch."); ++gates; }
         }
         if (!product || gates != 4) throw new IOException("Server raid generation is incomplete.");

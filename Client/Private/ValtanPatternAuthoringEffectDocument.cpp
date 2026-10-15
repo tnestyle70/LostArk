@@ -1,3 +1,5 @@
+﻿// Effect Tool의 New Effect 및 Draft 삭제가 사용하는 패턴별 편집용 소유 관계 문서다.
+// Effect payload와 이 목록은 별도 파일이며 두 파일의 실패 보상은 상위 Tool이 처리한다.
 #include "ValtanPatternAuthoringEffectDocument.h"
 
 #include "DataJson.h"
@@ -18,6 +20,7 @@ namespace
 {
 	using namespace Client;
 
+	// 허용 schema/state와 행 수 상한이다. 이름 있는 mutex의 Local 범위는 같은 Windows 세션이다.
 	constexpr std::string_view DOCUMENT_SCHEMA =
 		"lostark.valtan-pattern-authoring-effects";
 	constexpr double DOCUMENT_VERSION = 1.0;
@@ -27,6 +30,7 @@ namespace
 	constexpr const wchar_t* TRANSACTION_MUTEX_NAME =
 		L"Local\\LostArk.ValtanPatternAuthoringEffects.Transaction.v1";
 
+	// 필수 키와 JSON 타입을 확인한다. 반환 포인터는 입력 JSON의 수명 동안만 차용한다.
 	const DATA_JSON_VALUE* Required(
 		const DATA_JSON_VALUE& Object,
 		const char_t* pName,
@@ -37,6 +41,7 @@ namespace
 			pValue : nullptr;
 	}
 
+	// 정확한 키 집합만 허용해 runtime trigger 같은 지원하지 않는 필드가 소유 문서에 섞이지 않게 한다.
 	bool_t Has_ExactProperties(
 		const DATA_JSON_VALUE& Object,
 		const std::initializer_list<std::string_view> Names)
@@ -51,6 +56,7 @@ namespace
 		return true;
 	}
 
+	// ID의 길이와 ASCII 문자 집합을 검사한다. 경로 구분자와 공백은 허용하지 않는다.
 	bool_t Is_StableToken(const std::string_view Value)
 	{
 		if (Value.empty() || Value.size() > 255u)
@@ -68,6 +74,9 @@ namespace
 		return true;
 	}
 
+	// Load와 저장 중 재검증이 사용하는 reader다. 임시 문서의 Parse/Validate 성공 뒤 출력 문서와 정규 baseline을 바꾼다.
+	// 원본 byte hash 대신 Serialize 결과를 비교하므로 JSON 공백과 객체 키 순서는 baseline에 포함되지 않는다.
+	// 읽은 뒤 stream 오류 상태는 별도로 검사하지 않는다.
 	bool_t Load_FromPath(
 		const std::filesystem::path& Path,
 		VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& OutDocument,
@@ -98,6 +107,7 @@ namespace
 	}
 }
 
+// 소유한 mutex 획득을 한 번 해제하고 HANDLE을 닫는다. Win32 mutex의 해제는 소유 스레드에서 수행해야 한다.
 Client::CValtanPatternAuthoringEffectTransaction::
 	~CValtanPatternAuthoringEffectTransaction()
 {
@@ -108,6 +118,9 @@ Client::CValtanPatternAuthoringEffectTransaction::
 		CloseHandle(hMutex);
 }
 
+// Effect Tool의 바깥 트랜잭션과 Save가 사용하는 이름 있는 mutex다. 0 ms 대기로 UI를 계속 막지 않는다.
+// 동일 스레드의 다른 Transaction 객체는 Win32 재귀 획득을 사용하며 각 소멸자가 자기 획득을 해제한다.
+// WAIT_ABANDONED도 소유권 획득으로 받지만 이전 두 파일의 자동 복구를 수행하는 코드는 아니다.
 bool_t Client::CValtanPatternAuthoringEffectTransaction::Try_Acquire(
 	std::string& strOutStatus)
 {
@@ -135,6 +148,7 @@ bool_t Client::CValtanPatternAuthoringEffectTransaction::Try_Acquire(
 	return true;
 }
 
+// 소유 목록의 Data 루트 경로다. 실제 파일의 존재와 내용은 Load가 확인한다.
 std::filesystem::path
 Client::CValtanPatternAuthoringEffectDocument::Resolve_Path()
 {
@@ -142,6 +156,7 @@ Client::CValtanPatternAuthoringEffectDocument::Resolve_Path()
 		L"Effects/ValtanPatternAuthoringEffects.json");
 }
 
+// 입력 asset ID가 stable token이면 정해진 Authored 하위 경로만 만든다.
 std::string Client::CValtanPatternAuthoringEffectDocument::
 	Build_AuthoringPath(const std::string_view strEffectAssetId)
 {
@@ -151,6 +166,7 @@ std::string Client::CValtanPatternAuthoringEffectDocument::
 		".effect.json";
 }
 
+// 저장 경로와 asset ID로 계산한 경로를 맞춘다. ID와 state 등 전체 binding 검증은 Validate가 맡는다.
 std::filesystem::path Client::CValtanPatternAuthoringEffectDocument::
 	Resolve_AuthoringPath(
 		const VALTAN_PATTERN_AUTHORING_EFFECT_BINDING& Binding)
@@ -164,6 +180,8 @@ std::filesystem::path Client::CValtanPatternAuthoringEffectDocument::
 		std::filesystem::path(Binding.strAuthoringPath));
 }
 
+// 정확한 root/binding 필드 집합과 타입을 읽고 임시 문서를 Validate한다.
+// 실패 시 기존 OutDocument는 건드리지 않으며 성공한 값만 마지막에 옮긴다.
 bool_t Client::CValtanPatternAuthoringEffectDocument::Parse_Text(
 	const std::string_view strText,
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& OutDocument,
@@ -239,6 +257,8 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::Parse_Text(
 	return true;
 }
 
+// 패턴 ID, asset ID와 저작 경로가 각각 고유한지 set으로 확인한다. 최대 256개이며 빈 목록도 허용한다.
+// 경로는 ID로부터 결정되지만 여기서 대상 패턴 정의나 Effect 파일의 존재/내용을 읽지는 않는다.
 bool_t Client::CValtanPatternAuthoringEffectDocument::Validate(
 	const VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& Document,
 	std::string& strOutStatus)
@@ -277,6 +297,8 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::Validate(
 	return true;
 }
 
+// 정해진 schema/version/보스/state를 쓰고 binding 순서를 유지한다. 비교 baseline과 저장 문자열이 같은 규칙을 사용한다.
+// 직렬화 자체는 Validate를 호출하지 않으므로 저장 호출자는 먼저 계약을 검사한다.
 std::string Client::CValtanPatternAuthoringEffectDocument::Serialize(
 	const VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& Document)
 {
@@ -307,6 +329,7 @@ std::string Client::CValtanPatternAuthoringEffectDocument::Serialize(
 	return Output.str();
 }
 
+// Effect Tool의 Refresh와 생성/삭제 전 확인이 소유 목록 및 정규 baseline을 읽는 진입점이다. mutex는 이 reader가 얻지 않는다.
 bool_t Client::CValtanPatternAuthoringEffectDocument::Load(
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& OutDocument,
 	std::string& strOutCanonicalBaseline,
@@ -316,6 +339,9 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::Load(
 		Resolve_Path(), OutDocument, strOutCanonicalBaseline, strOutStatus);
 }
 
+// Effect Tool의 생성/삭제 및 보상 저장이 호출한다. 현재 파일과 기대 baseline이 같은 경우에만 새 소유 목록을 준비한다.
+// 쓰기/flush/재파싱/교체 전 비교를 통과한 임시 파일만 MoveFileExW로 교체한다.
+// false 경로에서 이 함수는 기존 목적 파일을 교체하지 않으며 자신이 만든 임시 파일은 삭제를 시도한다.
 bool_t Client::CValtanPatternAuthoringEffectDocument::
 	Save_AtomicIfUnchanged(
 		const VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT& Document,
@@ -335,6 +361,7 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 		return false;
 	}
 
+	// 기존 목록을 다시 읽어 편집 시작 때의 정규 baseline과 비교한다. 파일이 없으면 새 목록으로 간주하지 않고 실패한다.
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT Current;
 	std::string CurrentCanonical;
 	if (!Load_FromPath(
@@ -349,6 +376,7 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 		return false;
 	}
 
+	// 같은 목적 디렉터리의 임시 파일에 먼저 쓴다. process ID와 tick 값으로 이름을 구분한다.
 	std::filesystem::path Temporary = Destination;
 	Temporary += L".tmp." + std::to_wstring(GetCurrentProcessId()) +
 		L"." + std::to_wstring(GetTickCount64());
@@ -361,6 +389,7 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 			"Could not open temporary Valtan pattern authoring Effect document.";
 		return false;
 	}
+	// 전체 쓰기, C buffer flush와 OS 파일 commit 및 닫기를 각각 확인한다. 실패하면 임시 파일 정리를 시도한다.
 	const bool_t bWrote = Serialized.size() == fwrite(
 		Serialized.data(), 1u, Serialized.size(), pFile);
 	const bool_t bFlushed = 0 == fflush(pFile) && 0 == _commit(_fileno(pFile));
@@ -374,6 +403,7 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 		return false;
 	}
 
+	// 방금 쓴 임시 파일을 다시 읽어 typed 문서와 정규 문자열이 모두 의도한 값인지 확인한다.
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT Reparsed;
 	std::string ReparsedCanonical;
 	std::string VerifyStatus;
@@ -388,9 +418,9 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 			VerifyStatus;
 		return false;
 	}
-	/* A non-Tool editor does not participate in the named mutex. Recheck the
-	   canonical baseline at the last replace boundary so its completed edit is
-	   not silently overwritten. Tool processes are serialized by Transaction. */
+	// 같은 mutex에 참여하지 않는 외부 편집기의 완료된 저장도 교체 직전에 다시 확인한다.
+	// 비교 기준은 정규 직렬화 문자열이므로 공백과 객체 키 순서만 바뀐 저장은 같은 내용이다.
+	// 이 확인과 MoveFileExW 사이의 외부 쓰기까지 잠그는 파일 단위 CAS는 아니다.
 	VALTAN_PATTERN_AUTHORING_EFFECT_DOCUMENT BeforeReplace;
 	std::string BeforeReplaceCanonical;
 	if (!Load_FromPath(
@@ -403,6 +433,7 @@ bool_t Client::CValtanPatternAuthoringEffectDocument::
 			"Valtan pattern authoring Effect document changed before replace; refresh before creating.";
 		return false;
 	}
+	// 검증한 소유 목록 파일 하나를 교체한다. 관련 Effect payload 파일까지 같은 호출로 교체되는 것은 아니다.
 	if (!MoveFileExW(
 			Temporary.c_str(), Destination.c_str(),
 			MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))

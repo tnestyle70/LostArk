@@ -1,10 +1,7 @@
 #include "MaharakaWaterpangPresentation.h"
 #include "ActorCatalog.h"
 #include "Model.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 #include "Camera_Free.h"
 #include "DataJson.h"
 #include "Effect_Catalog.h"

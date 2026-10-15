@@ -1,11 +1,11 @@
-// Source BLEND_Translucent surfaces drawn after scene lighting. The same native base
-// and light programs as the deferred marker-5 path run here per forward light.
+// scene 조명 뒤의 반투명 표면을 그린다. marker5와 같은 native base를 한 번 평가하고 light 프로그램은 유효한 forward 광원마다 실행한다.
 #ifndef SOURCE_CHARACTER_FORWARD_CONSTANTS_PRESENT
 float4 g_SourceCharacterLightConstants[64];
 #endif
 #include "Shader_SourceCharacterLightPrograms.hlsli"
 #include "Shader_SceneHeightFog.hlsli"
 
+// forward 광원 하나의 방향·색을 native light varying으로 만든다. 이 경로의 shadow 입력은 1로 둔다.
 SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     float3 cameraPosition, float3 lightDirection, float3 lightColor, bool frontFace)
 {
@@ -27,7 +27,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     light.values[8] = float4(input.vWorldPos.xzy * 100.f, 1.f);
     if (84u == g_SourceCharacterProgram)
     {
-        // Ghost's native direct VS uses UV/light/view/position in 2/3/5/6.
+        // Ghost direct VS의 UV·광원·시점·위치를 2/3/5/6에 배치한다.
         light.values[2] = float4(input.vTexcoord, 0.f, 0.f);
         light.values[3] = light.values[5];
         light.values[5] = light.values[7];
@@ -68,6 +68,7 @@ SOURCE_CHARACTER_NATIVE_INPUT MakeSourceCharacterForwardLightInput(VS_OUT input,
     return light;
 }
 
+// 허용 program의 native alpha로 coverage를 정하고 ambient·직접광·fog·base 발광을 SceneHDR/Bloom 출력으로 합친다.
 SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     if (6u != g_SourceCharacterProgram && 7u != g_SourceCharacterProgram &&
@@ -85,8 +86,7 @@ SCENE_COLOR_BLOOM_OUT PS_MAIN_SOURCE_CHARACTER_TRANSLUCENT(VS_OUT input, bool fr
             ambient += g_SourceMapForwardLightColorExponent[ambientIndex].rgb *
                 g_SourceMapForwardLightAmbient[ambientIndex].rgb * attenuation;
     }
-    // Base programs never read lightColor; program 88 takes the scene ambient
-    // through it as its unbound engine sky-light rows.
+    // scene ambient를 base 입력에도 전달한다. program88은 이를 원본 sky-light 입력의 adapter로 소비한다.
     const SOURCE_CHARACTER_NATIVE_INPUT baseInput = MakeSourceCharacterInput(input.vTexcoord,
         input.vSourceExtraUV, input.vWorldPos.xyz, input.vTangent.xyz, input.vBinormal.xyz,
         input.vNormal.xyz, camera, input.vProjPos, mul(g_ViewMatrix, g_ProjMatrix),

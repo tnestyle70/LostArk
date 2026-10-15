@@ -8,7 +8,7 @@
 #include "CombatHUDViewModel.h"
 #include "GameInstance.h"
 #include "HonorTitleCatalog.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "UIInputRouter.h"
 #include "UILabelFont.h"
 #include "UITextOcclusion.h"
@@ -200,7 +200,7 @@ void Client::CHonorTitleWindowView::Update_Chrome()
 	m_pView->Set_SlotTexture("HT_Close", bHovered ? ART_CLOSE_OVER : ART_CLOSE_NORMAL);
 	if (bHovered && Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 	{
-		CMainApp::Play_UIButtonClickSound();
+		Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 		Close();
 	}
 }
@@ -320,7 +320,7 @@ void Client::CHonorTitleWindowView::Update_Rows(const HUD_PLAYER_STATE& Player)
 			if (Router.Is_Clicked(fListX, fY, fListW, ROW_H * m_fRetailScale, fRefWidth, fRefHeight) &&
 				iTitle != m_iSelectedTitle)
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iSelectedTitle = iTitle;
 			}
 		}
@@ -360,7 +360,7 @@ void Client::CHonorTitleWindowView::Update_Buttons(const HUD_PLAYER_STATE& Playe
 		if (bHovered && Button.bEnabled &&
 			Router.Is_Clicked(fX, fY, fWidth, fHeight, fRefWidth, fRefHeight))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			m_pView->Set_SlotTexture(Button.pSlotId, ART_BTN_DOWN);
 			m_bTitleRequested = true;
 			m_iRequestedTitleId = Button.iRequest;

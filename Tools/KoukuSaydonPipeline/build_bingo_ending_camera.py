@@ -41,7 +41,7 @@ def build_candidate(source: Path, cam_path: Path=DEFAULT_CAMERA_SOURCE, comp_pat
     camera = base.read(cam_path)
     composition = base.read(comp_path)
     existing = {s['shotId']: s for s in camera['shots']}
-    pattern = next((x for x in composition['patterns'] if x['patternId'] == 'KAKULSAYDON_G1_PATTERN_9'))
+    pattern = next((x for x in composition['patterns'] if x['patternId'] == 'KOUKUSAYDON_G1_PATTERN_9'))
     resources = {r['resourceId']: r for r in composition['presentationResources']}
     occurrences = {resources[o['resourceId']]['assetId']: o for o in pattern['presentationOccurrences'] if o['resourceId'] in resources and resources[o['resourceId']]['kind'] == 'CAMERA'}
     groups = {rows[g]['p'].get('groupname'): g for g in rows[45]['p']['interpgroups']}
@@ -121,7 +121,7 @@ def build_candidate(source: Path, cam_path: Path=DEFAULT_CAMERA_SOURCE, comp_pat
         audit.append(dict(shotId=shotid, sourceStartMs=start, sourceEndMs=end, elapsedStartMs=wall_start, elapsedEndMs=wall_end, keyCount=len(keys), maximumErrors=dict(eyeM=measured[0], orientationDegrees=measured[1], fovYDegrees=measured[2])))
         print(shotid, wall_start, wall_end, len(keys), measured, flush=True)
     resource_patch = []
-    for path, document, pattern_id in [(comp_path, composition, 'KAKULSAYDON_G1_PATTERN_9'), (action_path, json.loads(action_raw), 'KAKULSAYDON_G1_PATTERN_75')]:
+    for path, document, pattern_id in [(comp_path, composition, 'KOUKUSAYDON_G1_PATTERN_9'), (action_path, json.loads(action_raw), 'KOUKUSAYDON_G1_PATTERN_75')]:
         pattern_row = next((p for p in document['patterns'] if p['patternId'] == pattern_id))
         resource_rows = {r['resourceId']: r for r in document['presentationResources']}
         camera_rows = {resource_rows[o['resourceId']]['assetId']: o for o in pattern_row['presentationOccurrences'] if o['resourceId'] in resource_rows and resource_rows[o['resourceId']]['kind'] == 'CAMERA'}

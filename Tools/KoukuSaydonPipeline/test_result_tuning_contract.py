@@ -19,7 +19,7 @@ class ResultTuningContractTests(unittest.TestCase):
         cls.fixture = fixtures.KoukuSaydonCompositionProjectionTests()
 
     def validate_logic(self, **values):
-        row = dict(logicId="kakulsaydon.g1.logic.1", displayName="Tuning", **values)
+        row = dict(logicId="koukusaydon.g1.logic.1", displayName="Tuning", **values)
         return subject._validate_logic_definition(row, "test", 2)[1]
 
     def test_soldier_defaults_counts_fractional_radius_and_bounds(self):
@@ -124,7 +124,7 @@ class ResultTuningContractTests(unittest.TestCase):
         root = subject.REPOSITORY_ROOT
         document = json.loads((root / subject.SOURCE_PATH).read_text(encoding="utf-8-sig"))
         sequences = subject.load_world_sequences(root, document["areaId"])
-        world = next(row for row in document["worlds"] if row["worldId"] == "kakulsaydon.g1.world.22")
+        world = next(row for row in document["worlds"] if row["worldId"] == "koukusaydon.g1.world.22")
         box = dict(occurrenceId="test.world", worldId=world["worldId"], startMs=0, durationMs=17314,
                    playbackSpeed=1, placement=dict(position=[0,0,0], rotationDegrees=[0,0,0], scale=[1,1,1]))
         collider = dict(occurrenceId="test.collider", bone="b_mouth_f", boneRotation="BONE",

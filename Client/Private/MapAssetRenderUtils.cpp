@@ -5,6 +5,8 @@
 
 #include "GameInstance.h"
 #include "Model.h"
+#include "MeshLod.h"
+#include <cfloat>
 #include "Shader.h"
 #include "Presentation_Manager.h"
 #include "AnimationTargetService.h"
@@ -1485,4 +1487,139 @@ HRESULT Client::CMapAssetRenderUtils::Bind_Material(
 	}
 	recordBinding();
 	return S_OK;
+}
+
+// 배치 종류가 아니라 실제 재질이 거리 제거의 안전 경계를 결정한다. 지형 구멍, 하늘 제거,
+// 투명 정렬 변화와 변형 bounds 누락을 막기 위해 혼합 모델은 가장 보수적인 분류를 따른다.
+MAP_SCENE_VISIBILITY_KIND CMapAssetRenderUtils::Classify_SceneVisibility(
+    const Engine::CModel& model, const MAP_ASSET_RENDER_PROFILE& profile, const std::string& groupId)
+{
+    if (model.Is_Skinned()) return MAP_SCENE_VISIBILITY_KIND::DEFORMING;
+    if (groupId == "landscape") return MAP_SCENE_VISIBILITY_KIND::LANDSCAPE;
+    if (profile.renderMode != MAP_ASSET_RENDER_MODE::DEFERRED || profile.opacity < 1.f)
+        return MAP_SCENE_VISIBILITY_KIND::ORDERED_SURFACE;
+    auto kind = MAP_SCENE_VISIBILITY_KIND::STATIC_SURFACE;
+    for (uint32_t mesh = 0u; mesh < model.Get_NumMeshes(); ++mesh)
+    {
+        if (model.Has_MorphBaseVertices(mesh)) return MAP_SCENE_VISIBILITY_KIND::DEFORMING;
+        const auto* surface = model.Get_MaterialSurface(mesh);
+        if (!surface) continue;
+        if (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_LANDSCAPE_OPAQUE)
+            return MAP_SCENE_VISIBILITY_KIND::LANDSCAPE;
+        if (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
+            return MAP_SCENE_VISIBILITY_KIND::DEFORMING;
+        if (surface->renderMode != Engine::MODEL_SURFACE_RENDER_MODE::INHERIT &&
+            surface->renderMode != Engine::MODEL_SURFACE_RENDER_MODE::DEFERRED)
+            return MAP_SCENE_VISIBILITY_KIND::ORDERED_SURFACE;
+        // 바람 변형의 최대 이동을 정적 bounds가 증명하지 못하므로 새 거리 제거에서 보존한다.
+        if (surface->sourceFoliageWind) return MAP_SCENE_VISIBILITY_KIND::DEFORMING;
+        if (surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_FOLIAGE_MASKED ||
+            surface->family == Engine::MODEL_SURFACE_FAMILY::SOURCE_GRASS_MASKED)
+            kind = MAP_SCENE_VISIBILITY_KIND::VEGETATION;
+    }
+    return kind;
+}
+
+bool CMapAssetRenderUtils::Get_SceneDistancePolicy(MAP_SCENE_VISIBILITY_KIND kind, float radius,
+    const Engine::MAP_VISIBILITY_SETTINGS& settings, float& distance, float& maximumPixels)
+{
+    distance = maximumPixels = 0.f;
+    if (!settings.DistanceEnabled || !std::isfinite(radius) || !(radius > 0.f) ||
+        !std::isfinite(settings.DistanceScale) || settings.DistanceScale < .25f || settings.DistanceScale > 4.f ||
+        (kind != MAP_SCENE_VISIBILITY_KIND::STATIC_SURFACE && kind != MAP_SCENE_VISIBILITY_KIND::VEGETATION)) return false;
+    // 작은 소품의 기존 정책을 보존한다. 큰 구조물은 정책에서 누락하는 대신 2px 이하의
+    // 투영 크기와 120m 밖이라는 두 조건으로만 제거하여 원경 실루엣을 유지한다.
+    distance = (radius <= .5f ? 35.f : radius <= 1.5f ? 45.f : radius <= 3.f ? 60.f : 120.f) * settings.DistanceScale;
+    maximumPixels = radius <= 3.f ? settings.Get_DistancePixelLimit() : 2.f;
+    return maximumPixels > 0.f;
+}
+
+bool CMapAssetRenderUtils::Is_SceneDistanceHidden(const float3_t& center, float radius,
+    const float4_t& cameraPosition, const MAP_CAMERA_CULL_SNAPSHOT& camera, const float2_t& viewport,
+    float distance, float maximumPixels, float margin, bool wasHidden)
+{
+    const auto& p = camera.projection;
+    for (size_t row = 0u; row < 4u; ++row)
+        for (size_t column = 0u; column < 4u; ++column)
+            if (!std::isfinite(p.m[row][column]) || !std::isfinite(camera.lodView.m[row][column])) return false;
+    const float values[] = { center.x, center.y, center.z, radius, cameraPosition.x, cameraPosition.y,
+        cameraPosition.z, distance, maximumPixels, margin, viewport.x, viewport.y, camera.lodViewScale };
+    for (float value : values) if (!std::isfinite(value)) return false;
+    if (!(radius > 0.f) || !(distance > 0.f) || !(maximumPixels > 0.f) || maximumPixels > 128.f || margin < 0.f ||
+        !(camera.lodViewScale > 0.f) || !(viewport.x > 0.f) || !(viewport.y > 0.f) ||
+        p._14 != 0.f || p._24 != 0.f || p._34 != 1.f || p._44 != 0.f || p._12 != 0.f || p._21 != 0.f ||
+        p._13 != 0.f || p._23 != 0.f || p._41 != 0.f || p._42 != 0.f ||
+        !(p._11 > 0.f) || !(p._22 > 0.f) || !(p._33 > 1.f) || !(p._43 < 0.f)) return false;
+    const double x = double(center.x) - cameraPosition.x, y = double(center.y) - cameraPosition.y,
+        z = double(center.z) - cameraPosition.z;
+    const double threshold = double(distance) * (wasHidden ? 1. : 1.1) + radius + margin;
+    const double distanceSquared = x*x + y*y + z*z;
+    if (!std::isfinite(distanceSquared) || distanceSquared <= threshold*threshold) return false;
+    float3_t viewCenter{};
+    XMStoreFloat3(&viewCenter, XMVector3TransformCoord(XMLoadFloat3(&center), XMLoadFloat4x4(&camera.lodView)));
+    if (!std::isfinite(viewCenter.x) || !std::isfinite(viewCenter.y) || !std::isfinite(viewCenter.z)) return false;
+    const double viewRadius = (double(radius) + margin) * camera.lodViewScale;
+    const double depth = viewCenter.z;
+    if (!(depth - viewRadius > -double(p._43) / p._33)) return false;
+    // 구를 감싸는 view-space cube의 여덟 꼭짓점으로 off-axis 원근 확대까지 상계한다.
+    double diameter = 0.;
+    for (size_t axis = 0u; axis < 2u; ++axis)
+    {
+        double minimum = DBL_MAX, maximum = -DBL_MAX;
+        for (int sign = -1; sign <= 1; sign += 2)
+            for (int side = -1; side <= 1; side += 2)
+            {
+                const double q = (double((&viewCenter.x)[axis]) + sign*viewRadius) / (depth + side*viewRadius);
+                minimum = (std::min)(minimum, q); maximum = (std::max)(maximum, q);
+            }
+        const double pixels = (axis == 0u ? double(p._11)*viewport.x : double(p._22)*viewport.y)*.5;
+        diameter = (std::max)(diameter, (maximum-minimum)*pixels);
+    }
+    return std::isfinite(diameter) && diameter > 0. &&
+        diameter*(1. + 32.*FLT_EPSILON) <= double(maximumPixels)*(wasHidden ? 1. : .9);
+}
+
+bool CMapAssetRenderUtils::Build_ObjectScreenLod(const MAP_CAMERA_CULL_SNAPSHOT& camera,
+    const float3_t& center, float radius, const float4x4_t& world, const float2_t& viewport,
+    float maximumPixelError, Engine::MESH_SCREEN_LOD_DESC& result)
+{
+    const auto& p = camera.projection;
+    for (size_t row = 0u; row < 4u; ++row)
+        for (size_t column = 0u; column < 4u; ++column)
+            if (!std::isfinite(p.m[row][column]) || !std::isfinite(camera.lodView.m[row][column]) ||
+                !std::isfinite(world.m[row][column])) return false;
+    if (!(radius > 0.f) || !std::isfinite(radius) || !(viewport.x > 0.f) || !(viewport.y > 0.f) ||
+        !(camera.lodViewScale > 0.f) || !(maximumPixelError > 0.f) || maximumPixelError > 1.f ||
+        p._14 != 0.f || p._24 != 0.f || p._34 != 1.f || p._44 != 0.f || p._12 != 0.f || p._21 != 0.f ||
+        p._13 != 0.f || p._23 != 0.f || p._41 != 0.f || p._42 != 0.f ||
+        !(p._11 > 0.f) || !(p._22 > 0.f) || !(p._33 > 1.f) || !(p._43 < 0.f)) return false;
+    if (world._14 != 0.f || world._24 != 0.f || world._34 != 0.f || world._44 != 1.f) return false;
+    double maximumRow = 0.;
+    for (size_t i = 0u; i < 3u; ++i)
+    {
+        double row = 0.;
+        for (size_t j = 0u; j < 3u; ++j)
+        {
+            double dot = 0.;
+            for (size_t k = 0u; k < 3u; ++k) dot += double(world.m[i][k])*world.m[j][k];
+            row += std::abs(dot);
+        }
+        if (!std::isfinite(row)) return false;
+        maximumRow = (std::max)(maximumRow, row);
+    }
+    // A*A^T의 최대 행합 제곱근은 shear/nonuniform scale을 포함하는 선형 확대의 상계다.
+    const double scale = std::sqrt(maximumRow)*camera.lodViewScale;
+    if (!(scale > 0.) || !std::isfinite(scale) || scale >= FLT_MAX) return false;
+    Engine::MESH_SCREEN_LOD_DESC candidate{};
+    XMStoreFloat4(&candidate.viewBounds, XMVector3TransformCoord(XMLoadFloat3(&center), XMLoadFloat4x4(&camera.lodView)));
+    candidate.viewBounds.w = radius*camera.lodViewScale;
+    candidate.projectionPixels = {p._11*viewport.x*.5f, p._22*viewport.y*.5f};
+    candidate.maximumScale = std::nextafter(static_cast<float>(scale), INFINITY);
+    candidate.nearPlane = -p._43/p._33;
+    candidate.maximumPixelError = maximumPixelError;
+    const float values[] = {candidate.viewBounds.x,candidate.viewBounds.y,candidate.viewBounds.z,candidate.viewBounds.w,
+        candidate.projectionPixels.x,candidate.projectionPixels.y,candidate.maximumScale,candidate.nearPlane,maximumPixelError};
+    for (float value : values) if (!std::isfinite(value)) return false;
+    result = candidate;
+    return true;
 }

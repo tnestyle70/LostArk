@@ -1,14 +1,19 @@
-#include "SkeletalAfterimage.h"
+﻿#include "SkeletalAfterimage.h"
+// 현재 카메라 View/Projection·위치를 셰이더에 전달한다.
 #include "GameInstance.h"
+// mesh 수·본 palette 캡처·원래 재질과 mesh draw를 사용한다.
 #include "Model.h"
+// 저장한 월드·본 행렬·색을 바인딩하고 잔상 pass를 시작한다.
 #include "Shader.h"
+// 수명 비율 제한·설정 최대값·만료 sample 삭제에 사용한다.
 #include <algorithm>
+// 유한성·주기 나머지·본 변화 비교와 색 보간에 사용한다.
 #include <cmath>
 
 namespace
 {
-    // The existing carrier serves authored cues and source TrailGhost parameters.
-    // Native material/fade code is unavailable; source-channel rendering is an adapter.
+    // 기존 잔상 pass가 프로젝트 cue와 source TrailGhost 입력을 함께 소비한다.
+    // 원본 native material/fade를 그대로 실행하는 것이 아니라 현재 셰이더에 맞춰 표현한다.
     constexpr uint32_t AFTERIMAGE_PASS = 14u;
 
     bool Finite(const float4x4_t& value)
@@ -26,6 +31,7 @@ namespace
     }
 }
 
+// 모든 범위·유한성 검사를 통과한 설정만 저장하므로 잘못된 입력은 기존 상태를 보존한다.
 bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
 {
     if (!std::isfinite(settings.sampleIntervalSeconds) || settings.sampleIntervalSeconds < .005f ||
@@ -60,8 +66,8 @@ bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
         !sameColor(settings.ambientStart, m_Settings.ambientStart) || !sameColor(settings.ambientEnd, m_Settings.ambientEnd);
     if (changed)
     {
-        // A new source notify must not recolor or prematurely expire its siblings.
-        // Legacy style/counter transitions keep their existing isolation behavior.
+        // source→source 설정 변경은 기존 sample의 수명·색 사본을 유지한다.
+        // 그 외 설정 전환은 Reset으로 이전 표시 이력을 분리한다.
         if (!settings.sourceChannels || !m_Settings.sourceChannels) Reset();
         else { m_Accumulator = 0.f; m_WasEmitting = false; }
         m_Settings = settings;
@@ -69,6 +75,7 @@ bool Client::CSkeletalAfterimage::Configure(const SETTINGS& settings)
     return true;
 }
 
+// 시간 이력과 실패 억제를 비운다. 다음 Configure/Set_PresentationView가 없으면 설정·view는 계속 남는다.
 void Client::CSkeletalAfterimage::Reset()
 {
     m_Samples.clear();
@@ -88,6 +95,7 @@ void Client::CSkeletalAfterimage::Suppress_FailedPresentation()
     m_SuppressedUntilDisabled = true;
 }
 
+// 호출자가 이미 계산한 모델 자세를 소비한다. 잘못된 입력·모델 교체는 이전 이력을 초기화한다.
 void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool emitting,
     const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world)
 {
@@ -102,8 +110,8 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
         Reset();
         m_Model = model;
     }
-    // A paused owner cannot age or manufacture samples. A discontinuity cannot
-    // leave silhouettes spanning a teleport or a suspended process.
+    // delta가 0이면 노화·생성을 멈춘다. 큰 시간 간격 또는 이동 불연속이면 이전 이력을 지운다.
+    // 판정 기준은 현재/기존 최대 수명 초과 또는 마지막 위치와의 거리 제곱 100 초과다.
     if (deltaSeconds == 0.f) return;
     float longestLifetime = m_Settings.sampleLifetimeSeconds;
     for (const auto& sample : m_Samples) longestLifetime = (std::max)(longestLifetime, sample.settings.sampleLifetimeSeconds);
@@ -131,8 +139,8 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
     m_Accumulator += deltaSeconds;
     if (!initialSourcePose && m_Accumulator < m_Settings.sampleIntervalSeconds) return;
     m_Accumulator = initialSourcePose ? 0.f : std::fmod(m_Accumulator, m_Settings.sampleIntervalSeconds);
-    // Save one actual pose per presented frame, never duplicate it to fabricate
-    // missed sub-frame motion. Stationary actors do not accumulate a bright stack.
+    // 호출당 실제 자세 하나만 캡처하며 누락한 프레임의 중간 자세를 만들지 않는다.
+    // 정지 중에는 설정에 따라 생략하거나 본 palette의 실제 변화가 있을 때만 추가한다.
     const bool stationary = !initialSourcePose && !m_Samples.empty() && DistanceSquared(m_Samples.back().world, world) < .0016f;
     if (stationary && !m_Settings.capturePoseChanges) return;
     SAMPLE staged;
@@ -158,6 +166,7 @@ void Client::CSkeletalAfterimage::Update(const float deltaSeconds, const bool em
     while (m_Samples.size() > m_Settings.maxSamples) m_Samples.pop_front();
 }
 
+// 선택한 palette 모델의 현재 본 행렬을 각 mesh에 복사한다. 실패하면 잔상 표시를 격리한다.
 bool Client::CSkeletalAfterimage::Capture_Sample(const std::shared_ptr<Engine::CModel>& model,
     const float4x4_t& world, SAMPLE& sample)
 {
@@ -174,6 +183,7 @@ bool Client::CSkeletalAfterimage::Capture_Sample(const std::shared_ptr<Engine::C
     return !sample.palettes.empty();
 }
 
+// 유효한 첫 자세를 현재 view로 저장하고 최대 개수 안에서 sample을 추가한다.
 bool Client::CSkeletalAfterimage::Capture_Initial(const MODEL_VIEW& view, const float ageSeconds)
 {
     if (!view.model || !Finite(view.world) || !std::isfinite(ageSeconds) || ageSeconds < 0.f ||
@@ -188,6 +198,7 @@ bool Client::CSkeletalAfterimage::Capture_Initial(const MODEL_VIEW& view, const 
     return true;
 }
 
+// NPC 카운터 등의 절대 표현 clock으로 주기당 한 자세를 유지한다. 시간 역행·큰 이동은 이력을 초기화한다.
 void Client::CSkeletalAfterimage::Sample_Pulse(const float elapsedSeconds,
     const std::shared_ptr<Engine::CModel>& model, const float4x4_t& world)
 {
@@ -211,10 +222,11 @@ void Client::CSkeletalAfterimage::Sample_Pulse(const float elapsedSeconds,
         m_Samples.push_back(std::move(sample));
         m_PulseBirthSeconds = birth;
     }
-    // Repeated paused samples change neither the captured pose nor the pulse phase.
+    // 같은 clock으로 다시 호출해도 저장 자세·주기 위상은 바뀌지 않는다.
     m_Samples.front().ageSeconds = phase;
 }
 
+// 각 sample의 당시 설정으로 색·alpha를 계산하고 과거 World/palette로 기존 모델을 그린다.
 HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel>& model,
     const std::shared_ptr<Engine::CShader>& shader, const float4x4_t& liveWorld)
 {
@@ -238,8 +250,8 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
         const auto& settings = sample.settings;
         const float life = std::clamp(1.f - sample.ageSeconds / settings.sampleLifetimeSeconds, 0.f, 1.f);
         const float blend = settings.sourceChannels || settings.interpolateColor ? 1.f - life : 0.f;
-        // PROJECT_RECONSTRUCTED: keep the decoded initial-alpha plateau, then
-        // retain this carrier's squared fade over the remaining child lifetime.
+        // PROJECT_RECONSTRUCTED: source alpha 유지 시간을 적용한 뒤
+        // 남은 수명 비율의 제곱으로 alpha를 낮춰 사라지게 한다.
         const float heldLife = std::clamp(1.f - (std::max)(0.f, sample.ageSeconds - settings.sourceAlphaHoldSeconds) /
             (settings.sampleLifetimeSeconds - settings.sourceAlphaHoldSeconds), 0.f, 1.f);
         const float opacity = settings.sourceChannels ? settings.sourceInitialAlpha * settings.userAlphaScale * heldLife * heldLife :
@@ -279,8 +291,8 @@ HRESULT Client::CSkeletalAfterimage::Render(const std::shared_ptr<Engine::CModel
             if (SUCCEEDED(result)) result = model->Render(mesh);
         }
     }
-    // Bind history only to the GPU. The actor's pose/cache/cursor never changed.
-    // Restore this shader's live draw inputs even if a history draw failed.
+    // 과거 palette는 GPU에만 전달하며 Model의 현재 pose·animation cursor는 바꾸지 않는다.
+    // 이력 draw 실패 때도 현재 World와 palette 또는 static 법선 행렬 복원을 시도한다.
     const HRESULT worldResult = shader->Bind_Matrix("g_WorldMatrix", &liveWorld);
     const auto livePalette = m_View.model == model && m_View.paletteModel ? m_View.paletteModel : model;
     HRESULT poseResult = !socketed && livePalette->Get_NumMeshes() > 0u ?

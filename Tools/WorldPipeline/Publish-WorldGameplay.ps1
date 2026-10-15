@@ -6,7 +6,7 @@ param(
     # Client-side World outputs of the same transaction. Pointing both roots at
     # a scratch folder stages a publish without touching live outputs.
     [string]$ClientOutputRoot = 'Client/Bin/DataFiles/World',
-    [ValidateSet('ALL', 'BERN', 'KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'COLOSSEUM')]
+    [ValidateSet('ALL', 'BERN', 'KOUKUSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'COLOSSEUM')]
     [string]$WorldId = 'ALL',
 	[ValidateRange(0, 12)]
 	[int]$FailureAfterPromote = 0,
@@ -212,7 +212,7 @@ function Get-EncounterProfiles {
         if ($PSBoundParameters.ContainsKey('EncounterIds') -and
             [string]$document.encounterId -cnotin $EncounterIds) { continue }
 		$isKoukuSaydon = [string]$document.encounterId -ceq
-			'ENCOUNTER_KAKULSAYDON_G1'
+			'ENCOUNTER_KOUKUSAYDON_G1'
 		$encounterProperties = @(
 			'schema','formatVersion','encounterId','bossArchetypeId',
 			'authority','fixedTickHz','patterns')
@@ -254,7 +254,7 @@ function Get-EncounterProfiles {
 			Assert-JsonInteger $document.sourceRevision `
 				'KoukuSaydon encounter sourceRevision' 1 ([uint32]::MaxValue)
 			if ([string]$document.bossArchetypeId -cne
-				'BOSS_KAKULSAYDON_G1_KOUKU' -or
+				'BOSS_KOUKUSAYDON_G1_KOUKU' -or
 				$document.playAllPatternIds -isnot [Array] -or
 				@($document.playAllPatternIds).Count -lt 1) {
 				throw 'KoukuSaydon encounter Product identity is invalid.'
@@ -882,7 +882,7 @@ function Convert-WorldDocument {
 					}
 					if ($hasKoukuMode) {
 						$moveKeys += 'koukuHudMode'
-						if ($WorldId -cne 'KAKULSAYDON_ARENA' -or $event.koukuHudMode -cnotin @('MARIO','MAZE','NONE')) {
+						if ($WorldId -cne 'KOUKUSAYDON_ARENA' -or $event.koukuHudMode -cnotin @('MARIO','MAZE','NONE')) {
 							throw "movePlayer koukuHudMode requires a Kouku arena mode"
 						}
 					}
@@ -1025,7 +1025,7 @@ function Convert-WorldDocument {
 					Assert-StableId $event.targetId "$relativePath claimCardMazeTelescope targetId"
 					# The box is the strike volume the Server measures the hammer swing
 					# against; only the Kouku arena has a card maze.
-					if ($WorldId -cne 'KAKULSAYDON_ARENA') {
+					if ($WorldId -cne 'KOUKUSAYDON_ARENA') {
 						throw "claimCardMazeTelescope requires a box in the Kouku arena: $($placement.placementId)"
 					}
 					$triggerFields += @('claimCardMazeTelescope', '1', [string]$event.targetId)
@@ -1315,7 +1315,7 @@ function Convert-WorldDocument {
     # The same authoring that draws Seto owns its collision path. Reject
     # unsupported motion instead of silently baking a different trajectory.
     $mazeLanes = [Collections.Generic.List[string]]::new()
-    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+    if ($WorldId -eq 'KOUKUSAYDON_ARENA') {
         $mazeInstances = @($sequenceDocument.instances | Where-Object { $_.instanceId -like 'cardmiro.march.instance.*' -and $_.enabled })
         if ($mazeInstances.Count -ne 0 -and $mazeInstances.Count -ne 36) { throw 'Card maze requires all 36 enabled march lanes.' }
         foreach ($instance in $mazeInstances) {
@@ -1327,7 +1327,7 @@ function Convert-WorldDocument {
     # Mario source balls: the same layout bindings the Client plays, in binding
     # order, so the slot bit the Server pops is the binding the Client hides.
     $marioBalls = [Collections.Generic.List[string]]::new()
-    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+    if ($WorldId -eq 'KOUKUSAYDON_ARENA') {
         $ballPlacementPath = [IO.Path]::GetFullPath((Join-Path $repoRoot "Data/Maps/Authoring/$AreaId/$AreaId.mapplacements"))
         if (-not [IO.File]::Exists($ballPlacementPath)) { throw "Mario balls need Data/Maps/Authoring/$AreaId/$AreaId.mapplacements." }
         $ballRows = @{}
@@ -1368,7 +1368,7 @@ function Convert-WorldDocument {
     # Strip y-axis rotation is harmless for a sphere; pitch/roll or a different
     # motion program must be rejected instead of silently desynchronizing damage.
     $bouncingBalls = [Collections.Generic.List[string]]::new()
-    if ($WorldId -eq 'KAKULSAYDON_ARENA') {
+    if ($WorldId -eq 'KOUKUSAYDON_ARENA') {
         $bounce = @($sequenceDocument.instances | Where-Object { $_.instanceId -ceq 'world.sequence.instance.mario.striped_ball.bounce' -and $_.enabled })
         if ($bounce.Count -eq 1) {
             $instance = $bounce[0]
@@ -1578,20 +1578,20 @@ function Convert-EncounterPropsDocument {
     }
 }
 
-function Convert-KakulStageMarkersDocument {
+function Convert-KoukuStageMarkersDocument {
     $areaId = 'LV_LUT_MIDNIGHTC_ED'
-    $worldId = 'KAKULSAYDON_ARENA'
+    $worldId = 'KOUKUSAYDON_ARENA'
     $relativePath = "Data/Worlds/$areaId/StageMarkers.json"
     $document = Read-ProjectJson $relativePath
     Assert-ExactProperties $document @(
         'schema','formatVersion','areaId','revision','semanticStatus','stages') `
-        'Kakul StageMarkers root'
-    Assert-JsonInteger $document.formatVersion 'Kakul StageMarkers formatVersion' 1 1
-    Assert-JsonInteger $document.revision 'Kakul StageMarkers revision' 1 2147483647
-    if ($document.schema -ne 'lostark.kakul-stage-markers' -or
+        'Kouku StageMarkers root'
+    Assert-JsonInteger $document.formatVersion 'Kouku StageMarkers formatVersion' 1 1
+    Assert-JsonInteger $document.revision 'Kouku StageMarkers revision' 1 2147483647
+    if ($document.schema -ne 'lostark.kouku-stage-markers' -or
         $document.areaId -ne $areaId -or
         $document.semanticStatus -ne 'SOURCE_LEVEL_ID_ONLY') {
-        throw 'Kakul StageMarkers header is invalid.'
+        throw 'Kouku StageMarkers header is invalid.'
     }
 
     $gameplay = Read-ProjectJson "Data/Worlds/$areaId/Gameplay.world.json"
@@ -1606,30 +1606,30 @@ function Convert-KakulStageMarkersDocument {
     foreach ($stage in @($document.stages)) {
         Assert-ExactProperties $stage @(
             'stageId','placementId','displayNameKo','sourceLevelId',
-            'componentCellCount','evidence') 'Kakul StageMarkers stage'
-        Assert-StableId $stage.stageId 'Kakul stageId'
-        Assert-StableId $stage.placementId 'Kakul stage placementId'
-        Assert-StableId $stage.sourceLevelId 'Kakul sourceLevelId'
+            'componentCellCount','evidence') 'Kouku StageMarkers stage'
+        Assert-StableId $stage.stageId 'Kouku stageId'
+        Assert-StableId $stage.placementId 'Kouku stage placementId'
+        Assert-StableId $stage.sourceLevelId 'Kouku sourceLevelId'
         Assert-JsonInteger $stage.componentCellCount `
-            "Kakul stage $($stage.stageId) componentCellCount" 1 2147483647
+            "Kouku stage $($stage.stageId) componentCellCount" 1 2147483647
         Assert-JsonString $stage.displayNameKo `
-            "Kakul stage $($stage.stageId) displayNameKo"
+            "Kouku stage $($stage.stageId) displayNameKo"
         Assert-JsonString $stage.evidence `
-            "Kakul stage $($stage.stageId) evidence"
-        if (-not ([string]$stage.stageId).StartsWith('stage.kakul.', [StringComparison]::Ordinal) -or
+            "Kouku stage $($stage.stageId) evidence"
+        if (-not ([string]$stage.stageId).StartsWith('stage.kouku.', [StringComparison]::Ordinal) -or
             $stage.stageId -ne $stage.placementId -or
             [string]::IsNullOrWhiteSpace([string]$stage.displayNameKo) -or
             [string]::IsNullOrWhiteSpace([string]$stage.evidence) -or
             -not $stageIds.Add([string]$stage.stageId) -or
             -not $placementIds.Add([string]$stage.placementId)) {
-            throw "Kakul stage identity is invalid or duplicated: $($stage.stageId)"
+            throw "Kouku stage identity is invalid or duplicated: $($stage.stageId)"
         }
         if (-not $placements.ContainsKey([string]$stage.placementId)) {
-            throw "Kakul stage placement is missing from Gameplay.world.json: $($stage.placementId)"
+            throw "Kouku stage placement is missing from Gameplay.world.json: $($stage.placementId)"
         }
         $placement = $placements[[string]$stage.placementId]
         if ($placement.kind -ne 'playerSpawn' -or [bool]$placement.enabled) {
-            throw "Kakul stage placement must be a disabled playerSpawn: $($stage.placementId)"
+            throw "Kouku stage placement must be a disabled playerSpawn: $($stage.placementId)"
         }
         $runtimeStages.Add([ordered]@{
             stageId = [string]$stage.stageId
@@ -1639,11 +1639,11 @@ function Convert-KakulStageMarkersDocument {
         })
     }
     if ($runtimeStages.Count -eq 0 -or $runtimeStages.Count -gt 64) {
-        throw "Kakul StageMarkers count is invalid: $($runtimeStages.Count)"
+        throw "Kouku StageMarkers count is invalid: $($runtimeStages.Count)"
     }
 
     $runtime = [ordered]@{
-        schema = 'lostark.kakul-stage-markers-runtime'
+        schema = 'lostark.kouku-stage-markers-runtime'
         formatVersion = 1
         worldId = $worldId
         areaId = $areaId
@@ -1666,13 +1666,13 @@ $encounterProfiles = if ($WorldId -eq 'MAHARAKA') {
     Get-EncounterProfiles -EncounterIds $selectedEncounters
 } else { Get-EncounterProfiles }
 $monsterProfiles = Get-MonsterProfiles
-$kakulStageMarkers = Convert-KakulStageMarkersDocument
+$koukuStageMarkers = Convert-KoukuStageMarkersDocument
 if ($WorldId -eq 'BERN') {
     $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
 }
-elseif ($WorldId -eq 'KAKULSAYDON_ARENA') {
+elseif ($WorldId -eq 'KOUKUSAYDON_ARENA') {
     $spawnDocuments = @((Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -MonsterProfiles $monsterProfiles))
     $encounterPropDocuments = @((Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId))
     $worlds = @((Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId $WorldId -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnDocuments[0].GroupIds))
@@ -1699,7 +1699,7 @@ else {
 $spawnDocuments = @(
     (Convert-SpawnGroupsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
-    (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
+    (Convert-SpawnGroupsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KOUKUSAYDON_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
     (Convert-SpawnGroupsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -MonsterProfiles $monsterProfiles),
@@ -1710,7 +1710,7 @@ foreach ($spawn in $spawnDocuments) { $spawnByWorld[$spawn.WorldId] = $spawn }
 $encounterPropDocuments = @(
     (Convert-EncounterPropsDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN'),
     (Convert-EncounterPropsDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA'),
-    (Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA'),
+    (Convert-EncounterPropsDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KOUKUSAYDON_ARENA'),
     (Convert-EncounterPropsDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND'),
     (Convert-EncounterPropsDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA'),
     (Convert-EncounterPropsDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA'),
@@ -1719,7 +1719,7 @@ $encounterPropDocuments = @(
 $worlds = @(
     (Convert-WorldDocument -AreaId 'LV_BER_BERNCASTLE' -WorldId 'BERN' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.BERN.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LUT_HEARTRB_ED' -WorldId 'VALTAN_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.VALTAN_ARENA.GroupIds),
-    (Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KAKULSAYDON_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.KAKULSAYDON_ARENA.GroupIds),
+    (Convert-WorldDocument -AreaId 'LV_LUT_MIDNIGHTC_ED' -WorldId 'KOUKUSAYDON_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.KOUKUSAYDON_ARENA.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_DEV_TRAINING_GROUND' -WorldId 'TRAINING_GROUND' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.TRAINING_GROUND.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_LOBBY_CLASSSELECT_SL00' -WorldId 'CHARACTER_SELECT_ARENA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.CHARACTER_SELECT_ARENA.GroupIds),
     (Convert-WorldDocument -AreaId 'LV_OCN_EVENTIS_MHP' -WorldId 'MAHARAKA' -ActorIds $actorIds -EncounterProfiles $encounterProfiles -SpawnGroupIds $spawnByWorld.MAHARAKA.GroupIds),
@@ -1785,17 +1785,17 @@ if ($Mode -eq 'Publish') {
 			[IO.Path]::GetFullPath($ClientOutputRoot)
 		} else { [IO.Path]::GetFullPath((Join-Path $repoRoot $ClientOutputRoot)) }
 		[IO.Directory]::CreateDirectory($clientWorldRoot) | Out-Null
-		if ($WorldId -in @('ALL', 'KAKULSAYDON_ARENA')) {
-		$stagedKakulMarkers = Join-Path $stagingRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
+		if ($WorldId -in @('ALL', 'KOUKUSAYDON_ARENA')) {
+		$stagedKoukuMarkers = Join-Path $stagingRoot 'KOUKUSAYDON_ARENA.stagemarkers.json'
 		[IO.File]::WriteAllText(
-			$stagedKakulMarkers,
-			$kakulStageMarkers.Json,
+			$stagedKoukuMarkers,
+			$koukuStageMarkers.Json,
 			[Text.UTF8Encoding]::new($false))
 		$promotions.Add([ordered]@{
-			World = $kakulStageMarkers
-			Staged = $stagedKakulMarkers
-			Destination = Join-Path $clientWorldRoot 'KAKULSAYDON_ARENA.stagemarkers.json'
-			Rollback = Join-Path $clientWorldRoot ".KAKULSAYDON_ARENA.stagemarkers.rollback.$transactionId"
+			World = $koukuStageMarkers
+			Staged = $stagedKoukuMarkers
+			Destination = Join-Path $clientWorldRoot 'KOUKUSAYDON_ARENA.stagemarkers.json'
+			Rollback = Join-Path $clientWorldRoot ".KOUKUSAYDON_ARENA.stagemarkers.rollback.$transactionId"
 			HadPrevious = $false
 			Promoted = $false
 		})
@@ -1875,7 +1875,7 @@ if ($Mode -eq 'Publish') {
 				$entry.location -isnot [string] -or
 				-not $labelIds.Add("$($entry.areaId)/$($entry.kind)/$($entry.targetId)")) { throw 'Invalid or duplicated viewer label.' }
 		}
-		if ($WorldId -in @('ALL', 'KAKULSAYDON_ARENA')) {
+		if ($WorldId -in @('ALL', 'KOUKUSAYDON_ARENA')) {
 		$labelsName = 'SequenceViewer.labels.json'
 		$labelsStaged = Join-Path $stagingRoot $labelsName
 		[IO.File]::WriteAllText($labelsStaged, ($labels | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
@@ -1888,7 +1888,7 @@ if ($Mode -eq 'Publish') {
 		}
 		# Read-only F1 inventory for packaged Debug clients without the authoring checkout.
 		foreach ($world in $worlds) {
-			if ($world.WorldId -notin @('KAKULSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'BERN')) { continue }
+			if ($world.WorldId -notin @('KOUKUSAYDON_ARENA', 'VALTAN_ARENA', 'MAHARAKA', 'BERN')) { continue }
 			$name = "$($world.AreaId).viewer.world.json"
 			$staged = Join-Path $stagingRoot $name
 			[IO.File]::WriteAllText($staged, ($world.ViewerDocument | ConvertTo-Json -Depth 30), [Text.UTF8Encoding]::new($false))

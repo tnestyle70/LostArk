@@ -52,7 +52,7 @@ namespace
 		const std::string_view AssetName)
 	{
 		using LostArk::Shared::CHARACTER_CLASS_ID;
-		constexpr std::array Classes =
+		constexpr std::array<CHARACTER_CLASS_ID, 7> Classes =
 		{
 			CHARACTER_CLASS_ID::LANCE_MASTER,
 			CHARACTER_CLASS_ID::GUNSLINGER,

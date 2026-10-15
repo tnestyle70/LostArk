@@ -22,7 +22,7 @@ function Read-ProjectJson([string]$RelativePath) {
     return & $script:originalReadProjectJson $RelativePath
 }
 $profiles = Get-EncounterProfiles
-$document = $profiles['ENCOUNTER_KAKULSAYDON_G1'].Document
+$document = $profiles['ENCOUNTER_KOUKUSAYDON_G1'].Document
 $parentCount = @($document.patterns | Where-Object { $null -ne $_.PSObject.Properties['parentPatternSequence'] }).Count
 Write-Output "World encounter consumer PASS: source=$($document.sourceRevision), patterns=$(@($document.patterns).Count), parents=$parentCount"
 

@@ -5,7 +5,10 @@
 #include "GameObject.h"
 #include "MapAssetCatalog.h"
 #include "MapLoadScope.h"
+#include "MapGeometryDiagnostics.h"
+#include "Profiler.h"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -24,6 +27,8 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapStaticChunkObject;
+class CMapGpuScene;
+class CMapStaticProxyBaker;
 struct MAP_CHUNK_CLAIM;
 
 // One level-owned clock replaces per-object Update/Late callbacks for static batches.
@@ -31,6 +36,17 @@ struct MAP_STATIC_BATCH_FRAME_STATE final
 {
 	f32_t elapsedTime = 0.f;
 	uint64_t frameNumber = 0u;
+    // 베른 입장 카메라 소유자가 main thread에서 설정한다. 저작 옵션이 아니다.
+    bool colorProxyEnabled = false;
+    // 최종 카메라의 반복 호출은 같은 batch의 이전 기여를 치환한다. 개별 instance 저장·할당은 없다.
+    static constexpr size_t ColorProxySelectionFirst = static_cast<size_t>(Engine::EProfilerCounter::MapLowGeometryVisitedBatches);
+    static constexpr size_t ColorProxySelectionCount =
+        static_cast<size_t>(Engine::EProfilerCounter::MapLowGeometrySelectedInstances) - ColorProxySelectionFirst + 1u;
+    using COLOR_PROXY_SELECTION_COUNTERS = std::array<uint64_t, ColorProxySelectionCount>;
+    COLOR_PROXY_SELECTION_COUNTERS colorProxySelectionCounters{};
+    uint64_t colorProxyDiagnosticEpoch = 0u;
+    // 표본 프레임 외에는 null이다. 기존 visibility/LOD 상태와 분리한 관측 자료다.
+    std::shared_ptr<MAP_GEOMETRY_DIAGNOSTIC_FRAME> geometryDiagnostics;
 };
 
 struct FMapStaticInstance final
@@ -47,6 +63,8 @@ struct FMapStaticInstance final
 	bool_t Suppressed = false;
 	// Map Tool camera inspection overlay. It does not alter the stage overlay.
 	bool_t CameraPreviewSuppressed = false;
+    // 저폴리 대체가 준비된 색상 제출만 숨긴다. 원본 그림자·피킹에는 적용하지 않는다.
+    bool ColorProxySuppressed = false;
 	MAP_FRUSTUM_RUNTIME_STATE FrustumState{};
     // Derived presentation state, never serialized with placements.
     float3_t OcclusionBoundsMin{}, OcclusionBoundsMax{};
@@ -93,6 +111,10 @@ public:
     bool_t Try_PrepareFinalCameraCpuJob(FINAL_CAMERA_CPU_JOB& output) override;
     virtual bool_t Try_GetFinalCameraSpatialBounds(FINAL_CAMERA_SPATIAL_BOUNDS& bounds) const override;
     bool_t Try_GetStaticOcclusionDesc(STATIC_OCCLUSION_DESC& output) const override;
+    bool_t Try_GetVisibilityDepthDesc(STATIC_OCCLUSION_DESC& output) const override;
+    HRESULT Render_VisibilityDepth(uint32_t triangleBudget, uint32_t& drawnTriangles) override;
+    bool Is_GpuVisibilityActive() const;
+    bool Is_GpuVisibilityReady() const;
     uint32_t Rasterize_StaticOccluder(Engine::COcclusionCuller& culler, uint32_t triangleBudget) const override;
 	virtual HRESULT Render() override;
 	virtual HRESULT Render_AdjacentNonBlend(
@@ -165,7 +187,22 @@ public:
 	}
 
 private:
+    struct COLOR_PROXY_STATE;
+    std::unique_ptr<COLOR_PROXY_STATE> m_ColorProxy;
+    // Load_Area가 원본과 대체의 전체 mesh 대응을 준비한 뒤에만 소유권을 게시한다.
+    HRESULT Prepare_ColorProxy(CMapStaticProxyBaker& baker, const MAP_ASSET_ENTRY& asset, std::string& error);
+    // CPU worker가 instance span을 읽기 전에 main thread에서 선택을 확정한다.
+    void Prepare_ColorProxySelection(const struct MAP_CAMERA_CULL_SNAPSHOT* camera);
+    void Reset_ColorProxySelection();
+    bool Has_ColorProxySelection() const;
+    HRESULT Render_ColorProxy();
+    HRESULT Render_ColorProxyFallback(const struct MAP_CAMERA_CULL_SNAPSHOT* camera);
     friend class CMapStaticChunkObject;
+    friend class CMapGpuScene;
+    std::weak_ptr<CMapGpuScene> m_GpuScene;
+    uint32_t m_iGpuCohort = UINT32_MAX;
+    uint64_t m_iGpuSubmittedFrame = UINT64_MAX;
+    bool m_bGpuMergedVisibility = false, m_bGpuMutableTransform = false;
 	friend class CMapPlacementRuntime;
 	bool_t Is_FinalCameraPrepared() const
 	{
@@ -177,9 +214,15 @@ private:
 	HRESULT Prepare_FinalCameraVisibility(const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
     bool Is_ChunkMeshClaimed(uint32_t mesh) const;
     bool Are_AllChunkMeshesClaimed() const;
+    // 색상 제출과 HLOD 비용 조회가 동일한 보수적 후보 판정을 사용한다.
+    // 그림자 제출 및 CPU frustum grace 상태는 변경하지 않는다.
+    bool Is_FinalCameraColorCandidate(const struct MAP_CAMERA_CULL_SNAPSHOT* camera);
     void Rebuild_InstanceOcclusionBounds(FMapStaticInstance& instance) const;
     void Commit_DistanceSelection(uint64_t revision);
+    // TRS/재질 payload가 바뀌면 불변 chunk를 폐기한다.
     void Invalidate_ChunkClaims();
+    // visible/suppression은 geometry를 보존하고 현재 프레임 선택만 다시 계산한다.
+    void Invalidate_ChunkSelection();
     std::vector<std::shared_ptr<MAP_CHUNK_CLAIM>> m_ChunkClaims;
     std::vector<uint32_t> m_ChunkClaimMemberIndices;
 	HRESULT Ready_Components(uint32_t prototypeLevelIndex,
@@ -193,7 +236,14 @@ private:
     HRESULT Try_RenderIdenticalInstances(
         std::span<const std::shared_ptr<CGameObject>> objects, size_t& consumed);
     HRESULT Render_VisibleInstances(ID3D11Buffer* buffer, uint32_t instanceCount,
-        const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot);
+        const struct MAP_CAMERA_CULL_SNAPSHOT* cameraSnapshot,
+        const char* diagnosticPath = "cpu_static_batch",
+        std::span<const std::shared_ptr<CGameObject>> diagnosticSources = {});
+    // 성공한 CPU draw의 동일 CModel 선택기를 읽는다. 계측 실패는 draw를 재시도하지 않는다.
+    void Record_GeometryDiagnosticDraw(const char* path, uint32_t mesh, uint32_t instances,
+        const Engine::MESH_SCREEN_LOD_DESC* lod,
+        std::span<const std::shared_ptr<CGameObject>> sources = {},
+        uint32_t firstVisibleInstance = UINT32_MAX) const noexcept;
     bool_t Uses_MeshScreenLod(uint32_t mesh, bool_t hasScreenLod) const;
 
 
@@ -220,6 +270,7 @@ private:
 	//BatckObject의 Render Profile 정보 
 	MAP_ASSET_RENDER_PROFILE m_RenderProfile;
 	MAP_FRUSTUM_CULLING_POLICY m_FrustumCulling{};
+    MAP_SCENE_VISIBILITY_KIND m_SceneVisibilityKind = MAP_SCENE_VISIBILITY_KIND::STATIC_SURFACE;
 
 	bool_t m_bMirrored = false;
     mutable bool_t m_bBatchBoundsDirty = true;

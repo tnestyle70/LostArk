@@ -1,11 +1,18 @@
-#include "Part_Body.h"
+﻿#include "Part_Body.h"
+// weak 소유자의 월드 표시 숨김 상태를 읽는다.
 #include "Character.h"
+// mesh별 surface family와 sourceCharacter program을 확인한다.
 #include "BinaryAsset/ModelAssetData.h"
+// 장비 재질의 반투명·양면 mask program을 분류한다.
 #include "SourceEquipmentMaterialPrograms.h"
 
+// mesh별 재질 입력과 차용 Emissive override를 바인딩한다.
 #include "DeferredMaterialRenderUtils.h"
+// Component 복제의 기반 타입과 렌더 그룹·카메라·그림자 서비스를 사용한다.
 #include "GameInstance.h"
+// source character의 forward 조명 입력을 바인딩한다.
 #include "MapAssetRenderUtils.h"
+// 사이던 모자 준비·렌더와 망치 표현 억제 여부를 재사용한다.
 #include "NpcPresentationAssetService.h"
 
 namespace
@@ -13,16 +20,14 @@ namespace
 	constexpr uint32_t SOURCE_TRANSLUCENT_TWO_SIDED_PASS = 9u;
 	constexpr uint32_t SOURCE_GHOST_OPAQUE_PASS = 16u;
 
-	/* Programs 7 and 18 are the source two-sided translucent hair and program 6
-	the eyelash/eye-AO shell. The deferred two-sided pass resolves their coverage
-	as a dither, so they read as stipple dots; the forward pass blends them after
-	scene lighting instead. */
+	// SOURCE_CHARACTER의 지정 program과 장비 반투명 program을 forward pass로 분류한다.
+	// 조명 뒤 blend로 표시해 deferred dither의 점무늬를 피한다.
 	uint32_t Resolve_ForwardSourcePass(const Engine::MODEL_SURFACE_PARAMETERS* surface)
 	{
 		if (nullptr == surface || surface->family != Engine::MODEL_SURFACE_FAMILY::SOURCE_CHARACTER)
 			return 0u;
 		const uint32_t program = surface->sourceCharacter.program;
-		// Generic ghost preview shares the project opaque pass with CBody_Valtan.
+		// program 84의 ghost는 별도 불투명 forward pass를 사용한다.
 		if (84u == program)
 			return SOURCE_GHOST_OPAQUE_PASS;
 		return 6u == program || 7u == program || 18u == program || 99u == program || SourceEquipmentMaterial::Is_Translucent(program) ?
@@ -45,6 +50,7 @@ HRESULT CPart_Body::Initialize_Prototype()
 	return S_OK;
 }
 
+// descriptor의 차용 상태를 저장한 뒤 기반·Component를 준비한다. 실패한 Clone은 호출 factory에서 폐기한다.
 HRESULT CPart_Body::Initialize(void* pArg)
 {
 	if (nullptr == pArg)
@@ -56,11 +62,11 @@ HRESULT CPart_Body::Initialize(void* pArg)
 
 	if (FAILED(__super::Initialize(pArg)) || FAILED(Ready_Components(pDesc)))
 		return E_FAIL;
+	// 모자 준비 실패는 진단만 남기고 본체 초기화는 계속한다.
 	if (FAILED(CNpcPresentationAssetService::Prepare_SaydonHat(m_pDevice, m_pContext, m_pModelCom, m_pSaydonHatModel)))
 		OutputDebugStringA("[SaydonHat] Preview head prop unavailable; body preserved.\n");
 
-	/* Fall back to the first clip so a class with a mistyped name still animates
-	instead of standing in its bind pose. */
+	// 지정한 초기 clip이 없거나 적용에 실패하면 0번 clip 재생을 시도한다.
 	if (nullptr == pDesc->pInitialAnimation ||
 		!m_pModelCom->Set_Animation(pDesc->pInitialAnimation, true))
 		m_pModelCom->Set_Animation(0u, true);
@@ -97,8 +103,7 @@ void CPart_Body::Priority_Update(f32_t fTimeDelta)
 
 void CPart_Body::Update(f32_t fTimeDelta)
 {
-	/* The body drives the clock every frame; the logic only picks the clip. Parts
-	that borrow this palette read it at render time, so they need no ordering. */
+	// 본체가 animation clock을 진행한다. 소켓 장비가 이 프레임 본을 읽으므로 소유자의 본체 선행 갱신이 필요하다.
 	m_pModelCom->Update_Animation(fTimeDelta);
 
 	__super::Update_CombinedWorldMatrix(
@@ -145,6 +150,7 @@ HRESULT CPart_Body::Render_Group(RENDERGROUP group)
     return RENDERGROUP::BLEND == group ? Render_ForwardSource(false) : Render();
 }
 
+// forward 재질 중 ghost/반투명 분류에 맞는 mesh만 그린다. bind/draw 실패는 E_FAIL이다.
 HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost, ID3D11BlendState* pCoverageBlend)
 {
 	if (Is_CharacterPresentationHidden()) return S_OK;
@@ -176,6 +182,7 @@ HRESULT CPart_Body::Render_ForwardSource(bool opaqueGhost, ID3D11BlendState* pCo
 	return S_OK;
 }
 
+// 숨김 mask와 재질별 pass를 적용해 본체를 그리고 선택적 모자를 같은 본체 기준으로 그린다.
 HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 {
 	if (Is_CharacterPresentationHidden()) return S_OK;
@@ -190,7 +197,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 
         uint32_t materialPass = iPassIndex;
         const auto* surface = m_pModelCom->Get_MaterialSurface(i);
-        /* NONLIGHT/BLEND draw these forward in both field and portrait captures. */
+        // 기본 pass에서 forward 재질을 건너뛰어 NONLIGHT/BLEND 단계와 중복하지 않는다.
         if (iPassIndex == 0u && 0u != Resolve_ForwardSourcePass(surface))
             continue;
         if (iPassIndex == 0u && surface &&
@@ -214,6 +221,7 @@ HRESULT CPart_Body::Render_Pass(uint32_t iPassIndex)
 	return S_OK;
 }
 
+// 같은 숨김 mask와 현재 본 palette를 사용하되 그림자 광원의 행렬로 그린다.
 HRESULT CPart_Body::Render_Shadow()
 {
 	if (Is_CharacterPresentationHidden()) return S_OK;
@@ -227,7 +235,7 @@ HRESULT CPart_Body::Render_Shadow()
 		if (0 != (m_iHiddenMeshMask & (1u << i)))
 			continue;
 
-		// Ghost has a solid silhouette; other animated shadows retain diffuse-alpha coverage.
+		// ghost는 고형 그림자 pass, 나머지는 diffuse alpha를 사용하는 스키닝 그림자 pass다.
 		if (FAILED(m_pModelCom->Bind_Material(
 				m_pShaderCom, "g_DiffuseTexture", i, aiTextureType_DIFFUSE, 0)) ||
 			FAILED(m_pModelCom->Bind_BoneMatrices(
@@ -266,6 +274,7 @@ HRESULT CPart_Body::Ready_Components(const PART_BODY_DESC* pDesc)
 	return S_OK;
 }
 
+// Update에서 저장한 합성 World와 현재 카메라 View/Projection을 전달한다.
 HRESULT CPart_Body::Bind_ShaderResources()
 {
 	if (FAILED(__super::Bind_WorldMatrix(m_pShaderCom, "g_WorldMatrix")) ||
@@ -277,6 +286,7 @@ HRESULT CPart_Body::Bind_ShaderResources()
 	return S_OK;
 }
 
+// 합성 World는 유지하고 View/Projection은 그림자 광원에서 가져온다.
 HRESULT CPart_Body::Bind_ShadowShaderResources()
 {
 	if (FAILED(__super::Bind_WorldMatrix(

@@ -235,7 +235,7 @@ def repair_follow():
     destination.mkdir(parents=True, exist_ok=True)
     # Keep the existing 16 MiB whole-document admission; indented key arrays exceed it.
     (destination / 'WorldSequences.candidate.json').write_text(json.dumps(world_candidate, ensure_ascii=False, separators=(',', ':')) + '\n', encoding='utf-8')
-    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_83')
+    pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_83')
     definitions = {w['worldId']: w for w in composition['worlds']}
     group = next(w for w in composition['worlds'] if w['sequenceInstanceId'] == WORLD_PREFIX + 'split')
     changed = copy.deepcopy(pattern['worldOccurrences'])
@@ -356,8 +356,8 @@ def build_launch(output):
         payloadKind='DIRECT_AUTHORED_DOCUMENT', authoringPath=f'Effects/Authored/{asset}.effect.json'),
         treeReference=dict(kind='V1', assetId=asset, displayName=document['displayName'], parentId=parent),
         compositionResourceProposal=dict(assetId=asset, displayName=document['displayName'], durationMs=duration_ms),
-        projectNoneInclude='..\\..\\Data\\Effects\\Authored\\' + asset + '.effect.json',
-        projectFilter='96.DataFiles', patternOccurrenceAdded=False)
+        solutionItemPath='Data/Effects/Authored/' + asset + '.effect.json',
+        solutionFolder='Data/Effects/Authored', patternOccurrenceAdded=False)
     # Analytic positions use the retained StartLocation and mesh pivot. Native
     # Codec/Playback/geometry validation is a separate caller-owned checkpoint.
     start_location = next(d for m in mesh['sourceRecipe']['modules'] if m['className'] == 'particlemodulelocation'

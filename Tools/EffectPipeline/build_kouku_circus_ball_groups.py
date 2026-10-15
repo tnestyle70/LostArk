@@ -243,7 +243,7 @@ def build(evidence):
     document['particleSystem'].update(uniformScaleMultiplier=1,yawOffsetDegrees=0,directionYawDegrees=0,initialSpeedMultiplier=1)
     document.pop('sourceAnchorAnimations',None)
     document['sourceModelPreview'] = dict(gateId='GATE1',actorProfileId='MN_RPCT_05',
-        targetBossPlacementId='boss.kakulsaydon.g1.saydon',animations=[dict(runtimeClip='rpct00_att_battle_18_03',
+        targetBossPlacementId='boss.koukusaydon.g1.saydon',animations=[dict(runtimeClip='rpct00_att_battle_18_03',
             startOffsetMs=0,sourceStartMs=0,playMs=4167,playRate=1,endPolicy='HOLD_LAST_POSE')])
     document['runtimeExtensions']=dict(formatVersion=1,bakedEdgeHistories=[])
     queue = [(0,'circus.ball.0','',0.0,[0,0,0],0.0)]

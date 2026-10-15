@@ -6,7 +6,7 @@ from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as p
 
 
 def fixture():
-    pattern_id = "KAKULSAYDON_G1_PATTERN_35"
+    pattern_id = "KOUKUSAYDON_G1_PATTERN_35"
     rows, resources = [], []
     for index, name in enumerate(("body", "explosion", "sector"), 1):
         resources.append(dict(p.PRESENTATION_RESOURCE_DEFAULTS, resourceId=name, displayName=name,
@@ -18,7 +18,7 @@ def fixture():
                          positionOffset=[0, 0, 0] if name == "sector" else [5, 1.3, 942],
                          rotationDegrees=[0, 90 if name == "sector" else 17, 0],
                          scale=[2.2, 1, 1.25] if name == "sector" else [1, 1, 1]))
-    logic = dict(logicId="kakulsaydon.g1.logic.1", displayName="tracking bomb", logicType="DURATION",
+    logic = dict(logicId="koukusaydon.g1.logic.1", displayName="tracking bomb", logicType="DURATION",
                  judgementKind="BOSS_TRACK_TARGET", bombPresentationOccurrenceId=rows[0]["occurrenceId"],
                  bombExplosionPresentationOccurrenceId=rows[1]["occurrenceId"],
                  bombSectorPresentationOccurrenceId=rows[2]["occurrenceId"],

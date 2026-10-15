@@ -60,10 +60,10 @@ REFERENCE_MODEL_ASSET_IDS = {
 
 SCHEMA = "lostark.kouku-saydon-composition"
 FORMAT_VERSION = 3
-COMPOSITION_ID = "boss.composition.kakulsaydon.gate1"
-ENCOUNTER_ID = "ENCOUNTER_KAKULSAYDON_G1"
-BOSS_ARCHETYPE_ID = "BOSS_KAKULSAYDON_G1_KOUKU"
-BOSS_PLACEMENT_ID = "boss.kakulsaydon.g1.kouku"
+COMPOSITION_ID = "boss.composition.koukusaydon.gate1"
+ENCOUNTER_ID = "ENCOUNTER_KOUKUSAYDON_G1"
+BOSS_ARCHETYPE_ID = "BOSS_KOUKUSAYDON_G1_KOUKU"
+BOSS_PLACEMENT_ID = "boss.koukusaydon.g1.kouku"
 AREA_ID = "LV_LUT_MIDNIGHTC_ED"
 FIXED_TICK_HZ = 30
 
@@ -216,7 +216,7 @@ LOGIC_OCCURRENCE_OPTIONAL_KEYS = {
 # Named Summons remain valid; an optional typed policy owns their runtime behavior.
 SUMMON_KEYS = {"summonId", "displayName"}
 SUMMON_OCCURRENCE_KEYS = {"occurrenceId", "summonId", "startMs", "durationMs"}
-GENERATED_SUMMON_RE = re.compile(r"^kakulsaydon\.g1\.summon\.([1-9][0-9]*)$")
+GENERATED_SUMMON_RE = re.compile(r"^koukusaydon\.g1\.summon\.([1-9][0-9]*)$")
 MAX_SUMMONS = 4096
 MAX_SUMMON_OCCURRENCES_PER_PATTERN = 1024
 MAX_SUMMON_PATTERN_SPAWNS = 16
@@ -224,7 +224,7 @@ MAX_SUMMON_PATTERN_SPAWNS = 16
 # plays that instance on the pattern clock at the box speed.
 WORLD_KEYS = {"worldId", "displayName", "sequenceInstanceId"}
 WORLD_OCCURRENCE_KEYS = {"occurrenceId", "worldId", "startMs", "durationMs", "playbackSpeed"}
-GENERATED_WORLD_RE = re.compile(r"^kakulsaydon\.g1\.world\.([1-9][0-9]*)$")
+GENERATED_WORLD_RE = re.compile(r"^koukusaydon\.g1\.world\.([1-9][0-9]*)$")
 MAX_WORLDS = 4096
 MAX_WORLD_OCCURRENCES_PER_PATTERN = 128
 # A Scene Profile names one rendering profile; its box applies that profile on
@@ -233,7 +233,7 @@ SCENE_PROFILE_KEYS = {"sceneProfileId", "displayName", "renderingProfileId"}
 SCENE_PROFILE_OCCURRENCE_KEYS = {
     "occurrenceId", "sceneProfileId", "startMs", "durationMs", "blendMs",
 }
-GENERATED_SCENE_PROFILE_RE = re.compile(r"^kakulsaydon\.g1\.sceneprofile\.([1-9][0-9]*)$")
+GENERATED_SCENE_PROFILE_RE = re.compile(r"^koukusaydon\.g1\.sceneprofile\.([1-9][0-9]*)$")
 MAX_SCENE_PROFILES = 4096
 MAX_SCENE_PROFILE_OCCURRENCES_PER_PATTERN = 16
 MADNESS_POLICY_KEYS = {"maximum", "clownHoldMs"}
@@ -251,9 +251,9 @@ END_POLICIES = {"EXACT", "HOLD_LAST_POSE", "LOOP_TO_WINDOW"}
 LOGIC_TYPES = {"DURATION", "TRIGGER", "RESULT"}
 STABLE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-GENERATED_PATTERN_RE = re.compile(r"^KAKULSAYDON_G1_PATTERN_([1-9][0-9]*)$")
+GENERATED_PATTERN_RE = re.compile(r"^KOUKUSAYDON_G1_PATTERN_([1-9][0-9]*)$")
 GENERATED_STAGE_RE = re.compile(r"^STAGE_([1-9][0-9]*)$")
-GENERATED_LOGIC_RE = re.compile(r"^kakulsaydon\.g1\.logic\.([1-9][0-9]*)$")
+GENERATED_LOGIC_RE = re.compile(r"^koukusaydon\.g1\.logic\.([1-9][0-9]*)$")
 MAX_ORDINAL = 1_000_000
 MAX_TIMELINE_MS = 600_000
 MAX_PATTERNS = 4096
@@ -511,7 +511,7 @@ def resolve_actor_profile_id(source_profile_id: str) -> str:
 
 
 BOSS_CATALOG_PATH = Path("Data/Actors/BossCatalog.json")
-ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KAKULSAYDON_"
+ARENA_BOSS_ARCHETYPE_PREFIX = "BOSS_KOUKUSAYDON_"
 
 
 def arena_boss_archetypes_by_profile(root: Path = REPOSITORY_ROOT) -> dict[str, list[str]]:
@@ -592,7 +592,7 @@ def _validate_logic_definition(
     derived_logic = re.fullmatch(r"[A-Za-z0-9_.-]+\.pattern\.[1-9][0-9]*\.r[0-9]+\.definition\.[1-9][0-9]*", logic_id)
     if (generated_logic is None and derived_logic is None) or (generated_logic and int(generated_logic.group(1)) >= next_logic):
         raise CompositionError(
-            f"logicId must use kakulsaydon.g1.logic.<N> below nextLogicOrdinal: {logic_id}"
+            f"logicId must use koukusaydon.g1.logic.<N> below nextLogicOrdinal: {logic_id}"
         )
     _display_name(logic["displayName"], f"{context} displayName")
     logic_type = logic["logicType"]
@@ -1099,12 +1099,12 @@ def _validate_boxes(
 
 # Stable Gate placement contracts mirror the Workbench and the existing Area bosses.
 GATE_TARGETS = {
-    ("GATE1", "MN_RPCZ_00"): ("boss.kakulsaydon.g1.kouku", "BOSS_KAKULSAYDON_G1_KOUKU"),
-    ("GATE1", "MN_RPCT_05"): ("boss.kakulsaydon.g1.saydon", "BOSS_KAKULSAYDON_G1_SAYDON"),
-    ("GATE2", "MN_RPCZ_00"): ("boss.kakulsaydon.g2.kouku", "BOSS_KAKULSAYDON_G2_KOUKU"),
-    ("GATE2", "MN_RPCT_06"): ("boss.kakulsaydon.g2.big-saydon", "BOSS_KAKULSAYDON_G2_BIG_SAYDON"),
-    ("GATE3", "MN_RPCT_05"): ("boss.kakulsaydon.g3.saydon", "BOSS_KAKULSAYDON_G3_SAYDON"),
-    ("BINGO", "MN_RPCT_05"): ("boss.kakulsaydon.bingo.saydon", "BOSS_KAKULSAYDON_BINGO_SAYDON"),
+    ("GATE1", "MN_RPCZ_00"): ("boss.koukusaydon.g1.kouku", "BOSS_KOUKUSAYDON_G1_KOUKU"),
+    ("GATE1", "MN_RPCT_05"): ("boss.koukusaydon.g1.saydon", "BOSS_KOUKUSAYDON_G1_SAYDON"),
+    ("GATE2", "MN_RPCZ_00"): ("boss.koukusaydon.g2.kouku", "BOSS_KOUKUSAYDON_G2_KOUKU"),
+    ("GATE2", "MN_RPCT_06"): ("boss.koukusaydon.g2.big-saydon", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON"),
+    ("GATE3", "MN_RPCT_05"): ("boss.koukusaydon.g3.saydon", "BOSS_KOUKUSAYDON_G3_SAYDON"),
+    ("BINGO", "MN_RPCT_05"): ("boss.koukusaydon.bingo.saydon", "BOSS_KOUKUSAYDON_BINGO_SAYDON"),
 }
 GATE_IDS = {"GATE1", "GATE2", "GATE3", "BINGO"}
 FOLDER_KEYS = {"folderId", "gateId", "displayName"}
@@ -1116,7 +1116,7 @@ BUNDLE_KEYS = {"bundleId", "gateId", "folderId", "displayName", "authoringStatus
 def _pattern_target_metadata(pattern: dict[str, Any]) -> dict[str, Any]:
     actor = _pattern_actor_profile_id(pattern)
     # Only the two user-confirmed v2 Gate 2 drafts migrate away from Gate 1.
-    legacy_gate = "GATE2" if pattern["patternId"] in {"KAKULSAYDON_G1_PATTERN_8", "KAKULSAYDON_G1_PATTERN_9"} else "GATE1"
+    legacy_gate = "GATE2" if pattern["patternId"] in {"KOUKUSAYDON_G1_PATTERN_8", "KOUKUSAYDON_G1_PATTERN_9"} else "GATE1"
     gate = _stable_id(pattern.get("gateId", legacy_gate), "pattern gateId")
     target = _stable_id(pattern.get("targetBossPlacementId", GATE_TARGETS.get((gate, actor), ("", ""))[0]), "pattern targetBossPlacementId")
     return {"gateId": gate, "targetBossPlacementId": target, "actorProfileId": actor}
@@ -1344,7 +1344,7 @@ def _validate_looping_parent(document, parent):
     children = parent.get("patternOccurrences", [])
     if not children or len(children) > 128 or (loop and loop not in {row["occurrenceId"] for row in children}):
         raise CompositionError("Looping Parent start must reference its own child occurrence")
-    if loop and (parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.kakulsaydon.bingo.saydon"):
+    if loop and (parent.get("gateId") != "BINGO" or parent.get("targetBossPlacementId") != "boss.koukusaydon.bingo.saydon"):
         raise CompositionError("Retained Parent playback currently requires the Bingo board owner")
     if loop and any(parent.get(key) for key in ("bossMotion", "resetBossToSpawn", "enterCombatOnFinish", "summonOccurrences",
                                       "worldOccurrences", "presentationOccurrences", "sceneProfileOccurrences")):
@@ -1423,8 +1423,8 @@ def _validate_pattern_children(document: dict[str, Any], parent: dict[str, Any])
             raise CompositionError("Child Pattern is missing: " + child_id)
         if child_id == parent["patternId"] or child.get("patternOccurrences"):
             raise CompositionError("Nested or recursive Parent references are not supported; append a leaf Pattern: " + child_id)
-        encore = (parent.get("gateId") == "BINGO" and parent.get("targetBossPlacementId") == "boss.kakulsaydon.bingo.saydon" and
-                  child.get("gateId") == "GATE3" and child.get("targetBossPlacementId") == "boss.kakulsaydon.g3.saydon" and
+        encore = (parent.get("gateId") == "BINGO" and parent.get("targetBossPlacementId") == "boss.koukusaydon.bingo.saydon" and
+                  child.get("gateId") == "GATE3" and child.get("targetBossPlacementId") == "boss.koukusaydon.g3.saydon" and
                   child.get("actorProfileId") == parent.get("actorProfileId") == "MN_RPCT_05")
         if not encore and _pattern_target_metadata(child) != _pattern_target_metadata(parent):
             raise CompositionError("Child Pattern must retain Parent Gate, actor, and target boss: " + child_id)
@@ -1777,7 +1777,7 @@ def load_camera_shots(root: Path) -> dict[str, Any]:
     if document.get("schema") != "lostark.camera-shots" or document.get("formatVersion") != 1 or document.get("areaId") != "LV_LUT_MIDNIGHTC_ED":
         raise CompositionError("Invalid KoukuSaydon Area Camera document")
     result = {}
-    # Same authoring/runtime bound as Publish-MapAuthoring and CLevel_KakulSaydonArena.
+    # Same authoring/runtime bound as Publish-MapAuthoring and CLevel_KoukuSaydonArena.
     for shot in _array(document.get("shots"), "Camera shots", 128):
         identity = _stable_id(shot.get("shotId"), "Camera shotId")
         if identity in result: raise CompositionError("Duplicate Camera shotId")
@@ -1804,7 +1804,7 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
         if "timelinePatternId" in row: _stable_id(row["timelinePatternId"], "Parent timelinePatternId")
         identity = _stable_id(row["folderId"], "folderId")
         _stable_id(row["gateId"], "folder gateId")
-        match = re.fullmatch(r"kakulsaydon\.folder\.([1-9][0-9]*)", identity)
+        match = re.fullmatch(r"koukusaydon\.folder\.([1-9][0-9]*)", identity)
         if not match or int(match[1]) >= folder_next or identity in folders or row["gateId"] not in GATE_IDS:
             raise CompositionError("Invalid folder identity, Gate or next ordinal")
         _display_name(row["displayName"], "folder displayName")
@@ -1829,7 +1829,7 @@ def _validate_hierarchy(document: dict[str, Any], resources: dict[str, Any], sce
     for bundle in _array(document.get("bundles", []), "bundles", 4096):
         _exact_keys(bundle, BUNDLE_KEYS, "bundle")
         identity = _stable_id(bundle["bundleId"], "bundleId")
-        match = re.fullmatch(r"kakulsaydon\.bundle\.([1-9][0-9]*)", identity)
+        match = re.fullmatch(r"koukusaydon\.bundle\.([1-9][0-9]*)", identity)
         if not match or int(match[1]) >= bundle_next or identity in bundle_ids:
             raise CompositionError("Invalid or duplicate bundle identity/ordinal")
         bundle_ids.add(identity)
@@ -2100,14 +2100,14 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
             _validate_world_object_motion_result(result, sequences)
     summon_ids, summon_defs = _validate_catalog(
         document, "nextSummonOrdinal", "summons", "summonId", GENERATED_SUMMON_RE,
-        SUMMON_KEYS, MAX_SUMMONS, "kakulsaydon.g1.summon",
+        SUMMON_KEYS, MAX_SUMMONS, "koukusaydon.g1.summon",
         optional_keys={"summonKind", "directionPatternIds", "cloneEndStageId", "realPatternId"},
     )
     for identity, summon in summon_defs.items():
         _validate_summon_definition(summon, f"Summon {identity}")
     world_ids, worlds_by_id = _validate_catalog(
         document, "nextWorldOrdinal", "worlds", "worldId", GENERATED_WORLD_RE,
-        WORLD_KEYS, MAX_WORLDS, "kakulsaydon.g1.world", optional_keys={"positionOffset", "anchorKind", "anchorPosition", "companionEffectResourceId", "objectResourceId"},
+        WORLD_KEYS, MAX_WORLDS, "koukusaydon.g1.world", optional_keys={"positionOffset", "anchorKind", "anchorPosition", "companionEffectResourceId", "objectResourceId"},
     )
     for world_id, world in worlds_by_id.items():
         _stable_id(world["sequenceInstanceId"], f"world {world_id} sequenceInstanceId")
@@ -2126,7 +2126,7 @@ def _validate_document(document: dict[str, Any], root: Path = REPOSITORY_ROOT) -
     scene_profile_ids, scene_profiles_by_id = _validate_catalog(
         document, "nextSceneProfileOrdinal", "sceneProfiles", "sceneProfileId",
         GENERATED_SCENE_PROFILE_RE, SCENE_PROFILE_KEYS, MAX_SCENE_PROFILES,
-        "kakulsaydon.g1.sceneprofile",
+        "koukusaydon.g1.sceneprofile",
     )
     for profile_id, profile in scene_profiles_by_id.items():
         _stable_id(profile["renderingProfileId"], f"sceneProfile {profile_id} renderingProfileId")
@@ -2684,7 +2684,7 @@ def validate_pattern_flows(document: dict[str, Any]) -> None:
             if not isinstance(special_id, str) or (special_id and
                     (gate != "BINGO" or _stable_id(special_id, "Bingo special Pattern") not in patterns or
                      patterns[special_id].get("gateId") != "BINGO" or
-                     patterns[special_id].get("targetBossPlacementId") != "boss.kakulsaydon.bingo.saydon")):
+                     patterns[special_id].get("targetBossPlacementId") != "boss.koukusaydon.bingo.saydon")):
                 raise CompositionError("Bingo special Pattern must reference this Bingo boss")
         entry_ids: set[str] = set()
         for entry in _array(flow["entries"], "Flow entries", 256):
@@ -2800,7 +2800,7 @@ def _saved_pattern_inventory(source: dict[str, Any], root: Path) -> dict[str, An
         if not isinstance(bundle, dict):
             raise CompositionError("saved Bundle must be an object")
         identity = _stable_id(bundle.get("bundleId"), "saved bundleId")
-        ordinal = re.fullmatch(r"kakulsaydon\.bundle\.([1-9][0-9]*)", identity)
+        ordinal = re.fullmatch(r"koukusaydon\.bundle\.([1-9][0-9]*)", identity)
         if not ordinal or int(ordinal[1]) >= source.get("nextBundleOrdinal", 1) or identity in bundle_ids:
             raise CompositionError("saved Bundle identity/ordinal is invalid: " + identity)
         bundle_ids.add(identity)
@@ -5319,7 +5319,7 @@ def _validate_presentation_resources(document: dict[str, Any]) -> dict[str, dict
         resource_id = _stable_id(resource["resourceId"], "presentation resourceId")
         if resource_id in result:
             raise CompositionError(f"duplicate presentation resourceId: {resource_id}")
-        generated = re.fullmatch(r"kakulsaydon\.g1\.presentation\.([1-9][0-9]*)", resource_id)
+        generated = re.fullmatch(r"koukusaydon\.g1\.presentation\.([1-9][0-9]*)", resource_id)
         if generated and int(generated.group(1)) >= next_id:
             raise CompositionError("presentation resourceId is ahead of nextPresentationResourceOrdinal")
         _display_name(resource["displayName"], "presentation displayName")
@@ -6302,7 +6302,7 @@ def projected_outputs(document: dict[str, Any], root: Path = REPOSITORY_ROOT,
             # The Client loads the entire Sequence catalog before playing a raid.
             # Reuse its existing World identity rule even for unreferenced actors.
             _validate_catalog(sequence, "nextWorldOrdinal", "worlds", "worldId",
-                GENERATED_WORLD_RE, WORLD_KEYS, MAX_WORLDS, "kakulsaydon.g1.world",
+                GENERATED_WORLD_RE, WORLD_KEYS, MAX_WORLDS, "koukusaydon.g1.world",
                 optional_keys={"positionOffset", "anchorKind", "anchorPosition", "companionEffectResourceId", "objectResourceId"})
             encounter = {**encounter, "raidGates": project_raid_gates(document, sequence)}
         except (ValueError, KeyError, TypeError) as error:

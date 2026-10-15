@@ -17,7 +17,7 @@
 #ifdef _DEBUG
 namespace Client
 {
-class CLevel_KakulSaydonArena;
+class CLevel_KoukuSaydonArena;
 struct WORLD_OBJECT_TRAVEL_DRAFT;
 
 class CWorldObjectTool final : public ICompositionWorkbenchSession
@@ -240,7 +240,7 @@ private:
     bool m_PreviewActive = false;
     bool m_PreviewDirty = false;
     bool m_Playing = false;
-    CLevel_KakulSaydonArena* m_PreviewLevel = nullptr;
+    CLevel_KoukuSaydonArena* m_PreviewLevel = nullptr;
     f32_t m_ClockMs = 0.f;
     f32_t m_VerticalArcHeight = 2.f;
     std::shared_ptr<WORLD_OBJECT_TRAVEL_DRAFT> m_TravelDraft;

@@ -198,8 +198,8 @@ namespace Client
 		/* Exact scope of the in-flight request; results and lifecycles must
 		echo it even if the target boss changed afterwards. */
 		LostArk::Shared::KOUKUSAYDON_PATTERN_AUDITION_SCOPE m_RequestScope{};
-		std::string m_strTargetBossPlacementId = "boss.kakulsaydon.g1.kouku";
-		std::string m_strTargetBossArchetypeId = "BOSS_KAKULSAYDON_G1_KOUKU";
+		std::string m_strTargetBossPlacementId = "boss.koukusaydon.g1.kouku";
+		std::string m_strTargetBossArchetypeId = "BOSS_KOUKUSAYDON_G1_KOUKU";
 		bool m_bTargetTransitionPending = false;
 		std::uint32_t m_iNextRequestSequence = 1u;
 		std::uint64_t m_iStateStartedAtMilliseconds = 0u;

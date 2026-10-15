@@ -49,6 +49,13 @@ Client project를 사용자가 `Ctrl+F5`로 시작할 대상으로 안내한다.
 - 사용자의 서면 판정 전에는 first pixel, eye smoke, visual PASS, occurrence 승인을 완료로 기록하지 않는다.
 - 완성·복원·시각 검증 요청 자체는 Client/UI 자율 실행·조작이나 화면 캡처 권한이 아니다. 첨부 이미지 분석은 최종 육안 판정이나 단독 완료 증거가 아니다.
 
+## 코드 작성과 내부 엔진 경계
+
+[LOSTARK_ENGINE_CONVENTIONS.md](LOSTARK_ENGINE_CONVENTIONS.md)는 Engine/Client의
+이름·주석·중괄호·include·소유권·GameInstance·DLL 경계 정본이다. 실제 Prototype/Clone과
+SDK 배포 계약을 기준으로 읽고, [작성 스니펫](../../CodeStudy/Snippets/README.md)을 함께 사용한다.
+문서와 편집 설정이 있다는 사실을 기존 소스 전체의 규격 적용 완료로 보지 않는다.
+
 ## 읽는 순서
 
 1. 저장소 금지 경계와 완료 조건: `../../AGENTS.md`

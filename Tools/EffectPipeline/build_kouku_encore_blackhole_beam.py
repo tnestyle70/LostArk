@@ -123,7 +123,7 @@ def build(evidence):
                 programs.append(dict(occurrences=[occurrence['elementId']], material=material))
         patch = evidence/'native_material_patch.json'
         source.write(patch, dict(programs=programs))
-        preview = source.source_model_preview(ACTION, 4219983, [0, 1], 'GATE3', 'MN_RPCT_05', 'boss.kakulsaydon.g3.saydon')
+        preview = source.source_model_preview(ACTION, 4219983, [0, 1], 'GATE3', 'MN_RPCT_05', 'boss.koukusaydon.g3.saydon')
         source.project(evidence, index, notifies, occurrences, records, evidence/'projected',
                        material_patch=patch, source_model_previews={4219983: preview})
     finally:

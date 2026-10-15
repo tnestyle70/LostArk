@@ -8,7 +8,7 @@ ACTION_PATH = "Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json"
 WORLD_PATH = "Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.worldsequences.json"
 PATH_TEMPLATE = "world.object.kouku.cutting_blade.state.mario_phase2_instant"
 PATH_INSTANCE = PATH_TEMPLATE + ".instance"
-PHASE = "KAKULSAYDON_G1_PATTERN_33"
+PHASE = "KOUKUSAYDON_G1_PATTERN_33"
 START = [5.96, 1.30, 950.59]
 DESTINATION = [-7.07, 1.32, 934.43]
 
@@ -25,8 +25,8 @@ def prepare(action, world_sequences):
     instances = {row["instanceId"]: row for row in world_sequences["instances"]}
     templates = {row["sequenceId"]: row for row in world_sequences["templates"]}
     phase = patterns[PHASE]
-    normal = worlds["kakulsaydon.g1.world.19"]
-    instant = worlds["kakulsaydon.g1.world.38"]
+    normal = worlds["koukusaydon.g1.world.19"]
+    instant = worlds["koukusaydon.g1.world.38"]
     for definition in (normal, instant):
         source = templates[instances[definition["sequenceInstanceId"]]["templateId"]]
         for effect in source.get("effectTracks", []):
@@ -34,9 +34,9 @@ def prepare(action, world_sequences):
                 effect["inheritObjectRotation"] = False
     # These exact occurrences belong to P33. P91 owns dolls and is unrelated.
     hook = next(row for row in phase["worldOccurrences"] if row["occurrenceId"] == PHASE + ".world.2")
-    if hook["worldId"] not in ("kakulsaydon.g1.world.36", "kakulsaydon.g1.world.37"):
+    if hook["worldId"] not in ("koukusaydon.g1.world.36", "koukusaydon.g1.world.37"):
         raise ValueError("Mario phase-2 hook was edited to a different World; preserve it for review")
-    hook["worldId"] = "kakulsaydon.g1.world.37"
+    hook["worldId"] = "koukusaydon.g1.world.37"
     original_blade = next(row for row in phase["worldOccurrences"] if row["occurrenceId"] == PHASE + ".world.4")
     if original_blade["worldId"] != normal["worldId"]:
         raise ValueError("Mario phase-2 normal blade reference changed; preserve it for review")
@@ -99,7 +99,7 @@ def prepare(action, world_sequences):
     upsert(world_sequences["instances"], "instanceId", new_instance)
     definition = next((row for row in action["worlds"] if row["sequenceInstanceId"] == PATH_INSTANCE), None)
     if definition is None:
-        identity = f"kakulsaydon.g1.world.{action['nextWorldOrdinal']}"
+        identity = f"koukusaydon.g1.world.{action['nextWorldOrdinal']}"
         if identity in worlds: raise ValueError("World ordinal already used")
         action["nextWorldOrdinal"] += 1
         definition = copy.deepcopy(instant)
@@ -114,7 +114,7 @@ def prepare(action, world_sequences):
         phase["worldOccurrences"].append(dict(occurrenceId=identity, worldId=definition["worldId"],
             startMs=original_blade["startMs"], durationMs=duration_ms, playbackSpeed=1,
             placement=dict(position=list(START), rotationDegrees=[0, 0, 0], scale=[1, 1, 1])))
-    evidence = dict(patternId=PHASE, preservedPatternId="KAKULSAYDON_G1_PATTERN_91", sourceWorldId=instant["worldId"],
+    evidence = dict(patternId=PHASE, preservedPatternId="KOUKUSAYDON_G1_PATTERN_91", sourceWorldId=instant["worldId"],
         targetWorldId=definition["worldId"], start=START, destination=DESTINATION, emissionCount=len(emissions),
         sourceSpeedMps=speed, actualSpeedMps=distance/(arrival_ms*.001), arrivalMs=arrival_ms,
         lifetimeMs=duration_ms, playCount=1, transformKeyCount=len(times), scaleSampleStepMs=64,

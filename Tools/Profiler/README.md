@@ -25,3 +25,16 @@ CPU·cpuWork의 부모와 자식은 중첩된다. GPU pending은0ms가 아니며
 Frames 선택창 밖의 초기 구간은 저장되지 않을 수 있다. 저장본에 없는 최저FPS를 추정하지 않는다.
 
 구조와 구현 정본: [프레임 통합 PLAN](../../.md/GB/10-02/2026-10-02_FRAME_PIPELINE_OPTIMIZATION_IMPLEMENTATION_PLAN.md).
+
+## 2026-10-12 현재 코드 보충
+
+위 사용 설명의 F7·저장 범위 문장은 이전 구현 기준이다. 현재는 Debug/Release 모두 F7로
+Profiler 창을 열고 닫으며, Capture는 창 표시와 독립적으로 수집한다. JSON 저장은 기본적으로
+현재 보관된 전체 최대 1200프레임을 포함한다. `분석·표시 프레임 범위`는 저장 범위를 줄이지
+않으며, `JSON 저장 범위 제한`을 명시적으로 켰을 때만 저장 범위를 제한한다. 이미 history에서
+퇴출된 프레임은 복구되지 않는다. 현재 계약은 [CLAUDE.md](../../CLAUDE.md)의 Profiler 설명과
+[구조 학습 기록](../../.md/GB/10-12/2026-10-12_DATA_DOMAIN_ARCHITECTURE_LEARNING_RESULT.md)을 따른다.
+
+일반 원시 캡처는 `Client/Bin/ProfilerCaptures`에, 최적화 A/B의 원시 `evidence_*.json`과
+`benchmark_*.json` 요약은 `Client/Bin/BenchmarkCaptures`에 저장된다. 이 분석기의 입력은
+`LostArkProfilerCapture.v3` 원시 캡처이며 A/B 요약 JSON은 원시 입력 형식이 아니다.

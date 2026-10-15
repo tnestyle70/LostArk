@@ -1,11 +1,17 @@
-#include "CustomizingCostumeDocument.h"
+﻿#include "CustomizingCostumeDocument.h"
 
+// JSON의 object/array/number/string을 검사하고 값으로 읽는다.
 #include "DataJson.h"
+// 저작 정본 Data 아래 문서 경로를 구한다.
 #include "ProjectDataRoot.h"
 
+// 기본 visualSetId가 목록에 정확히 한 번 있는지 확인하고 그 위치를 찾는다.
 #include <algorithm>
+// 문서 파일 경로를 조합·전달한다.
 #include <filesystem>
+// 문서 파일의 바이트를 입력 stream으로 읽는다.
 #include <fstream>
+// 파일 전체를 모아 JSON parser에 전달한다.
 #include <sstream>
 
 Client::CCustomizingCostumeDocument::CCustomizingCostumeDocument(
@@ -48,8 +54,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 		return false;
 	}
 
-	/* Staged, so a bad entry late in the document cannot leave half of the previous contents
-	replaced. */
+	// 목록과 기본 선택을 함께 임시로 준비해 뒤쪽 행 실패 시 이전 내용을 유지한다.
 	std::unordered_map<std::string, std::vector<std::string>> staged;
 	std::unordered_map<std::string, int32_t> stagedDefaults;
 	for (const auto& [assetId, value] : pClasses->Get_Object())
@@ -68,8 +73,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 		setIds.reserve(pEntries->Get_Array().size());
 		for (const DATA_JSON_VALUE& entry : pEntries->Get_Array())
 		{
-			/* Costumes call it objectUnit (the table's own column) and hairstyles call it
-			index; either way it is the position the icon list pairs against. */
+			// 의상의 objectUnit을 먼저 읽고 없을 때 헤어의 index를 읽는다. 두 값 모두 아이콘 위치와 대응한다.
 			const DATA_JSON_VALUE* pUnit =
 				entry.Is_Object() ? entry.Find("objectUnit") : nullptr;
 			if (nullptr == pUnit && entry.Is_Object())
@@ -83,8 +87,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 					"): an entry is missing its index or visualSetId";
 				return false;
 			}
-			/* The array position is the Object_Unit the icon row uses, so a document whose
-			order drifted from its own indices would silently mis-pair thumbnails. */
+			// 배열 순서와 저장 index가 같은지 검사해 visualSetId와 아이콘의 대응이 밀리지 않게 한다.
 			if (pUnit->Get_Number() != static_cast<f64_t>(setIds.size()))
 			{
 				m_strStatus = path.string() + " (" + assetId +
@@ -94,6 +97,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 			setIds.push_back(pSetId->Get_String());
 		}
 		int32_t defaultIndex = 0;
+		// body 기본 머리 선택은 hairstyle 문서만 허용하며 true일 때 별도 defaultVisualSetId와 함께 쓸 수 없다.
 		if (const auto* bodyHair = value.Find("defaultBodyHair"))
 		{
 			if (m_strSchema != "lostark.customizing-hairstyles" ||
@@ -114,6 +118,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 				defaultIndex = -1;
 			}
 		}
+		// 기본 set ID는 현재 목록에 정확히 한 번 있어야 한다. 실제 catalog 모델 준비는 여기서 수행하지 않는다.
 		if (const auto* defaultSet = value.Find("defaultVisualSetId"))
 		{
 			if (!defaultSet->Is_String() || defaultSet->Get_String().empty() ||
@@ -130,6 +135,7 @@ bool_t Client::CCustomizingCostumeDocument::Load()
 		staged.emplace(assetId, std::move(setIds));
 	}
 
+	// 모든 명시적 검사를 통과한 뒤 이전 목록을 교체한다. 이전 Find 결과 포인터는 다시 조회해야 한다.
 	m_Classes = std::move(staged);
 	m_DefaultIndices = std::move(stagedDefaults);
 	m_strStatus = "loaded " + std::to_string(m_Classes.size()) + " classes";

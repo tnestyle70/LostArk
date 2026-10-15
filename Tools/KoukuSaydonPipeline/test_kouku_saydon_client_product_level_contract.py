@@ -18,19 +18,25 @@ from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as projec
 
 ROOT = Path(__file__).resolve().parents[2]
 AREA_ID = "LV_LUT_MIDNIGHTC_ED"
-LEVEL = "KAKULSAYDON_ARENA"
+LEVEL = "KOUKUSAYDON_ARENA"
 
 
 def read(relative: str) -> str:
-    return read_source_text(ROOT / relative, encoding="utf-8-sig")
+    path = ROOT / relative
+    try:
+        return read_source_text(path, encoding="utf-8-sig")
+    except UnicodeDecodeError:
+        if path.suffix not in {".cpp", ".h", ".inl"}:
+            raise
+        return read_source_text(path, encoding="cp949")
 
 
 class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
     maxDiff = 1500
     @classmethod
     def setUpClass(cls) -> None:
-        cls.level_h = read("Client/Public/Level_KakulSaydonArena.h")
-        cls.level_cpp = read("Client/Private/Level_KakulSaydonArena.cpp")
+        cls.level_h = read("Client/Public/Level_KoukuSaydonArena.h")
+        cls.level_cpp = read("Client/Private/Level_KoukuSaydonArena.cpp")
         cls.main_h = read("Client/Public/MainApp.h")
         cls.main_cpp = read("Client/Private/MainApp.cpp")
         cls.loader_h = read("Client/Public/Loader.h")
@@ -106,18 +112,20 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
     def test_registry_owns_exact_product_identity(self) -> None:
         descriptor = re.search(
             rf"LEVEL::{LEVEL},\s*CLIENT_LEVEL_KIND::PRODUCT,\s*"
-            rf'"raid\.kakul-saydon\.arena",\s*"{AREA_ID}",\s*'
-            r'"scene\.kakulsaydon\.g1\.base\.v1",\s*MakeFullMapScope\(\),\s*'
-            r"CreateKakulSaydonArena,\s*&CLoader::Ready_For_KakulSaydonArena",
+            rf'"raid\.kouku-saydon\.arena",\s*"{AREA_ID}",\s*'
+            r'"scene\.koukusaydon\.g1\.base\.v1",\s*MakeFullMapScope\(\),\s*'
+            r"CreateKoukuSaydonArena,\s*"
+            r"\[\]\(CLoader& loader\)\s*->\s*HRESULT\s*\{\s*"
+            r"return loader\.Ready_For_KoukuSaydonArena\(\);\s*\}",
             self.registry,
         )
         self.assertIsNotNone(descriptor)
-        self.assertIn('#include "Level_KakulSaydonArena.h"', self.registry)
-        self.assertIn("CLevel_KakulSaydonArena::Create", self.registry)
+        self.assertIn('#include "Level_KoukuSaydonArena.h"', self.registry)
+        self.assertIn("CLevel_KoukuSaydonArena::Create", self.registry)
 
     def test_loader_stages_map_player_and_exact_server_boss_presentation(self) -> None:
-        self.assertIn("HRESULT Ready_For_KakulSaydonArena();", self.loader_h)
-        start = self.loader_cpp.index("HRESULT CLoader::Ready_For_KakulSaydonArena()")
+        self.assertIn("HRESULT Ready_For_KoukuSaydonArena();", self.loader_h)
+        start = self.loader_cpp.index("HRESULT CLoader::Ready_For_KoukuSaydonArena()")
         end = self.loader_cpp.index("HRESULT CLoader::Ready_For_Development()", start)
         body = self.loader_cpp[start:end]
         self.assertIn("Ready_MapArea", body)
@@ -132,7 +140,7 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
                 "CKoukuSaydonPresentationAssetService::Ensure_Prototypes"
             ),
         )
-        self.assertIn('"BOSS_KAKULSAYDON_G1_KOUKU"', body)
+        self.assertIn('"BOSS_KOUKUSAYDON_G1_KOUKU"', body)
         self.assertEqual(1, body.count("Ready_DeployPropArea"))
         self.assertLess(body.index("Ready_DeployPropArea"), body.index("rollback.Commit()"))
         self.assertNotIn("CDeployPropRuntime::Ensure_AreaPrototypes", self.level_cpp)
@@ -180,10 +188,10 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         self.assertIn("shared_ptr<IWorldEntityCommandSink>", self.level_h)
         self.assertIn("Request_StageTeleport", self.level_h)
         start = self.level_cpp.index(
-            "bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport"
+            "bool_t Client::CLevel_KoukuSaydonArena::Request_StageTeleport"
         )
         end = self.level_cpp.index(
-            "HRESULT Client::CLevel_KakulSaydonArena::Ready_Layer_Camera", start
+            "HRESULT Client::CLevel_KoukuSaydonArena::Ready_Layer_Camera", start
         )
         body = self.level_cpp[start:end]
         empty_guard = body.index("m_StageMarkerPlacementIds.empty()")
@@ -194,57 +202,72 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         self.assertNotIn("Set_Position", body)
 
     def test_f1_arena_tabs_submit_runtime_stage_marker_identity(self) -> None:
-        self.assertIn('#include "Level_KakulSaydonArena.h"', self.main_cpp)
-        start = self.main_cpp.index(
-            "void CMainApp::RenderServerArenaActiveControls()"
+        self.assertIn('#include "Level_KoukuSaydonArena.h"', self.main_cpp)
+        body = cpp_function_definition(
+            self.main_cpp,
+            "void CMainApp::RenderServerArenaActiveControls()",
         )
-        end = self.main_cpp.index("void CMainApp::RenderDeveloperTools()", start)
-        body = self.main_cpp[start:end]
 
         for token in (
             'ImGui::BeginTabBar("##ServerArenaActiveTabs")',
             'ImGui::BeginTabItem("Valtan")',
             'ImGui::BeginTabItem("KoukuSaydon")',
+            "LEVEL::KOUKUSAYDON_ARENA",
+            "CLevel_KoukuSaydonArena::Get_Active()",
+            "pKoukuArena->Get_StageMarkers()",
+            "marker.strPlacementId",
+            "pKoukuArena->Request_StageTeleport",
+            "m_strKoukuStageTeleportStatus",
+        ):
+            self.assertIn(token, body)
+
+        # Valtan 탭의 상태 제어는 공용 helper가 소유하므로 위임과 실제 preset을 함께 확인한다.
+        valtan_tab = body[
+            body.index('ImGui::BeginTabItem("Valtan")'):
+            body.index('ImGui::BeginTabItem("KoukuSaydon")')
+        ]
+        self.assertIn("LEVEL::VALTAN_ARENA", valtan_tab)
+        self.assertIn("RenderValtanArenaStateControls();", valtan_tab)
+        valtan_controls = cpp_function_definition(
+            self.main_cpp,
+            "void CMainApp::RenderValtanArenaStateControls()",
+        )
+        for token in (
             "VALTAN_ARENA_PRESET::FRESH",
             "VALTAN_ARENA_PRESET::CIRCLE_WALLS_GONE",
             "VALTAN_ARENA_PRESET::THREE_OCLOCK_BROKEN",
             "VALTAN_ARENA_PRESET::NINE_OCLOCK_BROKEN",
             "VALTAN_ARENA_PRESET::BOTH_SIDES_BROKEN",
-            "LEVEL::KAKULSAYDON_ARENA",
-            "CLevel_KakulSaydonArena::Get_Active()",
-            "pKakulArena->Get_StageMarkers()",
-            "marker.strPlacementId",
-            "pKakulArena->Request_StageTeleport",
-            "m_strKakulStageTeleportStatus",
+            "m_pValtanBossTool->Set_ServerArenaPreset(",
         ):
-            self.assertIn(token, body)
+            self.assertIn(token, valtan_controls)
 
         self.assertIn(
-            "uint32_t m_iNextKakulStageTeleportRequestSequence = 1u;",
+            "uint32_t m_iNextKoukuStageTeleportRequestSequence = 1u;",
             self.main_h,
         )
         capture = body.index(
             "const std::uint32_t requestSequence ="
         )
         advance = body.index(
-            "++m_iNextKakulStageTeleportRequestSequence", capture
+            "++m_iNextKoukuStageTeleportRequestSequence", capture
         )
-        submit = body.index("pKakulArena->Request_StageTeleport", capture)
+        submit = body.index("pKoukuArena->Request_StageTeleport", capture)
         self.assertLess(capture, advance)
         self.assertLess(advance, submit)
         self.assertIn(
-            "0u == m_iNextKakulStageTeleportRequestSequence", body
+            "0u == m_iNextKoukuStageTeleportRequestSequence", body
         )
         self.assertIn(
             "(std::numeric_limits<std::uint32_t>::max)()", body
         )
 
         for forbidden in (
-            "stage.kakul.sl01",
-            "stage.kakul.sl02",
-            "stage.kakul.sl03",
-            "stage.kakul.sl04",
-            "stage.kakul.sl05",
+            "stage.kouku.sl01",
+            "stage.kouku.sl02",
+            "stage.kouku.sl03",
+            "stage.kouku.sl04",
+            "stage.kouku.sl05",
             "Set_State",
             "Set_Position",
         ):
@@ -253,7 +276,7 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
     def test_server_world_mapping_and_project_registration_are_exact(self) -> None:
         self.assertRegex(
             self.transition,
-            rf"case WORLD_ID::{LEVEL}:\s*targetLevel = LEVEL::{LEVEL};",
+            rf"case WORLD_ID::KOUKUSAYDON_ARENA:\s*targetLevel = LEVEL::{LEVEL};",
         )
         project_path = ROOT / "Client/Default/Client.vcxproj"
         filters_path = ROOT / "Client/Default/Client.vcxproj.filters"
@@ -261,7 +284,7 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         ET.parse(filters_path)
         project = project_path.read_text(encoding="utf-8-sig")
         filters = filters_path.read_text(encoding="utf-8-sig")
-        for name in ("Level_KakulSaydonArena.h", "Level_KakulSaydonArena.cpp"):
+        for name in ("Level_KoukuSaydonArena.h", "Level_KoukuSaydonArena.cpp"):
             self.assertEqual(1, project.count(name))
             self.assertEqual(1, filters.count(name))
 
@@ -376,34 +399,55 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
     def test_detail_combo_mutations_are_deferred_and_add_stage_stays_reachable(
         self,
     ) -> None:
-        details_start = self.workbench_cpp.index(
-            "void Client::CKoukuSaydonActionWorkbench::Render_Details()"
+        details = cpp_function_definition(
+            self.workbench_cpp,
+            "void Client::CKoukuSaydonActionWorkbench::Render_Details()",
         )
-        details_end = self.workbench_cpp.index(
-            "void Client::CKoukuSaydonActionWorkbench::Render_ReloadConfirmation()",
-            details_start,
-        )
-        details = self.workbench_cpp[details_start:details_end]
-        for deferred_selection in (
-            "requestedCategory",
-            "requestedAuthoringStatus",
-            "requestedStageKind",
-            "requestedTargetStageId",
+        pattern_details = stage_details = animation_details = details
+        # 원래 inline 상세와 추출 후 상세를 같은 책임 범위로 검사한다.
+        # helper를 사용하는 경우 호출 연결부터 확인해 무관한 함수의 문자열로 통과하지 않는다.
+        if "Render_PatternProperties(" in details:
+            for call in (
+                "Render_PatternProperties(pattern, patternId)",
+                "Render_StageProperties(pattern, patternId)",
+                "Render_AnimationProperties(pattern, stage, patternId)",
+            ):
+                self.assertIn(call, details)
+            self.assertLess(
+                details.index("Render_StageProperties(pattern, patternId)"),
+                details.index("if (nullptr == stage)"),
+            )
+            pattern_details = cpp_function_definition(
+                self.workbench_cpp,
+                "Client::CKoukuSaydonActionWorkbench::Render_PatternProperties(",
+            )
+            stage_details = cpp_function_definition(
+                self.workbench_cpp,
+                "Client::CKoukuSaydonActionWorkbench::Render_StageProperties(",
+            )
+            animation_details = cpp_function_definition(
+                self.workbench_cpp,
+                "Client::CKoukuSaydonActionWorkbench::Render_AnimationProperties(",
+            )
+        for deferred_selection, section in (
+            ("requestedCategory", pattern_details),
+            ("requestedAuthoringStatus", pattern_details),
+            ("requestedStageKind", stage_details),
+            ("requestedTargetStageId", animation_details),
         ):
-            self.assertIn(deferred_selection, details)
-        add_stage = details.index('ImGui::Button("Add Stage")')
-        selected_stage_guard = details.index("if (nullptr == stage)")
+            self.assertIn(deferred_selection, section)
+        add_stage = stage_details.index('ImGui::Button("Add Stage")')
+        selected_stage_guard = stage_details.index("if (nullptr == stage)")
         self.assertLess(add_stage, selected_stage_guard)
 
     def test_raid_arenas_use_registered_local_bodies_and_replication_placement(self) -> None:
-        select = _region(
+        select = cpp_function_definition(
             self.character_preview_cpp,
             "bool_t Client::CCharacterPreviewPanel::Select_Asset(",
-            "void Client::CCharacterPreviewPanel::Render_Selector(",
         )
         for token in (
             "bRaidCompositionPreview",
-            "LEVEL::KAKULSAYDON_ARENA",
+            "LEVEL::KOUKUSAYDON_ARENA",
             "LEVEL::VALTAN_ARENA",
             "Is_CompositionAnimationTargetAsset(asset.pAssetName)",
             "Try_ResolveRaidPreviewPlacement(",
@@ -415,10 +459,9 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         for asset in ("Valtan", "Valtan_Ghost_MN_RPBF_02", "MN_RPCT_00",
                       "MN_RPCT_05", "MN_RPCT_06", "MN_RPCZ_00"):
             self.assertIn(f'"{asset}"', target_contract)
-        placement = _region(
+        placement = cpp_function_definition(
             self.level_cpp,
-            "bool_t Client::CLevel_KakulSaydonArena::Try_Get_AuthoringPreviewPlacement(",
-            "bool_t Client::CLevel_KakulSaydonArena::Request_StageTeleport(",
+            "bool_t Client::CLevel_KoukuSaydonArena::Try_Get_AuthoringPreviewPlacement(",
         )
         self.assertIn("m_Replication.Get_LocalCharacter()", placement)
         self.assertIn("Try_SampleTargetGround(", placement)
@@ -427,12 +470,6 @@ class KoukuSaydonClientProductLevelContractTests(unittest.TestCase):
         self.assertIn("CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(", self.workbench_cpp)
         self.assertNotIn("BOSS_BODY_PROFILE_ID", self.workbench_cpp)
         self.assertIn("Is_AppendAdmitted(source, outStatus)", self.workbench_cpp)
-
-
-def _region(source: str, start: str, end: str) -> str:
-    start_at = source.index(start)
-    end_at = source.index(end, start_at + len(start))
-    return source[start_at:end_at]
 
 
 class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
@@ -491,10 +528,9 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
         for forbidden in ("Select_TargetAsset", "CModel::Create", "Find_Boss(",
                           "Open_ValtanWorkspace", "Open_KoukuSaydonProfile"):
             self.assertNotIn(forbidden, inventory)
-        backend = _region(
+        backend = cpp_function_definition(
             self.main_cpp,
             "HRESULT CMainApp::EnsureAnimationPreviewBackend()",
-            "HRESULT CMainApp::EnsureDebugTool(",
         )
         self.assertNotIn("SetDebugToolVisible", backend)
         self.assertNotIn("m_eDebugWindowFocusPending", backend)
@@ -504,10 +540,9 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
             self.assertIn("CompositionTimeline::HitBoxGesture(", source)
 
     def test_kouku_resources_append_to_matching_actor_patterns(self) -> None:
-        rebuild = _region(
+        rebuild = cpp_function_definition(
             self.workbench_cpp,
             "void Client::CKoukuSaydonActionWorkbench::Rebuild_ResourceTree()",
-            "bool_t Client::CKoukuSaydonActionWorkbench::Append_ActionAsStages(",
         )
         self.assertIn(
             "CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(", rebuild
@@ -515,17 +550,25 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
         self.assertNotIn('"MN_RPCZ_00"', rebuild)
         self.assertIn("CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(", self.workbench_cpp)
         self.assertNotIn("BOSS_BODY_PROFILE_ID", self.workbench_cpp)
-        admitted = _region(
+        admitted = cpp_function_definition(
             self.workbench_cpp,
             "bool_t Client::CKoukuSaydonActionWorkbench::Is_AppendAdmitted(",
-            "bool_t Client::CKoukuSaydonActionWorkbench::Resolve_NativeClipMs(",
         )
         self.assertIn("CKoukuSaydonCompositionDocument::Is_KnownProfile(source.strProfileId)", admitted)
         self.assertIn('0u == source.iSourceActionId && "RAW" == source.strSourceStageId', admitted)
         self.assertIn("pattern->strActorProfileId != actor", self.workbench_cpp)
         # Create explicitly chooses Gate/actor; resource Append never creates a hidden Pattern.
         self.assertIn("pattern.strActorProfileId = m_strCreateActorProfileId", self.workbench_cpp)
-        append_owner = _region(self.workbench_cpp, "KOUKU_SAYDON_COMPOSITION_PATTERN* Find_AppendPattern(", "void Mark_Draft(")
+        # 포인터 반환형의 공백 배치만 허용하고 타입·함수 이름·괄호는 그대로 검사한다.
+        append_signature = re.search(
+            r"\bKOUKU_SAYDON_COMPOSITION_PATTERN\s*\*\s*Find_AppendPattern\s*\(",
+            self.workbench_cpp,
+        )
+        self.assertIsNotNone(append_signature)
+        append_owner = cpp_function_definition(
+            self.workbench_cpp,
+            append_signature.group(0),
+        )
         self.assertNotIn("candidate.Patterns.push_back", append_owner)
         self.assertIn("if (patternId.empty())", append_owner)
         self.assertIn("Delete_TimelineSelection(", self.workbench_cpp)
@@ -545,10 +588,9 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
             "Client::CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(",
             self.action_document_cpp,
         )
-        resolver = _region(
+        resolver = cpp_function_definition(
             self.animation_cpp,
             "const char_t* Resolve_ActionCompositionCategory(",
-            "\n\t}\n",
         )
         self.assertIn(
             "CKoukuSaydonAnimationActionDocument::Resolve_ActionCategory(", resolver
@@ -606,18 +648,16 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
         self.assertNotIn("CAnimation_Tool", self.workbench_h)
 
     def test_exact_window_past_native_clip_holds_instead_of_vanishing(self) -> None:
-        start = self.animation_cpp.index(
-            "bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview("
+        body = cpp_function_definition(
+            self.animation_cpp,
+            "bool_t Client::CAnimation_Tool::Start_PendingKoukuSaydonCompositionPreview(",
         )
-        body = self.animation_cpp[start:]
-        body = body[: body.index("\nbool_t Client::CAnimation_Tool::", 10)]
         self.assertNotIn("trim exceeds native clip", body)
         self.assertIn("holds its last pose past the native clip end", body)
         self.assertIn('(row.strEndPolicy == "HOLD_LAST_POSE" || row.iSourceStartMs', body)
-        playback = _region(
+        playback = cpp_function_definition(
             self.workbench_cpp,
             "bool_t Client::CKoukuSaydonActionWorkbench::Set_AnimationPlayback(",
-            "void Client::CKoukuSaydonActionWorkbench::Normalize_Selection()",
         )
         self.assertIn("EXACT cannot outrun the native clip", playback)
         for signature in (
@@ -625,10 +665,9 @@ class KoukuSaydonSharedEditorContractTests(unittest.TestCase):
             "bool_t Client::CKoukuSaydonActionWorkbench::Bind_Animation(",
             "bool_t Client::CKoukuSaydonActionWorkbench::Append_AnimationAsStage(",
         ):
-            start_at = self.workbench_cpp.index(signature)
             self.assertIn(
                 "Normalize_EndPolicyForWindow(",
-                self.workbench_cpp[start_at : start_at + 3000],
+                cpp_function_definition(self.workbench_cpp, signature),
             )
 
 

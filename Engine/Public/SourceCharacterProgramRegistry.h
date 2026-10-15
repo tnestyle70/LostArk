@@ -1,11 +1,15 @@
-#pragma once
+﻿#pragma once
 
+// 추가 등록된 정확한 program ID들을 고정 크기 배열로 제공한다.
 #include <array>
+// program ID와 그룹 경계를 고정 폭 32bit 값으로 표현한다.
 #include <cstdint>
 
 namespace Engine
 {
-    // Generated registration describes available programs, never renderer semantics.
+    // 생성된 등록 목록은 사용 가능한 program만 선언한다. 각 program의 렌더 의미는 실제 shader가 정의한다.
+    // Tools/EffectPipeline/source_character_registration.py가 BEGIN/END 표식 사이 ID와 배열 크기를 갱신한다.
+    // 표식은 도구가 검색하는 계약이므로 영어 원문을 유지한다.
     inline constexpr std::array<std::uint32_t, 140> SourceCharacterAddedPrograms = {
         // BEGIN REGISTERED SOURCE CHARACTER PROGRAMS
         600u,
@@ -151,12 +155,14 @@ namespace Engine
         // END REGISTERED SOURCE CHARACTER PROGRAMS
     };
 
+    // CShader가 _SourceGroupXXX shader 변형을 찾는 양끝 포함 ID 범위다. 범위에 속한다고 모든 ID가 지원되는 것은 아니다.
     struct SOURCE_CHARACTER_PROGRAM_GROUP
     {
         std::uint32_t first;
         std::uint32_t last;
     };
 
+    // shader 묶음 선택용 범위다. 기존 그룹과 등록 도구가 계산한 추가 그룹을 함께 사용한다.
     inline constexpr SOURCE_CHARACTER_PROGRAM_GROUP SourceCharacterProgramGroups[] = {
         {1u, 8u}, {9u, 16u}, {17u, 24u}, {25u, 32u},
         {80u, 83u}, {84u, 95u}, {96u, 107u}, {108u, 112u}, {160u, 175u}, {176u, 191u},
@@ -178,14 +184,17 @@ namespace Engine
         // END REGISTERED SOURCE CHARACTER GROUPS
     };
 
+    // Model/Shader가 정확한 program 지원 여부를 검사한다. 기존 허용 구간 또는 개별 추가 등록 ID만 true다.
+    // 그룹 범위 안의 빈 번호를 임의의 shader 동작으로 해석하지 않는다.
     constexpr bool Is_SourceCharacterProgramSupported(std::uint32_t program)
     {
-        // Keep the established forward-only programs and historical gaps unchanged.
+        // 기존 forward 전용 program 허용 구간과 미할당 번호 간격을 유지한다.
         if ((program >= 1u && program <= 65u) || (program >= 80u && program <= 112u) ||
             (program >= 160u && program <= 200u) || (program >= 208u && program <= 238u))
             return true;
         for (const auto registered : SourceCharacterAddedPrograms)
-            if (registered == program) return true;
+            if (registered == program)
+                return true;
         return false;
     }
 }

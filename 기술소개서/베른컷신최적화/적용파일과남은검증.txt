@@ -1,0 +1,36 @@
+﻿베른 컷신 실제 기하 감소 — 제품 반영 파일과 남은 검증
+
+[소스 반영 완료: G39 / G41 / G42]
+Client/Public/MapStaticBatchObject.h
+Client/Private/MapStaticBatchObject.cpp
+Client/Private/MapGpuScene.cpp
+Client/Public/MapPlacementRuntime.h
+Client/Private/MapPlacementRuntime.cpp
+Client/Private/Level_Bern.cpp
+Engine/Private/Model_StaticProxy.inl
+Engine/Private/Material.cpp
+Client/Public/MapStaticProxyBaker.h
+Client/Private/MapStaticProxyBaker.cpp
+Client/Bin/ShaderFiles/Shader_VtxMeshMapProxy.hlsl
+Engine/Public/Model.h (G41 공급 geometry API)
+Client/Public/MapStaticChunkObject.h / Client/Private/MapStaticChunkObject.cpp (G39 임시 표시 복귀)
+
+책임: 원본 전체 mesh의 색상만 저폴리로 원자 대체. CPU/GPU/HLOD 중복 제외.
+기본 카메라·컷신 종료는 원본으로 복귀. 그림자/picking/저작 옵션/원본 배치는 유지.
+원본 파일·geometry·material·shader와 파생 package의 hash/freshness가 맞을 때만 준비.
+UV32/Jacobian32로 원본 RNM·static shadow의 texture footprint를 보존.
+
+[실제 검증]
+7종 모델의 실제 GPU geometry 감소. 5종은 VS와 index 모두 1/8 이하.
+실제 native 최종색 P06/P07 이미지와 query는 04 폴더.
+133 placement fixture의 CPU/GPU/HLOD 원본 중복0·OFF 복귀 검증 통과.
+fixture shim 조건과 실제 제품 native 품질 gate는 다르므로 전체 컷신 수치로 사용하지 않음.
+
+[제품 빌드 완료 / 전체 장면 검증 진행 중]
+Product Release·Debug 네 프로젝트 빌드와 runtime input 검증 PASS. 구성별 실제 EXE hash·시간과 영수증은 03 폴더에 보관.
+실제 package Prepare/Render 24조건 통과: 독립 최종 RGBA byte 일치 18카메라 쌍 + 독립 이미지 비교 없는 cull 6조건. Resources 27개 설치 완료.
+제품 LOD + LOD0 fallback 6,869검사/exit 0 확인. 전체 컷신/기본 카메라 수치 측정은 남음.
+전체 컷신 1/8 및 게임 FPS 회복 완료로 표시하지 않음.
+
+파생 자료: Client/Bin/Resources/Map/Derived/Bern/ReplacementIndex.json, Pillar06/*, Pillar07/*
+최신 검증 상태는 현재상태.txt를 먼저 확인한다.

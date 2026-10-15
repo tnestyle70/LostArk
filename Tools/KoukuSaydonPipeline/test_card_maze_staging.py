@@ -9,7 +9,7 @@ from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as subjec
 
 class CardMazeStagingTests(unittest.TestCase):
     def setUp(self):
-        self.logic = dict(logicId="kakulsaydon.g1.logic.112", displayName="Entry",
+        self.logic = dict(logicId="koukusaydon.g1.logic.112", displayName="Entry",
             logicType="TRIGGER", triggerKind="CARD_MAZE_STAGE_PLAYERS",
             playerEntryEffectOccurrenceIds=["P.presentation.2", "P.presentation.1"])
         self.box = dict(startMs=0)

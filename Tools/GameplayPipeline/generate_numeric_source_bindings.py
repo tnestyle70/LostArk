@@ -126,7 +126,7 @@ def generate(root: Path):
                 sources.append(address(COMPOSITION, ("logics", li, product_field)))
         else:
             identity = "H|" + "|".join(row[1:7]); field = "maxHpDamagePercent"
-            if row[1] == "ENCOUNTER_KAKULSAYDON_G1":
+            if row[1] == "ENCOUNTER_KOUKUSAYDON_G1":
                 li, logic = definitions[boxes[row[3]]["logicId"]]
                 key = "randomVolleyHits" if row[4] == "RANDOM" else "projectileHits" if row[4] == "PROJECTILE" else "fixedHits"
                 prefix = ("logics", li, key) + ((int(row[5]),) if key == "randomVolleyHits" else ())

@@ -1436,7 +1436,7 @@ bool_t Client::CPlayerController::Update_MarioReturn(const bool_t gameplayComman
 		while (m_pCommandSink->Consume_MarioReturnResult(result))
 		{
 			if (!m_pendingMarioReturnSequence || result.iClientSequence != m_pendingMarioReturnSequence ||
-				result.eWorldId != WORLD_ID::KAKULSAYDON_ARENA) continue;
+				result.eWorldId != WORLD_ID::KOUKUSAYDON_ARENA) continue;
 			m_pendingMarioReturnSequence = 0u;
 			switch (result.eResult)
 			{
@@ -1568,7 +1568,7 @@ bool_t Client::CPlayerController::Begin_DebugPlayerPlacement(
 	using LostArk::Shared::WORLD_ID;
 	if (!m_debugPlacementEnabled || Is_DebugPlayerPlacementPending() ||
 		m_pLocalCharacter.expired() || nullptr == m_pCommandSink ||
-		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId &&
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KOUKUSAYDON_ARENA != worldId &&
 			WORLD_ID::BERN != worldId))
 	{
 		if (!Is_DebugPlayerPlacementPending())
@@ -1608,12 +1608,12 @@ bool_t Client::CPlayerController::Request_DebugTeleportToPosition(
 {
 	using LostArk::Shared::WORLD_ID;
 #ifndef _DEBUG
-	if (WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId)
+	if (WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KOUKUSAYDON_ARENA != worldId)
 		return false;
 #endif
 	if (Is_DebugPlayerPlacementPending() || m_pLocalCharacter.expired() ||
 		nullptr == m_pCommandSink ||
-		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KAKULSAYDON_ARENA != worldId &&
+		(WORLD_ID::VALTAN_ARENA != worldId && WORLD_ID::KOUKUSAYDON_ARENA != worldId &&
 			WORLD_ID::BERN != worldId) ||
 		!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
 	{
@@ -1651,7 +1651,7 @@ bool_t Client::CPlayerController::Request_KoukuRoomPlayerArrival(
 		rootPatternId.empty() || occurrenceId.empty() || !std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
 	{ outStatus = "Room player arrival requires a connected player and valid Sequence occurrence."; return false; }
 	C2S_DEBUG_WORLD_PLAYBACK request{};
-	request.iRequestSequence = requestSequence; request.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+	request.iRequestSequence = requestSequence; request.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
 	request.eOperation = DEBUG_WORLD_PLAYBACK_OPERATION::PLACE_ROOM_PLAYER;
 	request.strTargetId = rootPatternId; request.iRunEpoch = runEpoch; request.strOccurrenceId = occurrenceId;
 	request.iRoomPlayerSlot = static_cast<std::uint8_t>(playerSlot);
@@ -1672,7 +1672,7 @@ bool_t Client::CPlayerController::Request_DebugReturnToKoukuStart()
 		return false;
 	}
 	Cancel_DebugPlayerPlacement();
-	m_debugPlacementWorld = LostArk::Shared::WORLD_ID::KAKULSAYDON_ARENA;
+	m_debugPlacementWorld = LostArk::Shared::WORLD_ID::KOUKUSAYDON_ARENA;
 	m_debugPlacementSucceeded = false;
 	if (!m_pCommandSink->Request_DebugReturnToKoukuStart(m_nextDebugPlacementSequence))
 	{
@@ -1802,7 +1802,7 @@ bool_t Client::CPlayerController::Update_DebugMarioJump(const bool_t gameplayCom
 		{
 			if (0u == m_pendingDebugMarioJumpSequence ||
 				result.iClientSequence != m_pendingDebugMarioJumpSequence ||
-				WORLD_ID::KAKULSAYDON_ARENA != result.eWorldId)
+				WORLD_ID::KOUKUSAYDON_ARENA != result.eWorldId)
 				continue;
 			m_pendingDebugMarioJumpSequence = 0u;
 			switch (result.eResult)

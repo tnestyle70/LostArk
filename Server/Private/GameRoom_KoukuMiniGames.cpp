@@ -31,7 +31,7 @@ bool LostArk::Server::CGameRoom::Begin_CardMaze(
 	const LostArk::Shared::PLAYER_ID claimantId)
 {
 	using namespace LostArk::Shared;
-	if (WORLD_ID::KAKULSAYDON_ARENA != m_eWorldId)
+	if (WORLD_ID::KOUKUSAYDON_ARENA != m_eWorldId)
 		return false;
 	if (CKoukuCardMazeRuntime::PHASE::HUNTING == m_KoukuCardMaze.Get_Phase())
 	{
@@ -133,7 +133,7 @@ void LostArk::Server::CGameRoom::Update_MarioBombContacts(
         player.MarioBombHitBirths.clear();
         player.iMarioBombContactStage = static_cast<std::uint8_t>(stage);
     }
-    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
+    if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
         player.TriggerMove.isActive || player.eAction == PLAYER_ACTION_STATE::DEAD ||
         player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::GRABBED) return;
     const double clockMs = double(updateTick) * (1000. / SERVER_TICK_HZ);
@@ -218,7 +218,7 @@ void LostArk::Server::CGameRoom::Update_MarioBouncingBallContacts(
         player.MarioBouncingBallContacts.clear();
         player.iMarioBouncingBallContactStage = static_cast<std::uint8_t>(stage);
     }
-    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
+    if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || !stage || !updateTick || !player.isCombatReady ||
         player.TriggerMove.isActive || player.eAction == PLAYER_ACTION_STATE::DEAD ||
         player.eAction == PLAYER_ACTION_STATE::FALLING || player.eAction == PLAYER_ACTION_STATE::GRABBED) return;
     const double clockMs = double(updateTick) * (1000. / SERVER_TICK_HZ);
@@ -531,7 +531,7 @@ bool LostArk::Server::CGameRoom::Spawn_KoukuCardRainSoldiers(
     using namespace LostArk::Shared;
     const auto owner = std::find_if(m_WorldEntities.begin(), m_WorldEntities.end(),
         [ownerId](const auto& entity) { return entity.iNetEntityId == ownerId; });
-    if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA || owner == m_WorldEntities.end() ||
+    if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA || owner == m_WorldEntities.end() ||
         owner->eKind != WORLD_BOOTSTRAP_KIND::BOSS || !owner->iCurrentHp || owner->strPatternId.empty() ||
         !m_ServerNavigation.Is_Loaded() || !m_GameplayCatalog.Get_ActiveRevision().Is_Valid())
     { m_strStatus = "Card rain soldiers preserved: owner or navigation unavailable"; return false; }
@@ -694,7 +694,7 @@ void LostArk::Server::CGameRoom::Update_CardMaze(std::uint32_t tick)
 {
 	using namespace LostArk::Shared;
 	using Maze = CKoukuCardMazeRuntime;
-	if (m_eWorldId != WORLD_ID::KAKULSAYDON_ARENA) return;
+	if (m_eWorldId != WORLD_ID::KOUKUSAYDON_ARENA) return;
 	if (m_KoukuCardMaze.Get_Phase() == Maze::PHASE::INACTIVE) { Update_CardMazeClownBox(tick); return; }
 	const bool anyLiving = std::any_of(m_Players.begin(), m_Players.end(), [](const auto& entry) {
 		return entry.second.eCardMazeRole != CARD_MAZE_ROLE::NONE && entry.second.iCurrentHp > 0u;

@@ -756,7 +756,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(move);
 
 		CServerTriggerSystem triggerSystem;
-		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
+		triggerSystem.Set_WorldId(WORLD_ID::KOUKUSAYDON_ARENA);
 		std::string triggerStatus;
 		tests.Require(
 			triggerSystem.Initialize({ trigger }, triggerStatus) &&
@@ -828,7 +828,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		trigger.TriggerActions.push_back(move);
 		CServerTriggerSystem triggerSystem;
 		triggerSystem.Set_HonourTriggerOnce(true);
-		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
+		triggerSystem.Set_WorldId(WORLD_ID::KOUKUSAYDON_ARENA);
 		std::string status;
 		tests.Require(triggerSystem.Initialize({trigger}, status),
 			"Initialize room-owned movement entry fixture");
@@ -1535,7 +1535,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		move.fDurationSeconds = 0.6f;
 		trigger.TriggerActions.push_back(move);
 		CServerTriggerSystem triggerSystem;
-		triggerSystem.Set_WorldId(WORLD_ID::KAKULSAYDON_ARENA);
+		triggerSystem.Set_WorldId(WORLD_ID::KOUKUSAYDON_ARENA);
 		std::string status;
 		tests.Require(triggerSystem.Initialize({ trigger }, status),
 			"Initialize the busy-retry movement fixture");
@@ -1706,7 +1706,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		/* AUTO_ENTRY_RULES by world and id: no player-movement box fires on entry, a
 		Mario* id in Kouku included. Crossings, jumps, exits and every changeLevel
 		box wait for G in every world. */
-		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA, WORLD_ID::BERN })
+		for (const WORLD_ID world : { WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::VALTAN_ARENA, WORLD_ID::BERN })
 		for (const char* const moveId : { "Mario0_Contract_Rule", "jump.contract.rule" })
 		{
 			WORLD_BOOTSTRAP_PLACEMENT move{};
@@ -1752,10 +1752,10 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 		the first mover does not spend the box for the second, and each can use it again
 		after the motion. A room-owned (Mario) box is admitted per player as well, so one
 		player's rejection never blocks the other. */
-		for (const WORLD_ID world : { WORLD_ID::KAKULSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
+		for (const WORLD_ID world : { WORLD_ID::KOUKUSAYDON_ARENA, WORLD_ID::VALTAN_ARENA })
 		{
 			WORLD_BOOTSTRAP_PLACEMENT crossing{};
-			crossing.strPlacementId = WORLD_ID::KAKULSAYDON_ARENA == world ?
+			crossing.strPlacementId = WORLD_ID::KOUKUSAYDON_ARENA == world ?
 				"Mario0_Contract_Crossing" : "Stage_Contract_Crossing";
 			crossing.eKind = WORLD_BOOTSTRAP_KIND::TRIGGER_BOX;
 			crossing.isEnabled = true;
@@ -1799,7 +1799,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_WorldTriggers(TESTS& te
 				triggerSystem.Activate_Interact(2u, crossing.strPlacementId, players, 420u, transfers, {}),
 				"Both players use the same crossing again after the motion, any number of times");
 
-			if (WORLD_ID::KAKULSAYDON_ARENA != world)
+			if (WORLD_ID::KOUKUSAYDON_ARENA != world)
 				continue;
 			const SERVER_TRIGGER_MOVE_ENTRY_HANDLER roomEntry =
 				[](const WORLD_BOOTSTRAP_PLACEMENT& placement, SERVER_PLAYER& target,

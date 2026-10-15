@@ -1,9 +1,8 @@
 #ifndef LOSTARK_SOURCE_STONE_SURFACE
 #define LOSTARK_SOURCE_STONE_SURFACE
 
-// bg_base_opa, actual floor01/streetfloor02 MIC permutation:
-// Base 5a58f84d..., Directional 568c3274..., LightMap f01c4d07....
-// Pure sampled-value math, shared by geometry and deferred light consumers.
+// bg_base_opa의 샘플값으로 석재 표면과 직접·베이크 조명을 계산하며 geometry/deferred에서 함께 사용한다.
+// 원본: Base 5a58f84d..., Directional 568c3274..., LightMap f01c4d07....
 struct SOURCE_STONE_PARAMETERS
 {
     float3 diffuseColor;

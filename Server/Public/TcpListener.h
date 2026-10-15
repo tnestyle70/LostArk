@@ -1,10 +1,15 @@
 #pragma once
 
+// listening socket handle과 Winsock 연결 API의 선언이다.
 #include <WinSock2.h>
+// Open 구현이 IPv4 주소 문자열을 바이너리 주소로 변환할 때 쓰는 선언이다.
 #include <WS2tcpip.h>
+// TCP 포트의 16비트 표현을 고정한다.
 #include <cstdint>
+// Open 호출 동안 bind 주소를 차용하며 구현에서 널 종료 문자열로 복사한다.
 #include <string_view>
 //server 플레이어 동기화 
+// AcceptThread의 handle 읽기와 ServerApp 종료 경로의 Close를 교차시킨다.
 #include <atomic>
 
 //Client가 서버에 접속할 수 있도록 특정 주소와 포트에서 "입구를 열고 기다리는 소켓"을 
@@ -55,30 +60,40 @@ namespace LostArk::Server
 
 	public:
 		//listen socket open
+		// ServerApp::Run이 호출한다. socket → 주소 해석 → bind → listen까지 성공한 뒤에만 handle을 소유한다.
+		// 중간 실패는 임시 socket을 닫고 Get_LastErrorCode로 원인을 남긴다. 이미 열렸으면 주소를 바꾸지 않고 true다.
 		bool Open(
 			std::string_view bindAddress,
 			std::uint16_t port);
+
+		// 주소를 생략하는 호출자는 모든 로컬 IPv4 인터페이스에서 지정 포트를 받는다.
 		bool Open(std::uint16_t port)
 		{
 			return Open("0.0.0.0", port);
 		}
 		
 		//실제 client 받아오기
+		// AcceptThread가 대기하며 성공한 연결 socket을 반환한다. 반환 뒤 소유권은 호출자가 ClientSession으로 넘긴다.
+		// 실패 시 INVALID_SOCKET이며 listener 자체의 소유권은 유지한다.
 		[[nodiscard]]
 		SOCKET Accept();
 
 		//socket close
+		// 종료 경로가 handle을 INVALID_SOCKET으로 먼저 교환한다. 중복 Close 중 한 호출만 실제 handle을 닫는다.
 		void Close();
 		//NoDiscard반환값이 반드시 있어야 한다.
+		// [[nodiscard]]는 반환값 존재를 강제하는 문법이 아니라 호출자가 결과를 버리면 경고해 달라는 표시다.
 
 		[[nodiscard]]
 		bool Is_Open() const
 		{
 			//atomic은 load()를 사용해야 함?
+			// load는 다른 스레드가 Close에서 교환한 handle 값을 안전하게 읽는다. 이후 소켓이 계속 열려 있음을 보장하지는 않는다.
 			return INVALID_SOCKET != m_hListenSocket.load();
 		}
 
 		[[nodiscard]]
+		// 가장 최근 기록된 Winsock 오류다. 여러 동작이 동시에 일어나면 특정 호출만의 오류 저장소는 아니다.
 		int Get_LastErrorCode() const
 		{
 			return m_iLastErrorCode.load();
@@ -88,6 +103,7 @@ namespace LostArk::Server
 		//SOCKET m_hListenSocket = INVALID_SOCKET;
 		//int m_iLastErrorCode = 0;
 		//기존 소켓 멤버를 교체한다
+		// handle 접근과 오류 값의 데이터 경쟁을 막는다. socket API 자체의 수명 판단은 각 호출 결과로 다시 확인한다.
 		std::atomic<SOCKET> m_hListenSocket{ INVALID_SOCKET };
 		std::atomic<int> m_iLastErrorCode{ 0 };
 	};

@@ -15,14 +15,14 @@ def fixture():
         sourceEndMs=0, playMs=play, playRate=1.0, endPolicy="HOLD_LAST_POSE")
         for i, (name, offset, source, play) in enumerate((("a", 0, 0, 992), ("b", 30, 200, 970), ("c", 0, 0, 1000)))]
     pattern = dict(patternId="P", actorProfileId="MN_RPCT_05", gateId="GATE1",
-        targetBossPlacementId="boss.kakulsaydon.g1.saydon", authoringStatus="PRODUCT",
+        targetBossPlacementId="boss.koukusaydon.g1.saydon", authoringStatus="PRODUCT",
         category="MECHANIC", displayName="Blend", nextStageOrdinal=4, nextAnimationOrdinal=4,
         nextPatternOccurrenceOrdinal=1, stages=[dict(stageId=f"STAGE_{i + 1}",
             actionId=f"P_ACTION_{i + 1}", stageKind="RECOVERY", durationMs=1000,
             animationOccurrences=[row]) for i, row in enumerate(animations)],
-        logicOccurrences=[dict(occurrenceId="P.logic.1", logicId="kakulsaydon.g1.logic.52",
+        logicOccurrences=[dict(occurrenceId="P.logic.1", logicId="koukusaydon.g1.logic.52",
             startMs=800, durationMs=400)])
-    logic = dict(logicId="kakulsaydon.g1.logic.52", displayName="Blend", logicType="TRIGGER", triggerKind="ANIMATION_BLEND")
+    logic = dict(logicId="koukusaydon.g1.logic.52", displayName="Blend", logicType="TRIGGER", triggerKind="ANIMATION_BLEND")
     return dict(patterns=[pattern], logics=[logic], presentationResources=[], playAllPatternIds=["P"], revision=1,
         bossArchetypeId=subject.BOSS_ARCHETYPE_ID, bossPlacementId=subject.BOSS_PLACEMENT_ID,
         encounterId=subject.ENCOUNTER_ID, areaId=subject.AREA_ID, fixedTickHz=subject.FIXED_TICK_HZ), pattern

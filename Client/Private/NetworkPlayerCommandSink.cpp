@@ -95,7 +95,7 @@ bool Client::CNetworkPlayerCommandSink::Request_DebugTeleportToPosition(
 
 bool Client::CNetworkPlayerCommandSink::Request_DebugReturnToKoukuStart(const std::uint32_t requestSequence)
 {
-	return CNetworkManager::Get().Send_DebugTeleportToPlacement(requestSequence, "player.spawn.kakul.party01");
+	return CNetworkManager::Get().Send_DebugTeleportToPlacement(requestSequence, "player.spawn.kouku.party01");
 }
 
 bool Client::CNetworkPlayerCommandSink::Consume_DebugTeleportResult(

@@ -1,0 +1,384 @@
+{
+  "scope": "Whole installed CModel versus new low geometry. Actual D3D11 pipeline query, position-only shader, cull none, no depth/material/scene/FPS equivalence.",
+  "adapter": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "nativeCModelSourceIndices": 5400,
+  "nativeCModelSourceVertices": 1147,
+  "nativeCModelSourceMeshes": 1,
+  "sourceMeshIndicesMatchOfflineParserExactly": true,
+  "sourcePositionMaximumErrorMeters": 5.9533476814976893e-08,
+  "inputsUnchanged": true,
+  "runs": [
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-00-start",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 26778
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 25846
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 12882,
+      "candidatePixels": 12768,
+      "lostPixels": 210,
+      "gainedPixels": 96,
+      "silhouetteIoU": 0.9764216366158114,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-01",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 27486
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 26640
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 13358,
+      "candidatePixels": 13250,
+      "lostPixels": 194,
+      "gainedPixels": 86,
+      "silhouetteIoU": 0.979172865218685,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-02",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-03",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-04",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-raw",
+      "cameraId": "cue-05-end",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 57138
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 312,
+        "psInvocations": 55132
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.1794134560092007,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 27355,
+      "candidatePixels": 26987,
+      "lostPixels": 505,
+      "gainedPixels": 137,
+      "silhouetteIoU": 0.9766477520733304,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-00-start",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 26778
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 25846
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 12882,
+      "candidatePixels": 12768,
+      "lostPixels": 210,
+      "gainedPixels": 96,
+      "silhouetteIoU": 0.9764216366158114,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-01",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 27486
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 26640
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 13358,
+      "candidatePixels": 13250,
+      "lostPixels": 194,
+      "gainedPixels": 86,
+      "silhouetteIoU": 0.979172865218685,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-02",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-03",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-04",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 0
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 0
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 0,
+      "candidatePixels": 0,
+      "lostPixels": 0,
+      "gainedPixels": 0,
+      "silhouetteIoU": null,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    },
+    {
+      "variant": "cliff02-weld-cache",
+      "cameraId": "cue-05-end",
+      "repeatPairs": 16,
+      "sameCountsAllPairs": true,
+      "original": {
+        "drawCalls": 1,
+        "iaVertices": 5400,
+        "iaPrimitives": 1800,
+        "vsInvocations": 1739,
+        "psInvocations": 57138
+      },
+      "candidate": {
+        "drawCalls": 1,
+        "iaVertices": 672,
+        "iaPrimitives": 224,
+        "vsInvocations": 226,
+        "psInvocations": 55132
+      },
+      "vertexCapacity": 199,
+      "indexRatio": 0.12444444444444444,
+      "vsRatio": 0.12995974698102358,
+      "actualIndexAndVsOneEighth": false,
+      "sourcePixels": 27355,
+      "candidatePixels": 26987,
+      "lostPixels": 505,
+      "gainedPixels": 137,
+      "silhouetteIoU": 0.9766477520733304,
+      "productMaterialFidelityVerified": false,
+      "fullSceneTargetVerified": false
+    }
+  ]
+}

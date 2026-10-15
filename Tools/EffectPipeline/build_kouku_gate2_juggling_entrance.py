@@ -199,7 +199,7 @@ def rope_trail():
         e['detail']['transform']['position'] = [0, .2, 0]
         emission(e, 0, 3.834584951400757, copy.deepcopy(e['sourceRecipe']['bursts']))
     doc['sourceModelPreview'] = dict(gateId='GATE2', actorProfileId='MN_RPCZ_00',
-        targetBossPlacementId='boss.kakulsaydon.g2.kouku', animations=[dict(runtimeClip='rpcz00_att_battle_7_01',
+        targetBossPlacementId='boss.koukusaydon.g2.kouku', animations=[dict(runtimeClip='rpcz00_att_battle_7_01',
             startOffsetMs=0, sourceStartMs=2379, playMs=3835, playRate=1, endPolicy='HOLD_LAST_POSE')])
     return doc, dict(sourceAction=4219719, sourceNotify='action-4219719/stage-000/notify-015',
         occurrenceStartMs=2379, occurrenceDurationMs=3835, sourceSocket='FX_State_01',

@@ -27,17 +27,17 @@ BODIES = {
 }
 # Explicit original inputs remain stable after WorldSequence starts using bodies.
 SPECS = (
-    ("kouku", "gate2.intro.kouku", "Map/KakulSaydon/Gate2Intro/Kouku/Kouku.wmodel", "gate2_intro_27s"),
-    ("kouku", "gate2.clear.kouku", "Map/KakulSaydon/SourceSequences/kouku.gate2.clear/Kouku/Kouku.wmodel", "kouku.gate2.clear.kouku"),
-    ("kouku", "gate2.maze.kouku", "Map/KakulSaydon/SourceSequences/kouku.gate2.maze/Kouku/Kouku.wmodel", "kouku.gate2.maze.kouku"),
-    ("saydon", "gate2.intro.saydon", "Map/KakulSaydon/Gate2Intro/Saydon/Saydon.wmodel", "gate2_intro_27s"),
-    ("saydon", "gate1.full.saydonbook", "Map/KakulSaydon/SourceSequences/kouku.gate1.full/SaydonBook/SaydonBook.wmodel", "kouku.gate1.full.saydonbook"),
-    ("saydon", "gate1.full.saydonstage", "Map/KakulSaydon/SourceSequences/kouku.gate1.full/SaydonStage/SaydonStage.wmodel", "kouku.gate1.full.saydonstage"),
-    ("saydon", "gate1.full.saydonfinale", "Map/KakulSaydon/SourceSequences/kouku.gate1.full/SaydonFinale/SaydonFinale.wmodel", "kouku.gate1.full.saydonfinale"),
-    ("saydon", "gate2.clear.saydonarrival", "Map/KakulSaydon/SourceSequences/kouku.gate2.clear/SaydonArrival/SaydonArrival.wmodel", "kouku.gate2.clear.saydonarrival"),
-    ("saydon", "gate3.intro.saydonarrival", "Map/KakulSaydon/SourceSequences/kouku.gate3.intro/SaydonArrival/SaydonArrival.wmodel", "kouku.gate3.intro.saydonarrival"),
-    ("saydon", "bingo.encore.saydon", "Map/KakulSaydon/SourceSequences/kouku.bingo.encore/Saydon/Saydon.wmodel", "kouku.bingo.encore.saydon"),
-    ("large_saydon", "gate2.clear.largesaydon", "Map/KakulSaydon/SourceSequences/kouku.gate2.clear/LargeSaydon/LargeSaydon.wmodel", "kouku.gate2.clear.largesaydon"),
+    ("kouku", "gate2.intro.kouku", "Map/KoukuSaydon/Gate2Intro/Kouku/Kouku.wmodel", "gate2_intro_27s"),
+    ("kouku", "gate2.clear.kouku", "Map/KoukuSaydon/SourceSequences/kouku.gate2.clear/Kouku/Kouku.wmodel", "kouku.gate2.clear.kouku"),
+    ("kouku", "gate2.maze.kouku", "Map/KoukuSaydon/SourceSequences/kouku.gate2.maze/Kouku/Kouku.wmodel", "kouku.gate2.maze.kouku"),
+    ("saydon", "gate2.intro.saydon", "Map/KoukuSaydon/Gate2Intro/Saydon/Saydon.wmodel", "gate2_intro_27s"),
+    ("saydon", "gate1.full.saydonbook", "Map/KoukuSaydon/SourceSequences/kouku.gate1.full/SaydonBook/SaydonBook.wmodel", "kouku.gate1.full.saydonbook"),
+    ("saydon", "gate1.full.saydonstage", "Map/KoukuSaydon/SourceSequences/kouku.gate1.full/SaydonStage/SaydonStage.wmodel", "kouku.gate1.full.saydonstage"),
+    ("saydon", "gate1.full.saydonfinale", "Map/KoukuSaydon/SourceSequences/kouku.gate1.full/SaydonFinale/SaydonFinale.wmodel", "kouku.gate1.full.saydonfinale"),
+    ("saydon", "gate2.clear.saydonarrival", "Map/KoukuSaydon/SourceSequences/kouku.gate2.clear/SaydonArrival/SaydonArrival.wmodel", "kouku.gate2.clear.saydonarrival"),
+    ("saydon", "gate3.intro.saydonarrival", "Map/KoukuSaydon/SourceSequences/kouku.gate3.intro/SaydonArrival/SaydonArrival.wmodel", "kouku.gate3.intro.saydonarrival"),
+    ("saydon", "bingo.encore.saydon", "Map/KoukuSaydon/SourceSequences/kouku.bingo.encore/Saydon/Saydon.wmodel", "kouku.bingo.encore.saydon"),
+    ("large_saydon", "gate2.clear.largesaydon", "Map/KoukuSaydon/SourceSequences/kouku.gate2.clear/LargeSaydon/LargeSaydon.wmodel", "kouku.gate2.clear.largesaydon"),
 )
 DONOR_TO_BODY = {donor: BODIES[kind] for kind, _, donor, _ in SPECS}
 

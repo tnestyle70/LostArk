@@ -3,7 +3,7 @@
   <PropertyGroup>
     <CL_MPCount Condition="'$(CL_MPCount)'==''">$([System.Math]::Min(8, $([System.Environment]::ProcessorCount)))</CL_MPCount>
     <LostArkUsePch Condition="'$(LostArkUsePch)'=='' and '$(Platform)'=='x64'">true</LostArkUsePch>
-    <LostArkPchHeader>$(MSBuildThisFileDirectory)CppStandardPch.h</LostArkPchHeader>
+    <LostArkPchHeader>$(MSBuildThisFileDirectory)PCH.h</LostArkPchHeader>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(LostArkUsePch)'=='true' and '$(Platform)'=='x64'">
     <ClCompile>

@@ -1,34 +1,41 @@
-#include "InteractKeyPromptView.h"
+﻿#include "InteractKeyPromptView.h"
 
-#pragma push_macro("new")
-#undef new
+// 행동 문구의 White 색상 상수를 사용한다.
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
+// 캐릭터의 Transform과 머리 위치를 조회한다.
 #include "Character.h"
+// 현재 View/Projection·viewport와 글자 폭을 조회한다.
 #include "GameInstance.h"
+// Area의 World 문서를 찾기 위한 Data 경로를 구한다.
 #include "MapAssetCatalog.h"
+// 화면 크기에 맞는 글꼴을 선택하고 중앙 정렬 문구를 그린다.
 #include "UILabelFont.h"
+// 아이콘·키·등장 효과 슬롯을 만들고 위치·이미지·표시를 갱신한다.
 #include "UILayoutRuntime.h"
+// 글자를 HUD 계층으로 표시해 상위 창의 가림 규칙을 사용한다.
 #include "UITextOcclusion.h"
+// viewer world의 trigger 배치와 MOVE_PLAYER 이벤트를 읽는다.
 #include "WorldGameplayDocument.h"
+// 캐릭터 머리 anchor와 월드→화면 투영을 재사용한다.
 #include "WorldPlayerNameplateView.h"
 
+// 상자 로컬 축 검사에 삼각함수와 절댓값을 사용한다.
 #include <cmath>
 
 namespace
 {
-	/* Retail stage px (1920x1080) of MasterKeyComponent. */
+	// MasterKeyComponent의 1920×1080 기준 픽셀 치수다.
 	constexpr f32_t RETAIL_HEIGHT = 1080.f;
-	constexpr f32_t LINE_OFFSET_ABOVE_POINT = 50.f;		// updatePos: pivot bottom-left, (0, 50)
-	constexpr f32_t TEXT_PX = 14.f;						// descriptionTF stringSize
-	constexpr f32_t DESC_TOP_BELOW_ICON_CENTER = 29.f;	// descriptionTF y vs the icon's centre
-	constexpr f32_t ICON_W = 70.f * 0.7428589f;			// iconType_mc 70x69 at (0.7429, 0.7536)
+	constexpr f32_t LINE_OFFSET_ABOVE_POINT = 50.f;		// 투영점에서 글자 하단까지의 위쪽 간격이다.
+	constexpr f32_t TEXT_PX = 14.f;						// descriptionTF의 원본 글자 크기다.
+	constexpr f32_t DESC_TOP_BELOW_ICON_CENTER = 29.f;	// 아이콘 중심에서 설명 상단까지의 간격이다.
+	constexpr f32_t ICON_W = 70.f * 0.7428589f;			// iconType_mc 원본 크기에 저작 배율을 적용한다.
 	constexpr f32_t ICON_H = 69.f * 0.7536011f;
-	constexpr f32_t KEY_H = 18.f;						// inline Shared_GlobalInputDeviceKey_G
+	constexpr f32_t KEY_H = 18.f;						// G 키 이미지의 원본 높이다.
 	constexpr f32_t KEY_W = 18.f * 34.f / 35.f;
-	constexpr f32_t KEY_GAP = 4.f;						// the " " between {0} and {1}
-	constexpr f32_t FX_SIZE = 300.f;					// effectMc show shapes, centred
+	constexpr f32_t KEY_GAP = 4.f;						// 행동 문구와 G 키 사이의 공백이다.
+	constexpr f32_t FX_SIZE = 300.f;					// 아이콘 중심에 놓는 등장 효과 크기다.
 	constexpr f32_t FX_FPS = 40.f;
 	constexpr int32_t FX_FRAMES = 5;
 	constexpr f32_t REF_WIDTH = 1280.f;
@@ -40,8 +47,7 @@ namespace
 		"UI/Interact/ShowFx_0.png", "UI/Interact/ShowFx_1.png", "UI/Interact/ShowFx_2.png",
 		"UI/Interact/ShowFx_3.png", "UI/Interact/ShowFx_4.png" };
 
-	/* GameMsg tip.name.interactionkey_godown / climb / tightrope / check / move / pull_lever,
-	ASCII-escaped. */
+	// 행동별 GameMsg 문구를 wide escape로 보관한다.
 	const wchar_t* Action_Text(const uint8_t iAction)
 	{
 		switch (iAction)
@@ -70,6 +76,7 @@ namespace
 	}
 }
 
+// Level의 Area ID로 viewer.world.json을 읽고 표시용 상자 값만 복사한다.
 void Client::CInteractKeyPromptView::Initialize(
 	ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
 	const uint32_t iOwnerLevelIndex, const char* pAreaId)
@@ -102,8 +109,7 @@ void Client::CInteractKeyPromptView::Initialize(
 		Trigger.vCenter = Placement.position;
 		Trigger.vHalfExtents = Placement.halfExtents;
 		Trigger.fYawDegrees = Placement.yawDegrees;
-		/* An authored action wins: a box whose own move does not describe what the player
-		is doing (the Valtan ledge runs an encounter, not a move) names its icon instead. */
+		// 명시한 interactAction을 이동 높이에서 추정한 행동보다 우선한다.
 		if (!Placement.strInteractAction.empty())
 		{
 			if ("godown" == Placement.strInteractAction) Trigger.eAction = ACTION::GODOWN;
@@ -112,8 +118,7 @@ void Client::CInteractKeyPromptView::Initialize(
 			else if ("check" == Placement.strInteractAction) Trigger.eAction = ACTION::CHECK;
 			else if (0 == Placement.strInteractAction.rfind("dock:", 0) && Placement.strInteractAction.size() > 5u)
 			{
-				/* "dock:<name>": the UTF-8 place name is the action line, like the original's
-				   "<place> [G]" at a ship dock. */
+				// dock:<name>의 UTF-8 장소명을 wide 문구로 바꾼다. 변환할 수 없는 행은 건너뛴다.
 				const std::string strLabel = Placement.strInteractAction.substr(5u);
 				const int iWide = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, strLabel.c_str(),
 					static_cast<int>(strLabel.size()), nullptr, 0);
@@ -157,6 +162,7 @@ void Client::CInteractKeyPromptView::Hide()
 	m_fShowSeconds = -1.f;
 }
 
+// 유효한 대상과 머리 투영점을 찾은 뒤 화면 슬롯과 텍스트 위치를 함께 갱신한다.
 void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	const std::shared_ptr<CCharacter>& pLocalCharacter, const std::string& strOfferedTriggerId,
 	const bool_t bShown)
@@ -175,8 +181,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	}
 	if (nullptr == pTrigger && nullptr != pLocalCharacter->Get_Transform())
 	{
-		/* No Server offer: a box that fires on entry still shows the icon it authored
-		while the player stands in it. */
+		// 제안 ID에 대응하는 상자가 없으면 자동 발동 상자 내부의 아이콘 표시를 검사한다.
 		float3_t vPlayer{};
 		XMStoreFloat3(&vPlayer, pLocalCharacter->Get_Transform()->Get_State(STATE::POSITION));
 		for (const TRIGGER& Trigger : m_Triggers)
@@ -187,7 +192,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 			const f32_t fCos = cosf(fRadians), fSin = sinf(fRadians);
 			const f32_t fDeltaX = vPlayer.x - Trigger.vCenter.x;
 			const f32_t fDeltaZ = vPlayer.z - Trigger.vCenter.z;
-			/* Into the box's own axes, the way the Server tests the same OBB. */
+			// 위치를 yaw의 역방향으로 돌려 상자의 로컬 X/Z 범위와 비교한다.
 			const f32_t fLocalX = fDeltaX * fCos + fDeltaZ * fSin;
 			const f32_t fLocalZ = -fDeltaX * fSin + fDeltaZ * fCos;
 			if (fabsf(fLocalX) <= Trigger.vHalfExtents.x &&
@@ -211,6 +216,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	const float2_t vViewport = Instance.Get_ViewportSize();
 	float3_t vHead{};
 	float2_t vPoint{};
+	// 카메라·머리 anchor·투영이 준비되지 않으면 이전 표시를 숨긴다.
 	if (nullptr == pView || nullptr == pProj || vViewport.y <= 0.f ||
 		!CWorldPlayerNameplateView::Try_GetHeadAnchor(*pLocalCharacter, vHead) ||
 		!CWorldPlayerNameplateView::Try_ProjectWorldPosition(vHead, *pView, *pProj, vViewport, vPoint))
@@ -221,7 +227,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 
 	if (m_strShownTriggerId != pTrigger->strPlacementId)
 	{
-		/* A new offer replays the "show" glow and swaps the action icon. */
+		// 대상 ID가 바뀔 때만 등장 효과를 재시작하고 아이콘·문구를 교체한다.
 		m_strShownTriggerId = pTrigger->strPlacementId;
 		m_eAction = pTrigger->eAction;
 		m_strLabel = pTrigger->strLabel;
@@ -233,7 +239,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 		m_fShowSeconds += fTimeDelta;
 	}
 
-	/* Retail px -> screen px at this viewport; slots take reference units. */
+	// 1080p 치수를 화면 픽셀로, 이미지 슬롯 위치를 1280×720 기준 좌표로 바꾼다.
 	const f32_t fPx = vViewport.y / RETAIL_HEIGHT;
 	const f32_t fToRefX = REF_WIDTH / vViewport.x;
 	const f32_t fToRefY = REF_HEIGHT / vViewport.y;
@@ -243,7 +249,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	m_fTextCenterY = (fLineTop + fLineBottom) * 0.5f;
 	const f32_t fIconCenterY = fLineTop - DESC_TOP_BELOW_ICON_CENTER * fPx;
 
-	/* "{0} {1}": the name, a space, the keycap, centred on the point together. */
+	// 문구·공백·G 키 전체 폭을 합쳐 투영점 중앙에 한 줄로 배치한다.
 	f32_t fScale = 1.f;
 	const wstring_t strFont = UILabelFont::Resolve(FONT_YG760, m_fTextPx, fScale);
 	const wchar_t* pActionText = ACTION::DOCK == m_eAction && !m_strLabel.empty() ?
@@ -260,7 +266,7 @@ void Client::CInteractKeyPromptView::Update(const f32_t fTimeDelta,
 	m_pView->Set_SlotVisible("IKP_Icon", true);
 	m_pView->Set_SlotVisible("IKP_Key", true);
 
-	/* effectMc "show": five 40 fps frames centred on the icon, then gone. */
+	// 등장 효과는 40fps의 다섯 장을 표시한 뒤 숨긴다.
 	const int32_t iFxFrame = m_fShowSeconds >= 0.f ? static_cast<int32_t>(m_fShowSeconds * FX_FPS) : FX_FRAMES;
 	if (iFxFrame < FX_FRAMES)
 	{
@@ -294,7 +300,7 @@ void Client::CInteractKeyPromptView::Render_Text() const
 {
 	if (!m_bVisible)
 		return;
-	/* YG760 14 px white with the retail black blur (blurSize 2, strength 3) read as an outline. */
+	// YG760 흰 글자 주변 여덟 위치에 검은 글자를 그려 외곽선을 만든다.
 	CUITextLayerScope HudText(UI_TEXT_LAYER::HUD);
 	const wchar_t* pText = ACTION::DOCK == m_eAction && !m_strLabel.empty() ?
 		m_strLabel.c_str() : Action_Text(static_cast<uint8_t>(m_eAction));

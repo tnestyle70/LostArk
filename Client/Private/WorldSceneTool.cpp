@@ -4,10 +4,7 @@
 #ifdef _DEBUG
 #include "DataJson.h"
 #include "GameInstance.h"
-#pragma push_macro("new")
-#undef new
 #include "Engine_RenderTypes.h"
-#pragma pop_macro("new")
 #include "MainApp.h"
 #include "MapAuthoringHost.h"
 #include "MapAssetObject.h"

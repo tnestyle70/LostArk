@@ -1,149 +1,31 @@
 #pragma once
-
+//64 bit 표현을 위한 cstddef, cstdint? 정확히 어떤 부분들을 지원해주는 걸까?
 #include <cstddef>
 #include <cstdint>
 
+//LostArk::Shared 안에서 관리가 되고, 해당 packet이 사용된다.
+
 namespace LostArk::Shared
 {
-	/* 72 combines main v71 card-maze snapshots with FINISH_OWNER.
-	Both peers must use 72; neither previous branch supports the combined contract.
-	71 adds suit-tagged shard feedback; 70 adds exit, march and blackout state.
-	Main v69 adds card-maze role, hunting suit and kill counts.
-	Branch v69 adds FINISH_OWNER so natural completion preserves authored WORLD tails.
-	Both peers must use 69; 68 cannot decode the new owner lifecycle operation.
-	68 combines owned bundle/TRS world cues with main Mario and world playback.
-	Main packet identities 72..76 are preserved; bundle state appends as 77.
-	Neither independently published v66 nor v67 peer is wire-compatible.
-	67 adds absolute position, rotation and scale to owned WORLD placement cues.
-	66 adds bundle/member ownership and exact World cue identities.
-	65 adds a target World Object instance to Server world-sequence motion events.
-	64 combines the main v60 interact-trigger packet identities with the
-	v63 Kouku HUD/scene cues and World sequence lifetime. Neither previous
-	peer is wire-compatible; main packet identities stay in their old order.
-	63 restricts Mario movement/jump intent to typed left/right/stop; only
-	the Server resolves segment axes. 62 adds Server-owned Mario stage state
-	and a direction/stop input packet.
-	61 adds the bounded Debug Mario jump intent and Server verdict. The
-	Server owns the landing and movement; Release keeps a typed rejection.
-	60 combines two contracts that each shipped independently as 59:
-	the interact-gated trigger box and the Debug KoukuSaydon madness-form
-	toggle. Neither v59 peer is wire-compatible with the combined enum.
-	59 adds the interact-gated trigger box: the Server offers a prompt to
-	the one session standing in such a box, and that session asks for the box
-	to run. The Server still owns entry, validation and the action itself.
-	58 adds correlated Debug teleport-to-ground intent and Server verdicts.
-	57 pins the authored KoukuSaydon Product source revision independently
-	from the gameplay bootstrap hash across request, verdict, and lifecycle.
-	56 adds the exact-scope Debug KoukuSaydon animation-pattern audition
-	request/result/lifecycle family. Release peers keep these packet identities
-	known and reject mutation through typed policy.
-	55 integrates the independently shipped v54 portal-rush route fields
-	and raid-entry vote packet family. Neither v54 peer is wire-compatible
-	with the combined contract.
-	53 adds generic boss response progress and threshold levels to the
-	world-entity boss combat snapshot.
-	52 adds the Server-active replacement definition revision to exact
-	Valtan Restart requests and verdict echoes.
-	49 requires stable-ID Valtan Complete Play to carry the exact active
-	definition revision that the Client observed before requesting mutation.
-	48 adds exact-occurrence Valtan Restart CAS identity and its pinned
-	definition revision to the stable-ID audition wire.
-	47 admits the KakulSaydon Arena as a Server-owned shared world.
-	46 adds a reliable semantic combat-object presentation event. The Server
-	transmits hit identity and world occurrence only; Client data resolves the
-	actual Sound/Effect asset.
-	45 adds the Raid Clear screen's C2S_RETURN_TO_BERN command.
-	44 adds an immutable owner boss identity to world-entity spawn and a
-	reliable typed death reason to world-entity despawn.
-	43 adds live Product/Flow Next adoption with an observed predecessor.
-	42 adds resetless Valtan next-pattern reservation and correlated control.
-	41 combines same-room party invite/accept and roster sync with the
-	expanded world destruction live-event bound. Each feature independently
-	used 40 before integration, so neither v40 peer is wire-compatible.
-	39 adds bounded Debug Valtan pattern-flow authoring playback.
-	51 adds Server-owned Pattern bind and silence deadlines to player snapshots.
-	74 adds the bingo bomb phases to the board snapshot.
-	75 adds the bingo hammer anchor and phase clock.
-	76 adds the Server-selected Mario source layout to player snapshots.
-	77 adds the world-object attachment slot: a grabbed player may hang from a
-	World Object instead of a boss hand, so the snapshot admits any known slot.
-	A v76 peer rejects the new slot value and drops the snapshot.
-	78 combines the v77 snapshot with Server-owned fear state, deadline and
-	presentation identity. The independent v73 fear branch and v77 main are
-	both incompatible with this combined layout.
-	80 combines the independent v79 branches: card maze entry-hidden flags
-	and Mario popped-ball (U16) / curse-released (U8) snapshot masks.
-	Neither v79 branch is compatible with this combined contract.
-	81 adds processed MOVE sequence, effective speed, prediction permission and
-	the next authoritative waypoint to player snapshots.
-	82 appends the ridden vehicle to player snapshots and the riding toggle
-	request/verdict. Both peers need 82. */
-	// 83 adds Mario entry test state and retained entry presentation to bundles.
-	// 84 adds Server-authorized Mario return intent and typed result.
-	// 86 adds occurrence-scoped room player arrival to debug world playback.
-	// 89 adds the worn honor title to player snapshots and the title change request/verdict.
-	// 93 combines main gate-progress votes with the fixed-roster Kouku raid
-	// preparation and shared Sequence clock. Earlier peers are incompatible.
-	// 94 admits the Maharaka Paradise island as a Server-owned shared world.
-	// 95 adds the Gate 3 arrival-to-combat entry wait phase; earlier peers reject it.
-	// 96 adds the explicit Gate 3 entry vote; earlier peers reject its intent.
-	// 97 adds the raid-clear award contributions (S2C_RAID_MVP_RESULT) and equipment:
-	// the inventory entry's equipped slot and the C2S_SET_EQUIPMENT request.
-	// 98 carries the retail damage-text hit flag on every damage event, so a potion
-	// heal draws in its own colour instead of reading as an ordinary hit.
-	// 99 adds the Server-authoritative invulnerability-zone presentation pulse.
-	// 100 adds the Debug-only wave-monster re-summon request (F1 "Normal Monster 1/2").
-	// 101 appends WALL_CLIMB to the replicated player action state.  The Server
-	// owns the original Valtan TrackMove position samples; the Client uses this
-	// distinct state to keep an idle presentation instead of playing a terrain hop.
-	// Earlier peers do not know the appended action identity.
-	// 102 joins the Guardian Knight ember orbs, locked sockets and pool size
-	// with the wave re-summon and wall-climb wire contracts.
-	// 104 appends the Debug-only F1 Esther summon request that names one Esther
-	// (Sillian, Wei, Bahuntur, Ninav, Inanna) outside the world's roster slots.
-	// 105 combines vehicle-flight move/snapshot fields with the Debug Esther request.
-	// The flight branch and main each used 104 for incompatible wire contracts.
-	// Both peers must use 105; all existing packet identities are preserved.
-	// 109 combines Retail combat snapshots, gate-kill commands and shared
-	// F1 cooldown policy. Both peers must use this complete wire contract.
-	// 110 carries the Server ballistic hit-reaction phase in PLAYER_SNAPSHOT.
-	// 112 maps owned WORLD cues to their Server combat body for hit/hover presentation.
-	// 113 adds validated same-room ground ping intent and reliable room broadcast.
-	// 114 carries the Server-selected Mario colour marker over the assigned player.
-	// 115 appends authoritative stagger success and Mario hit-source presentation to DAMAGE_EVENT.
-	// 116 carries explicit guide actors, a separate companion roster, dialogue and decision traces.
-	// 117 carries the Server-selected mechanic gauge mode and remaining/maximum.
-	// 118 carries the immutable Server pattern landing anchor on world snapshots.
-	// 119 adds authoritative World pickups and the Ronaun guard occurrence.
-	// 120 combines Valtan anchors/pickups, NPC shop silver/gold, Waterpang and live numeric balance.
-	// Neither independently published 118 nor 119 peers support this combined layout.
-	// 121 carries each Mario entrant's required colour and matching-ball progress.
-	// 122 carries each player's latest Waterpang water gun cast (skill id and Server start tick).
-	// 124 combines saved-character restore, raid EXIT votes and ground-target battle items.
-	// 125 merges the 122 water gun cast wire with the 124 main line; no packet numbers were renumbered.
-	// Independently released 125 peers carry water gun casts, avatar items, or minigame deadlines.
-	// 126 combines all three layouts and rejects those incompatible 125 peers.
-	// Independently released 127 branches add voice, durability, or Waterpang AI.
-	// Colosseum 128 adds its world and queue on top of 126. Those peers cannot
-	// decode the combined layout. 129 carries all four contracts together.
-	// Independent 130 branches add per-item durability or match-isolated Colosseum/Guide contracts.
-	// 132 combines them with the revised Colosseum queue/start layout and rejects older peers.
-	// 133 carries character capture barriers and authoritative per-item upgrade levels.
 	// 해당 네트워크 프로토콜 버전이 맞지 않아서 계속해서 에러가 났었다.
 	// 모든 팀원들과 같이 protocol 버전을 맞춰서 서버와의 계약을 동일하게 맞춰야 한다.
-	inline constexpr std::uint16_t NETWORK_PROTOCOL_VERSION = 133;
+	// 이 버전 변수가 영향을 받는 곳은? 반대로 server의 어떤 부분이 수정되면 이 protocol version이 바뀌도록 설계가 되어있는 거지? 
+	//uint8_t로 바꿔도 아무런 문제가 없는 거 맞지? 지금은 133인데 256까지 8bit가 2^8으로 표현이 가능하니까 그런 거잖아.
+	inline constexpr std::uint8_t NETWORK_PROTOCOL_VERSION = 133;
 
-	enum class WORLD_ID : std::uint16_t
+	//이거 uint8_t로 바꿔도 문제 없지? 
+	enum class WORLD_ID : std::uint8_t
 	{
 		BERN = 1,
 		VALTAN_ARENA = 2,
 		TRAINING_GROUND = 3,
 		CHARACTER_SELECT_ARENA = 4,
-		KAKULSAYDON_ARENA = 5,
+		KOUKUSAYDON_ARENA = 5,
 		MAHARAKA = 6,
 		COLOSSEUM = 7,
 		END
 	};
+
 	//World 진입에 대한 요청을 확인할 때 사용하는 API? 월드 진입에 대한 검증을 할 때 호출한다.
 	[[nodiscard]]
 	constexpr bool Is_Known_World_Id(const WORLD_ID worldId)
@@ -152,7 +34,7 @@ namespace LostArk::Shared
 			WORLD_ID::VALTAN_ARENA == worldId ||
 			WORLD_ID::TRAINING_GROUND == worldId ||
 			WORLD_ID::CHARACTER_SELECT_ARENA == worldId ||
-			WORLD_ID::KAKULSAYDON_ARENA == worldId ||
+			WORLD_ID::KOUKUSAYDON_ARENA == worldId ||
 			WORLD_ID::MAHARAKA == worldId ||
 			WORLD_ID::COLOSSEUM == worldId;
 	}
@@ -173,6 +55,7 @@ namespace LostArk::Shared
 	};
 
 	//유효한 캐릭터 클래스인지를 검증하는 API
+	//constexpr은 컴파일 타임에서 결정되는 함수? 왜 이 함수는 constexpr로 선언된 걸까?
 	[[nodiscard]]
 	constexpr bool Is_Known_Character_Class(const CHARACTER_CLASS_ID characterClass)
 	{
@@ -185,17 +68,17 @@ namespace LostArk::Shared
 		ACTIVE = 0,
 		COMBO = 1,
 		HOLD = 2,
-		// Two stages whose advance is a hit taken, not a press: the first stage
-		// guards and the second is the counter it buys.
+		// 첫 단계가 방어하고 피격으로 다음 counter 단계에 진입한다. 추가 키 입력으로 진행하는 combo와 구분한다.
+		//카운터 - Q W E R이 카운터에 해당하는 스킬이다. 
+		//실제 스킬에 대한 판정은 어디에서 수행?
 		COUNTER = 3,
-		/* One clip that stands the player up out of KNOCKDOWN; startable in that
-		action state only and never anywhere else. */
+		/* KNOCKDOWN 상태에서 일어나는 단일 clip이며 해당 상태에서만 시작한다. */
+		//KNOCKDOWN 기준으로 일어날 때, 사용되는 skill  kind
 		STANDUP = 4,
 		END
 	};
 
-	// A protocol value may be reserved before its runtime bundle exists. Only
-	// classes accepted here may enter a world on the current build.
+	// protocol에 값이 있어도 runtime bundle이 준비되지 않을 수 있어 실제 입장 지원 class를 별도로 제한한다.
 	[[nodiscard]]
 	constexpr bool Is_Supported_Playable_Character_Class(
 		const CHARACTER_CLASS_ID characterClass)
@@ -209,16 +92,24 @@ namespace LostArk::Shared
 			CHARACTER_CLASS_ID::GUARDIANKNIGHT == characterClass;
 	}
 
-	// v116: server-owned companion identity, separate party companion, prompt and trace.
-	enum class PLAYER_CONTROL_KIND : std::uint8_t { HUMAN = 0,
-		GUIDE_AI = 1, WATERPANG_AI = 2, COLOSSEUM_MERCENARY_AI = 3 };
+	// 인간과 Server가 조종하는 guide·Waterpang·Colosseum AI를 구분하는 복제 값이다.
+	//PLAYER를 컨트롤하는 AI의 Kind
+	enum class PLAYER_CONTROL_KIND : std::uint8_t 
+	{ 
+		HUMAN = 0,
+		GUIDE_AI = 1, 
+		WATERPANG_AI = 2, 
+		COLOSSEUM_MERCENARY_AI = 3 
+	};
 
 	//캐릭터에 대한 조작을 어떤 방식으로 하는 지에 대한 선택을 한다.
 	constexpr bool Is_Known_Player_Control_Kind(PLAYER_CONTROL_KIND kind)
-	{ return kind == PLAYER_CONTROL_KIND::HUMAN ||
+	{ 
+		return kind == PLAYER_CONTROL_KIND::HUMAN ||
 		kind == PLAYER_CONTROL_KIND::GUIDE_AI ||
 		kind == PLAYER_CONTROL_KIND::WATERPANG_AI ||
-		kind == PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI; }
+		kind == PLAYER_CONTROL_KIND::COLOSSEUM_MERCENARY_AI;
+	}
 
 	//받는 타입에 대한 정보를 정리한 부분이다.
 	enum class PACKET_TYPE : std::uint16_t
@@ -226,11 +117,14 @@ namespace LostArk::Shared
 		INVALID,
 
 		C2S_ENTER_WORLD,
+
 		S2C_ENTER_ACCEPTED,
 		S2C_ENTER_REJECTED,
 		S2C_PLAYER_SPAWNED,
 		S2C_WORLD_ENTITY_SPAWNED,
+
 		C2S_SPAWN_WORLD_ENTITY,
+
 		S2C_WORLD_ENTITY_SPAWN_RESULT,
 
 		C2S_MOVE,
@@ -239,13 +133,10 @@ namespace LostArk::Shared
 		C2S_UPDATE_SKILL_AIM,
 		C2S_USE_ESTHER_SKILL,
 		C2S_REVIVE_PLAYER,
-		// Debug/Development-build test aid only: instantly zeroes the caster's own HP and
-		// sets PLAYER_ACTION_STATE::DEAD, so a death-screen tester does not have to survive
-		// a real hit. The wire type exists in every build; the Server body that would touch
-		// gameplay state is compiled out in Release (see GameRoom.cpp's
-		// Handle_DebugKillSelf), matching Evaluate_ValtanAudition's convention.
+
 		C2S_DEBUG_KILL_SELF,
 		C2S_CHANGE_CHARACTER_CLASS,
+
 		S2C_CHARACTER_CLASS_CHANGE_RESULT,
 		S2C_WORLD_SNAPSHOT,
 
@@ -258,78 +149,45 @@ namespace LostArk::Shared
 		S2C_WORLD_DESTRUCTION_FULL_SYNC,
 		S2C_WORLD_DESTRUCTION_DELTA,
 
-		// Repeatable encounter props such as the four pillars. One message
-		// carries the whole current slot set, so a late joiner is correct
-		// without replaying any past spawn or shatter.
 		S2C_ENCOUNTER_PROP_SYNC,
 
-		// Debug Valtan pattern audition. Both configurations know these types so
-		// a Release Server answers an explicit rejection instead of closing the
-		// session on an unknown frame; only a Debug Server ever accepts one.
 		C2S_VALTAN_AUDITION_REQUEST,
 		S2C_VALTAN_AUDITION_RESULT,
 
-		// Debug-only inventory slice. The Server owns the truth; F1 Give Item
-		// requests one catalog item and the Server answers with the full
-		// current inventory, the same replace-in-full shape a late joiner or a
-		// re-entering session receives on world entry.
 		C2S_DEBUG_GIVE_ITEM,
 		S2C_INVENTORY_SNAPSHOT,
 
-		// A consumable used from a quick slot (Item_1..4). The Server validates
-		// ownership + heal amount and answers with the player's next
-		// S2C_WORLD_SNAPSHOT (HP) and an updated S2C_INVENTORY_SNAPSHOT
-		// (decremented count) -- no separate result message.
 		C2S_USE_ITEM,
-
-		// Debug Character Select Arena "되돌리기" (revert) button -- despawns every
-		// world entity the debug spawn buttons (Monster/Mid Boss/Valtan) created in
-		// this room. The Server broadcasts one S2C_WORLD_ENTITY_DESPAWNED per removed
-		// entity (already-wired machinery, previously only defined and never called)
-		// -- no separate result message.
 		C2S_DESPAWN_ALL_WORLD_ENTITIES,
-
-		// Bern's two Valtan-entry guide NPCs (npc.bern.beda.guide, npc.bern.aylara)
-		// right-click open a client-local confirm window; this fires only when the
-		// player presses that window's confirm button. The Server re-validates
-		// proximity to the named NPC and answers with the same
-		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED world-transfer flow the old
-		// automatic changeLevel triggerBox used -- no separate result message.
 		C2S_CONFIRM_NPC_ENTRY,
 
 		// Append-only room-owned combat-object lifecycle.
 		S2C_COMBAT_OBJECT_SPAWNED,
 		S2C_COMBAT_OBJECT_DESPAWNED,
 
-		// Versioned lifecycle edges supplement the existing immediate audition
-		// request/result pair; both tools can now correlate completion/abort.
+		// 즉시 요청 결과와 별도로 version이 붙은 완료·중단 lifecycle을 전달해 저작 도구가 실행을 추적한다.
+		// AUDITION의 의미와 역할이 정확하게 뭘까?
 		S2C_VALTAN_AUDITION_LIFECYCLE,
 
-		// Debug-only immutable data revision two-phase commit. These packet types
-		// remain known in Release so an unsupported request can be rejected by
-		// typed policy instead of being treated as an unknown frame.
+		// 불변 data revision의 준비 요청·응답·결과를 나누어 commit 여부를 전달한다. packet 식별 자체는 Release에서도 유지한다.
+		// 이거는 정확히 어떤 요구를 보내고, 어떤 결과를 원하고, 어떤 처리를 진행을 하는 거지? 
+		//DATA_REVISION이 정확히 뭘 요구하고 어떤 거에 대한 처리를 요청하는 구조인 걸까?
 		C2S_DATA_REVISION_PREPARE_REQUEST,
 		S2C_DATA_REVISION_PREPARE,
 		C2S_DATA_REVISION_PREPARE_RESPONSE,
 		S2C_DATA_REVISION_RESULT,
 
-		// Debug decision observatory. Release keeps both packet identities known
-		// and answers the query with REJECTED_RELEASE_BUILD rather than treating
-		// the frame as an incompatible protocol command.
+		// Debug 의사결정 추적 조회다. Release도 packet을 인식하고 REJECTED_RELEASE_BUILD로 답한다.
 		C2S_VALTAN_DECISION_TRACE_QUERY,
 		S2C_VALTAN_DECISION_TRACE_RESPONSE,
 
-		// Debug Boss Tool ordered-flow audition. Release keeps the identities
-		// known so policy rejection remains typed instead of closing a session.
+		// Boss Tool의 순서 있는 패턴 재생·정지·lifecycle 계약이다. packet 식별과 실행 허용 정책은 별도로 처리한다.
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_START,
 		S2C_DEBUG_VALTAN_PATTERN_FLOW_RESULT,
 		C2S_DEBUG_VALTAN_PATTERN_FLOW_STOP_AFTER_CURRENT,
 		S2C_DEBUG_VALTAN_PATTERN_FLOW_LIFECYCLE,
 
-		// Same-room party invite: right-click another player's NetEntityId in the
-		// same CGameRoom, invite, target accepts/declines. No cross-room identity
-		// exists yet (nickname is not a stable lookup key -- see CLAUDE.md), so
-		// this stays scoped to players currently sharing one room.
+		// 같은 CGameRoom의 NetEntityId로 초대·수락·거절한다. nickname을 방 밖 플레이어 조회 key로 쓰지 않는다.
 		C2S_PARTY_INVITE,
 		S2C_PARTY_INVITE_RECEIVED,
 		C2S_PARTY_INVITE_RESPOND,
@@ -337,26 +195,17 @@ namespace LostArk::Shared
 		S2C_PARTY_TRANSFER_RESULT,
 
 		// Raid Clear screen's own "돌아가기" (return) button, Valtan Arena only.
-		// This append-only v45 identity is the reverse of C2S_CONFIRM_NPC_ENTRY.
-		// It carries only a request sequence and receives the ordinary typed
-		// S2C_ENTER_ACCEPTED/S2C_ENTER_REJECTED transfer result.
+		// Bern 복귀 요청 sequence를 보내고 기존 S2C_ENTER_ACCEPTED·S2C_ENTER_REJECTED로 이동 결과를 받는다.
 		C2S_RETURN_TO_BERN,
 
-		// Reliable one-shot edge for a room-owned combat object's semantic hit.
-		// Append-only: snapshot transform updates remain coalescible, this event
-		// remains an ordering barrier and can outlive same-tick object despawn.
+		// 룸 소유 combat object의 의미 있는 타격을 reliable 단발 event로 보낸다. 합칠 수 있는 위치 snapshot과 달리 순서 장벽이며 같은 tick의 despawn 뒤에도 전달될 수 있다.
 		S2C_COMBAT_OBJECT_PRESENTATION_EVENT,
 
-		// Debug authoring navigation for the KakulSaydon vertical slice. Entry is
-		// still a Server room transfer and stage movement still lands on an exact
-		// authored PLAYER_SPAWN placement; the Client never sends a world transform.
-		C2S_DEBUG_ENTER_KAKULSAYDON_ARENA,
+		// 쿠크 저작 진입도 Server 방 이동을 거친다. stage 이동은 PLAYER_SPAWN placement를 지정하며 Client world Transform을 전송하지 않는다.
+		C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA,
 		C2S_DEBUG_TELEPORT_TO_PLACEMENT,
 
-		// Reliable one-shot edge telling every session in the room that an
-		// authored world sequence instance started. The Server owns the trigger
-		// entry that decides when; the Client owns only how it looks. Append-only
-		// so an older payload is never reinterpreted as this identity.
+		// Server가 시작을 확정한 world sequence instance를 방 전체에 reliable event로 전달한다. Client는 표현을 담당한다.
 		S2C_WORLD_SEQUENCE_PLAY,
 
 		// 파티 레이드 입장 전원 수락 투표. 입장을 propose -> prompt -> respond -> vote로
@@ -366,8 +215,7 @@ namespace LostArk::Shared
 		C2S_RAID_ENTRY_RESPOND,
 		S2C_RAID_ENTRY_VOTE,
 
-		// Debug KoukuSaydon animation-only pattern audition. Append-only and kept
-		// known in Release so unsupported mutation receives a typed rejection.
+		// 쿠크 패턴 재생 요청·결과·lifecycle이다. Release는 게시 패턴을 허용하고 draft·Mario test override는 typed 결과로 거부한다.
 		C2S_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_REQUEST,
 		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_RESULT,
 		S2C_DEBUG_KOUKUSAYDON_PATTERN_AUDITION_LIFECYCLE,
@@ -375,28 +223,21 @@ namespace LostArk::Shared
 		C2S_DEBUG_TELEPORT_TO_POSITION,
 		S2C_DEBUG_TELEPORT_TO_POSITION_RESULT,
 
-		// Debug KoukuSaydon madness form: the F1 clown/player avatar toggle.
-		// Release keeps the type known and answers with a typed rejection.
+		// F1의 광기 외형 전환 요청·결과다. Release에서도 packet은 인식하지만 실행은 typed 결과로 거부한다.
 		C2S_DEBUG_SET_MADNESS_FORM,
 		S2C_DEBUG_SET_MADNESS_FORM_RESULT,
 
-		// An authored trigger box may ask before it acts. The Server sends the
-		// prompt edge to the single session standing in the box and withdraws it
-		// on the way out; that session answers with the request. Entry testing,
-		// re-validation on request, and the action all stay Server-owned -- the
-		// Client only draws the offer and forwards the key press.
+		// Server가 trigger 안의 session에 제안을 보내고 이탈 시 거둔다. Client는 입력만 전달하며 위치·조건 재검증과 실행은 Server가 맡는다.
 		S2C_INTERACT_PROMPT,
 		C2S_INTERACT_TRIGGER,
 
-		// KoukuSaydon interaction HUD: one quick-slot press while a Server-owned
-		// interaction mode is active, the Debug mode override, and the Server-clock
-		// scene profile cue. Append-only; Release keeps them known.
+		// Server 상호작용 mode의 slot 입력, HUD mode 변경 결과, Server 시계 기준 scene profile cue를 전달한다.
 		C2S_INTERACTION_SLOT,
 		C2S_DEBUG_SET_KOUKU_HUD_MODE,
 		S2C_DEBUG_SET_KOUKU_HUD_MODE_RESULT,
 		S2C_SCENE_PROFILE_APPLY,
 
-		// Mario side-scroll: Debug jump intent/verdict and typed left/right/stop.
+		// Mario의 Debug 점프 요청·결과와 좌우 이동·정지를 typed 명령으로 보낸다.
 		C2S_DEBUG_MARIO_JUMP,
 		S2C_DEBUG_MARIO_JUMP_RESULT,
 		C2S_MARIO_MOVE,
@@ -404,47 +245,36 @@ namespace LostArk::Shared
 		S2C_DEBUG_WORLD_PLAYBACK_RESULT,
 		S2C_KOUKUSAYDON_BUNDLE_STATE,
 
-		// Bingo board: Debug-only cell fill. The board itself rides the world
-		// snapshot, so the fill has no separate result message.
+		// Debug 빙고 cell 채우기는 별도 결과 없이 world snapshot의 board 상태로 반영한다.
+		//디버그용 빙고 - 빙고 채우기, 빙고 폭탄, 빙고 해머
 		C2S_DEBUG_BINGO_FILL,
-		// Bingo bomb: Debug-only mark on the requesting session's own player.
-		// The bomb rides the same snapshot, so there is no result message.
+		// Debug 빙고 폭탄은 요청자 자신의 player에 표시하고 기존 snapshot으로 반영한다.
 		C2S_DEBUG_BINGO_BOMB,
 		// Bingo hammer: Debug-only start on a random row or column.
 		C2S_DEBUG_BINGO_HAMMER,
-		// H key riding toggle and its typed verdict. The snapshot carries the
-		// ridden vehicle, so the verdict only reports why a request did nothing.
+		// H키 탑승 전환의 요청·판정이다. 탑승 상태는 snapshot에 담고 결과는 요청이 처리되지 않은 이유를 전달한다.
 		C2S_SET_VEHICLE_RIDING,
 		S2C_SET_VEHICLE_RIDING_RESULT,
 		C2S_MARIO_RETURN,
 		S2C_MARIO_RETURN_RESULT,
-		// Honor title change and its typed verdict; the worn title rides the
-		// player snapshot.
+		// 칭호 변경 요청·판정을 전달하며 장착된 칭호는 player snapshot으로 복제한다.
 		C2S_SET_HONOR_TITLE,
 		S2C_SET_HONOR_TITLE_RESULT,
-		// World map square hole use. The Server locks the player into the song
-		// action for a fixed length and releases them in place; the teleport is
-		// not implemented yet, so there is no result message.
+		// 일반 스퀘어홀은 Server가 목적지를 검증하고 노래 action을 시작한다. 만료 시 재검증해 이동하며 중단되면 예약 이동을 취소한다. Colosseum에서는 노래 없이 Bern 전환을 예약한다.
 		C2S_USE_SQUAREHOLE,
-		// Commander raid gate progress: the leader (or a solo player) asks to move
-		// on after a gate clear, every member answers, and the Server owns the
-		// cleared mask, the vote and the gate switch. One state message carries
-		// all of it to every player in the room.
+		// 관문 완료 뒤 리더·솔로가 다음 관문을 제안하고 멤버가 응답한다. Server가 완료 mask·투표·전환을 소유해 하나의 상태로 복제한다.
 		C2S_GATE_PROGRESS_PROPOSE,
 		C2S_GATE_PROGRESS_RESPOND,
 		S2C_GATE_PROGRESS_STATE,
 		C2S_DEBUG_KOUKUSAYDON_RAID_REQUEST,
 		S2C_KOUKUSAYDON_RAID_STATE,
-		// Raid-clear award input: each player's recorded contribution to the cleared
-		// gate's bosses.
+		// 완료 관문 보스에 대한 플레이어별 기록 기여도를 레이드 보상 화면에 전달한다.
 		S2C_RAID_MVP_RESULT,
-		// Right-click equip / unequip between the bag and the equipment slots.
+		// 가방과 장비 slot 사이의 장착·해제 요청이다.
 		C2S_SET_EQUIPMENT,
-		// Debug F1 "Normal Monster 1/2": removes a wave spawn group's live monsters and
-		// re-summons it from the start. Release ignores it; there is no result message.
+		// Debug wave 그룹의 살아 있는 몬스터를 제거하고 처음부터 재소환한다. Release에서는 무시하며 별도 결과 packet은 없다.
 		C2S_DEBUG_RESUMMON_WAVE_MONSTERS,
-		// Debug F1 Esther summon by name, bypassing the gauge and the world roster
-		// slot order. Release ignores it; the summon rides the world snapshot.
+		// Debug는 gauge·roster 순서를 건너뛰고 이름으로 Esther를 소환한다. Release에서는 무시하며 소환 상태는 world snapshot에 담는다.
 		C2S_DEBUG_USE_ESTHER,
 		C2S_DEBUG_KOUKUSAYDON_DRAFT_CHUNK,
 		C2S_DEBUG_KILL_GATE_BOSSES,
@@ -455,9 +285,7 @@ namespace LostArk::Shared
 		S2C_ROOM_PING,
 		S2C_GUIDE_PROMPT,
 		S2C_GUIDE_STATE,
-		// NPC shop basket purchase. The Server checks the shop NPC, its stock, the
-		// price and bag space, then applies the whole basket or none of it and answers
-		// with an S2C_INVENTORY_SNAPSHOT either way.
+		// Server가 상점·재고·가격·가방을 확인해 장바구니 전체를 적용하거나 보존하고 inventory snapshot으로 답한다.
 		C2S_BUY_ITEMS,
 		C2S_BALANCE_QUERY,
 		S2C_BALANCE_SNAPSHOT,
@@ -558,7 +386,7 @@ namespace LostArk::Shared
 		case PACKET_TYPE::C2S_CONFIRM_NPC_ENTRY:
 		case PACKET_TYPE::C2S_RETURN_TO_BERN:
 		case PACKET_TYPE::S2C_COMBAT_OBJECT_PRESENTATION_EVENT:
-		case PACKET_TYPE::C2S_DEBUG_ENTER_KAKULSAYDON_ARENA:
+		case PACKET_TYPE::C2S_DEBUG_ENTER_KOUKUSAYDON_ARENA:
 		case PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_PLACEMENT:
 		case PACKET_TYPE::C2S_DEBUG_TELEPORT_TO_POSITION:
 		case PACKET_TYPE::S2C_DEBUG_TELEPORT_TO_POSITION_RESULT:
@@ -643,24 +471,19 @@ namespace LostArk::Shared
 	//constexpr : 컴파일 타임 시간 상수
 	inline constexpr std::size_t MAX_NICKNAME_BYTES = 32;
 
-	// Character-creation voice type: the original's customizing table offers
-	// Type1..Type8 per class. 0 is never on the wire.
+	// 생성 voice type은 class별 1~8이다. wire에는 0을 허용하지 않는다.
 	inline constexpr std::uint8_t MIN_VOICE_TYPE = 1;
 	inline constexpr std::uint8_t MAX_VOICE_TYPE = 8;
 
-	// Same as Character Select Arena's own room cap (see
-	// Run-CharacterSelectIsolationHarness.ps1's 4/4 ROOM_FULL contract).
+	// 같은 방 인간 파티의 최대 인원이다. Server의 초대·수락과 Shared roster codec이 이 상한을 사용한다.
+	// powershell로 실행하는 harness가 있나? 4/4? ROOM_RULL? 이거 늘렸는데 레거시?
+	//아니면 4명 검증 테스트하려고 추가한 건가?
 	inline constexpr std::size_t MAX_PARTY_MEMBERS = 4;
 
-	// Network players admitted to one Valtan raid room. Party ownership remains
-	// a four-member contract; the remaining raid seats may be occupied by a
-	// second party or, later, Server-owned raid AI without widening party wire
-	// messages or nickname identity semantics.
 	inline constexpr std::size_t MAX_VALTAN_RAID_PLAYERS = 8;
 
-	// Matches CChatWindowView::INPUT_BUFFER_SIZE (including the terminator),
-	// so a locally-typeable line always round-trips.
+	// 채팅 wire 본문의 최대 byte 수다. Client의 256-byte 입력 buffer에는 문자열 종료 공간도 필요하다.
 	inline constexpr std::size_t MAX_CHAT_TEXT_BYTES = 256;
-	// Matches the stable ID budget the authored world sequence document uses.
+	// 저작 world sequence의 stable instance ID와 같은 byte 상한이다.
 	inline constexpr std::size_t MAX_SEQUENCE_INSTANCE_ID_BYTES = 128;
 }

@@ -6,6 +6,7 @@
 #include "MapPlacementDocument.h"
 #include "MapStaticBatchObject.h"
 #include "MapStaticChunkObject.h"
+#include "MapGeometryDiagnostics.h"
 
 #include <memory>
 #include <string>
@@ -21,6 +22,7 @@ NS_END
 NS_BEGIN(Client)
 
 class CMapAssetObject;
+class CMapGpuScene;
 
 struct MAP_RUNTIME_PLACED_ENTRY
 {
@@ -113,6 +115,16 @@ public:
 	void Clear();
 	// Bern calls once per frame, including transfer/restore wait frames.
 	void Advance_StaticBatchFrame(f32_t fTimeDelta);
+    // 입장 컷신 소유권에만 묶인 가역 선택이다. 끝날 때 준비된 batch만 원본으로 복귀한다.
+    void Set_CutsceneGeometryEnabled(bool enabled);
+    // 기존 Profiler export가 현재 Level의 준비 결과만 복사한다. historical frame 성공을 뜻하지 않는다.
+    const std::shared_ptr<const MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS>& Get_ColorProxyPreparationDiagnostics() const
+    { return m_ColorProxyPreparation; }
+    // Profiler controller가 표본 render 직전/직후 호출한다. main thread 전용이며
+    // End는 기존 렌더 결과만 복사하고 visibility/claim 준비를 새로 실행하지 않는다.
+    void Begin_GeometryDiagnosticFrame() noexcept;
+    MAP_GEOMETRY_DIAGNOSTIC_SNAPSHOT End_GeometryDiagnosticFrame(float minDistance, float maxDistance);
+    void Cancel_GeometryDiagnosticFrame() noexcept;
     const MAP_CHUNK_BUILD_STATS& Get_ChunkBuildStats() const { return m_ChunkBuildStats; }
     const std::shared_ptr<MAP_CHUNK_POLICY>& Get_ChunkPolicy() const { return m_ChunkPolicy; }
 
@@ -353,7 +365,10 @@ private:
 	   every frame. */
 	std::unordered_map<std::string, shared_ptr<Engine::CModel>> m_SelfMotionModels;
 	std::vector<MAP_RUNTIME_STATIC_BATCH_ENTRY> m_StaticBatches;
+    std::vector<std::weak_ptr<CMapStaticBatchObject>> m_ColorProxyBatches;
+    std::shared_ptr<const MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS> m_ColorProxyPreparation;
 	std::shared_ptr<MAP_STATIC_BATCH_FRAME_STATE> m_StaticBatchFrame;
+    std::shared_ptr<CMapGpuScene> m_GpuScene;
 	uint64_t m_iSharedStaticBatchCount = 0u;
 	uint64_t m_iSharedStaticPlacementCount = 0u;
 	bool_t m_bStaticBatchCountersDirty = true;

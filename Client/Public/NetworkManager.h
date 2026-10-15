@@ -214,7 +214,7 @@ public:
 	bool Send_DespawnAllWorldEntities(std::uint32_t requestSequence);
 	/* Debug-only authoring commands. Both remain requests: Server transfer and
 	Server snapshots are the only accepted world/position results. */
-	bool Send_DebugEnterKakulSaydonArena(std::uint32_t requestSequence);
+	bool Send_DebugEnterKoukuSaydonArena(std::uint32_t requestSequence);
 	bool Send_DebugTeleportToPosition(
 		std::uint32_t requestSequence, float pickedX, float pickedY, float pickedZ);
 	bool Try_Consume_DebugTeleportResult(

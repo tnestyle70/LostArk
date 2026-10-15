@@ -107,7 +107,7 @@ def build():
     occurrence_example = next(o for p in sequences['patterns'] for o in p['presentationOccurrences']
                               if o['resourceId'].startswith('presentation.effect.kouku.sequence.'))
     patch = dict(presentationResources=[], effectCatalogEntries=[], patterns=[])
-    for pattern_id in ('KAKULSAYDON_G1_PATTERN_75', 'KAKULSAYDON_G1_PATTERN_9'):
+    for pattern_id in ('KOUKUSAYDON_G1_PATTERN_75', 'KOUKUSAYDON_G1_PATTERN_9'):
         patch['patterns'].append(dict(patternId=pattern_id, durationMs=max(r['durationMs'] for r in installed), addPresentationOccurrences=[]))
     for index, row in enumerate(installed, 1):
         resource = copy.deepcopy(resource_example)

@@ -94,7 +94,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
 
     def test_independent_native_ambient_round_trip_and_rejected_input_rollback(self) -> None:
         document = copy.deepcopy(json.loads(AUTHORED.read_text(encoding="utf-8")))
-        profile = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        profile = next(p for p in document["profiles"] if p["profileId"] == "scene.koukusaydon.g1.base.v1")
         region = next(r for r in profile["environmentRegions"] if r["regionId"] == "kouku.ps.environment.47")
         profile["light"]["sourceCharacterAmbient"] = [0.1, 0.2, 0.3, 0]
         # Explicit zero in a region must override, not inherit the profile's RGB.
@@ -347,7 +347,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
 
     def test_nine_digit_float32_spelling_round_trips_without_rewriting_values(self) -> None:
         document = copy.deepcopy(self.source_document)
-        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.koukusaydon.g1.base.v1")
         kouku["exposureMultiplier"] = float(format(to_float32(0.1), ".9g"))
         kouku["fog"]["heightFalloff"] = float(format(to_float32(0.0001), ".9g"))
         kouku["environmentRegions"][0]["fog"]["heightFalloff"] = kouku["fog"]["heightFalloff"]
@@ -425,7 +425,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
 
     def test_level_quality_override_round_trips_and_invalid_publish_preserves_runtime(self) -> None:
         document = copy.deepcopy(self.source_document)
-        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.g1.base.v1")
+        kouku = next(p for p in document["profiles"] if p["profileId"] == "scene.koukusaydon.g1.base.v1")
         kouku["qualityOverride"] = copy.deepcopy(document["globalQuality"])
         kouku["qualityOverride"]["exposure"] = 2.0
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -452,7 +452,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             self.write_document(source, document)
             result = self.run_publisher(source, "Validate")
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.find-true-dark.v1")
+            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.koukusaydon.find-true-dark.v1")
             dark["displayName"] = "씬프로필_암전"
             self.write_document(source, document)
             result = self.run_publisher(source, "Publish", destination)
@@ -487,7 +487,7 @@ class RenderingProfilePublisherTest(unittest.TestCase):
             self.write_document(source, document)
             result = self.run_publisher(source, "Validate")
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.kakulsaydon.find-true-dark.v1")
+            dark = next(p for p in document["profiles"] if p["profileId"] == "scene.koukusaydon.find-true-dark.v1")
             for multiplier in (0, 0.05, 1, 4):
                 with self.subTest(multiplier=multiplier):
                     dark["mapLightIntensityMultiplier"] = multiplier

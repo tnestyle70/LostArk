@@ -1,0 +1,48 @@
+2026-10-15 베른 컷신 저폴리 적용 검증
+
+현재 상태
+- 최신 Product Release003 및 Debug002 빌드 PASS. 현재 소스와 빌드 입력 일치.
+- P06/P07의 minimumSurfaceDistanceMetres=70, maximumProjectedDiameterPixels=1200을 실제 실행 Resources에 설치.
+- atlas는 기존 256, VB/IB와 원본 재질은 그대로. 일반 카메라에서는 기존 컷신 lease가 OFF이므로 이 대체 규칙을 선택하지 않음.
+
+측정 범위
+- 전체 베른이 아니라 P06/P07 성탑 62 placement / 60 batch만 포함한 제품 렌더러의 native offscreen 측정.
+- 1920x1080, 동일 카메라, 10뷰 OFF/ON/OFF. Vtx(VS)는 실제 GPU VS invocation, Idx는 제출한 indexed reference 수.
+- 각 구성 31 case에서 기하 query 유효, timestamp 16/16 유효, unknown/drop/fallback 0, OFF 화면·수치 복원.
+- 이미지의 Previous rules ON은 설치 전 규칙, Applied 70m/1200px ON은 이번 설치 규칙이다.
+- 이미지는 설치 직전에 측정했으며 설치 bytes가 측정 후보 SHA와 일치함을 확인했다.
+
+대표 수치
+저작 cue 0초: OFF 445,695 -> 기존 ON 366,201 -> 수정 ON 242,225 Vtx(VS).
+              OFF 대비45.65%, 기존 ON 대비33.85% 추가 감소.
+              Idx 1,081,890 -> 904,962 -> 620,544.
+저작 cue 4초: OFF 307,676 -> 기존 ON 299,657 -> 수정 ON 186,274 Vtx(VS).
+저작 cue 6초: OFF/기존 ON 127,010 -> 수정 ON 99,144 Vtx(VS).
+저장 순간 카메라: OFF/기존 ON 141,795 -> 수정 ON 106,820 Vtx(VS), 24.67% 감소.
+저작 cue8/12/15.999초는 수정 뒤에도 선택0개이며 감소0%다.
+
+확인한 원인
+- 기존 거리와 보수적 화면 투영 지름 제한을 동시에 통과한 모델이 저장 순간에는0개였다.
+- 수정 규칙에서는 같은 카메라에서4개가 실제 저폴리 draw됨.
+- 별도23 batch는 준비 거절: mirrored13, placement transform6, 재질 identity 불일치4.
+- 이23개는 거리만 바꿔도 대체되지 않으며, 원본 재질·변환의 검증을 우회하지 않았다.
+
+남은 범위
+- 이 수치를 전체 화면 약80만 Vtx의 전후 비교로 사용하면 안 된다.
+- 전체 베른 map은 첫 render 전에 메모리 guard로 중단됐다. 전체 장면 GPU 감소·게임 FPS·전체1/8 목표는 미검증.
+- 일부 지붕 표면은 원본보다 거칠다. 외관 동일 또는 최종 품질 완료로 표시하지 않는다.
+- 512 atlas는 입력/runner 준비만 완료했고 메모리 조건으로 bake를 시작하지 않았다. 설치된 것은256이다.
+- 실제 Client 재생 및 최종 화면 확인은 사용자 검증이 남아 있다. 새 F7 JSON에는 준비 거절과 실제 저폴리 draw 진단이 추가됐다.
+
+산출물
+- bern-subset-measured-4views-applied.png: 수치 포함4뷰 비교. 각 타일은 원본1920x1080을640x360으로 축소.
+- native-crop-*.png: 원본 해상도 crop의 표면 차이 비교. 옛 이미지의 Installed ON은 설치 전 규칙이며70m/1200px ON이 이번 설치 규칙이다.
+- figure-evidence.json: 이미지 원본 경로/SHA와 실제 수치.
+- installed-vs-candidate.json: 전체10뷰 정량 결과.
+- application.json, installed-resource-verification.json: 실제 설치와 참조 hash 검증.
+- build-currency.json: Release/Debug 소스·바이너리 현재성 검사.
+
+상세 RESULT
+C:/Users/tnest/Desktop/LostArk/.md/GB/10-04/2026-10-04_BERN_SPATIAL_CHUNK_HLOD_RESULT.md
+
+게임 FPS는 측정하지 않았으므로 이미지에 FPS를 만들어 표시하지 않았다.

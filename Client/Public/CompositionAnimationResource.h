@@ -1,17 +1,23 @@
-#pragma once
+﻿#pragma once
 
+// 대상 종류의 고정 개수와 순서를 보관한다.
 #include <array>
+// 길이의 ms 값을 uint32_t로 표현한다.
 #include <cstdint>
+// asset ID와 표시 이름을 snapshot 값으로 소유한다.
 #include <string>
+// 존재 검사에서 호출자의 문자열을 복사하지 않고 읽는다. 호출 뒤 view를 저장하지 않는다.
 #include <string_view>
+// Sequence의 clip 개수와 순서는 저작 내용에 따라 달라진다.
 #include <vector>
+// 원본 clip 이름으로 표시 이름을 찾는 조회 결과다. 재생 순서는 이 map의 순회 순서에 기대지 않는다.
 #include <unordered_map>
 
 namespace Client
 {
 
-// Physical clip identity includes its body and source package. The same clip
-// name on two rigs remains two selectable resources.
+// 물리 clip의 식별에는 모델과 원본 패키지가 함께 필요하다.
+// 서로 다른 골격에 같은 clip 이름이 있어도 선택 가능한 자원은 두 개로 유지한다.
 struct COMPOSITION_ANIMATION_RESOURCE final
 {
 	std::string strTargetAssetName;
@@ -21,14 +27,15 @@ struct COMPOSITION_ANIMATION_RESOURCE final
 	std::string strRuntimeClip;
 	std::uint32_t iDurationMs = 0u;
 	std::string strEndPolicy = "EXACT";
-	// Runtime ticks and cooked clock retain precision when a Sequence overrides
-	// iDurationMs. Save admission never depends on the selected preview rig.
+	// Sequence가 iDurationMs를 바꿔도 원본 tick과 tick/초를 남겨 재생 길이의 정밀도를 보존한다.
+	// 저장 검증에 선택한 preview 모델의 현재 상태를 대신 사용하지 않는다.
 	float fDurationTicks = 0.f;
 	float fTicksPerSecond = 0.f;
-	// Display-only; native clip and package identity remain the append key.
+	// 화면에 보이는 이름이다. 삽입할 clip의 식별은 원본 clip과 패키지 정보가 담당한다.
 	std::string strDisplayName;
 };
 
+// 한 Sequence의 clip을 순서대로 소유한다. vector는 순회·직렬화와 맞지만 삽입/교체 뒤 예전 원소 포인터를 보관하면 안 된다.
 struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
 {
 	std::string strStableId;
@@ -38,6 +45,7 @@ struct COMPOSITION_ANIMATION_SEQUENCE_RESOURCE final
 	std::vector<COMPOSITION_ANIMATION_RESOURCE> Clips;
 };
 
+// 고정 whitelist를 헤더에서 공유한다. inline은 여러 CPP의 동일 정의를 허용하며 함수의 강제 인라인화나 속도 보장이 아니다.
 inline constexpr std::array<const char*, 28u>
 	COMPOSITION_ANIMATION_TARGET_ASSET_NAMES = {
 		"LanceMaster", "GunSlinger", "Slayer", "Artist", "DimensionMaster", "Warlord", "GuardianKnight",
@@ -57,10 +65,11 @@ inline constexpr std::array<const char*, 28u>
 		"Monster_Card_Club",
 		"Monster_Card_Spade" };
 
-// Optional source labels never determine which clips exist or can be played.
+// 선택적인 원본 표시 이름만 조회한다. clip의 존재나 재생 가능 여부를 이 이름 목록으로 결정하지 않는다.
 std::unordered_map<std::string, std::string> Read_CompositionAnimationDisplayNames(
     const std::string& assetName);
 
+// 목록 UI가 사용할 category 경로를 값으로 반환한다. 몇 단계의 작은 경로이며 문서나 자원의 소유권은 변경하지 않는다.
 inline std::vector<std::string> CompositionAnimationCategory(const std::string& assetName)
 {
     for (std::size_t i = 0u; i < 7u; ++i)
@@ -77,6 +86,7 @@ inline std::vector<std::string> CompositionAnimationCategory(const std::string& 
     return {"Other models", assetName};
 }
 
+// 28개 고정 항목을 선형 대조한다. 추가 hash 저장소가 없지만 조회량이 커져도 최적이라는 측정은 아니다.
 inline bool Is_CompositionAnimationTargetAsset(const std::string_view name)
 {
 	for (const char* candidate : COMPOSITION_ANIMATION_TARGET_ASSET_NAMES)

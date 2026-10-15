@@ -20,8 +20,8 @@ AREA = Path('Data/Maps/Authoring/LV_LUT_MIDNIGHTC_ED')
 WORLD = AREA / 'LV_LUT_MIDNIGHTC_ED.worldsequences.json'
 CAMERA = AREA / 'LV_LUT_MIDNIGHTC_ED.camerashots.json'
 COMPOSITIONS = {
-    Path('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json'): 'KAKULSAYDON_G1_PATTERN_9',
-    Path('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'): 'KAKULSAYDON_G1_PATTERN_75',
+    Path('Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json'): 'KOUKUSAYDON_G1_PATTERN_9',
+    Path('Data/KoukuSaydon/Gate1/KoukuSaydonComposition.json'): 'KOUKUSAYDON_G1_PATTERN_75',
 }
 PREFIX = 'kouku.bingo.ending.'
 FX = 'effect.kouku.sequence.lv_lut_midnightc_ed_scene01b.efseqact_matinee_0.1'
@@ -196,7 +196,7 @@ def prepare(args):
         for instance in attachments['instances']:
             definition = next((row for row in document['worlds'] if row['sequenceInstanceId'] == instance['instanceId']), None)
             if definition is None:
-                identity = f"kakulsaydon.g1.world.{document['nextWorldOrdinal']}"
+                identity = f"koukusaydon.g1.world.{document['nextWorldOrdinal']}"
                 document['nextWorldOrdinal'] += 1
                 definition = copy.deepcopy(next(iter(worlds.values())))
                 definition.update(worldId=identity, displayName=label_by_instance[instance['instanceId']],

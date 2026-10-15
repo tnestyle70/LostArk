@@ -1,8 +1,8 @@
 #ifndef SHADER_SOURCE_FOLIAGE_SURFACE
 #define SHADER_SOURCE_FOLIAGE_SURFACE
 
-// Native bg_foliage_msk / bg_grass_msk surface equations. Texture decoding,
-// instance lightmap scales and scene light authority belong to their callers.
+// bg_foliage_msk/bg_grass_msk의 표면·투과·베이크/직접 조명 값을 계산한다.
+// 텍스처 해석·인스턴스 lightmap 배율·장면 광원 선택은 호출자가 맡는다.
 float3 SourceFoliageUnit(float3 value)
 {
     return value * rsqrt(max(dot(value, value), 1e-12f));

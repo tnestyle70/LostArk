@@ -467,3 +467,67 @@ fm_a_stone_001의 설치 변환본들은 position/normal/tangentXYZ/UV/winding�
 근거는 `out/WarlordAltVHeadOrigin20261005/candidate-manifest.json`과 `product-probe/verification.json`이다. 최신 source SHA f6cf5517bee23b9c99d540417bda886c29a7d3dde4be5943cba2c534efa67716을 다시 확인하고 백업·CAS·원자 교체했다. 설치 SHA는e11445dcaf98ff101111b2b40be4b9fd69d8e866b0a5a7c09ac56dcca1f19ec9이며 검증 후보와 byte 동일하다. `installed-receipt.json`과 `installed-verification.json`은 설치와 재읽기 근거이며 GPU 재실행을 뜻하지 않는다. Warlord.animevents의 super_guardianofprotection_01은 이 DIRECT_AUTHORED_DOCUMENT를 직접 소비한다. 과거 unified나 별도 DataFiles 복사본을 바꾸지 않았다.
 
 이번 수정은 Data와 후보 생성기·문서만 변경해 C++/HLSL 빌드를 반복하지 않았다. 앞선 헤어 작업의 Debug/Release Product 빌드는 각각20261004T205210430Z-debug-product.json과20261004T205435642Z-release-product.json에서 PASS다. 이번 변경의 Python·JSON 및 diff check를 통과했다. Client/UI를 실행하거나 메모리 draft를 Reload하지 않았다. 최종 인게임 Alt V 화면 확인은 사용자에게 남아 있다.
+
+## G24. 10-10 마지막 clip 전체 미표시의 Resource 누락 복구
+
+현재 제품 연결은 `WARLORD/ALT_V/17250` → skillbindings의 마지막
+`wgl_sk_super_guardianofprotection_02` → Warlord.animevents의
+`effect.warlord.skill.17250.clip2.full.restore`다. Release PID31304의 실행 로그에는
+clip2의 `V1.loading`에서 `Effect resource slot, path, file, or duplicate is invalid.`,
+실제 시전의 `V1.queue`에서 `Product target is not prepared`가 남아 있었다.
+
+192개 요소가 소비하는 206개 고유 geometry/texture 중
+`Effect/Warlord/FullRestore/Meshes/fm_a_stone_001.wmodel` 한 파일만 없었다.
+G22의 작은 돌 6개가 이 파일을 참조한다. Codec의 `is_regular_file` 검사가 실패하여
+Catalog가 clip2 문서 전체를 준비하지 못했으므로, 기존 큰 돌과 바닥 효과도 생성되지 않았다.
+본·socket·6방향 변환과 shader 실행보다 앞선 실패다. G21/G22의 66개 방사형 occurrence와
+18개 axis-follow 설정, native5111의 neutral W=1은 유지돼 있었다.
+
+### 반영한 파일과 원본 일치의 한계
+
+누락 경로에 설치된 동일 source mesh의 ClassSelect/Warlord donor를 그대로 복구했다.
+크기11,936bytes, SHA256은
+`6309cf5019b7023195d763f9fd3acd537b476d2b7987475f3de5f16b42a7a6ad`다.
+후보의 공식 `parse_geometry_wmodel`과 `ModelAssetConverter info`가 통과했다.
+설치 직전 donor hash와 목적지 부재를 확인하고 같은 폴더 임시 파일을 원자 이동했다.
+설치 영수증은 `out/WarlordAltVResource20261010/installed-receipt.json`이다.
+
+10-04의 exact 파생 Resource와 source-sign 증거는 이 PC에 없었다. 기존16개 복사본의
+허용 geometry를 조사해도 당시 SHA와 일치하는 파일은 확보하지 못했다. 이번 donor는 G22
+파생본의 기반 mesh이며, G22에서 추가 교정한 tangent.w 19/32와 metadata는 동일하지 않다.
+따라서 작은 돌 normal-map의 원본 조명 방향까지 다시 복원한 것으로 기록하지 않는다.
+위치·크기·6방향·수명·native 재질 JSON과 shader는 수정하지 않았다.
+
+### 실제 제품 소비자 검증
+
+기존 Debug Product OBJ로 out 전용 콘솔을 링크해 실제 Codec와 Catalog Stage를 호출했다.
+
+| 동일 소비자 | 설치 전 | 설치 후 |
+|---|---|---|
+| `CEffectDocumentCodec::Load` | Resource 오류,0개 | 성공,192개 |
+| Catalog Capture → `Stage_ProductLoadTarget` | 동일 오류,0개 | 성공,192개 |
+| 고유 Resource 누락 | 206개 중1개 | 0개 |
+
+두 실행 사이 저작 JSON SHA256은
+`360f363e92cbfbe4e30b64edd964200c30b90076985abc9c74146556446f3e0b`로 같았다.
+`out/WarlordAltVResourceRestore20261010/verification.json`과 `Debug/before.log`,
+`Debug/after.log`가 실제 전후 근거다. Release 별도 console LTCG는 통합 Product 빌드를
+우선하기 위해 중단했으며 Release 소비자 검증 완료로 세지 않는다. 변경 C++가 있는 베른
+반복 재생의 Debug/Release Product 빌드는 10-07 RELEASE_MOVIE_PROFILER RESULT에 기록한다.
+
+통합 Product Debug/Release Build·배포가 모두 PASS이며 현재 JSON parse와 전체 diff check도
+통과했다. 최종 재읽기에서192개 요소·66개 전용 slot·6개 서로 다른 yaw와 위 JSON SHA를
+재확인했다. 파일 설치와 제품 빌드가 성공한 상태이며 실제 GPU 표시 확인으로 확대하지 않는다.
+
+Resource는 Debug/Release가 같은 물리 경로를 소비한다. 새 바이너리 모델은 Git에 넣지 않았다.
+다른 PC 전달은 팀장 Drive의 `Resources/Effect/Warlord/FullRestore/Meshes/fm_a_stone_001.wmodel`
+추가가 필요하며 이 세션에서 Drive 업로드는 하지 않았다. GPU draw, 실행 중 메모리 갱신과
+Client/UI·최종 6방향 화면 판정은 수행하지 않았다. 다음 Client 실행에서 워로드 Alt+V를
+재생해 마지막 clip의 돌·바닥 여섯 방향을 사용자가 확인한다.
+
+
+### 2026-10-10 사용자 실행 확인
+
+통합 Release 실행 후 사용자가 대화에서 “워로드 해결됐고”라고 직접 확인했다.
+G24의 ALT+V 마지막 clip 미표시 문제는 사용자 실행 확인까지 완료됐다.
+이 확인을 이전 파생 mesh의 tangent.w 원본 바이트 일치나 모든 조명 조건 검증으로 확대하지 않는다.

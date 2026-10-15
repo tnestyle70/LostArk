@@ -353,7 +353,7 @@ namespace
 void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const CGameplayCatalog& catalog)
 {
     {
-        S2C_WORLD_SNAPSHOT message{}; message.iServerTick = 100u; message.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+        S2C_WORLD_SNAPSHOT message{}; message.iServerTick = 100u; message.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
         (void)Try_Parse_GameplayDataRevision(std::string(64u, 'a'), message.ActiveGameplayRevision);
         PLAYER_SNAPSHOT state{}; state.iNetEntityId = 101u; state.eCharacterClass = CHARACTER_CLASS_ID::LANCE_MASTER;
         state.eAction = PLAYER_ACTION_STATE::KNOCKDOWN; state.iActionStartTick = 99u; state.isKnockbackAirborne = true;
@@ -448,7 +448,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         tests.Require(p.eAction == action && p.fKnockbackRemainingSeconds == 0.f,
             "Force push never replaces death, falling, attachment or world transfer");
     }
-    auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+    auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
     const auto arenaNavigation = room->m_ServerNavigation;
     room->m_ServerNavigation = CServerNavigation{};
     std::string status; room->m_ServerCollisionSystem.Initialize({}, status); room->m_ServerCollisionSystem.Set_BlockingBodies({});
@@ -461,15 +461,15 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         std::ifstream input(dataRoot / L"Gameplay/Gameplay.bootstrap", std::ios::binary);
         std::string bytes((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
         if (!bytes.empty() && bytes.back() != '\n') bytes += '\n';
-        const std::string encounter = "ENCOUNTER_KAKULSAYDON_G1", id = "KAKULSAYDON_G1_COLLIDER_CONTRACT";
+        const std::string encounter = "ENCOUNTER_KOUKUSAYDON_G1", id = "KOUKUSAYDON_G1_COLLIDER_CONTRACT";
         const std::string prefix = encounter + "\t" + id;
         bytes += "PATTERN\t" + prefix + "\t" + id + ".action\tAUDITION_ONLY\t0\t0\t0\t0\t0\t0\t0\t1\t1\tANY\tANY\t0\n";
-        bytes += "PATTERNBOSS\t" + prefix + "\tBOSS_KAKULSAYDON_G1_SAYDON\n";
+        bytes += "PATTERNBOSS\t" + prefix + "\tBOSS_KOUKUSAYDON_G1_SAYDON\n";
         bytes += "PATTERNPOLICY\t" + prefix + "\tNORMAL\t1\t1\tNONE\tNONE\n";
         bytes += "PATTERNSOURCE\t" + prefix + "\t1\t0\t0\t0\t0\t0\t0\n";
         bytes += "PATTERNSTAGE\t" + prefix + "\t0\tSTAGE_1\t" + id + ".stage.1\tACTIVE\t5000\tNONE\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\t0\t0\n";
         bytes += "PATTERNSTAGEBRANCH\t" + prefix + "\t" + id + ".stage.1\tTIMEOUT\t-\n";
-        bytes += "PATTERNTARGET\t" + id + "\tGATE1\tboss.kakulsaydon.g1.saydon\n";
+        bytes += "PATTERNTARGET\t" + id + "\tGATE1\tboss.koukusaydon.g1.saydon\n";
         bytes += "PATTERNLOGIC\t" + prefix + "\t0\tcolumn.hit\tENTER_AREA\t100\t1000\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t-\t0\t0\n";
         bytes += "PATTERNLOGICTICK\t" + prefix + "\tcolumn.hit\t200\n";
         bytes += "PATTERNLOGICREGION\t" + prefix + "\tcolumn.hit\t0\tcolumn.body\tBOSS_START\tCYLINDER\t1\t0.25\t3\t0\t2\t0.25\t2\t4\t45\tNONE\tNONE\n";
@@ -503,7 +503,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         tests.Require(fields, "Actual hashed bootstrap admission consumes cylinder, birth anchor, motion, contact tick and pure vertical launch fields");
         if (fields) {
             std::string rising = bytes;
-            const auto start = rising.find("PATTERNATTACKHIT\tENCOUNTER_KAKULSAYDON_G1\tKAKULSAYDON_G1_PATTERN_39\t");
+            const auto start = rising.find("PATTERNATTACKHIT\tENCOUNTER_KOUKUSAYDON_G1\tKOUKUSAYDON_G1_PATTERN_39\t");
             auto end = start == std::string::npos ? start : rising.find('\n', start);
             if (end != std::string::npos && end > start && rising[end - 1u] == '\r') --end;
             bool admitsRise = end != std::string::npos;
@@ -522,7 +522,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 } else admitsRise = false;
             }
             admitsRise = admitsRise && load(rising);
-            const auto* albion = admitsRise ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, "KAKULSAYDON_G1_PATTERN_39", status) : nullptr;
+            const auto* albion = admitsRise ? CKoukuSaydonBrain::Find_AnimationOnlyPattern(*generation, "KOUKUSAYDON_G1_PATTERN_39", status) : nullptr;
             bool foundRise = false;
             if (albion) for (const auto& trigger : albion->MechanicTriggers)
                 for (const auto& hit : trigger.FixedHits)
@@ -541,7 +541,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 "Native cylinder admission rejects unsupported hollow geometry and preserves its previous catalog");
             room->m_KoukuSaydonPatternAudition.iRoomAuditionEpoch = 1u;
             room->m_KoukuSaydonPatternAudition.Request.Scope.strEncounterId = encounter;
-            room->m_KoukuSaydonPatternAudition.Request.Scope.eWorldId = WORLD_ID::KAKULSAYDON_ARENA;
+            room->m_KoukuSaydonPatternAudition.Request.Scope.eWorldId = WORLD_ID::KOUKUSAYDON_ARENA;
             room->m_KoukuSaydonPatternAudition.pProductGeneration = generation;
             room->m_KoukuSaydonPatternAudition.iPinnedSourceRevision = CKoukuSaydonBrain::Resolve_ProductSourceRevision(*generation);
             room->m_KoukuSaydonPatternAudition.PinnedGameplayRevision = revision;
@@ -876,14 +876,14 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
         // The synthetic result tests use an empty catalog; the room owns the
         // admitted Product generation containing these installed hook tracks.
         const auto& sourceCatalog = room->m_GameplayCatalog.Active();
-        const auto* patterns = sourceCatalog.Find_BossPatterns("ENCOUNTER_KAKULSAYDON_G1");
+        const auto* patterns = sourceCatalog.Find_BossPatterns("ENCOUNTER_KOUKUSAYDON_G1");
         tests.Require(patterns != nullptr, "Hook source regression reads the room's admitted Product catalog");
         std::size_t checked = 0u, ascents = 0u;
         if (patterns) for (const auto& source : *patterns)
         {
-            if (source.strPatternId != "KAKULSAYDON_G1_PATTERN_18" &&
-                source.strPatternId != "KAKULSAYDON_G1_PATTERN_19" &&
-                source.strPatternId != "KAKULSAYDON_G1_PATTERN_33") continue;
+            if (source.strPatternId != "KOUKUSAYDON_G1_PATTERN_18" &&
+                source.strPatternId != "KOUKUSAYDON_G1_PATTERN_19" &&
+                source.strPatternId != "KOUKUSAYDON_G1_PATTERN_33") continue;
             for (const auto& window : source.LogicWindows) for (const auto& region : window.CardRegions)
             {
                 const auto& track = region.WorldTrack;
@@ -896,7 +896,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
                 // Current P33 grip samples bottom at 1667ms and rise from 1669ms;
                 // the previous 1701ms expectation was already one tick into ascent.
                 const auto phase = track.iStartMs % 1000u;
-                const auto ascentMs = source.strPatternId == "KAKULSAYDON_G1_PATTERN_33" ? 1667u :
+                const auto ascentMs = source.strPatternId == "KOUKUSAYDON_G1_PATTERN_33" ? 1667u :
                     (phase == 175u || phase == 875u ? 6542u : phase == 350u ? 6550u : phase == 525u ? 6558u : 6567u);
                 const auto releaseMs = rises ? ascentMs : track.Keys[last].iTimeMs;
                 tests.Require(region.eAnchor == BOSS_LOGIC_REGION_ANCHOR::WORLD,
@@ -1001,7 +1001,7 @@ void CServerGameplayContractRunner::Run_KoukuPushContracts(TESTS& tests, const C
             "All 66 installed P18/P19/P33 carriers include 51 terminal-ascent releases and 15 split-track endings");
     }
     {
-        auto hookRoom = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto hookRoom = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         hookRoom->m_GateProgress.iCurrentGate = 3u;
         SERVER_NAV_POINT start{}, floor{}; float yaw = 0.f;
         auto hanging = player();
@@ -1382,7 +1382,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 #ifdef _DEBUG
     {
         using namespace LostArk::Shared;
-        auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+        auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
         // The room constructor loads published placements. This fixture owns exactly two synthetic bosses.
         room->m_WorldEntities.clear();
         auto bossValue = std::make_unique<SERVER_WORLD_ENTITY>();
@@ -1492,7 +1492,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
     }
 	{
 		using namespace LostArk::Shared;
-		auto room = std::make_unique<CGameRoom>(WORLD_ID::KAKULSAYDON_ARENA);
+		auto room = std::make_unique<CGameRoom>(WORLD_ID::KOUKUSAYDON_ARENA);
 		const auto arenaNavigation = room->m_ServerNavigation;
 		room->m_ServerNavigation = CServerNavigation{};
 		std::string collisionStatus;
@@ -1595,7 +1595,7 @@ int LostArk::Server::Run_ServerKoukuObjectOverlapContractTests()
 			"Whirlwind push stops at the same swept collision wall as ordinary Server knockback");
 		room->m_ServerCollisionSystem.Initialize({}, collisionStatus);
 		room->m_ServerNavigation = arenaNavigation;
-		const auto* spawn = room->Find_Placement("boss.kakulsaydon.g2.kouku");
+		const auto* spawn = room->Find_Placement("boss.koukusaydon.g2.kouku");
 		bool foundBoundary = false;
 		if (spawn && arenaNavigation.Is_Loaded())
 		{

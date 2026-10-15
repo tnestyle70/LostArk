@@ -1,20 +1,35 @@
-#include "ValtanPresentationAssetService.h"
+﻿#include "ValtanPresentationAssetService.h"
 
+// 보스 표현 ID·본체/무기/armor 재질 입력과 필수 clip·본을 조회한다.
 #include "ActorCatalog.h"
+// 선택적 armor 생성 실패 때 decoder 진단을 붙인다.
 #include "BinaryAsset/ModelDecoderRegistry.h"
+// Level에서 공유할 발탄 body GameObject 원형을 만든다.
 #include "Body_Valtan.h"
+// 기본 발탄에 게시된 선택적 저작 clip을 추가한다.
 #include "BoneAnimationDocument.h"
+// 원형 등록 성공 뒤 발탄 effect 도메인을 prewarm한다.
 #include "EffectV2_Runtime.h"
+// 완성한 원형 묶음을 Level의 Engine 저장소에 넘긴다.
 #include "GameInstance.h"
+// 본체·animation donor·무기·armor 모델을 만들고 골격/clip을 검사한다.
 #include "Model.h"
+// Resources 상대 animation donor 경로를 검증·해석한다.
 #include "RuntimeAssetRoot.h"
+// 필수 무기 본·armor tag와 보스 GameObject 원형을 사용한다.
 #include "Valtan.h"
 
+// 동일 서비스의 준비/조회/Level 기록 초기화를 직렬화한다.
 #include <mutex>
+// animation donor 파일 검사 결과의 오류 코드를 구분한다.
 #include <system_error>
+// Level별 준비 archetype 목록을 보관한다.
 #include <unordered_map>
+// 등록 완료 archetype을 중복 없이 기억한다.
 #include <unordered_set>
+// tag와 원형 pair를 만들고 소유권을 이동한다.
 #include <utility>
+// armor 입력과 등록 전 원형 묶음을 임시 소유한다.
 #include <vector>
 
 namespace
@@ -22,6 +37,7 @@ namespace
 	std::mutex g_ValtanAssetMutex;
 	std::unordered_map<uint32_t, std::unordered_set<std::string>> g_ReadyByLevel;
 
+	// 발탄 client presentation 계약을 가진 정의만 허용해 기본/파생 tag를 구분한다.
 	wstring_t ModelPrototypeTag(
 		const wchar_t* baseTag, const std::string_view archetypeId)
 	{
@@ -73,6 +89,7 @@ wstring_t Client::CValtanPresentationAssetService::Get_WeaponModelPrototypeTag(
 	return ModelPrototypeTag(TEXT("Prototype_Component_Model_ValtanWeapon"), archetypeId);
 }
 
+// Loader·replication·아레나 준비 요청을 받는다. 기존 준비 기록을 검사하고 자원을 임시 생성·검증한 뒤 묶음 등록한다.
 HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	ComPtr<ID3D11Device> pDevice,
 	ComPtr<ID3D11DeviceContext> pContext,
@@ -87,6 +104,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 
 	std::scoped_lock lock{ g_ValtanAssetMutex };
 	const auto ready = g_ReadyByLevel.find(iLevelIndex);
+	// 이미 다른 발탄 계열을 준비한 Level이면 Body/Valtan GameObject 원형은 다시 만들지 않는다.
 	const bool hasSharedObjectPrototypes = ready != g_ReadyByLevel.end();
 	if (hasSharedObjectPrototypes && ready->second.contains(std::string(archetypeId)))
 		return S_FALSE;
@@ -126,6 +144,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	if (!hasAnimSetFile && (!isMissingAnimSetFile || "BOSS_VALTAN" != archetypeId))
 		return RejectAsset(archetypeId, "animation donor unavailable: " + pActor->animationSetId);
 
+// 파일 없음이 지정한 Win32 오류로 판정된 기본 BOSS_VALTAN만 Debug에서 내장 clip으로 계속할 수 있다. Release는 거부한다.
 #ifndef _DEBUG
 	if (isMissingAnimSetFile)
 		return RejectAsset(archetypeId, "animation donor unavailable: " + pActor->animationSetId);
@@ -161,8 +180,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		const unique_ptr<CModel> animSetModel = CModel::Create(
 			pDevice, pContext, MODEL::ANIM, animSetPath.string().c_str(),
 			XMMatrixScaling(bodyScale, bodyScale, bodyScale));
-		/* CModel compares both skeleton hash and bone count and rejects duplicate
-		clip names before attaching. All admission stays local until Add_Prototypes. */
+		// donor는 골격 hash·본 수·clip 이름 충돌 검사를 거쳐 본체에 붙인다. 아직 Engine에 등록하지 않은 임시 자원이다.
 		if (nullptr == animSetModel || !animSetModel->Has_Animations() ||
 			FAILED(bodyModel->Attach_AnimationSet(*animSetModel)))
 		{
@@ -170,6 +188,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 				pActor->animationSetId);
 		}
 	}
+    // 게시 저작 clip은 선택 사항이다. 실패하면 진단 후 기존 native animation으로 계속한다.
     if (archetypeId == "BOSS_VALTAN")
     {
         std::string authoredStatus;
@@ -181,7 +200,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	if ("BOSS_VALTAN" != archetypeId)
 	{
 		const auto& clips = pActor->presentationClips;
-		// Death is optional: an unavailable death clip retires the corpse immediately.
+		// 여기서는 death clip을 필수 검사 목록에 포함하지 않는다.
 		for (const std::string* clip : { &clips.idle, &clips.chase, &clips.patternWindup,
 			&clips.patternActive, &clips.patternRecovery })
 		{
@@ -193,7 +212,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 	std::vector<std::pair<std::wstring, unique_ptr<CPrototype>>> staged;
 	staged.reserve(4u + armorAssets.size());
 	staged.emplace_back(bodyTag, std::move(bodyModel));
-	/* v8 catalog rows carry a socket pre-rotation; Valtan's is zero today. */
+	// 무기 pre-rotation degree를 먼저 적용하고 catalog의 preScale을 곱한다.
 	const float3_t& weaponRotation = pActor->weaponModelPreRotationDegrees;
 	staged.emplace_back(weaponTag,
 		CModel::Create(pDevice, pContext, MODEL::NONANIM, weaponLoad,
@@ -207,7 +226,7 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		unique_ptr<CModel> armorModel = CModel::Create(
 			pDevice, pContext, MODEL::ANIM, armorLoad,
 			XMMatrixScaling(bodyScale, bodyScale, bodyScale));
-		/* Keep the established isolated-plate failure policy for ordinary Valtan. */
+		// 개별 armor Model 생성 실패는 진단 후 건너뛰고 나머지 원형 준비를 계속한다.
 		if (nullptr == armorModel)
 		{
 			OutputDebugStringA(("[Client][Valtan] armour plate rejected: " +
@@ -231,11 +250,13 @@ HRESULT Client::CValtanPresentationAssetService::Ensure_Prototypes(
 		if (nullptr == prototype)
 			return RejectAsset(archetypeId, "a required prototype could not be created");
 	}
+	// Engine의 전체 tag 사전 검사와 임시 node 등록 경로에 원형 묶음의 소유권을 넘긴다.
 	if (FAILED(CGameInstance::Get().Add_Prototypes(iLevelIndex, std::move(staged))))
 		return RejectAsset(archetypeId, "atomic prototype registration failed");
 
+	// 묶음 등록 성공 후 준비 기록을 남긴다. 선택적으로 건너뛴 armor까지 존재한다는 뜻은 아니다.
 	g_ReadyByLevel[iLevelIndex].insert(std::string(archetypeId));
-	// The two rigs intentionally share the admitted Valtan pattern/effect domain.
+	// 발탄 파생 표현도 BOSS_VALTAN의 패턴·이펙트 자원을 미리 준비한다.
 	CEffectV2Runtime::Prewarm_Archetype(pDevice, pContext, "BOSS_VALTAN");
 	return S_OK;
 }

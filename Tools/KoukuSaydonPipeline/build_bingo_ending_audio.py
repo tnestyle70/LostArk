@@ -172,7 +172,7 @@ def build_candidate(source_scene: Path, source_bank: Path, bank_xml: Path,
     for source_path, ordinal in [(action_source, 75), (sequence_source, 9)]:
         path = label(source_path)
         document = read(source_path)
-        pattern_id = f'KAKULSAYDON_G1_PATTERN_{ordinal}'
+        pattern_id = f'KOUKUSAYDON_G1_PATTERN_{ordinal}'
         pattern = next(p for p in document['patterns'] if p['patternId'] == pattern_id)
         occurrences = []
         for resource_id, values in [(bgm_id, dict(startMs=delay_ms, durationMs=duration_ms, soundSourceStartMs=0)),

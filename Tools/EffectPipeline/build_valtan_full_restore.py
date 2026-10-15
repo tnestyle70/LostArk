@@ -18,7 +18,6 @@ import re
 import sys
 import struct
 import tempfile
-import xml.etree.ElementTree as ET
 
 import build_kouku_action_effect_groups as action
 import build_kouku_all_source_effects as library
@@ -27,6 +26,9 @@ import build_kouku_gate3_slam_mario_restore as exact
 from extract_action_effect_notifies import read_length_prefixed_string
 
 ROOT = source.ROOT
+# Data 표시는 솔루션 폴더의 후보만 만들고, 교체는 각 도구의 기존 저장 경계가 맡는다.
+sys.path.insert(0, str(ROOT / 'Tools/Build'))
+from data_solution import stage_data_solution
 PROFILE = 'MN_RPBF_00'
 BODY = 'Character/Valtan/MN_RPBF_01.wmodel'
 ANIMATIONS = Path('Data/Effects/ValtanFullRestoreAnimations.json')
@@ -226,25 +228,11 @@ def animation_metadata_write(stage_receipt, asset_ids):
 
 
 def project_writes(asset_ids, include_animations):
-    writes = []
-    includes = ['..\\..\\Data\\Effects\\Authored\\' + asset + '.effect.json' for asset in sorted(asset_ids)]
+    # 기존 호출자의 후보/백업/rollback 묶음 안에 솔루션 표시 변경도 포함한다.
+    paths = [ROOT / 'Data/Effects/Authored' / (asset + '.effect.json') for asset in sorted(asset_ids)]
     if include_animations:
-        includes.append('..\\..\\Data\\Effects\\ValtanFullRestoreAnimations.json')
-    for suffix in ('', '.filters'):
-        path = ROOT / ('Client/Default/Client.vcxproj' + suffix)
-        before = path.read_bytes()
-        text = before.decode('utf8')
-        newline = '\r\n' if '\r\n' in text else '\n'
-        additions = [f'    <None Include="{include}"><Filter>96.DataFiles</Filter></None>' if suffix
-                     else f'    <None Include="{include}" />'
-                     for include in includes if f'Include="{include}"' not in text]
-        if additions:
-            prefix, marker, tail = text.rpartition('</Project>')
-            assert marker
-            text = prefix + '  <ItemGroup>' + newline + newline.join(additions) + newline + '  </ItemGroup>' + newline + marker + tail
-        ET.fromstring(text)
-        writes.append((path, before, text.encode('utf8')))
-    return writes
+        paths.append(ROOT / ANIMATIONS)
+    return stage_data_solution(ROOT, paths)
 
 
 def commit_writes(writes):

@@ -1,21 +1,24 @@
-﻿#include "UITextureCache.h"
-#pragma push_macro("new")
-#undef new
+﻿// UI asset 경로별 로드 결과와 원본 픽셀 크기를 보관한다.
+#include "UITextureCache.h"
+// DDS는 DDS 로더, 나머지 이미지 확장자는 WIC 로더로 SRV를 만든다.
 #include "DirectXTK/DDSTextureLoader.h"
 #include "DirectXTK/WICTextureLoader.h"
-#pragma pop_macro("new")
 
+// Resources 상대 asset ID를 허용된 실제 파일 경로로 해석한다.
 #include "RuntimeAssetRoot.h"
 
+// 호출자가 전달한 장치의 COM 참조를 캐시 수명 동안 유지한다.
 Client::CUITextureCache::CUITextureCache(ComPtr<ID3D11Device> pDevice)
 	: m_pDevice{ pDevice }
 {
 }
 
+// 자동 소멸하는 멤버가 장치·이미지 참조와 크기 목록을 정리한다.
 Client::CUITextureCache::~CUITextureCache()
 {
 }
 
+// 캐시의 성공·실패 결과를 먼저 찾는다. 새 로드 결과는 Adopt가 보유하므로 raw 포인터를 차용해 반환한다.
 ID3D11ShaderResourceView* Client::CUITextureCache::Get_Or_Load(const string& strPath)
 {
 	if (strPath.empty())
@@ -30,6 +33,7 @@ ID3D11ShaderResourceView* Client::CUITextureCache::Get_Or_Load(const string& str
 	return pSRV.Get();
 }
 
+// UTF-8 상대 경로를 해석하고 이미지 파일에서 SRV를 만든다. 실패는 빈 COM 참조다.
 ComPtr<ID3D11ShaderResourceView> Client::CUITextureCache::Load_Texture(
 	ID3D11Device* pDevice, const string& strPath)
 {
@@ -44,8 +48,7 @@ ComPtr<ID3D11ShaderResourceView> Client::CUITextureCache::Load_Texture(
 	if (!ResolvedPath.empty())
 	{
 		HRESULT hr = {};
-		/* Same reasoning as CHUDRuntimeView::Get_Or_Load_Texture: this draws into an already
-		gamma-correct UNORM back buffer, so the loader must not decode embedded sRGB again. */
+		// UI 이미지 로더가 내장 sRGB 정보를 자동 적용하지 않도록 지정한다.
 		if (0 == _wcsicmp(ResolvedPath.extension().c_str(), L".dds"))
 		{
 			hr = CreateDDSTextureFromFileEx(
@@ -66,6 +69,7 @@ ComPtr<ID3D11ShaderResourceView> Client::CUITextureCache::Load_Texture(
 	return pSRV;
 }
 
+// 빈 경로와 기존 정상 이미지는 변경하지 않는다. 새 결과의 참조·크기를 캐시에 등록한다.
 void Client::CUITextureCache::Adopt(const string& strPath, ComPtr<ID3D11ShaderResourceView> pSRV)
 {
 	const auto Existing = m_TextureCache.find(strPath);
@@ -73,8 +77,7 @@ void Client::CUITextureCache::Adopt(const string& strPath, ComPtr<ID3D11ShaderRe
 		return;
 	if (nullptr != pSRV)
 	{
-		/* Native pixel size for Get_Texture_Size -- queried once here off the SRV's own backing
-		Texture2D instead of re-opening the file. */
+		// 파일을 다시 열지 않고 SRV가 참조하는 Texture2D에서 픽셀 크기를 얻는다.
 		ComPtr<ID3D11Resource> pResource;
 		pSRV->GetResource(&pResource);
 		ComPtr<ID3D11Texture2D> pTexture2D;
@@ -88,9 +91,11 @@ void Client::CUITextureCache::Adopt(const string& strPath, ComPtr<ID3D11ShaderRe
 		}
 	}
 
+	// nullptr도 저장해 Get_Or_Load가 같은 실패를 매 프레임 재시도하지 않게 한다.
 	m_TextureCache[strPath] = pSRV;
 }
 
+// 레이아웃 애니메이션이 사용할 원본 크기를 조회하고 성공한 뒤에만 출력 참조를 바꾼다.
 bool_t Client::CUITextureCache::Get_Texture_Size(
 	const string& strPath, f32_t& outWidth, f32_t& outHeight)
 {

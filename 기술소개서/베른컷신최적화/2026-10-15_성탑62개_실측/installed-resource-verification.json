@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "packages": [
+    {
+      "manifest": {
+        "file": "Map/Derived/Bern/Pillar06/manifest.json",
+        "sha256": "0ce0e81eabfffdf1fdf6d94f01c381a560da43ca9433befc5e3fa66fa9bc70cf"
+      },
+      "assetCount": 31,
+      "atlas": 256,
+      "limits": {
+        "maximumProjectedDiameterPixels": 1200.0,
+        "minimumSurfaceDistanceMetres": 70.0
+      }
+    },
+    {
+      "manifest": {
+        "file": "Map/Derived/Bern/Pillar07/manifest.json",
+        "sha256": "645231d0fdb27468f2369e938bb84a6b84f45b79bdf1b0b1a6a5d8ad18091fc0"
+      },
+      "assetCount": 22,
+      "atlas": 256,
+      "limits": {
+        "maximumProjectedDiameterPixels": 1200.0,
+        "minimumSurfaceDistanceMetres": 70.0
+      }
+    }
+  ],
+  "uniqueReferencedFilesVerified": 81,
+  "assetIds": 53,
+  "duplicateIds": 0,
+  "duplicateJsonKeys": 0,
+  "actualNativeMeasuredCandidateBytesInstalled": true,
+  "wholeSceneMeasured": false,
+  "gameFpsMeasured": false
+}

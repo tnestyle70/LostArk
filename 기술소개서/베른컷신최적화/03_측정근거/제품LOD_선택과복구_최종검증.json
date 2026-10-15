@@ -1,0 +1,419 @@
+{
+  "scope": "Actual CMapPlacementRuntime/Batch/Chunk/GpuScene and CModel supplied-low geometry, position-only shader shim. 133 installed placements / 80 assets / 8 chunks. 60m minimum nearest-surface distance and 2000px limit are synthetic proof admissions, not accepted product quality thresholds.",
+  "resultDirectory": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-batch-proof\\lifecycle-fallback-lod0-008",
+  "validation": true,
+  "checkCount": 6869,
+  "baselineMatchesPriorProductLodFixture": true,
+  "counts": {
+    "off-baseline": {
+      "vsInvocations": 453913,
+      "engineIndices": 1099428,
+      "mapIndices": 1099392,
+      "mapDraws": 276
+    },
+    "on-gpu-hlod": {
+      "vsInvocations": 281217,
+      "engineIndices": 698964,
+      "mapIndices": 698928,
+      "mapDraws": 180
+    },
+    "off-restored": {
+      "vsInvocations": 453913,
+      "engineIndices": 1099428,
+      "mapIndices": 1099392,
+      "mapDraws": 276
+    },
+    "late-binding-fallback": {
+      "vsInvocations": 502457,
+      "engineIndices": 1268394,
+      "mapIndices": 1268358,
+      "mapDraws": 296
+    },
+    "late-binding-next-frame-originals": {
+      "vsInvocations": 453913,
+      "engineIndices": 1099428,
+      "mapIndices": 1099392,
+      "mapDraws": 276
+    },
+    "staging-failure-originals": {
+      "vsInvocations": 453913,
+      "engineIndices": 1099428,
+      "mapIndices": 1099392,
+      "mapDraws": 276
+    }
+  },
+  "selectedPlacements": 19,
+  "vertexReductionFraction": 0.38046057284105106,
+  "indexReductionFraction": 0.3642595179881244,
+  "lodMismatchCause": {
+    "confirmed": "G41 api-proof prepare.py inherited full-scene-probe/candidate-engine.rsp, which linked out/cpu-far-candidate/StaticMeshLod.native.obj. Its permissive/no-border 1/8 and 1/16 range generation changes ordinary source LOD even when the forced-distance environment variable is unset. Product StaticMeshLod.obj restores prior baseline exactly.",
+    "experimentalObjectSha256": "26090170478aa28c8fce2b2bad694b85413a2a9d32ad8d968a0907ced843fd19",
+    "productObjectSha256": "6a920f557bf69d6b0c832e6439230ee3d85c63ad8c2e479c2fdf93d3dd7f3aae",
+    "comparisons": [
+      {
+        "assetId": "MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT_RNM_A1B7ADA020F6",
+        "allCameraGeometryAndSelectionInputsIdentical": true,
+        "inputChecks": {
+          "assetId": true,
+          "mesh": true,
+          "viewBuilt": true,
+          "cameraView": true,
+          "cameraProjection": true,
+          "lodCameraView": true,
+          "lodViewScale": true,
+          "viewBounds": true,
+          "projectionPixels": true,
+          "maximumScale": true,
+          "nearPlane": true,
+          "maximumPixelError": true,
+          "maximumAbsViewXY": true,
+          "minimumViewDepth": true,
+          "hasTightViewBounds": true,
+          "additionalWorldError": true,
+          "meshLodEnabled": true,
+          "sourceIndices": true,
+          "sourceVertices": true
+        },
+        "experimental": {
+          "selectedLod": 3,
+          "selectedIndices": 3102,
+          "ranges": [
+            {
+              "level": 0,
+              "count": 24816,
+              "first": 0,
+              "localError": 0
+            },
+            {
+              "level": 1,
+              "count": 19056,
+              "first": 24816,
+              "localError": 0.0159255694598
+            },
+            {
+              "level": 2,
+              "count": 15438,
+              "first": 43872,
+              "localError": 0.0317574553192
+            },
+            {
+              "level": 3,
+              "count": 3102,
+              "first": 59310,
+              "localError": 0.0589685216546
+            },
+            {
+              "level": 4,
+              "count": 1551,
+              "first": 62412,
+              "localError": 0.148931980133
+            }
+          ]
+        },
+        "product": {
+          "selectedLod": 2,
+          "selectedIndices": 15438,
+          "ranges": [
+            {
+              "level": 0,
+              "count": 24816,
+              "first": 0,
+              "localError": 0
+            },
+            {
+              "level": 1,
+              "count": 19056,
+              "first": 24816,
+              "localError": 0.0159255694598
+            },
+            {
+              "level": 2,
+              "count": 15438,
+              "first": 43872,
+              "localError": 0.0317574553192
+            },
+            {
+              "level": 3,
+              "count": 10902,
+              "first": 59310,
+              "localError": 0.234699845314
+            }
+          ]
+        }
+      },
+      {
+        "assetId": "MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH_RNM_434710B00507",
+        "allCameraGeometryAndSelectionInputsIdentical": true,
+        "inputChecks": {
+          "assetId": true,
+          "mesh": true,
+          "viewBuilt": true,
+          "cameraView": true,
+          "cameraProjection": true,
+          "lodCameraView": true,
+          "lodViewScale": true,
+          "viewBounds": true,
+          "projectionPixels": true,
+          "maximumScale": true,
+          "nearPlane": true,
+          "maximumPixelError": true,
+          "maximumAbsViewXY": true,
+          "minimumViewDepth": true,
+          "hasTightViewBounds": true,
+          "additionalWorldError": true,
+          "meshLodEnabled": true,
+          "sourceIndices": true,
+          "sourceVertices": true
+        },
+        "experimental": {
+          "selectedLod": 3,
+          "selectedIndices": 3009,
+          "ranges": [
+            {
+              "level": 0,
+              "count": 24096,
+              "first": 0,
+              "localError": 0
+            },
+            {
+              "level": 1,
+              "count": 17574,
+              "first": 24096,
+              "localError": 0.0187087599188
+            },
+            {
+              "level": 2,
+              "count": 14328,
+              "first": 41670,
+              "localError": 0.0372013561428
+            },
+            {
+              "level": 3,
+              "count": 3009,
+              "first": 55998,
+              "localError": 0.0578029491007
+            },
+            {
+              "level": 4,
+              "count": 1506,
+              "first": 59007,
+              "localError": 0.154513463378
+            }
+          ]
+        },
+        "product": {
+          "selectedLod": 2,
+          "selectedIndices": 14328,
+          "ranges": [
+            {
+              "level": 0,
+              "count": 24096,
+              "first": 0,
+              "localError": 0
+            },
+            {
+              "level": 1,
+              "count": 17574,
+              "first": 24096,
+              "localError": 0.0187087599188
+            },
+            {
+              "level": 2,
+              "count": 14328,
+              "first": 41670,
+              "localError": 0.0372013561428
+            },
+            {
+              "level": 3,
+              "count": 10788,
+              "first": 55998,
+              "localError": 0.356550246477
+            }
+          ]
+        }
+      }
+    ],
+    "sourcePayloads": [
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT\\MAP_01140323D508_BG_BER_BERNCASTLE_PILLAR06_SM_HHT.wmodel",
+        "bytes": 730224,
+        "beforeSha256": "f95aae55b784fbbb44a63b7a0d64fbb54bf03ce3432bdd231ecee180923941fc",
+        "afterSha256": "f95aae55b784fbbb44a63b7a0d64fbb54bf03ce3432bdd231ecee180923941fc",
+        "unchanged": true
+      },
+      {
+        "path": "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Resources\\Map\\LV_BER_BERNCASTLE\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH\\MAP_6AA1CB21352B_BG_BER_BERNCASTLE_PILLAR07_SM_RSH.wmodel",
+        "bytes": 630868,
+        "beforeSha256": "d023625c56126bd1d3a788ea7569aeea4185734b19baca3fa54890ea42432618",
+        "afterSha256": "d023625c56126bd1d3a788ea7569aeea4185734b19baca3fa54890ea42432618",
+        "unchanged": true
+      }
+    ]
+  },
+  "cpuTiming": {
+    "scope": "Warmed ABBA prepared-proxy OFF versus no-prepared-proxy OFF; 32 warm + 3x64 measured frames per block; no overlapping GPU probe. Product MSBuild/fxc was concurrently active. Raw scopes only, no game FPS or strict no-regression claim.",
+    "blocks": [
+      {
+        "block": "cpu-off-0-prepared-timing",
+        "scopes": {
+          "Render.NonBlend": {
+            "windowMeansMsPerFrame": [
+              7.48484375,
+              9.0234859375,
+              14.1282078125
+            ],
+            "median": 9.0234859375
+          },
+          "Map.Batch.BindAndDraw": {
+            "windowMeansMsPerFrame": [
+              6.0615609375,
+              8.11843125,
+              12.7154
+            ],
+            "median": 8.11843125
+          },
+          "Render.FinalCameraSubmission": {
+            "windowMeansMsPerFrame": [
+              1.0700703125,
+              0.142015625,
+              0.2420328125
+            ],
+            "median": 0.2420328125
+          },
+          "Render.GpuScene.Prepare": {
+            "windowMeansMsPerFrame": [
+              0.1402921875,
+              0.530665625,
+              0.170509375
+            ],
+            "median": 0.170509375
+          }
+        }
+      },
+      {
+        "block": "cpu-off-1-absent-timing",
+        "scopes": {
+          "Render.NonBlend": {
+            "windowMeansMsPerFrame": [
+              12.4496546875,
+              10.43950625,
+              6.5133265625
+            ],
+            "median": 10.43950625
+          },
+          "Map.Batch.BindAndDraw": {
+            "windowMeansMsPerFrame": [
+              11.5465046875,
+              6.7292828125,
+              4.9396171875
+            ],
+            "median": 6.7292828125
+          },
+          "Render.FinalCameraSubmission": {
+            "windowMeansMsPerFrame": [
+              0.1719484375,
+              0.204740625,
+              0.1348359375
+            ],
+            "median": 0.1719484375
+          },
+          "Render.GpuScene.Prepare": {
+            "windowMeansMsPerFrame": [
+              0.1339484375,
+              0.57049375,
+              0.5151296875
+            ],
+            "median": 0.5151296875
+          }
+        }
+      },
+      {
+        "block": "cpu-off-2-absent-timing",
+        "scopes": {
+          "Render.NonBlend": {
+            "windowMeansMsPerFrame": [
+              5.1440390625,
+              5.084728125,
+              5.5199765625
+            ],
+            "median": 5.1440390625
+          },
+          "Map.Batch.BindAndDraw": {
+            "windowMeansMsPerFrame": [
+              4.4037953125,
+              4.1303171875,
+              4.3003859375
+            ],
+            "median": 4.3003859375
+          },
+          "Render.FinalCameraSubmission": {
+            "windowMeansMsPerFrame": [
+              0.4490484375,
+              0.1293109375,
+              0.12575
+            ],
+            "median": 0.1293109375
+          },
+          "Render.GpuScene.Prepare": {
+            "windowMeansMsPerFrame": [
+              0.0978875,
+              0.366603125,
+              0.0838640625
+            ],
+            "median": 0.0978875
+          }
+        }
+      },
+      {
+        "block": "cpu-off-3-prepared-timing",
+        "scopes": {
+          "Render.NonBlend": {
+            "windowMeansMsPerFrame": [
+              11.181865625,
+              13.15221875,
+              14.04405625
+            ],
+            "median": 13.15221875
+          },
+          "Map.Batch.BindAndDraw": {
+            "windowMeansMsPerFrame": [
+              8.94875,
+              9.271696875,
+              10.16925625
+            ],
+            "median": 9.271696875
+          },
+          "Render.FinalCameraSubmission": {
+            "windowMeansMsPerFrame": [
+              1.5413890625,
+              0.1861,
+              0.317615625
+            ],
+            "median": 0.317615625
+          },
+          "Render.GpuScene.Prepare": {
+            "windowMeansMsPerFrame": [
+              0.6385734375,
+              1.07190625,
+              1.738246875
+            ],
+            "median": 1.07190625
+          }
+        }
+      }
+    ]
+  },
+  "runnerResult": {
+    "executable": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-batch-proof\\BatchLifecycle.exe",
+    "pid": 25716,
+    "exitCode": 0,
+    "elapsedSeconds": 106.230714,
+    "nativeHandleRetained": true
+  },
+  "fallbackLod0": true,
+  "limitations": [
+    "Position-only material shim is not a native surface or image-quality approval.",
+    "Selected P06 reductions do not establish the whole Bern 1/8 target.",
+    "133-instance subset is below the product 512-cost worker-assistant threshold; no spawned-worker concurrency acceptance."
+  ]
+}

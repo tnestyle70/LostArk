@@ -1,3 +1,4 @@
+﻿# Guide Tool의 저작 JSON 다섯 개를 검사하고 Save와 Client/Server 게시를 구분한다.
 [CmdletBinding()]
 param(
     [ValidateSet('Validate','Publish','CheckPublished','Save')][string]$Mode = 'Validate',
@@ -9,8 +10,10 @@ if (-not $RepositoryRoot) { $RepositoryRoot = Split-Path (Split-Path $PSScriptRo
 Set-StrictMode -Version Latest
 . (Join-Path $RepositoryRoot 'Tools/GameplayPipeline/Publish-FileTransaction.ps1')
 $utf8 = [Text.UTF8Encoding]::new($false, $true)
+# 읽은 원문을 보관해 최종 교체 직전의 동시 저장을 감지한다.
 $sources = @{}
 $files = [ordered]@{catalog='GuideCatalog.json';placement='DimensionMaster/Placement.json';prompts='DimensionMaster/Prompts.json';triggers='DimensionMaster/Triggers.json';combat='DimensionMaster/Combat.json'}
+# 저장소 밖 경로와 reparse point를 거부해 게시 대상의 경계를 고정한다.
 function Assert-RepositoryPath([string]$path) {
     $root=[IO.Path]::GetFullPath($RepositoryRoot).TrimEnd([IO.Path]::DirectorySeparatorChar)
     $full=[IO.Path]::GetFullPath($path)
@@ -28,7 +31,7 @@ function Read-Json([string]$path,[bool]$repositoryOwned=$true) {
     $bytes=[IO.File]::ReadAllBytes($path); $sources[$path]=[Convert]::ToBase64String($bytes)
     $text=$utf8.GetString($bytes).TrimStart([char]0xFEFF)
     $parsed=ConvertFrom-Json -InputObject $text
-    # ConvertFrom-Json otherwise silently retains the last exact duplicate key.
+    # JSON 변환이 덮어쓴 중복 키도 원문에서 다시 찾아 거부한다.
     $objects=[Collections.Generic.List[object]]::new(); $previous=''
     foreach($token in [Regex]::Matches($text, '"(?:\\.|[^"\\])*"|[{}\[\]:]')){
         switch -CaseSensitive ($token.Value){
@@ -48,10 +51,10 @@ function Read-Json([string]$path,[bool]$repositoryOwned=$true) {
 function Assert-True($condition,[string]$message) { if (-not $condition) { throw $message } }
 function Assert-EditableBinding($condition,[string]$message) {
     if($condition){return}
-    # Validate is also the editor's Load admission. Keep broken references editable;
-    # Save and runtime publication must still reject them without replacing files.
+    # Load용 Validate는 참조 오류를 경고해 편집을 허용하고, Save/Publish는 교체를 거부한다.
     if($script:Mode -eq 'Validate'){Write-Warning $message}else{throw $message}
 }
+# SPACE_ENTER의 NPC stable ID와 현재 배치 좌표·회전을 대조한다.
 function Assert-BoxAnchor($event,$world) {
     Assert-True ($event.anchorPlacementId -is [string]) 'Box anchor must be a stable ID or an empty string'
     if($event.anchorPlacementId -ceq ''){return}
@@ -91,6 +94,7 @@ function Assert-Integer($value,[double]$minimum,[double]$maximum,[string]$where)
 function Assert-Id($id,[string]$where) { Assert-True ($id -is [string] -and $id -cmatch '^[A-Za-z0-9_.:-]{1,128}$') "$where requires an ASCII stable ID" }
 function Assert-Text($text,[int]$max,[string]$where) { Assert-True ($text -is [string] -and $text.Length -gt 0 -and $utf8.GetByteCount($text) -le $max -and $text -notmatch '[\x00-\x08\x0b-\x1f\x7f]') "$where text is empty or too long" }
 function Assert-Vector($value,[double]$minimum,[string]$where) { Assert-True ($value -is [array] -and $value.Count -eq 3) "$where requires three coordinates"; foreach($n in $value){ Assert-Number $n $minimum 100000 $where } }
+# 객체 키만 정렬해 revision 해시와 병합 비교가 저장 순서에 흔들리지 않게 한다.
 function Canonical-Value($value) {
     if($value -is [pscustomobject] -or $value -is [Collections.IDictionary]){
         $result=[ordered]@{}
@@ -108,6 +112,7 @@ function Read-Bundle {
     foreach($key in $files.Keys){ $bundle[$key]=Read-Json (Join-Path $RepositoryRoot ('Data/Guide/'+$files[$key])) }
     [pscustomobject]$bundle
 }
+# 저작 문서의 참조를 검증하고 슬롯을 게시된 skillId로 해석한 실행 묶음을 만든다.
 function Make-Runtime($b) {
     Assert-Keys $b @('catalog','placement','prompts','triggers','combat') 'Guide bundle'
     Assert-Keys $b.catalog @('schema','formatVersion','revision','categories','guides') 'Catalog'
@@ -122,13 +127,16 @@ function Make-Runtime($b) {
     Assert-True ($g.guideId -ceq 'guide.dimensionmaster' -and $g.characterClass -ceq 'DIMENSIONMASTER') 'Guide must use DIMENSIONMASTER'
     Assert-Text $g.displayName 32 'Guide name'; Assert-True ($g.displayName -notmatch '[\x00-\x1f\x7f]') 'Guide name contains a control character'
     foreach($pair in @(@('placementDocument','placement'),@('promptDocument','prompts'),@('triggerDocument','triggers'),@('combatDocument','combat'))){ Assert-True ($g.($pair[0]) -ceq $files[$pair[1]]) 'Guide source reference differs from the supported document path'; Assert-True ($b.($pair[1]).guideId -ceq $g.guideId) 'Guide document identity mismatch' }
+    # category의 Area와 World를 실제 MapCatalog·Gameplay 배치에 연결한다.
     $map=Read-Json (Join-Path $RepositoryRoot 'Data/Maps/MapCatalog.json')
     $cats=@{}; $worlds=@{}
-    foreach($c in $b.catalog.categories){ Assert-Keys $c @('categoryId','displayName','worldId','areaId') 'Category'; Assert-Id $c.categoryId 'Category'; Assert-Text $c.displayName 96 'Category name'; Assert-True (-not $cats.ContainsKey($c.categoryId)) 'Duplicate category'; Assert-True (@($map.areas | Where-Object id -CEQ $c.areaId).Count -eq 1) "Unknown Area $($c.areaId)"; Assert-True ($c.worldId -cin @('BERN','VALTAN_ARENA','KAKULSAYDON_ARENA')) 'Unsupported Guide world'; $cats[$c.categoryId]=$c; $worlds[$c.categoryId]=Read-Json (Join-Path $RepositoryRoot ('Data/Worlds/'+$c.areaId+'/Gameplay.world.json')) }
+    foreach($c in $b.catalog.categories){ Assert-Keys $c @('categoryId','displayName','worldId','areaId') 'Category'; Assert-Id $c.categoryId 'Category'; Assert-Text $c.displayName 96 'Category name'; Assert-True (-not $cats.ContainsKey($c.categoryId)) 'Duplicate category'; Assert-True (@($map.areas | Where-Object id -CEQ $c.areaId).Count -eq 1) "Unknown Area $($c.areaId)"; Assert-True ($c.worldId -cin @('BERN','VALTAN_ARENA','KOUKUSAYDON_ARENA')) 'Unsupported Guide world'; $cats[$c.categoryId]=$c; $worlds[$c.categoryId]=Read-Json (Join-Path $RepositoryRoot ('Data/Worlds/'+$c.areaId+'/Gameplay.world.json')) }
     Assert-True ($cats.ContainsKey($b.placement.categoryId)) 'Unknown placement category'
     Assert-Id $b.placement.placementId 'Placement'; Assert-Vector $b.placement.position -100000 'Start position'; Assert-Number $b.placement.yawDegrees -36000 36000 'Start yaw'; Assert-True ($b.placement.anchorPolicy -cin @('INVITER_THEN_LEADER','PARTY_LEADER')) 'Unknown anchor policy'
+    # 대사 ID, UTF-8 크기와 재생 시간을 검사한다.
     $promptIds=@{}; Assert-True (@($b.prompts.prompts).Count -le 512) 'Too many prompts'
     foreach($p in $b.prompts.prompts){ Assert-Keys $p @('promptId','categoryId','topic','title','segments') 'Prompt'; Assert-Id $p.promptId 'Prompt'; Assert-True (-not $promptIds.ContainsKey($p.promptId) -and $cats.ContainsKey($p.categoryId)) 'Duplicate prompt or unknown category'; $promptIds[$p.promptId]=$true; Assert-Text $p.title 256 'Prompt title'; Assert-True ($p.topic -cin @('PARTY','NPC','BOSS_PATTERN','COMBAT')) 'Unknown prompt topic'; Assert-True (@($p.segments).Count -ge 1 -and @($p.segments).Count -le 16) 'Prompt needs 1..16 segments'; $bytes=0; $duration=0; foreach($s in $p.segments){ Assert-Keys $s @('text','durationMs') 'Prompt segment'; Assert-Text $s.text 512 'Segment'; Assert-Integer $s.durationMs 1000 20000 'Segment duration'; $bytes+=$utf8.GetByteCount($s.text); $duration+=$s.durationMs }; Assert-True ($bytes -le 4096 -and $duration -le 60000) 'Prompt exceeds text or duration limit' }
+    # 추종 거리·판단 주기·가중치를 검사한 뒤 게시된 스킬로 combo를 해석한다.
     $f=$b.combat.follow; Assert-Keys $f @('desiredDistanceM','minimumDistanceM','maximumDistanceM','resumeDistanceM','recoverDistanceM','recoverDelayMs') 'Follow'; foreach($k in @('desiredDistanceM','minimumDistanceM','maximumDistanceM','resumeDistanceM','recoverDistanceM')){ Assert-Number $f.$k 0.1 200 "Follow $k" }; Assert-True ($f.minimumDistanceM -le $f.desiredDistanceM -and $f.desiredDistanceM -le $f.maximumDistanceM -and $f.maximumDistanceM -lt $f.resumeDistanceM -and $f.resumeDistanceM -lt $f.recoverDistanceM) 'Follow distances are not ordered'; Assert-Integer $f.recoverDelayMs 1000 60000 'Recovery delay'
     $d=$b.combat.decision; Assert-Keys $d @('thinkIntervalMs','horizonMs','switchMargin','minimumHoldMs','lethalHpFraction') 'Decision'; Assert-Integer $d.thinkIntervalMs 33 1000 'Think interval'; Assert-Integer $d.horizonMs 100 5000 'Horizon'; Assert-Number $d.switchMargin 0 1 'Switch margin'; Assert-Integer $d.minimumHoldMs 0 3000 'Minimum hold'; Assert-Number $d.lethalHpFraction 0.1 1 'Lethal HP fraction'
     Assert-Keys $b.combat.weights @('FOLLOW','ASSIST') 'Weights'; foreach($mode in @('FOLLOW','ASSIST')){ $w=$b.combat.weights.$mode; Assert-Keys $w @('attack','avoid','follow') 'Weight'; foreach($k in @('attack','avoid','follow')){ Assert-Number $w.$k 0 1 "$mode $k" }; Assert-True ([Math]::Abs($w.attack+$w.avoid+$w.follow-1) -lt 0.001) "$mode weights must sum to 1" }; Assert-True ($b.combat.weights.FOLLOW.attack -eq 0) 'FOLLOW mode cannot attack without a help request'
@@ -136,10 +144,11 @@ function Make-Runtime($b) {
     $comboIds=@{}; $combat=Clone $b.combat; Assert-True (@($combat.combos).Count -le 128) 'Too many combos'
     foreach($combo in $combat.combos){ Assert-Keys $combo @('comboId','displayName','inputSlots','timeoutMs','stepWaitMs','repeat') 'Combo'; Assert-Id $combo.comboId 'Combo'; Assert-True (-not $comboIds.ContainsKey($combo.comboId)) 'Duplicate combo'; $comboIds[$combo.comboId]=$true; Assert-Text $combo.displayName 128 'Combo name'; Assert-Integer $combo.timeoutMs 1000 120000 'Combo timeout'; Assert-Integer $combo.stepWaitMs 0 30000 'Step wait'; Assert-True ($combo.repeat -is [bool] -and @($combo.inputSlots).Count -ge 1 -and @($combo.inputSlots).Count -le 32) 'Invalid combo steps/repeat'; $resolved=@(); foreach($slot in $combo.inputSlots){ $matches=@($skills.skills | Where-Object {$_.characterClass -ceq $g.characterClass -and $_.inputSlot -ceq $slot -and $_.skillKind -ceq 'ACTIVE'}); Assert-True ($matches.Count -eq 1) "Unresolvable active skill slot $slot"; $id=$matches[0].skillId; Assert-True ($bootstrap -cmatch "(?m)^SKILL\t$id\tDIMENSIONMASTER\t$slot\t") "Skill $slot is not published"; $resolved += $id }; $combo | Add-Member -NotePropertyName resolvedSkillIds -NotePropertyValue @($resolved) }
     $aliases=@{}; $commandIds=@{}; foreach($command in $b.combat.commands){ Assert-Keys $command @('commandId','displayName','aliases','comboId','stop','enabled','cooldownMs') 'Command'; Assert-Id $command.commandId 'Command'; Assert-True (-not $commandIds.ContainsKey($command.commandId)) 'Duplicate command'; $commandIds[$command.commandId]=$true; Assert-Text $command.displayName 128 'Command name'; Assert-True ($command.stop -is [bool] -and $command.enabled -is [bool]) 'Command flags must be booleans'; Assert-True (($command.stop -and $command.comboId -ceq '') -or (-not $command.stop -and $comboIds.ContainsKey($command.comboId))) 'Command combo reference is invalid'; Assert-Integer $command.cooldownMs 0 60000 'Command cooldown'; Assert-True (@($command.aliases).Count -ge 1 -and @($command.aliases).Count -le 32) 'Command needs aliases'; foreach($alias in $command.aliases){ Assert-Text $alias 128 'Command alias'; Assert-True ($alias -ceq $alias.Trim()) 'Alias must have no surrounding spaces'; if($command.enabled){ Assert-True (-not $aliases.ContainsKey($alias)) "Duplicate enabled command alias: $alias"; $aliases[$alias]=$true } } }
+    # trigger는 허용된 사건과 기존 대사·combo만 참조한다.
     $triggerIds=@{}; foreach($t in $b.triggers.triggers){ Assert-Keys $t @('triggerId','categoryId','enabled','event','promptId','comboId','cooldownMs','priority') 'Trigger'; Assert-Id $t.triggerId 'Trigger'; Assert-True (-not $triggerIds.ContainsKey($t.triggerId) -and $cats.ContainsKey($t.categoryId)) 'Duplicate trigger or unknown category'; $triggerIds[$t.triggerId]=$true; Assert-True ($t.enabled -is [bool]) 'Trigger enabled must be boolean'; Assert-True ($t.promptId -ceq '' -or $promptIds.ContainsKey($t.promptId)) 'Trigger prompt is missing'; Assert-True ($t.comboId -ceq '' -or $comboIds.ContainsKey($t.comboId)) 'Trigger combo is missing'; Assert-True ($t.event.type -ceq 'HELP_COMMAND' -or $t.comboId -ceq '') 'Only HELP_COMMAND triggers can request a combo'; Assert-Integer $t.cooldownMs 0 3600000 'Trigger cooldown'; Assert-Integer $t.priority 0 255 'Trigger priority'; switch -CaseSensitive ($t.event.type){
         'PARTY_JOINED' { Assert-Keys $t.event @('type') 'Legacy guide start trigger' }
         'GUIDE_STARTED' { Assert-Keys $t.event @('type') 'Guide start trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN') 'Guide start requires Bern' }
-        'RAID_RETURNED' { Assert-Keys $t.event @('type','raidWorldId') 'Raid return trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN' -and $t.event.raidWorldId -cin @('VALTAN_ARENA','KAKULSAYDON_ARENA')) 'Raid return requires Bern and a supported source raid' }
+        'RAID_RETURNED' { Assert-Keys $t.event @('type','raidWorldId') 'Raid return trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN' -and $t.event.raidWorldId -cin @('VALTAN_ARENA','KOUKUSAYDON_ARENA')) 'Raid return requires Bern and a supported source raid' }
         'WORLD_RETURNED' { Assert-Keys $t.event @('type','sourceWorldId') 'World return trigger'; Assert-True ($cats[$t.categoryId].worldId -ceq 'BERN' -and $t.event.sourceWorldId -cin @('MAHARAKA','COLOSSEUM')) 'World return requires Bern and a supported source world' }
         'SPACE_ENTER' { Assert-Keys $t.event @('type','boxId','position','yawDegrees','halfExtents','anchorPlacementId') 'Box trigger'; Assert-Id $t.event.boxId 'Box'; Assert-Vector $t.event.position -100000 'Box position'; Assert-Vector $t.event.halfExtents 0.01 'Box half extents'; Assert-Number $t.event.yawDegrees -36000 36000 'Box yaw'; Assert-BoxAnchor $t.event $worlds[$t.categoryId] }
         'BOSS_PATTERN_STARTED' { Assert-Keys $t.event @('type','patternId') 'Pattern trigger'; Assert-Id $t.event.patternId 'Pattern'; Assert-True ($bootstrap -cmatch ('(?m)^PATTERN\t[^\t]+\t'+[Regex]::Escape($t.event.patternId)+'\t')) 'Pattern is not published' }
@@ -154,7 +163,7 @@ function Make-Runtime($b) {
     $sha=[Security.Cryptography.SHA256]::Create(); try{$digest=[BitConverter]::ToString($sha.ComputeHash($utf8.GetBytes((Json $runtime)))).Replace('-','')}finally{$sha.Dispose()}; $runtime.revision=[Convert]::ToUInt64($digest.Substring(0,12),16)
     [pscustomobject]$runtime
 }
-# Only fields changed by this editor are rebased. Stable IDs make independent row edits commute.
+# baseline·draft·최신 저장본을 stable ID로 병합하고 같은 필드의 충돌은 거부한다.
 function Merge-Value($before,$draft,$current,[string]$where) {
     if((Json $before) -ceq (Json $draft)){ return ,$current }
     if((Json $before) -ceq (Json $current) -or (Json $draft) -ceq (Json $current)){ return ,$draft }
@@ -163,6 +172,7 @@ function Merge-Value($before,$draft,$current,[string]$where) {
     if($idKey -and $before -is [array] -and $draft -is [array] -and $current -is [array]){ $rows=[Collections.Generic.List[object]]::new(); foreach($row in $current){$rows.Add($row)}; $ids=@(@($before)+@($draft) | ForEach-Object { $_.$idKey } | Select-Object -Unique); foreach($id in $ids){ $old=@($before|Where-Object {$_.$idKey -ceq $id}); $next=@($draft|Where-Object {$_.$idKey -ceq $id}); $now=@($current|Where-Object {$_.$idKey -ceq $id}); $oldValue=if($old.Count){$old[0]}else{$null}; $nextValue=if($next.Count){$next[0]}else{$null}; $nowValue=if($now.Count){$now[0]}else{$null}; $value=Merge-Value $oldValue $nextValue $nowValue "$where/$id"; for($i=$rows.Count-1;$i -ge 0;$i--){if($rows[$i].$idKey -ceq $id){$rows.RemoveAt($i)}}; if($null -ne $value){$rows.Add($value)} }; return ,$rows.ToArray() }
     throw "Guide Save conflict at $where. Current disk and editor draft preserved."
 }
+# 대상 잠금 → staging → 원문 재확인 → 교체 순서로 저장하고, 실패하면 자기 변경만 복원한다.
 function Write-Transaction([Collections.IDictionary]$outputs) {
     $locks=[Collections.Generic.List[Threading.Mutex]]::new()
     $staged=@{}; $backups=@{}; $old=@{}; $expected=@{}; $installed=@{}; $retainBackup=@{}
@@ -183,7 +193,7 @@ function Write-Transaction([Collections.IDictionary]$outputs) {
                 Assert-True (Test-PublishFileHash $path $old[$path] 'Guide') "Destination changed: $path"
                 [IO.File]::Replace($staged[$path],$path,$backups[$path])
             }else{ [IO.File]::Move($staged[$path],$path) }
-            # Register a successful replacement before any subsequent operation can fail.
+            # 이후 검사 실패에도 복원할 수 있도록 교체 성공을 먼저 기록한다.
             $installed[$path]=$expected[$path]; $installedOrder.Add($path)
             if($old[$path]){ Assert-True ((Get-PublishFileSha256 $backups[$path]) -ceq $old[$path]) "Concurrent replacement: $path" }
             Assert-True (Test-PublishFileHash $path $expected[$path] 'Guide installed') "Destination changed after install: $path"
@@ -213,6 +223,7 @@ function Write-Transaction([Collections.IDictionary]$outputs) {
 }
 try {
     $bundle=Read-Bundle
+    # Save는 저작 문서만 병합하며 실행 사본 갱신은 Publish에 맡긴다.
     if($Mode -eq 'Save'){
         Assert-True ($BaselinePath -and $DraftPath) 'Save requires baseline and draft files'
         $baseline=Read-Json $BaselinePath $false; $draft=Read-Json $DraftPath $false

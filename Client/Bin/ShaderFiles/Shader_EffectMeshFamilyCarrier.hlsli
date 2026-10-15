@@ -547,7 +547,15 @@ EFFECT_PS_OUT PS_MAIN(VS_OUT input, bool frontFace : SV_IsFrontFace)
 {
     g_EffectSceneReadMode = 0u;
     g_EffectSceneSampleUsed = false;
+#if EFFECT_SHADER_FAMILY == 0
+    g_CubeSampleBloomWritten = false;
+#endif
     EFFECT_PS_OUT output = PS_MATERIAL(input, frontFace);
+#if EFFECT_SHADER_FAMILY == 0
+    // 실제 선택된 재질이 RT2를 완성했으므로 공용 SceneColor 재평가로 덮지 않는다.
+    if (g_CubeSampleBloomWritten)
+        return output;
+#endif
     if (!g_EffectSceneSampleUsed)
         return Write_EffectBloom(output);
     g_EffectSceneReadMode = 1u;

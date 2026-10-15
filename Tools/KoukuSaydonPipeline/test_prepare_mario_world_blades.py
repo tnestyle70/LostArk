@@ -79,7 +79,7 @@ class SavedInstantBladeTimingTests(unittest.TestCase):
         cls.sequences = json.loads((ROOT / subject.WORLD_PATH).read_text(encoding="utf-8-sig"))
 
     def saved_blade(self, ordinal):
-        world = next(row for row in self.action["worlds"] if row["worldId"] == f"kakulsaydon.g1.world.{ordinal}")
+        world = next(row for row in self.action["worlds"] if row["worldId"] == f"koukusaydon.g1.world.{ordinal}")
         instance = next(row for row in self.sequences["instances"] if row["instanceId"] == world["sequenceInstanceId"])
         sequence = next(row for row in self.sequences["templates"] if row["sequenceId"] == instance["templateId"])
         resource = next(row for row in self.sequences["objectResources"] if row["objectId"] == world["objectResourceId"])
@@ -103,7 +103,7 @@ class SavedInstantBladeTimingTests(unittest.TestCase):
         for ordinal in (19, 48):
             self.assertEqual(11000, self.saved_blade(ordinal)[2]["durationMs"])
         for ordinal, occurrence in ((33, 5), (95, 1)):
-            pattern = next(row for row in self.action["patterns"] if row["patternId"] == f"KAKULSAYDON_G1_PATTERN_{ordinal}")
+            pattern = next(row for row in self.action["patterns"] if row["patternId"] == f"KOUKUSAYDON_G1_PATTERN_{ordinal}")
             box = next(row for row in pattern["worldOccurrences"] if row["occurrenceId"].endswith(f".world.{occurrence}"))
             self.assertEqual(22000, box["durationMs"])
             self.assertEqual(27830 if ordinal == 33 else 22000, pattern["durationMs"])
@@ -129,7 +129,7 @@ class SavedInstantBladeTimingTests(unittest.TestCase):
     def test_published_instant_death_windows_cover_the_full_twenty_two_second_motion(self):
         for ordinal, pattern_id, occurrence in ((38, 95, 1), (39, 33, 5)):
             world, _, _, _ = self.saved_blade(ordinal)
-            pattern = next(row for row in self.action["patterns"] if row["patternId"] == f"KAKULSAYDON_G1_PATTERN_{pattern_id}")
+            pattern = next(row for row in self.action["patterns"] if row["patternId"] == f"KOUKUSAYDON_G1_PATTERN_{pattern_id}")
             box = next(row for row in pattern["worldOccurrences"] if row["occurrenceId"].endswith(f".world.{occurrence}"))
             windows = collider.bake_windows(self.sequences, {world["worldId"]: world}, [box], self.no_model,
                 pattern_end_ms=pattern["durationMs"])

@@ -45,7 +45,7 @@ def function_body(source: str, signature: str) -> str:
 class ActionCompositionColliderTimelineAuthoringTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.source = WORKBENCH_CPP.read_text(encoding="utf-8-sig")
+        cls.source = read_source_text(WORKBENCH_CPP, encoding="utf-8-sig")
         cls.header = WORKBENCH_H.read_text(encoding="utf-8-sig")
         cls.animation_source = read_source_text(ANIMATION_TOOL_CPP, encoding="utf-8-sig")
         cls.valtan_source = VALTAN_CPP.read_text(encoding="utf-8-sig")

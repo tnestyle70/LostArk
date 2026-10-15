@@ -1,15 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include "Prototype_Manager.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 #include "Engine_RenderFwd.h"
 #include "Sound/Sound_Manager.h"
 
 NS_BEGIN(Engine)
 
+// MainApp이 초기화·갱신·종료를 요청하는 엔진 관리 창구다. Level·원형·객체·렌더링 관리자를 소유한다.
+// Object_Manager는 Level별 Layer와 복제 객체를, Prototype_Manager는 복제할 원형을 보관한다.
+// 종료 때는 Level·로더가 사용하던 서비스보다 먼저 정리되도록 순서를 묶는다.
 class ENGINE_DLL CGameInstance final
 {
 	DECLARE_SINGLETON(CGameInstance)
@@ -28,16 +28,16 @@ public:
 		return fMin + (static_cast<f32_t>(rand()) / RAND_MAX) * (fMax - fMin);
 	} 
 
-
 public:
-	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc, ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
-	// Physical client pixels; call between frames, before update and rendering.
+	HRESULT Initialize_Engine(const ENGINE_DESC& EngineDesc,
+		ComPtr<ID3D11Device>& pOutDevice, ComPtr<ID3D11DeviceContext>& pOutContext);
+	// 단위는 Client 물리 pixel이다. 프레임 사이 update·render 전에 호출한다.
 	HRESULT Resize_Viewport(uint32_t width, uint32_t height);
 	HRESULT Set_FullscreenMode(bool fullscreen, uint32_t width, uint32_t height);
 	void Update_Engine(f32_t fTimeDelta);
 	void Submit_FinalCameraObjects();
 	HRESULT Render_Begin(const float4_t* pClearColor);
-	// The caller opts into static occlusion for this frame without changing session settings.
+	// 세션 설정을 바꾸지 않고 이번 프레임의 정적 occlusion 사용만 요청한다.
 	HRESULT Render(bool staticOcclusionAllowed = false);
 	HRESULT Render_End();
 	HRESULT Clear_Resources(uint32_t iClearLevelID);
@@ -60,14 +60,19 @@ public: /* For.Input_Device */
 #ifdef _WIN64
 public: /* For.Sound_Manager */
 	HRESULT Play_Sound(const wstring_t& strSoundFilePath, f32_t fVolume);
+
+	HRESULT Play_Sound(const wstring_t& strSoundFilePath, 
+		f32_t fVolume, SOUND_CATEGORY eCategory);
+	//Client 준비 목록을 기존 Sound Manager cache에 연결한다.
+    HRESULT Prepare_Sound(const wstring_t& strSoundFilePath, bool_t bLoop = false);
+
 	uint64_t Play_SoundCue(const wstring_t& path, f32_t volume, uint32_t ageMs = 0u, bool_t paused = false, f32_t playbackRate = 1.f, uint32_t endMs = 0u);
 	bool_t Get_SoundDurationMs(const wstring_t& path, uint32_t& durationMs);
 	bool_t Is_SoundCueActive(uint64_t handle) const;
 	void Pause_SoundCue(uint64_t handle, bool_t paused);
     void Set_SoundCuePlaybackRate(uint64_t handle, f32_t playbackRate);
 	void Seek_SoundCue(uint64_t handle, uint32_t ageMs);
-    // Reconcile a live cue with an externally owned clock without seeking every frame.
-    // False means the caller's live cue has ended or become unavailable.
+    // 외부 시계에 재생 cue를 맞추되 매 프레임 seek하지 않는다. false면 cue가 끝났거나 사용할 수 없다.
     bool_t Synchronize_SoundCue(uint64_t handle, uint32_t ageMs, uint32_t maxDriftMs = 100u);
 	void Stop_SoundCue(uint64_t handle);
 
@@ -76,8 +81,7 @@ public: /* For.Sound_Manager */
 	HRESULT Play_Music(const wstring_t& strSoundFilePath, f32_t fVolume,
 		bool_t bLoop = true);
 	void Stop_Music();
-	/* Mixer bus volume the system option window owns; 0..1, applied to sounds that
-	are already playing on that bus. */
+	/* 시스템 옵션이 조절하는 mixer bus 음량(0~1)이며 이미 재생 중인 sound에도 적용된다. */
 	HRESULT Apply_SoundCategoryVolume(SOUND_CATEGORY eCategory, f32_t fVolume);
 	f32_t Get_SoundCategoryVolume(SOUND_CATEGORY eCategory) const;
 	/* See CSound_Manager::Set_MuteOnFocusLoss (the sound-in-background option, inverted). */
@@ -110,9 +114,9 @@ public: /* For.Object_Manager */
 
 public: /* Renderer */
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<class CGameObject> pRenderObject);
-	/* Queues one off-screen portrait for the next Draw, which renders it through the same
-	deferred path the world uses and copies the resolved colour into pDestination. The pieces
-	are passed separately so this header does not have to see CRenderer's request type. */
+    void Register_GpuSceneVisibility(const shared_ptr<class CGpuSceneVisibility>& scene);
+    void Unregister_GpuSceneVisibility(const class CGpuSceneVisibility* scene);
+	/* 다음 Draw에 world와 같은 deferred 경로로 portrait를 렌더하고 pDestination에 resolve 결과를 쓴다. */
 	HRESULT Request_Portrait(ComPtr<ID3D11RenderTargetView> pDestination,
 		uint32_t iWidth, uint32_t iHeight,
 		const float4x4_t& ViewMatrix, const float4x4_t& ProjMatrix,
@@ -127,7 +131,7 @@ public: /* Renderer */
     HRESULT Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings);
     RENDER_OPTIMIZATION_SETTINGS Get_RenderOptimizationSettings() const;
     HRESULT Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings);
-	// Draw-time scalar view avoids copying the quality profile and LUT layers.
+	// draw 중 scalar view만 읽어 quality profile·LUT layer 복사를 피한다.
 	uint32_t Get_TextureMinMip() const;
 	HRESULT Apply_RenderQualitySettings(const RENDER_QUALITY_SETTINGS& Settings);
 	MATERIAL_RENDER_SETTINGS Get_MaterialRenderSettings() const;
@@ -135,6 +139,7 @@ public: /* Renderer */
 	HEIGHT_FOG_SETTINGS Get_HeightFogSettings() const;
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
 	HRESULT Bind_HeightFog(class CShader* shader) const;
+	HRESULT Bind_ActiveSceneColorTransform(class CShader* shader) const;
 	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
 		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
@@ -150,8 +155,7 @@ public: /* For.PipeLine */
 	HRESULT Bind_CamPosition(shared_ptr<class CShader> pShader, const char_t* pConstantName);
 	HRESULT Bind_Transform(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
 	HRESULT Bind_InverseTransform(shared_ptr<class CShader> pShader, const char_t* pConstantName, D3DTS eType);
-	/* Recomputes the inverse matrices and camera position from the transforms set above.
-	Rendering an offscreen view mid-frame sets a second camera and has to derive them again. */
+	/* 설정된 Transform에서 역행렬·카메라 위치를 다시 구한다. 프레임 중 별도 offscreen 카메라를 쓸 때도 호출한다. */
 	void Refresh_CameraState();
 
 
@@ -172,7 +176,7 @@ public: /* For.Font_Manager */
 	float2_t Measure_Text(const wstring& strFontTag, const tchar_t* pText);
 	/* See CFont_Manager::Set_ClipOutRect: screen rect Draw_Text refuses to draw over. */
 	void Set_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
-	/* One more rect on top of the ones already set (CFont_Manager::Add_ClipOutRect). */
+	/* 기존 font 제외 영역에 rect 하나를 추가한다. */
 	void Add_TextClipOutRect(f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
 	void Clear_TextClipOutRect();
 	/* See CFont_Manager::Set_ClipInRect: screen rect text must stay wholly inside. */

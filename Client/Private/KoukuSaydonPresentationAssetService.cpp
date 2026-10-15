@@ -32,15 +32,15 @@ namespace
 	using namespace Client;
 
 	constexpr std::string_view KOUKU_ARCHETYPE =
-		"BOSS_KAKULSAYDON_G1_KOUKU";
+		"BOSS_KOUKUSAYDON_G1_KOUKU";
 	constexpr std::string_view KOUKU_PRESENTATION =
-		"boss.kakulsaydon.g1.kouku.client.v1";
+		"boss.koukusaydon.g1.kouku.client.v1";
 	/* Every arena boss archetype shares this prefix and this client contract
 	family; the Gate 1 Kouku keeps its exact model prototype tag. */
 	constexpr std::string_view KOUKU_FAMILY_ARCHETYPE_PREFIX =
-		"BOSS_KAKULSAYDON_";
+		"BOSS_KOUKUSAYDON_";
 	constexpr std::string_view KOUKU_FAMILY_PRESENTATION_PREFIX =
-		"boss.kakulsaydon.";
+		"boss.koukusaydon.";
 	constexpr std::string_view KOUKU_FAMILY_PRESENTATION_SUFFIX =
 		".client.v1";
 	constexpr const wchar_t* KOUKU_MODEL_PROTOTYPE_PREFIX =

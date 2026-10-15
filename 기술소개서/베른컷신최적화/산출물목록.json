@@ -1,0 +1,1400 @@
+{
+  "updatedUtc": "2026-10-14T14:18:44.545631+00:00",
+  "status": "Product Release·Debug 빌드 완료; 전체 컷신1/8·기본 카메라 게임 FPS·화면 검증은 진행 중",
+  "sourceSweep": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\ProfilerInspection20261014\\full-scene-probe",
+  "sourceGeometryCounts": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\gpu-counts",
+  "files": [
+    {
+      "path": "00_베른컷신_6시점_개선전_기준.png",
+      "bytes": 6640126,
+      "sha256": "a1ba1658088a14aa1a957571eb290e58e52d189fc690be97d75c0960c2fe77b9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/camera-overview.png",
+      "bytes": 2930984,
+      "sha256": "14ba68bdc31394a0911fe248123d24e24a39c17dbe57d0cea0b09c22ba099c3f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-00-start.png",
+      "bytes": 1136492,
+      "sha256": "115df63aae50ce146c9dbb8b3ff0daf889eee10614c2ec2da7aca0e381c717f3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-01.png",
+      "bytes": 1091172,
+      "sha256": "e83ea35c2e8c41ec2049c506983a327bc9dc40662f89b2b3978414bd0461b1af"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-02.png",
+      "bytes": 1049225,
+      "sha256": "acf8b176e2b05ce181bc0425e8fec5676799eeada8b7a1fba34df53f62a6665e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-03.png",
+      "bytes": 986188,
+      "sha256": "d3dfbf2df0c0890137ed987bed413d8fd0dceb28567272f69d1cb32d3ec9604c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-04.png",
+      "bytes": 1080798,
+      "sha256": "ba272b4ca07c233330fa7a1cbf8a25ee0611b6a2f39122315b1840b8c84046ff"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/contact-cue-05-end.png",
+      "bytes": 1059539,
+      "sha256": "7771e75a427bf0b21c5f74d00f294033c193fc3e292bd4b5e8e47433b45f53b1"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/drift-end-raw.png",
+      "bytes": 2888189,
+      "sha256": "4dd6c01f8ac37c16aff6f6a394349098b6c1f575295a4f946e9e6bbaff2641d9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/drift-end.png",
+      "bytes": 2922494,
+      "sha256": "b07639b2694510b0505a606702f1e479b83fa678a2452a89962526a9e1b45c90"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/drift-start-raw.png",
+      "bytes": 2888189,
+      "sha256": "4dd6c01f8ac37c16aff6f6a394349098b6c1f575295a4f946e9e6bbaff2641d9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/drift-start.png",
+      "bytes": 2922491,
+      "sha256": "04d4dfbc7973ce73ded43fb6fe04f1c835e65dcfab0de72985a4e68daa745fbf"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/image-manifest.json",
+      "bytes": 418795,
+      "sha256": "34866ec7bc7698941ebb3a20ebede71cb1cd322f792164e5f998027c9a3c2c6b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/measurements.tsv",
+      "bytes": 38924,
+      "sha256": "f2ff91884feff94d5106f6510b4ff46d96f5a709499e5e87104083b31620a199"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-00-start-raw.png",
+      "bytes": 2888247,
+      "sha256": "8596feea36fc3ce654c35e974e9a8a389bd30de8aac075b35f57c0be85a7cfbd"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-00-start.png",
+      "bytes": 2922825,
+      "sha256": "2832c5a983239d5d63efa5422092ab7e4af9b47ff4a18e6b817c554dd8b93228"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-01-raw.png",
+      "bytes": 2754914,
+      "sha256": "fe0836a5c07e6e3c88f18543c0c47bde261906be831cc773bdc2df7596f6c2b1"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-01.png",
+      "bytes": 2788587,
+      "sha256": "549ef0afc42fbf40e752e4e106590f89c4a63d01edd34860b2cb560828feee00"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-02-raw.png",
+      "bytes": 2605471,
+      "sha256": "49caa74e15038cf2e523e16356d278c3919d2ff9d293d1f45f1b3e29f39470d8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-02.png",
+      "bytes": 2639782,
+      "sha256": "e7c1c821b9a8ac50643d2bc15bbabf11c09bc14246b708891eadc31af675a714"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-03-raw.png",
+      "bytes": 2399497,
+      "sha256": "4db6867df6f3cc05f6177195096f3291689056acca2937487dcfb90fc89a39ad"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-03.png",
+      "bytes": 2433990,
+      "sha256": "daf9cca29d2e4c22e6b74f8693292a56cc191e5c676d1063c895bf16e06a94ee"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-04-raw.png",
+      "bytes": 2790537,
+      "sha256": "acfbf2019ef5cf0c9c082465a343e89fe2ee60a8f4ab88f5e6a1ebf29ab8a550"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-04.png",
+      "bytes": 2824297,
+      "sha256": "22012fd04fd1341117536435daa553780429cde6e6cc5b9ec648ce559bff1a90"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-05-end-raw.png",
+      "bytes": 2923252,
+      "sha256": "c0759cfc8004ef660ed973964b26783894969b1bf5740d0613d59b25a19fcff8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod0-cue-05-end.png",
+      "bytes": 2958125,
+      "sha256": "290ec4173c8e760cb90f17db8cd9343f3b99c9556c589e91ba5f58daa4cfd9c3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-00-start-raw.png",
+      "bytes": 2888298,
+      "sha256": "6ffcdf8f67a59a5e097a9e596838e826d6ff95b38d90b95a8a67c8de0a5f21e4"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-00-start.png",
+      "bytes": 2923010,
+      "sha256": "8b6792a44b06ceed002f396fb97caf27129f3cb9968607dd8a192695e29eb14c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-01-raw.png",
+      "bytes": 2755049,
+      "sha256": "28d07fbdb6eccd56871a7ba8322cf9f167367c8b156a2cd2842960f71e0079ba"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-01.png",
+      "bytes": 2788681,
+      "sha256": "3c684d9019f4dc4bd6ec876fb26d4b640991a1c41ab971d39e473edde70a720b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-02-raw.png",
+      "bytes": 2605562,
+      "sha256": "a0752a79ac9d433b3987ff9ffb512ba61ad360ac15c7fec01425ecea1ee4a832"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-02.png",
+      "bytes": 2640415,
+      "sha256": "ff9c0e976a678101dcedec39b66273a6f62cc27ec6f62d4010fe816e40fce723"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-03-raw.png",
+      "bytes": 2399544,
+      "sha256": "51832202c714eb9a2abc4e53b856b0744f0c3595423f6935611bbb610e5eeb0d"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-03.png",
+      "bytes": 2434087,
+      "sha256": "4b4d59092cffb9b491d2748df6c04e31c1d6b303034251c09fa878b11e65a833"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-04-raw.png",
+      "bytes": 2790500,
+      "sha256": "85672644fc7c682d768bee46af32ef143f8725b8eae9259739d0d0a95f2bb6b5"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-04.png",
+      "bytes": 2824777,
+      "sha256": "31c281e5d6f75e1ddbfc3ae6a05956fd1812ca969789b171b4af161fadacb0de"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-05-end-raw.png",
+      "bytes": 2923245,
+      "sha256": "edf544b49508d4250b303e4a37820018aa36786062e3d606650ab34d346f535a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh0-hlod1-cue-05-end.png",
+      "bytes": 2958098,
+      "sha256": "56393f92f54e681c3d5ff1872bf247df46c3e7f9777dce2538bb932333d4757e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-00-start-raw.png",
+      "bytes": 2888202,
+      "sha256": "cb53736e4454f02429b1c2f4c602a0cf1bfa29d6506849f0ae121ad3485b55e2"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-00-start.png",
+      "bytes": 2922033,
+      "sha256": "2bb197b163551aa8bc2d6e9a3c6c3ede6e29388fb38b0daaa71e52f999630464"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-01-raw.png",
+      "bytes": 2754931,
+      "sha256": "fe8bf37cf32e139762fdeadbfd70ad1902eddbe239ccee479e2a722d74f2289d"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-01.png",
+      "bytes": 2789978,
+      "sha256": "78c308ca08fcfc747a03d8265c3976695b851a1b1ca45f115026705991933f01"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-02-raw.png",
+      "bytes": 2605553,
+      "sha256": "2843c1f3718730febe1f51973312dc476dff730de7316297efad9658969a7cda"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-02.png",
+      "bytes": 2640174,
+      "sha256": "16201dc889892b88a2198bcecbc1d562021b0e966a2ddef7c939edf26874decc"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-03-raw.png",
+      "bytes": 2399494,
+      "sha256": "7693b76a9aa08678f2fde304f4bf06b0701b31ee50e0b571e65e023eb02493ad"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-03.png",
+      "bytes": 2433676,
+      "sha256": "a32fb8c35f6b896d81d643771df81d5e6502f0375470758f4caf8723831fbe30"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-04-raw.png",
+      "bytes": 2790550,
+      "sha256": "3cdfc53fa7f4a8e3df231a9ebc728d018baa94d51703e83c6748d7ce396b0cb9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-04.png",
+      "bytes": 2824516,
+      "sha256": "ef17841b5fda0aabda6514e84dc4bed7f01961f108909747bd3617c1ca5c7d24"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-05-end-raw.png",
+      "bytes": 2923254,
+      "sha256": "084fa73651a346fb86d2ee50f60c1a05cf09da87c4429eb7f2dc13fffada900e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod0-cue-05-end.png",
+      "bytes": 2958436,
+      "sha256": "bcd967cea6b473920298bafb5b15bb2f569a156b98745800acb9778bca377fd0"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-00-start-raw.png",
+      "bytes": 2888189,
+      "sha256": "4dd6c01f8ac37c16aff6f6a394349098b6c1f575295a4f946e9e6bbaff2641d9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-00-start.png",
+      "bytes": 2922416,
+      "sha256": "db627db0aad3b9e71d809d6b22920f91643e4deb54ba807f951864b9cc428483"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-01-raw.png",
+      "bytes": 2755001,
+      "sha256": "d9dba55814bcd2fef558c1b6f2fa3ec5eac500ed35b45686b2bbfce7eb5aa85e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-01.png",
+      "bytes": 2788996,
+      "sha256": "878d2ffab8a1f79de16f4343747d26e4645237c14792e3a259b234777cddd59b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-02-raw.png",
+      "bytes": 2605556,
+      "sha256": "acf2085ed7585fe4cbf0b474857af935ce59ec8117f86f300e0dd629bec4e324"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-02.png",
+      "bytes": 2640109,
+      "sha256": "82e881c74cfe67fc6af9453fd23da0b37ddbf0aa52dd8a83723391ef42931723"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-03-raw.png",
+      "bytes": 2399538,
+      "sha256": "a25fd7cc6604149b0f924afe3d39862d295daff5eb8a62044f00696361ae0d78"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-03.png",
+      "bytes": 2434058,
+      "sha256": "619268f3b07805febe599395ce235572e74ae59b9f0dd829948dea367990721c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-04-raw.png",
+      "bytes": 2790475,
+      "sha256": "71ec07f956b29ebc4df081e92e800eb18ae22814dabc972e6c34e9e9f26a1311"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-04.png",
+      "bytes": 2825147,
+      "sha256": "a55aae8b02703a63a88b62bb26b6dcaa569a916b1ce5b8cc281725b46e846ed2"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-05-end-raw.png",
+      "bytes": 2923251,
+      "sha256": "cf44a72dcf29cd13d93aa1c82a233012cf5d6615769a611ad0be4c17490cd36b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip0-mesh1-hlod1-cue-05-end.png",
+      "bytes": 2958081,
+      "sha256": "e135abbab5e6aad672c9067a25ee0fb23e34b931c46a418dbaef1cf041a072da"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-00-start-raw.png",
+      "bytes": 2862471,
+      "sha256": "ade95572d84a7fac68f596fd679931c68f987c74ff156325a344151a18d49a09"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-00-start.png",
+      "bytes": 2897019,
+      "sha256": "a7d73726613db0228488356081e180eb2a3e7f4efe7661775cbf606944b53385"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-01-raw.png",
+      "bytes": 2720839,
+      "sha256": "fe2bbdeac763d3f85c8a877052d9712b2794f99fd00bb1171e74126bf91ad27a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-01.png",
+      "bytes": 2754571,
+      "sha256": "b2f1bf3ac14f9ce526729ea5c63ebf25ff223b72ae74233d33da9a38d5b303c0"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-02-raw.png",
+      "bytes": 2478472,
+      "sha256": "992078fb299c07da505fdbe58086a08c1ab815b10de4fc716bd94d0c846ada84"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-02.png",
+      "bytes": 2512716,
+      "sha256": "1e375d502b06ed70001abc939f47013d565ae3cdc45173c209cb59edff7dd04f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-03-raw.png",
+      "bytes": 2329645,
+      "sha256": "170f7698317c80e8978edf03eb6ce675f0cea15f50906a3119fe2e1f75abf539"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-03.png",
+      "bytes": 2364144,
+      "sha256": "2678696d9cd34bdd14ab9664c99002b46b5973139dbd132a78d27731518b192b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-04-raw.png",
+      "bytes": 2697594,
+      "sha256": "f66938686cad58fb6d3040dfea6cd1403f9dbc46b065b7f1e3a28f95caf16480"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-04.png",
+      "bytes": 2731589,
+      "sha256": "516b16a1d4b69a63203063de20a4a9703efe5193007297b7d1928c9b14065aa0"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-05-end-raw.png",
+      "bytes": 2743516,
+      "sha256": "99604be2654c410fe5acae4b54b1538b75deaae0d19e482f105ed13ac91a380e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod0-cue-05-end.png",
+      "bytes": 2777546,
+      "sha256": "12d28e49b05c6a603100afada056af312789ad47f360c79ae85fef1c31416fac"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-00-start-raw.png",
+      "bytes": 2862512,
+      "sha256": "125bf873ef4741718490108865f5bc2ca2e94a3c5b467bfa45cfb713c6a29f33"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-00-start.png",
+      "bytes": 2897058,
+      "sha256": "5c6be50f0dede2b34aefdf2067f107d299ac8bb9af409d4a39ec28a9185777d0"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-01-raw.png",
+      "bytes": 2720910,
+      "sha256": "7c491698d7b2cdc4d376862cb3aa7543b5058a00dfafd408fec8c30a71622076"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-01.png",
+      "bytes": 2754701,
+      "sha256": "b5e3772bbee55b0f9c791c3f8e52b5309adabd38d111ca59968754b19e599774"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-02-raw.png",
+      "bytes": 2478506,
+      "sha256": "e972a31ded6def71b0297ffca17477df034320228e42f04c144d5a6b132419d3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-02.png",
+      "bytes": 2512963,
+      "sha256": "d7246f2a7cf104210f8b47f0489baec4dedbb59644631d0486a1bdfbe34459fa"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-03-raw.png",
+      "bytes": 2329683,
+      "sha256": "b2902ba3b5c5bf42c1faf3d9e4aa8586bcee6deccf2da1560764e8207bbacf42"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-03.png",
+      "bytes": 2364042,
+      "sha256": "bb0cf0c7cb86f108fa59fd6a3b9817d186b259c9e54058817c4031fe41516387"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-04-raw.png",
+      "bytes": 2697506,
+      "sha256": "a3fceb218874b841e2990a4d5619191f66ecf2a213428da33f7e1a15692c8710"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-04.png",
+      "bytes": 2731513,
+      "sha256": "dca2cd9746ecd5dc95c0addfdc947947e5d708ab9c0c29c429422cc703be69e8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-05-end-raw.png",
+      "bytes": 2743506,
+      "sha256": "242da2410381998ef8080be3a67eee5938eef28725b079fbda6879a08f8d2389"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh0-hlod1-cue-05-end.png",
+      "bytes": 2777603,
+      "sha256": "906ff27d735e5464688132777f4d2cbb96e3b217e5ccfdbb52e5205433c08a58"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-00-start-raw.png",
+      "bytes": 2862501,
+      "sha256": "6e760fe9d21133014b64c66c808157a84175787ff16b88b03e861d111cb67bd9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-00-start.png",
+      "bytes": 2896303,
+      "sha256": "d1accc031b3c1515729785c806ff513aff1f5a62f7aff071cf5767db6e06cfa3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-01-raw.png",
+      "bytes": 2720867,
+      "sha256": "31ad35b854380ad4844d1c385223623036d9896cf0d27a6d41a7e33f86a5322c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-01.png",
+      "bytes": 2755801,
+      "sha256": "fb72e26e22f6434f4d9a8d8007ab53004d77ef294f4973b56e367b2401230efa"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-02-raw.png",
+      "bytes": 2478525,
+      "sha256": "43f71e96f5175683173decec0537ba22de06dd5f3cb4ea33adf54d2b25eaea40"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-02.png",
+      "bytes": 2512864,
+      "sha256": "ea465b54b5ad0e538ca0b3f2b434a8beb96af79f080185e5bb1896982599539b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-03-raw.png",
+      "bytes": 2329657,
+      "sha256": "10c1dfcb8e68a5d446a0f3285915e0f1723dad70ec0a9408133a0c9353768b61"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-03.png",
+      "bytes": 2363493,
+      "sha256": "04d63ef93cf78c82a8dbec66182e7ab62ed06238551696d0c0e04dc14dc0863d"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-04-raw.png",
+      "bytes": 2697570,
+      "sha256": "a3c452188698a886cd24ecdf7f53a270eaafc409379ab63af79598b3aa9d8af5"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-04.png",
+      "bytes": 2731587,
+      "sha256": "076563f4d073f165ae72a7a875477f06075aa0071fcafb296cd8063ac50643de"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-05-end-raw.png",
+      "bytes": 2743518,
+      "sha256": "abd7c9800b7ed6312d9358fc633ef4c98844215d024f9fffb7091349edd06364"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod0-cue-05-end.png",
+      "bytes": 2777895,
+      "sha256": "cfa5692b60370b36039f50a2a7b65236c14c952a59f5f83d25a6a200c7799338"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-00-start-raw.png",
+      "bytes": 2862463,
+      "sha256": "96371c5ef37488f4cc9d53a90ea148f860169ec690fe423ad204b94fdd1a2100"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-00-start.png",
+      "bytes": 2896744,
+      "sha256": "33fc527d23ae1c3b34234069c520dee53030c90263996849017ae0d6db228a36"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-01-raw.png",
+      "bytes": 2720952,
+      "sha256": "c7f63fdd6db1f66ae66674ea02935d2d631c99a83672fde2a8e7a412434415f1"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-01.png",
+      "bytes": 2754596,
+      "sha256": "4f9a968afdd58b3e4302e8ee2220f3c2e73f5348323fe692bc7fffe776182a7b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-02-raw.png",
+      "bytes": 2478500,
+      "sha256": "6bbe584521e691ba79d3cc06a0baf69631bf605f775af75ee3af4715fe21d7f4"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-02.png",
+      "bytes": 2512924,
+      "sha256": "ef1a163c7cc4733d8ba05fe3a39580e58b348398530221775b281520dba89584"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-03-raw.png",
+      "bytes": 2329691,
+      "sha256": "e812221f43cab88435deb58991e501d53c144a6e5815445009df9283ae3f395a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-03.png",
+      "bytes": 2364122,
+      "sha256": "007524ae1a9b98d8c516470f817dcc9e1cbda6aaa1707740d0b028167c309b7b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-04-raw.png",
+      "bytes": 2697513,
+      "sha256": "df0db991ec3474354bae702881bd7a7897fa35dfa9a55032b74ac2f5f08b91e9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-04.png",
+      "bytes": 2731556,
+      "sha256": "078f02b311caf63a80cda4e93c4d4bdc8f2b90345a2d6d103d5c916321d8d48e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-05-end-raw.png",
+      "bytes": 2743502,
+      "sha256": "67f463b15785da5dafcb87817d2ae7501ec5c5f494f453e4861f034c63f9ed14"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip1-mesh1-hlod1-cue-05-end.png",
+      "bytes": 2777112,
+      "sha256": "c58a0764f6bf18919c294355c0c2143bfb129ee7355b6b4e60440de90bb782a5"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-00-start-raw.png",
+      "bytes": 2715948,
+      "sha256": "dbb4f3698d4952abf22caf61aa5a7e1ffa70aeea2ad8dc724693a178f2e5bdec"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-00-start.png",
+      "bytes": 2750459,
+      "sha256": "4649fc03131f5580c775b56d1208438a0912924a65ae002882d2ca6885867a30"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-01-raw.png",
+      "bytes": 2547732,
+      "sha256": "556b9c27f35807050da6d6f8631ed8b819a7c011589d9e5b1ae4571f890265dd"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-01.png",
+      "bytes": 2581741,
+      "sha256": "731674058166874aeff4a74dee3033be8a4ced48c17187305d8220a0114fae22"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-02-raw.png",
+      "bytes": 2253012,
+      "sha256": "899f186d9d9432ac23599849800b8c357cb9758780dc6ce5f8ce2667de9fe59c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-02.png",
+      "bytes": 2287187,
+      "sha256": "822db84910f6e6e9dc1348c3174ce4522e7f444c59cd8cae55edd962b9d0b1ae"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-03-raw.png",
+      "bytes": 2131545,
+      "sha256": "c87dfc6a7e3a51414d66768a1a64ce320705cc76ba1ee76aefa8812a42ce99e8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-03.png",
+      "bytes": 2166398,
+      "sha256": "2665eba76912908b632b93152c95dfa2e07c451b371ed41c0965a57fb6a2ac3b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-04-raw.png",
+      "bytes": 2485759,
+      "sha256": "7ff6d441d72e5abf2ec0b2f5c9e6bc84b53b591b8037f4fdc0d9ade197d1525a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-04.png",
+      "bytes": 2519836,
+      "sha256": "0ad00f0b62c58717371aeeecb98d1e7d6748485c9bb8dda45c9b1cb0853f80e9"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-05-end-raw.png",
+      "bytes": 2394689,
+      "sha256": "dbbdef380fdf3038f05d8c0d9fbd140c3d2eddd904a69fb3fb6e214dbb0ab35f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod0-cue-05-end.png",
+      "bytes": 2429459,
+      "sha256": "a6dee3039f29b7fbe146c30b5d407978e1e1817f40a5ff01b5a337fd8c2fbe97"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-00-start-raw.png",
+      "bytes": 2715950,
+      "sha256": "61ee18b3802acd3b3dcd2b0bee7f3c71048315a95660ac93b0f3646b42b7ff59"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-00-start.png",
+      "bytes": 2750484,
+      "sha256": "2e9896f8ecc0a5cb0f4333a5536220be494e7399b36525d7c5e200c37305e75a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-01-raw.png",
+      "bytes": 2547800,
+      "sha256": "cc10b8eac41fc817a50ea19b41686ae1240d7ed2a31d6edd432137d42b9bf30c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-01.png",
+      "bytes": 2581730,
+      "sha256": "4c4f9bd14c83c57576a2955d49ba21c0c3204f27374a2b5000f8a4d7f3a41854"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-02-raw.png",
+      "bytes": 2253007,
+      "sha256": "e79b3af7222efa2772bcda87757a90cbc99a1187b5546244247ebe48f6247046"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-02.png",
+      "bytes": 2287588,
+      "sha256": "df2bc56469270ae3e3bdd8c7431a0d8cf01c6461bce1acbd86158a3aa1a794e3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-03-raw.png",
+      "bytes": 2131578,
+      "sha256": "dfa63733f9f0b60e74aadd3683a9e2bbecaa097527148598c69cd467cb725f5a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-03.png",
+      "bytes": 2165739,
+      "sha256": "520738d18d89e78e014a02105788901da388dadf10004656ac0762be55edd005"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-04-raw.png",
+      "bytes": 2485753,
+      "sha256": "0f530935f585cb8b846773c60b9cf5a0e42185b9cf32d1faeceea91dd1a0f0a8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-04.png",
+      "bytes": 2519079,
+      "sha256": "effe17e4590d156f6b0612dd5dc84505ead707e9cac50d879f478ad638cfbd1e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-05-end-raw.png",
+      "bytes": 2394689,
+      "sha256": "08aacf5215b6b9a46c2f60cb587a807be09bc164c4d50b9d548b78f18e9877fd"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh0-hlod1-cue-05-end.png",
+      "bytes": 2429282,
+      "sha256": "c8476aaeb7f6f7d5d65037d32f5fc6ff5bcd455ff5e7c8756cb54186c0dd379c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-00-start-raw.png",
+      "bytes": 2715951,
+      "sha256": "e802b2f9e25e76d7339d2e66c1e343f0194f639a28cb15d06179f9acc8842df6"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-00-start.png",
+      "bytes": 2749665,
+      "sha256": "05406aade2917aca2a4b4137b9ebed4727cdd2d3d57ecc5641c984573f17f4c6"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-01-raw.png",
+      "bytes": 2547686,
+      "sha256": "26da65265ac516389c46e48023779ba3d111ba0ad6dab6bae610168d723d3d93"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-01.png",
+      "bytes": 2582755,
+      "sha256": "508224202d2971f8d72a96ef8156c436095a7975c4697ab2742d96b976f5a647"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-02-raw.png",
+      "bytes": 2253048,
+      "sha256": "1d61cc66055fa7363241c4a899b5ff3b10ff4445baa6be06e1a50b4f97305091"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-02.png",
+      "bytes": 2287132,
+      "sha256": "0f105f9a33579f978065516afa808824109d33e4b2fe12f57c15195ab590cf3a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-03-raw.png",
+      "bytes": 2131614,
+      "sha256": "02f0a4e4a0b77c32fe476dc3e3aed747650404da659003f82c7b40a16c1b7781"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-03.png",
+      "bytes": 2165109,
+      "sha256": "7ab99d712d904009b7f7729822583b942cc9456cfe1290fbc713f53b6178cd41"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-04-raw.png",
+      "bytes": 2485735,
+      "sha256": "c6d2ec173bf685651ce184da2f6eb01a92b78ca1a3c233a76bd9ba92df86ea86"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-04.png",
+      "bytes": 2519857,
+      "sha256": "2965aca6e592d1c40e4d9471d86536ab45d69f538bb4c93e9e96e71a90294cfa"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-05-end-raw.png",
+      "bytes": 2394694,
+      "sha256": "3fd45665e531bce0b16aeb523638ecdc452d1af53dc4050084600c9c01cb187e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod0-cue-05-end.png",
+      "bytes": 2429365,
+      "sha256": "c8e93fcac34741a3b29812822cebb8f2197040ff93ecbc2718b71a51e387a1db"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-00-start-raw.png",
+      "bytes": 2715924,
+      "sha256": "eebb074658e599cc25074d8932b29047f64f3fd0157658fb9d16ee71f048f044"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-00-start.png",
+      "bytes": 2750449,
+      "sha256": "ee794cacaafa5691f8140cb65bcbce8d978c3446055c26021c01204630c146fe"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-01-raw.png",
+      "bytes": 2547720,
+      "sha256": "f247740494ccc6f8a2f308655cb41921ef530860c7f1a028f47e3dc0c87f375f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-01.png",
+      "bytes": 2581519,
+      "sha256": "0b3c7ece3db4b89cf0d289f6e80f83fbb32e2615f005e310b496fa963de95400"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-02-raw.png",
+      "bytes": 2253010,
+      "sha256": "2c12c89327ed25c847c983a430d12f8e8001946d55c285dc275a8b0e963100f2"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-02.png",
+      "bytes": 2287566,
+      "sha256": "fdba73cdd3da36fc3d1a0be6255221398850570ed397dbd932ef72ca7786ef6f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-03-raw.png",
+      "bytes": 2131611,
+      "sha256": "0e54f493f4be82cda3d48ba222421acf44f27fbfba807ff22eb9b8007571e899"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-03.png",
+      "bytes": 2166001,
+      "sha256": "7383c04813416d30d15d7c764f0c1d59e6284dedce4a1499b32eeb0c21040d17"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-04-raw.png",
+      "bytes": 2485742,
+      "sha256": "4e2ddd5d667fa9337abe53502cbc15370f723da74edcb88590f5232b1271fe45"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-04.png",
+      "bytes": 2520236,
+      "sha256": "5d2ee4cac9c50d8e4508df7fe9017b7e651a714cbdddc0830ebbe6d61e6dc330"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-05-end-raw.png",
+      "bytes": 2394697,
+      "sha256": "1a147a3e64caba15d73bc6f5087b2b555bd83ef9bf8064da9570fcd9d13d96ca"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip2-mesh1-hlod1-cue-05-end.png",
+      "bytes": 2429070,
+      "sha256": "ba2c7cfb6938255e63ab9a645f9619275fb84c62cd694f22ef950da1fead75e5"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-00-start-raw.png",
+      "bytes": 2430965,
+      "sha256": "b0c0dc27d1bd54ed583b9e6a297f552ef0db6326333b398e20659f79e2219a3c"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-00-start.png",
+      "bytes": 2465685,
+      "sha256": "e26fed9032e35151cbb50b5a813c309ffd564c657244967acf336663bf919d73"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-01-raw.png",
+      "bytes": 2258645,
+      "sha256": "09ee300aa1e38293143f3ae8fa00f202a251695e428b9a612db922a1484e3619"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-01.png",
+      "bytes": 2292825,
+      "sha256": "4ec4bda8181e8aaa1ecb7281e0fc7fd8ffd24f22f75d6f2e0b3de1f6faebc2ab"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-02-raw.png",
+      "bytes": 1959676,
+      "sha256": "d006faf57f51d852748c9b5bebe12edc9b2cea86a414be44d1660f56235fc875"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-02.png",
+      "bytes": 1993777,
+      "sha256": "c4f38ddd28352847c0b2ba6507548a3b733fd1e1e052a60c739633ea05137036"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-03-raw.png",
+      "bytes": 1883482,
+      "sha256": "94afce2e667f527a283a901bac53f1d391b0bd01d7b76776111c5f965e13cd31"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-03.png",
+      "bytes": 1917875,
+      "sha256": "87b99585e34f779c94b160d79cce0d23e53e02b9660fc91d8e423790f57bbef3"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-04-raw.png",
+      "bytes": 2187489,
+      "sha256": "6e7c0e9950ec61de86d18cf6f4b940edf2935fb8056d9b0cfa2d50fee127ac44"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-04.png",
+      "bytes": 2222216,
+      "sha256": "ffac3062ea18717758887307c0c19a43a3fd36d59e1692c839876024c2cb63fb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-05-end-raw.png",
+      "bytes": 2004049,
+      "sha256": "f59627cc874af56b9adfb1b71dce5391a3f1ad88dcfd9c4c0212beef4bc2fdf0"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod0-cue-05-end.png",
+      "bytes": 2038825,
+      "sha256": "fd660d6922100070ec5d11ab3085df13cb8d733199ab673e6e88ad94362dcd05"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-00-start-raw.png",
+      "bytes": 2431024,
+      "sha256": "f07681c0f2a703a839117fdad4210d434423f2b74c09d104e268662f6b258c46"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-00-start.png",
+      "bytes": 2465580,
+      "sha256": "5c792eab7cb51d2cf7839bc323f1a31529d636853ff57896c877242383130f57"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-01-raw.png",
+      "bytes": 2258721,
+      "sha256": "c35e957f916689ee165212e277f4a96a9a54c2d829f3b8f3d140d30427e4d833"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-01.png",
+      "bytes": 2292852,
+      "sha256": "9f27a6db3f2e62808e010be7c4a819184777029c5b44662e1752b6a4f16dcdfb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-02-raw.png",
+      "bytes": 1959736,
+      "sha256": "a7aae42141b7f93febc153b8c585c4a1d54a95e502218931efe95417869d733f"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-02.png",
+      "bytes": 1994786,
+      "sha256": "bbb283dbe2b0153476a3c63ec8b555c57d54dae38cee3955298b46b3457a6bcb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-03-raw.png",
+      "bytes": 1883515,
+      "sha256": "fe3900cddaea531ea1d0b8477fd0a0a846d152ee39ecebb25ae4226da0fdc8aa"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-03.png",
+      "bytes": 1917897,
+      "sha256": "a22f6b91ea966d6c257f66165d07e295862f2da6faa6eab6a11bbc87d74dc19e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-04-raw.png",
+      "bytes": 2187443,
+      "sha256": "5f4d9e3d13b7599b8b0087374d401111b319d110bf6a581474f6e7a3fd4131bb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-04.png",
+      "bytes": 2221127,
+      "sha256": "dcf3ee0dd1344e582e2a03167c23dd45109fa285e5f967aae6373a2f73602c99"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-05-end-raw.png",
+      "bytes": 2004040,
+      "sha256": "51247fc6b1b9c534903d33dbd8164bf03450fd24127260ce97257600f7d0e86b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh0-hlod1-cue-05-end.png",
+      "bytes": 2038730,
+      "sha256": "bb6626f78444dc0053ba0defa2a7a93cdba2e78cda43cd745dd4cf4e5d319bf2"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-00-start-raw.png",
+      "bytes": 2430975,
+      "sha256": "775cec8fb1e5909cb7415310972af23eb83488fa25378cf34b3ab39d15e3d84a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-00-start.png",
+      "bytes": 2464582,
+      "sha256": "ebbf2db105e775e204a1a96840b4bcd6ed13088c621560bd12ca0e41b818216a"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-01-raw.png",
+      "bytes": 2258659,
+      "sha256": "12db283da60863bb8acd59e8b5c7f2cbb835d6ea6b81a3a22c3f73f9a9cb641e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-01.png",
+      "bytes": 2293565,
+      "sha256": "19355cfeade4adc64e7d4c753fa74f16d1bfee5e6d99962f0b6668c5526d17cc"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-02-raw.png",
+      "bytes": 1959743,
+      "sha256": "73e93a600d59bb287cf3e2d7f10b418a832e03ff3e70f12c0a9a9f25f1ced5ae"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-02.png",
+      "bytes": 1994522,
+      "sha256": "50a5cce61fecc099abf6a43714696021d047e04054586bddeef21b1d1dfac9bb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-03-raw.png",
+      "bytes": 1883513,
+      "sha256": "1f7d19f3407b809840aafc3b8a3463ca8d6f46e3db96014f2bacab76f882596e"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-03.png",
+      "bytes": 1917259,
+      "sha256": "2ba9fc6550bab937971c046e48b3ccc9fe6bbab796ef0a1abebcf18982461a28"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-04-raw.png",
+      "bytes": 2187431,
+      "sha256": "fff3dbdb596ec168b03299f3f7b2028fdf2d1344fb3dae719de7566bf0edf015"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-04.png",
+      "bytes": 2221174,
+      "sha256": "347d5d7ef745c6cb22a87212d74ac93837198c7ce3ac28626ffb38f116046685"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-05-end-raw.png",
+      "bytes": 2004032,
+      "sha256": "ff2cbb2643d4dd4d255cab149bed47f5ad235435828511f601ff35fcbe7bd919"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod0-cue-05-end.png",
+      "bytes": 2038652,
+      "sha256": "28faa553d92734a1cb29ae41cdeff4a291fefe4ca35aa0210c815f77da9b5e54"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-00-start-raw.png",
+      "bytes": 2430999,
+      "sha256": "eb0be0f82a877a77feba91fb1c0626ff5b915cbcadb3830de9acfee156aa2582"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-00-start.png",
+      "bytes": 2465254,
+      "sha256": "d2f6712735e96129db4cd6d70976c859a1c834f10e50e2e87eb4b069d12ecb56"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-01-raw.png",
+      "bytes": 2258699,
+      "sha256": "117d837fbda9fb3d58df10a509282280e8c31aba2cf675f23c818d2c66d9d329"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-01.png",
+      "bytes": 2292759,
+      "sha256": "45d22d6a71efa7c2f75c0a877d1a092001e38576a01bec65dc2d8d7a57219fc8"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-02-raw.png",
+      "bytes": 1959750,
+      "sha256": "ddecade821ce1295c18e81d6056d4ce2df285d1a34f803440367db93439d667b"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-02.png",
+      "bytes": 1994796,
+      "sha256": "256d1d283448a939f6d248037e2a062c7933f825075d900ac7159b262ce9aa11"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-03-raw.png",
+      "bytes": 1883497,
+      "sha256": "9aca03711048d36d92bc74e511f69104150238776d2212dea3c438297793f233"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-03.png",
+      "bytes": 1917418,
+      "sha256": "8ae2af9ae831a152a545eede19285f7fc1fb2ec9c8593b5d00f354e6451dbf7d"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-04-raw.png",
+      "bytes": 2187381,
+      "sha256": "def75b6aed62d8667c1b2556c1571c4a3f5a5d67679b6b6fd63451eb212712fa"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-04.png",
+      "bytes": 2221582,
+      "sha256": "21f0e7b0547efb0aa78e3fcf9e318506143b7e927ae09f3e50e6423a52d32ecb"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-05-end-raw.png",
+      "bytes": 2004036,
+      "sha256": "c7a7855dd57e0e07a9fc6b79a8d83d51ff0142240e39855d8f8deb6093d13e32"
+    },
+    {
+      "path": "01_개선전_기준과_기존설정비교/mip3-mesh1-hlod1-cue-05-end.png",
+      "bytes": 2038585,
+      "sha256": "11809899fdb0f15b7fb0b5efd256a1e224e007ba6461dc6413fab5866b11e777"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/PILLAR06_원본재질_기하감소_검증중.png",
+      "bytes": 40179,
+      "sha256": "710f342036fc0c0a1bdc4667cb5c29e83973f6493df5ae3b68c1db98cd7a8837"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/PILLAR07_원본재질_기하감소_검증중.png",
+      "bytes": 392448,
+      "sha256": "181bf91e6b0a305d7ae924ac4f0079acab39922940b9fbba5e5ffb992719acc3"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar06-axial16x40-cache-cue-00-start-difference.png",
+      "bytes": 4788,
+      "sha256": "4f8f52707840c50bf819f83ab160b7c3770619701ea3cd08b6bd71722e5c7869"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar06-axial16x40-cache-cue-00-start-low.png",
+      "bytes": 1833,
+      "sha256": "6902cfdfea2e66cf68457199294af4085e81b985f9205c9b25761b1f43100c1e"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar06-axial16x40-cache-cue-00-start-source.png",
+      "bytes": 1832,
+      "sha256": "8117fa3e96616c3593ea5cf253d670cbe7b82b8bd25bb178f7bcf386b3019fa4"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar07-axial16x36-cache-cue-00-start-difference.png",
+      "bytes": 5408,
+      "sha256": "7a51c96bf9e52824072957ef6d52842731f3c9864fbf084b404961e28a432f17"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar07-axial16x36-cache-cue-00-start-low.png",
+      "bytes": 2234,
+      "sha256": "42c9447df1456bc15e7b26e3cc350b2821710261c9785f32cb6548793a0011ba"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/pillar07-axial16x36-cache-cue-00-start-source.png",
+      "bytes": 2265,
+      "sha256": "8a455e31b153a2401843559d20d276a8375fc4e11b0b31590782f89f5ebb4930"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-00-start-difference.png",
+      "bytes": 5043,
+      "sha256": "add507ecad39484336bded81bc169d8e2988782e36f8b25421aef12f070a0345"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-00-start-low.png",
+      "bytes": 1799,
+      "sha256": "4bf78dc03910c0a360ac7e9c49af603371c29928a6532500ee11d919c4eb6b14"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-00-start-source.png",
+      "bytes": 1863,
+      "sha256": "35ae82fcec41a44db43bd0b94d1498769a0fdf5b657b0064d24aaaa439707553"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-01-difference.png",
+      "bytes": 5162,
+      "sha256": "8d12eab8f6a3157c0ffded03a33ef7e2709ac1f99700516037957a0d207b60da"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-01-low.png",
+      "bytes": 1858,
+      "sha256": "d0401b6f7a844ad46fa5b56223893c15ea0669703685b5d5b85412f035b9525e"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-01-source.png",
+      "bytes": 1917,
+      "sha256": "94c7d968de2e40650249a35b76d4b3945e50255b4301207cc5d7e0a9a518c786"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-05-end-difference.png",
+      "bytes": 5559,
+      "sha256": "28d144c34cbf84c709d2650abcc9662f350e76ac20f6dee39fbff379d0f2a4c5"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-05-end-low.png",
+      "bytes": 2047,
+      "sha256": "12e2d97c75780dd9c9e1eb878ce109aa425db8bf0cf6380ac077a3721062e9d6"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/voxel005-close3-0p09375-cache-cue-05-end-source.png",
+      "bytes": 2159,
+      "sha256": "80739d36bf8d958ac1f8167eae4833cd40ff89e58596a2f0512a8335cc552c12"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/단일모델_기하감소와_실루엣_검증중.png",
+      "bytes": 109513,
+      "sha256": "d94a486763d21e95d12e16e4fc7784a848710c428de9292af78fb3820614f804"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/성기둥2종_GPU_기하감소_검증중.png",
+      "bytes": 135861,
+      "sha256": "1a7f5af0f928f6e57ad527e84ac145397afc2d45773596a2af912776d0f997a0"
+    },
+    {
+      "path": "02_새기하_단일모델_검증중/실제_GPU_기하감소_7종_검증중.png",
+      "bytes": 154848,
+      "sha256": "4a28c7245b1c22e767f6061ce9624a5578788d23cf62fba3f6f456a2e78d793a"
+    },
+    {
+      "path": "03_측정근거/BRIDGE02_공통6시점_counts.json",
+      "bytes": 43534,
+      "sha256": "2d11e14a4ee004f49b3bf250c2da930a5c2320528599f5d67660b9bf246e71ad"
+    },
+    {
+      "path": "03_측정근거/BRIDGE02_공통6시점_validation.json",
+      "bytes": 11515,
+      "sha256": "15a6adc6b70884337a22a5582bf025807e0e9469c5f106516440e22955888fb4"
+    },
+    {
+      "path": "03_측정근거/CLIFF02_공통6시점_counts.json",
+      "bytes": 42658,
+      "sha256": "591b56cd7e0966b59c0e28d5815873a977ee64a0371c0e2219f1c9027dbee2ed"
+    },
+    {
+      "path": "03_측정근거/CLIFF02_공통6시점_validation.json",
+      "bytes": 11172,
+      "sha256": "2a171f149c4eb3e000cd684b44549d11623e269b668cbaa07acbec6fdb4967b4"
+    },
+    {
+      "path": "03_측정근거/CModel_새기하_API_GPU_검증.json",
+      "bytes": 7209,
+      "sha256": "91b96562806b5db2309dd85dda0c6acc494f625cfe154c3933fd5b75f118e028"
+    },
+    {
+      "path": "03_측정근거/HOUSE07_공통6시점_counts.json",
+      "bytes": 85828,
+      "sha256": "313b02bfb31fea866cfba17b42143d0fd0500b18798cdb860c52b61b2234fe4c"
+    },
+    {
+      "path": "03_측정근거/HOUSE07_공통6시점_validation.json",
+      "bytes": 21987,
+      "sha256": "6f12c8c0f2ed1e015b8826a9db3baf225f4db0fa0f1656bbc17152e8f7c01940"
+    },
+    {
+      "path": "03_측정근거/PILLAR01_공통6시점_counts.json",
+      "bytes": 42221,
+      "sha256": "f56cd97b21d2112031ad9455265cfd50b5837d73ba231acf2d8a0267c03e0df7"
+    },
+    {
+      "path": "03_측정근거/PILLAR01_공통6시점_validation.json",
+      "bytes": 11277,
+      "sha256": "13a8f156079fa95ff85bc52b2f6b812e7156959cb3ef3480f5667c39a4c6f5c2"
+    },
+    {
+      "path": "03_측정근거/PILLAR02_GPU_기하검증.json",
+      "bytes": 11458,
+      "sha256": "6373641f0bb1d6889ec0e90a57cdc21651b8b97a21282f37504a3f24f21b7ceb"
+    },
+    {
+      "path": "03_측정근거/PILLAR02_GPU_원시측정.json",
+      "bytes": 43284,
+      "sha256": "0700ddf0784bd1cb9eb8e16c5c44e301c36867993899850cfa046f1a4dc9f945"
+    },
+    {
+      "path": "03_측정근거/PILLAR02_공통6시점_counts.json",
+      "bytes": 43284,
+      "sha256": "0700ddf0784bd1cb9eb8e16c5c44e301c36867993899850cfa046f1a4dc9f945"
+    },
+    {
+      "path": "03_측정근거/PILLAR02_공통6시점_validation.json",
+      "bytes": 11458,
+      "sha256": "6373641f0bb1d6889ec0e90a57cdc21651b8b97a21282f37504a3f24f21b7ceb"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_GPU_기하검증.json",
+      "bytes": 11189,
+      "sha256": "4047321832a5bfc9b3782eb05831fd7379b061e6c8364ae3a3ea9b17aa96ad68"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_GPU_원시측정.json",
+      "bytes": 43346,
+      "sha256": "64d3107c58629e180ec3415faffb7b1a1fee47d9600b7ff73717f26cf2e553d4"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_UV좌표보정_최종색_GPU_query.json",
+      "bytes": 1243,
+      "sha256": "edf269a570568eea64fe60ecb7893fea37544f57e85bed32d581d6e4c3448a69"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_공통6시점_counts.json",
+      "bytes": 43346,
+      "sha256": "64d3107c58629e180ec3415faffb7b1a1fee47d9600b7ff73717f26cf2e553d4"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_공통6시점_validation.json",
+      "bytes": 11189,
+      "sha256": "4047321832a5bfc9b3782eb05831fd7379b061e6c8364ae3a3ea9b17aa96ad68"
+    },
+    {
+      "path": "03_측정근거/PILLAR06_원본재질_GPU_비교.json",
+      "bytes": 8059,
+      "sha256": "c9645eff66ddf0264f87d8f1fcb31691f7c32eda690ec01c8fda697e5f1f08ff"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_GPU_기하검증.json",
+      "bytes": 11417,
+      "sha256": "2710f30efaa3c45fc1641bf2b4c1bad5e6814d24bec1199bd81851e79f9a176d"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_GPU_원시측정.json",
+      "bytes": 44367,
+      "sha256": "de618bc03344dc904a1a385a369fff4b86dc308b69c664b20eda182f470fa622"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_UV좌표보정_최종색_GPU_query.json",
+      "bytes": 1243,
+      "sha256": "05127f504eddc4dd7693a0c39d5d7289851e363e60434f70ac5cef05e0cddaa7"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_공통6시점_counts.json",
+      "bytes": 44367,
+      "sha256": "de618bc03344dc904a1a385a369fff4b86dc308b69c664b20eda182f470fa622"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_공통6시점_validation.json",
+      "bytes": 11417,
+      "sha256": "2710f30efaa3c45fc1641bf2b4c1bad5e6814d24bec1199bd81851e79f9a176d"
+    },
+    {
+      "path": "03_측정근거/PILLAR07_원본재질_GPU_비교.json",
+      "bytes": 8807,
+      "sha256": "69798e5691b7a416ac0f83d710f69d206d991d1739f4faed0b4745a5e134a5b6"
+    },
+    {
+      "path": "03_측정근거/batch-results.json",
+      "bytes": 234413,
+      "sha256": "88fe362359cc164a854d2e75d3d4932be3ea1a65daff452cab7b7b3eb29db35b"
+    },
+    {
+      "path": "03_측정근거/sweep-cameras.json",
+      "bytes": 9951,
+      "sha256": "e952e865bd691608c5b52674451632eebe53f3657ae4bef76695ec0c7d9f7e42"
+    },
+    {
+      "path": "03_측정근거/sweep-comparison.json",
+      "bytes": 808594,
+      "sha256": "0f5666db78833fb55d1ef271da5640a15a5396bc7148164a4c6f24e9ddad9a46"
+    },
+    {
+      "path": "03_측정근거/validation.json",
+      "bytes": 1103,
+      "sha256": "7fd16117217573d3da900ac7f5c8bb9c62478f1b3818297d2b6f8fce66ec83ae"
+    },
+    {
+      "path": "03_측정근거/단일모델_GPU_기하검증.json",
+      "bytes": 21987,
+      "sha256": "6f12c8c0f2ed1e015b8826a9db3baf225f4db0fa0f1656bbc17152e8f7c01940"
+    },
+    {
+      "path": "03_측정근거/단일모델_GPU_원시측정.json",
+      "bytes": 85828,
+      "sha256": "313b02bfb31fea866cfba17b42143d0fd0500b18798cdb860c52b61b2234fe4c"
+    },
+    {
+      "path": "03_측정근거/실제_GPU_기하감소_7종_요약.json",
+      "bytes": 1731,
+      "sha256": "acb1af897e06ca728334f1bdfe3a1c490e902a7cc64a668b6a6a037663821f20"
+    },
+    {
+      "path": "03_측정근거/원래캡처_전체장면_index예산.json",
+      "bytes": 9662,
+      "sha256": "0fc16406704c6d275419046a33f3fa07daee13a25288d05dbce350b7a189e88a"
+    },
+    {
+      "path": "03_측정근거/제품LOD_선택과복구_최종검증.json",
+      "bytes": 13286,
+      "sha256": "27dced104474c15a231c29150a98dc43600add748d463d9c6804aedd36cb6b23"
+    },
+    {
+      "path": "03_측정근거/제품_Debug_Product_빌드영수증.json",
+      "bytes": 49124,
+      "sha256": "79b201cc83d4e6ffb2d8cf8bed28b8e83b26122af695b248f458cde642a8862b"
+    },
+    {
+      "path": "03_측정근거/제품_Release_Debug_최종빌드검증.json",
+      "bytes": 27287,
+      "sha256": "946ae81445998f13ffc13baa1eb75eab0a09f2f66ae2d579cfd9413fe1180ff0"
+    },
+    {
+      "path": "03_측정근거/제품_Release_Product_빌드영수증.json",
+      "bytes": 49214,
+      "sha256": "af291a5089cb17a18fb3b92d43a6cd993556f69659e050d4f9b1dbbaa8972cc8"
+    },
+    {
+      "path": "03_측정근거/제품_대체자료_실제렌더_검증.json",
+      "bytes": 30337,
+      "sha256": "8f421e9438dc0a640f79c706a27ab06ca28b2b2d68ad39738d655a4d87a88174"
+    },
+    {
+      "path": "03_측정근거/제품_파생자료_설치기록.json",
+      "bytes": 5655,
+      "sha256": "37401a2d26ca5a332b1b41f8729a4de03dcb6a96d1d528776f95b863f3399ddd"
+    },
+    {
+      "path": "03_측정근거/컷신선택_원본중복과복귀_통합검증.json",
+      "bytes": 598017,
+      "sha256": "024b8aa027f05512861d5414446d5c8eaa31811809b823d50b5f2fc399f4c1d0"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR06_UV좌표보정_low_원본해상도.png",
+      "bytes": 9292,
+      "sha256": "bec099398a65b8737e4d67c03058c31c0e97be9a5584f251b70d3ff6294a3ac3"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR06_UV좌표보정_source_원본해상도.png",
+      "bytes": 9214,
+      "sha256": "15d2d613cb413dd56411b362471e76084a6eaf21e7408ab27126571f578f59a2"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR06_UV좌표보정_최종색비교.png",
+      "bytes": 26192,
+      "sha256": "541b7acc1645b1955184db029b8998162e9075ff450edfe75ceec824c0958caa"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR06_최종조명_차이_수정중.png",
+      "bytes": 25653,
+      "sha256": "d15806cb44ff7b6bd10ffcdbc5ffc090e3547947ce4edfe82e371b64f783a3ee"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR07_UV좌표보정_low_원본해상도.png",
+      "bytes": 17933,
+      "sha256": "7b7aa0d71c9d8bce34f7a87084755e6f2b7a6d3c530e705dbb6fe6b9369191d4"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR07_UV좌표보정_source_원본해상도.png",
+      "bytes": 16685,
+      "sha256": "586d895a2f9ac3318f8390ac8b9583f9f7931965a1eb727a50448374f0a9c6f6"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR07_UV좌표보정_최종색비교.png",
+      "bytes": 286949,
+      "sha256": "1586a61a7b2ffb4dbb4b9bb002ef99564d9ff2c8684398864f57ad28f16d8116"
+    },
+    {
+      "path": "04_최종조명_품질검토중/PILLAR07_최종조명_차이_수정중.png",
+      "bytes": 291732,
+      "sha256": "fcc164e63ced326f3b5599a33c4f58c574adac593b29d98526cafdb3196aad5e"
+    },
+    {
+      "path": "04_최종조명_품질검토중/실제기하감소와_UV좌표보정_2종.png",
+      "bytes": 132302,
+      "sha256": "4ed759293f2512edf883944f24fc7312282465e68ab4ca28d0f7cd4c8bef4ee3"
+    },
+    {
+      "path": "자료안내.txt",
+      "bytes": 5469,
+      "sha256": "4dfe5306cbec78e19d3a7f4c494a31d82b08d2eaeff6516370beb112a93582ce"
+    },
+    {
+      "path": "적용파일과남은검증.txt",
+      "bytes": 2190,
+      "sha256": "c50a7edb1328e4681a9d6cef520c67d43d310480fff52639d4db6eace14f08c7"
+    },
+    {
+      "path": "현재상태.txt",
+      "bytes": 3256,
+      "sha256": "ace62847488ed4a4918aa17d4bd85bf6d94fd31c516f83787c4b21ed7fe93f25"
+    }
+  ],
+  "sourcePillarCounts": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\gpu-counts",
+  "nativeMaterialProof": "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\native-bake"
+}

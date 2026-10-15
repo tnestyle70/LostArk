@@ -532,7 +532,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonPatternAuthoring(
 			m_bKoukuSaydonPatternPreviewPlaying || !bActionPatternAdmitted);
 		if (ImGui::Button("Preview Action"))
 		{
-			const std::string strPreviewPatternId = "kakulsaydon." +
+			const std::string strPreviewPatternId = "koukusaydon." +
 				m_strKoukuSaydonProfileId + ".pattern." +
 				std::to_string(m_KoukuSaydonAnimationPatterns.iNextPatternOrdinal);
 			KOUKU_SAYDON_ANIMATION_PATTERN PreviewPattern;
@@ -554,7 +554,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonPatternAuthoring(
 		ImGui::SameLine();
 		if (ImGui::Button("Create Pattern"))
 		{
-			const std::string strPatternId = "kakulsaydon." +
+			const std::string strPatternId = "koukusaydon." +
 				m_strKoukuSaydonProfileId + ".pattern." +
 				std::to_string(m_KoukuSaydonAnimationPatterns.iNextPatternOrdinal);
 			KOUKU_SAYDON_ANIMATION_PATTERN Created;
@@ -851,7 +851,7 @@ void Client::CAnimation_Tool::Render_KoukuSaydonPatternAuthoring(
 	{
 		KOUKU_SAYDON_ANIMATION_PATTERN_DOCUMENT Candidate = m_KoukuSaydonAnimationPatterns;
 		KOUKU_SAYDON_ANIMATION_PATTERN Copy = Candidate.Patterns[iSelectedPattern];
-		Copy.strPatternId = "kakulsaydon." + m_strKoukuSaydonProfileId + ".pattern." +
+		Copy.strPatternId = "koukusaydon." + m_strKoukuSaydonProfileId + ".pattern." +
 			std::to_string(Candidate.iNextPatternOrdinal++);
 		Copy.strDisplayName += " Copy";
 		std::uint32_t iOrdinal = 1u;

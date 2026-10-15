@@ -1,8 +1,5 @@
 #include "imgui.h"
-#pragma push_macro("new")
-#undef new
 #include <DirectXColors.h>
-#pragma pop_macro("new")
 
 #include "Level_Loading.h"
 #include "ColosseumLoadingView.h"
@@ -133,7 +130,7 @@ HRESULT CLevel_Loading::Initialize(
 	m_pCharacterSelectReturn = pCharacterSelectReturn;
 	m_eNextLevelID = eNextLevelID;
 	m_iLobbyCommandToken = lobbyCommandToken;
-	if (LEVEL::KAKULSAYDON_ARENA == eNextLevelID)
+	if (LEVEL::KOUKUSAYDON_ARENA == eNextLevelID)
 	{
 		m_iKoukuLoadStartedMs = GetTickCount64();
 #ifdef _DEBUG
@@ -166,7 +163,7 @@ HRESULT CLevel_Loading::Initialize(
 		m_strTitleText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5";
 		m_strTipText = L"\xBD80\xD65C\xD55C \xB9C8\xC218\xC758 \xC2EC\xC7A5\xC5D0\xC11C \xC9D0\xC2B9\xB4E4\xC758 \xC6B8\xBD80\xC9D6\xC74C\xC774 \xB4E4\xB824\xC635\xB2C8\xB2E4.";
 	}
-	else if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+	else if (LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID)
 	{
 		m_strTitleText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4";
 		m_strTipText = L"\xD55C\xBC24\xC911\xC758 \xC11C\xCEE4\xC2A4\xB294 \xB2F9\xC2E0\xC744 \xC9C4\xC2EC\xC73C\xB85C \xD658\xC601\xD569\xB2C8\xB2E4.";
@@ -299,7 +296,7 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 	}
 	// All producers have joined before recovery releases their prototype stage.
 	// Required raid Effects cannot turn a failed preparation into a live fight.
-	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID && bLoaderFinished &&
+	if (LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID && bLoaderFinished &&
 		m_iEffectPreparationFailedCount != 0u)
 	{
 		Recover_FromFailure(E_FAIL);
@@ -454,7 +451,7 @@ void CLevel_Loading::Update(const f32_t fTimeDelta)
 		{
 			m_isActivationRequested = true;
 			m_iLobbyCommandToken = INVALID_LOBBY_COMMAND_TOKEN;
-			if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+			if (LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID)
 				Write_EffectFailureDiagnostic("Kouku.Loading.GateReady",
 					"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuLoadStartedMs) +
 					" v1_targets=" + std::to_string(m_iEffectPreparationTargetCount) +
@@ -671,7 +668,7 @@ void CLevel_Loading::Render_LoadingProgressDiagnostics()
 		if ((LEVEL::CHARACTER_SELECT == m_eNextLevelID ||
 			 LEVEL::BERN == m_eNextLevelID ||
 			 LEVEL::VALTAN_ARENA == m_eNextLevelID ||
-			 LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID) &&
+			 LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID) &&
 			!m_strEffectPreparationStatus.empty())
 		{
 			const std::string EffectStatus =
@@ -710,7 +707,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		LEVEL::CHARACTER_SELECT == m_eNextLevelID;
 	const bool_t bBern = LEVEL::BERN == m_eNextLevelID;
 	const bool_t bValtanArena = LEVEL::VALTAN_ARENA == m_eNextLevelID;
-	const bool_t bKoukuArena = LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID;
+	const bool_t bKoukuArena = LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID;
 	if (!CClickMoveEffect::Uses_LevelMarkers(m_eNextLevelID))
 	{
 		return true;
@@ -805,7 +802,7 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 		{
 			return IsolateFailure("Server admission has no supported Effect preparation class.");
 		}
-		const std::array selectedClass = { SelectedClass };
+		const std::array<CHARACTER_CLASS_ID, 1> selectedClass = { SelectedClass };
 		std::span<const CHARACTER_CLASS_ID> preparationClasses = selectedClass;
 #ifndef _DEBUG
 		if (bCharacterSelect)
@@ -999,8 +996,8 @@ bool_t CLevel_Loading::Advance_TargetEffectPreparation()
 			   through the same Loader worker and target activation probe. */
 			for (const BOSS_ACTOR_ENTRY& Boss : CActorCatalog::Get_Bosses())
 			{
-				if (!Boss.archetypeId.starts_with("BOSS_KAKULSAYDON_") ||
-					!Boss.clientPresentationId.starts_with("boss.kakulsaydon.") ||
+				if (!Boss.archetypeId.starts_with("BOSS_KOUKUSAYDON_") ||
+					!Boss.clientPresentationId.starts_with("boss.koukusaydon.") ||
 					!Boss.clientPresentationId.ends_with(".client.v1"))
 				{
 					continue;
@@ -1224,7 +1221,7 @@ void CLevel_Loading::Recover_FromFailure(const HRESULT result)
 	m_isFailureReported = true;
 	if (m_pCharacterSelectReturn)
 		m_pCharacterSelectReturn->End_EntryPreparation(this, false);
-	if (LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+	if (LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID)
 		Write_EffectFailureDiagnostic("Kouku.Loading.Failed",
 			"elapsed_ms=" + std::to_string(GetTickCount64() - m_iKoukuLoadStartedMs) +
 			" status=" + m_strEffectPreparationStatus);
@@ -1378,7 +1375,7 @@ HRESULT CLevel_Loading::Ready_Layer_Chrome()
 		   EFTable_GameMsg sys.commander.dungeon_name_koukusaton, which is also what
 		   the map id LV_LUT_MIDNIGHTC_ED spells out, and the loading hint is that
 		   zone's own sys.hint.zone_commanderraid_011. */
-		if ("Background" == strId && LEVEL::KAKULSAYDON_ARENA == m_eNextLevelID)
+		if ("Background" == strId && LEVEL::KOUKUSAYDON_ARENA == m_eNextLevelID)
 			strTexturePath = "UI/Loading/Loading_Background_Kouku.png";
 		/* Maharaka: zone 57009's own loading art (ExtRes/Loading/ZONE ISLAND_57009). */
 		if ("Background" == strId && LEVEL::MAHARAKA == m_eNextLevelID)

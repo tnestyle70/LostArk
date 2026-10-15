@@ -1,14 +1,11 @@
-#include "Logic_GunSlinger.h"
+﻿#include "Logic_GunSlinger.h"
 
+// 표현 갱신 인자의 CCharacter 정의를 연결한다. 현재 본문에서는 그 멤버에 접근하지 않는다.
 #include "Character.h"
 
 namespace
 {
-	/* Dual pistols. The gn_f rig has no "b_weapon_*" bone at all -- it carries
-	b_wp_1 under bip001-r-hand and b_wp_2 under bip001-l-hand -- so LanceMaster's
-	socket name would have attached nothing and rendered the gun unparented at
-	thousands of times its size. Both hands share one model; WP_WGDH_02 is a
-	single handgun mesh and the sockets orient it. */
+	// 같은 handgun 모델을 오른손 b_wp_1과 왼손 b_wp_2에 각각 붙인다. 소켓 존재는 Part 초기화에서 검사한다.
 	constexpr WEAPON_PART_SPEC Weapons[] =
 	{
 		{ TEXT("Part_90_Weapon_R"),
@@ -17,8 +14,7 @@ namespace
 		  TEXT("Prototype_Component_Model_GunSlinger_Weapon"), "b_wp_2" },
 	};
 
-	/* Equipment part tags sort after "Part_00_Body" so the body still updates
-	first, and before the weapon tags. */
+	// Part tag 순서로 본체가 먼저 갱신되고 장비 다음에 무기가 갱신된다.
 	constexpr EQUIPMENT_PART_SPEC Equipment[] =
 	{
 		{ TEXT("Part_10_Equip_Arm"),      TEXT("Prototype_Component_Model_GunSlinger_Arm"),
@@ -38,21 +34,14 @@ namespace
 		  EQUIPMENT_PRESENTATION_SLOT::UPPER },
 	};
 
-	/* The armour carries its own exposed skin, so the bare torso, arms and legs
-	underneath must not be drawn. Submesh order is NOT the same as LanceMaster's:
-	the gn_f body bundles the head, so the cook lays it out
-	0 face / 1 eye_ao / 2 eye / 3 upper / 4 hair / 5 arm / 6 lower.
-	Re-cooking the body with different content invalidates these bits. */
+	// 장비가 덮는 본체 upper(3)·arm(5)·lower(6)를 숨긴다. 모델 submesh 순서가 바뀌면 함께 확인해야 한다.
 	constexpr uint32_t COVERED_BY_ARMOUR = (1u << 3) | (1u << 5) | (1u << 6);
 
-	/* The hair this cooked body draws by itself. A worn hairstyle replaces it, so it is
-	hidden only while a HEAD set is on -- the in-world look keeps it. Submesh index read
-	off the cooked model's material order, like the mask above. 4 is pc_ft_15_hair. */
-	/* Kept at zero on purpose: this class has no cooked hair sets, so nothing can take
-	over from the body's own hair. Put the bit back (pc_ft_15_hair is submesh 4) once its
-	hairstyle sets exist and it gets a hair part like the other classes. */
+	// 본체 hair submesh는 4번이지만 이 설정은 그 비트를 사용하지 않는다.
+	// 현재 BAKED_HAIR는 0이므로 이 spec의 머리카락 mask로 본체 머리를 숨기지 않는다.
 	constexpr uint32_t BAKED_HAIR = 0u;
 
+	// 로컬 CCharacter가 spec의 factory를 호출해 logic을 단독 소유한다. Character 정리 시 함께 소멸한다.
 	unique_ptr<ICharacterLogic> Create_Logic()
 	{
 		return make_unique<CLogic_GunSlinger>();
@@ -61,6 +50,7 @@ namespace
 
 NS_BEGIN(Client)
 
+// 현재 클래스별 추가 갱신은 없다. 입력·상태를 변경하지 않고 공통 CCharacter 표현을 사용한다.
 void CLogic_GunSlinger::Update_Presentation(
 	CCharacter& Character,
 	f32_t fTimeDelta)
@@ -69,7 +59,8 @@ void CLogic_GunSlinger::Update_Presentation(
 	(void)fTimeDelta;
 }
 
-/* External linkage comes from the extern declaration in the header. */
+// 헤더의 extern으로 catalog가 참조하는 프로세스 수명의 직업 설정이다.
+// CCharacter가 Part·clip·선택 기능을 조립할 때 읽는 불변 설정이다. 아래 배열·문자열 포인터는 정적 수명이다.
 const CHARACTER_SPEC Spec_GunSlinger =
 {
 	"GunSlinger",
@@ -80,9 +71,7 @@ const CHARACTER_SPEC Spec_GunSlinger =
 	COVERED_BY_ARMOUR,
 	BAKED_HAIR,
 
-	/* Item 1056002 is this class's default weapon and names WP_WGDH_02, the
-	handgun of that set. The rifle and shotgun are cooked and waiting for a
-	swap path. */
+	// 쌍권총을 단일 본에 붙이는 static mesh 셰이더를 사용한다.
 	TEXT("Prototype_Component_Shader_VtxMeshBinary"),
 	Weapons,
 	static_cast<uint32_t>(size(Weapons)),
@@ -90,9 +79,7 @@ const CHARACTER_SPEC Spec_GunSlinger =
 	Equipment,
 	static_cast<uint32_t>(size(Equipment)),
 
-	/* IDLE, RUN, HIT, DEAD, KNOCKDOWN, KNOCKDOWN_LAND, DOWN_LOOP, STANDUP --
-	FBX takes are "<armature>_<action>" and the armature is named "gdh", so
-	every clip carries that prefix. */
+	// CHARACTER_ANIM 순서에 gdh 계열 clip 이름을 대응시킨다.
 	{
 		"gdh_idle_battle_1",
 		"gdh_run_battle_1",
@@ -102,7 +89,7 @@ const CHARACTER_SPEC Spec_GunSlinger =
 		"gdh_knockdown_land",
 		"gdh_down",
 		"gdh_standup_1",
-		/* No Esther animation set is attached for this class yet. */
+		// 이 spec에는 ESTHER_CAST clip을 지정하지 않았다.
 		nullptr,
 		nullptr, // CUSTOMIZING_IDLE
 		"gdh_abn_fear_1",

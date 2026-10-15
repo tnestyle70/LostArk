@@ -19,14 +19,14 @@ class BingoBoardSettingsTests(unittest.TestCase):
 
     def fixture(self):
         document = copy.deepcopy(self.source)
-        identity = "KAKULSAYDON_G1_PATTERN_501"
-        logic = dict(logicId="kakulsaydon.g1.logic.1", displayName="Fixture board",
+        identity = "KOUKUSAYDON_G1_PATTERN_501"
+        logic = dict(logicId="koukusaydon.g1.logic.1", displayName="Fixture board",
                      logicType="DURATION", judgementKind="BINGO_BOARD")
         box = dict(occurrenceId=identity + ".logic.1", logicId=logic["logicId"],
                    startMs=0, durationMs=34, enabled=True,
                    onSuccessLogicIds=[], onFailLogicIds=[], onTimeoutLogicIds=[])
         pattern = dict(patternId=identity, actorProfileId="MN_RPCT_05", gateId="BINGO",
-                       targetBossPlacementId="boss.kakulsaydon.bingo.saydon", durationMs=34,
+                       targetBossPlacementId="boss.koukusaydon.bingo.saydon", durationMs=34,
                        displayName="Fixture board control", authoringStatus="PRODUCT", category="MECHANIC",
                        nextStageOrdinal=2, nextAnimationOrdinal=1, nextLogicOccurrenceOrdinal=2,
                        stages=[dict(stageId="STAGE_1", actionId=identity + ".stage.1", stageKind="ACTIVE",
@@ -55,7 +55,7 @@ class BingoBoardSettingsTests(unittest.TestCase):
         self.assertEqual([], encounter["patterns"][0]["logicWindows"])
         self.assertEqual(before, document)
 
-        pattern["patternId"] = "KAKULSAYDON_G1_PATTERN_502"
+        pattern["patternId"] = "KOUKUSAYDON_G1_PATTERN_502"
         document["playAllPatternIds"] = [pattern["patternId"]]
         box["occurrenceId"] = pattern["patternId"] + ".logic.1"
         pattern["stages"][0]["actionId"] = pattern["patternId"] + ".stage.1"

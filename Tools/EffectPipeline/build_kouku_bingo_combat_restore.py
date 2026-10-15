@@ -36,7 +36,7 @@ def build(output, loa_root, library):
     sounds = {r['soundEvent'].lower(): r for r in composition['presentationResources']
               if r['kind'] == 'SOUND' and r.get('soundEvent')}
     medusa = next(p for p in composition['patterns']
-                  if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_94')
+                  if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_94')
     specs = []
     for stage in medusa['stages']:
         assert len(stage['animationOccurrences']) == 1
@@ -51,7 +51,7 @@ def build(output, loa_root, library):
                  patternId=medusa['patternId'], stages=specs),
             dict(asset='effect.kouku.bingo.blackhole.full.restore',
                  name='빙고 | 블랙홀·폭발·그로기', profile='MN_RPCT_07', action=4219927,
-                 patternId='KAKULSAYDON_G1_PATTERN_107', stages=[
+                 patternId='KOUKUSAYDON_G1_PATTERN_107', stages=[
                      (2, 5400, 'rpct00_att_battle_12_02'),
                      (3, 10333, 'rpct00_att_battle_12_04'),
                      (4, 200, 'rpct00_att_battle_12_05'),
@@ -155,7 +155,7 @@ def build(output, loa_root, library):
             displayName=job['name'], particleSystem=dict(uniformScaleMultiplier=1,
                 yawOffsetDegrees=0, directionYawDegrees=0, initialSpeedMultiplier=1),
             modelCues=[], elements=elements, sourceModelPreview=dict(gateId='BINGO',
-                actorProfileId='MN_RPCT_05', targetBossPlacementId='boss.kakulsaydon.bingo.saydon',
+                actorProfileId='MN_RPCT_05', targetBossPlacementId='boss.koukusaydon.bingo.saydon',
                 animations=animations))
         assert len(elements) == len({e['id'] for e in elements})
         candidate = output / 'candidate' / (job['asset'] + '.effect.json')

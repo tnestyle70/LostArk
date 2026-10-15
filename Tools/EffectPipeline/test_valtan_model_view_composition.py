@@ -95,12 +95,12 @@ class ValtanModelViewCompositionTests(unittest.TestCase):
                          {
                              "BOSS_VALTAN",
                              "BOSS_VALTAN_GHOST",
-                             "BOSS_KAKULSAYDON_G1_KOUKU",
-                             "BOSS_KAKULSAYDON_G1_SAYDON",
-                             "BOSS_KAKULSAYDON_G2_BIG_SAYDON",
-                             "BOSS_KAKULSAYDON_G2_KOUKU",
-                             "BOSS_KAKULSAYDON_G3_SAYDON",
-                             "BOSS_KAKULSAYDON_BINGO_SAYDON",
+                             "BOSS_KOUKUSAYDON_G1_KOUKU",
+                             "BOSS_KOUKUSAYDON_G1_SAYDON",
+                             "BOSS_KOUKUSAYDON_G2_BIG_SAYDON",
+                             "BOSS_KOUKUSAYDON_G2_KOUKU",
+                             "BOSS_KOUKUSAYDON_G3_SAYDON",
+                             "BOSS_KOUKUSAYDON_BINGO_SAYDON",
                          })
         valtan = next(row for row in catalog["bosses"]
                       if row["archetypeId"] == "BOSS_VALTAN")

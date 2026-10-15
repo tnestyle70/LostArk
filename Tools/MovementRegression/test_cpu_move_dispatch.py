@@ -143,7 +143,7 @@ int main(){try{
     result['configuration']=args.configuration
     result['methodsSha256']=hashlib.sha256(methods.encode()).hexdigest()
     result['boundLevels']=[]
-    for level in ('Bern','ValtanArena','KakulSaydonArena','CharacterSelect','Development'):
+    for level in ('Bern','ValtanArena','KoukuSaydonArena','CharacterSelect','Development'):
         code=(ROOT/f'Client/Private/Level_{level}.cpp').read_text(encoding='utf-8-sig')
         assert 'Set_MovementSurfaceResolver' in code and 'm_MapRuntime.Try_PickMovementSurface' in code, level
         result['boundLevels'].append(level)

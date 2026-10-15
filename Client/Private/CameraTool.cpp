@@ -9,7 +9,7 @@
 #include "GameInstance.h"
 #include "Profiler.h"
 #include "MainApp.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "ValtanCinematicCameraController.h"
 
@@ -269,7 +269,7 @@ void Client::CCameraTool::Open()
 {
 	m_bOpen = true;
 	m_bFocusPending = true;
-	const bool kouku = CLevel_KakulSaydonArena::Get_Active() != nullptr;
+	const bool kouku = CLevel_KoukuSaydonArena::Get_Active() != nullptr;
 	if (!m_bLoaded || (!m_bDirty && m_bKoukuSource != kouku))
 		(void)Select_Source(kouku);
 }
@@ -479,9 +479,9 @@ bool_t Client::CCameraTool::Reload_Kouku()
 	const auto path = CProjectDataRoot::Resolve(
 		L"Maps/Authoring/LV_LUT_MIDNIGHTC_ED/LV_LUT_MIDNIGHTC_ED.camerashots.json");
 	std::string text;
-	std::vector<CLevel_KakulSaydonArena::KAKUL_CAMERA_SHOT> shots;
+	std::vector<CLevel_KoukuSaydonArena::KOUKU_CAMERA_SHOT> shots;
 	if (!Read_TextFile(path, text, m_strStatus) ||
-		!CLevel_KakulSaydonArena::Parse_CameraShots(text, shots, m_strStatus)) return false;
+		!CLevel_KoukuSaydonArena::Parse_CameraShots(text, shots, m_strStatus)) return false;
 	std::vector<VALTAN_CINEMATIC_CAMERA_CUE> cues;
 	std::map<std::string, std::string> names;
 	std::set<std::string> ids;
@@ -489,7 +489,7 @@ bool_t Client::CCameraTool::Reload_Kouku()
 	{
 		ids.insert(shot.strShotId);
 		if (!shot.bPatternOnly) continue;
-		cues.push_back(CLevel_KakulSaydonArena::CameraShot_ToCue(shot));
+		cues.push_back(CLevel_KoukuSaydonArena::CameraShot_ToCue(shot));
 		names.emplace(shot.strShotId, shot.strDisplayName);
 	}
 	Stop_Preview(false);
@@ -549,7 +549,7 @@ bool_t Client::CCameraTool::Validate_Draft(
 	std::string& outStatus) const
 {
 	if (m_bKoukuSource)
-		return m_bLoaded && CLevel_KakulSaydonArena::Stage_PatternCameraTracks(
+		return m_bLoaded && CLevel_KoukuSaydonArena::Stage_PatternCameraTracks(
 			m_strBaselineText, m_DraftCues, m_KoukuCameraNames, outText, outStatus);
 	if (!m_bLoaded || !m_Encounter.Is_Ready() ||
 		!m_LoadedDocument.Is_Ready())
@@ -566,10 +566,10 @@ bool_t Client::CCameraTool::Save()
 {
 	if (m_bKoukuSource)
 	{
-		auto* level = CLevel_KakulSaydonArena::Get_Active();
+		auto* level = CLevel_KoukuSaydonArena::Get_Active();
 		std::string text;
 		if (!level) { m_strStatus = "Enter KoukuSaydon to save its Area Camera source."; return false; }
-		if (!CLevel_KakulSaydonArena::Stage_PatternCameraTracks(m_strBaselineText, m_DraftCues, m_KoukuCameraNames, text, m_strStatus) ||
+		if (!CLevel_KoukuSaydonArena::Stage_PatternCameraTracks(m_strBaselineText, m_DraftCues, m_KoukuCameraNames, text, m_strStatus) ||
 			!level->Save_CameraShotSource(m_strBaselineText, text, m_strStatus)) return false;
 		return Reload_Kouku();
 	}

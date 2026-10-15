@@ -631,8 +631,8 @@ class CompositionPipelineTests(unittest.TestCase):
                 "kind": "ACTOR_PATTERN",
                 "startMs": 0,
                 "payload": {
-                    "bossCompositionId": "boss.composition.kakulsaydon",
-                    "patternId": "KAKUL_FAKE_PATTERN",
+                    "bossCompositionId": "boss.composition.koukusaydon",
+                    "patternId": "KOUKU_FAKE_PATTERN",
                 },
             }
         ]

@@ -12,7 +12,17 @@ _NAMESPACE = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
 _SPLIT_DOMAINS = frozenset((
     'Effect_Tool', 'Effect_DocumentRenderer', 'MapTool', 'Animation_Tool',
     'Effect_DocumentCodec', 'GameRoom', 'ServerGameplayContractTests',
+    'KoukuSaydonActionWorkbench', 'ValtanActionWorkbench', 'MainApp',
 ))
+
+
+# 기존 core만 검사하던 소비자의 범위를 유지한다. 이번에 옮긴 구현은 포함하되
+# 이미 별도 계약으로 읽던 sibling을 새로 합쳐 assertion의 검사 대상을 넓히지 않는다.
+_CORE_READ_EXCLUSIONS = {
+    'ValtanActionWorkbench': ('ValtanActionWorkbench_Blueprint', 'ValtanActionWorkbench_Timeline'),
+    'MainApp': ('MainApp_Dragon', 'MainApp_RenderingLighting', 'MainApp_SequenceViewer',
+                'MainApp_ValtanAxe', 'MainApp_WorldLevel'),
+}
 
 
 @lru_cache(maxsize=32)
@@ -111,62 +121,119 @@ def read_source_text(path, *args, **kwargs):
     """
     path = Path(path)
     if path.parent.name == 'Private' and path.suffix == '.cpp' and path.stem in _SPLIT_DOMAINS:
-        return read_cpp_domain(path.parent.parent, path.stem)
+        return read_cpp_domain(path.parent.parent, path.stem,
+                               exclude_stems=_CORE_READ_EXCLUSIONS.get(path.stem, ()))
     return path.read_text(*args, **kwargs)
 
 
-def _cpp_function_bounds(source, signature):
-    start = source.index(signature)
-    opening = source.index('{', start)
-    while ';' in source[start:opening]:
-        start = source.index(signature, start + len(signature))
-        opening = source.index('{', start)
-    depth, cursor = 0, opening
-    state = 'code'
+@lru_cache(maxsize=8)
+def _cpp_code_mask(source):
+    """문자열·주석을 같은 길이의 공백으로 가려 원본 오프셋을 유지한다."""
+    masked = list(source)
+    cursor = 0
     while cursor < len(source):
         char = source[cursor]
         pair = source[cursor:cursor+2]
-        if state == 'code':
-            if pair == '//':
-                state = 'line'
-                cursor += 2
-                continue
-            if pair == '/*':
-                state = 'block'
-                cursor += 2
-                continue
-            if pair == 'R"':
-                delimiter_end = source.find('(', cursor+2)
-                if delimiter_end != -1 and delimiter_end-cursor <= 18:
-                    terminator = ')' + source[cursor+2:delimiter_end] + '"'
-                    closing = source.find(terminator, delimiter_end+1)
+        end = None
+        if char.isdigit() and (cursor == 0 or not (
+                source[cursor - 1].isalnum() or source[cursor - 1] == '_')):
+            # 숫자 구분자(1'000, 0xFF'00)는 문자 리터럴을 여는 따옴표가 아니다.
+            cursor += 1
+            while cursor < len(source) and (source[cursor].isalnum() or source[cursor] in "._'"):
+                cursor += 1
+            continue
+        if pair == '//':
+            end = source.find('\n', cursor + 2)
+            if end == -1:
+                end = len(source)
+        elif pair == '/*':
+            closing = source.find('*/', cursor + 2)
+            if closing == -1:
+                raise ValueError('Unterminated C++ block comment')
+            end = closing + 2
+        elif pair == 'R"':
+            delimiter_end = source.find('(', cursor + 2, cursor + 19)
+            if delimiter_end != -1:
+                delimiter = source[cursor + 2:delimiter_end]
+                if not any(c.isspace() or c in ')\\' for c in delimiter):
+                    terminator = ')' + delimiter + '"'
+                    closing = source.find(terminator, delimiter_end + 1)
                     if closing == -1:
-                        raise ValueError(f'Unterminated C++ raw string in {signature}')
-                    cursor = closing + len(terminator)
-                    continue
-            if char in ('"', "'"):
-                state = char
-            elif char == '{':
+                        raise ValueError('Unterminated C++ raw string')
+                    end = closing + len(terminator)
+        elif char in ('"', "'"):
+            end = cursor + 1
+            while end < len(source):
+                if source[end] == '\\':
+                    end += 2
+                elif source[end] == char:
+                    end += 1
+                    break
+                else:
+                    end += 1
+            else:
+                raise ValueError('Unterminated C++ quoted literal')
+        if end is not None:
+            masked[cursor:end] = ' ' * (end - cursor)
+            cursor = end
+            continue
+        cursor += 1
+    return ''.join(masked)
+
+
+def _cpp_function_bounds(source, signature):
+    # 같은 이름의 선언·호출을 먼저 만날 수 있다. 인자 괄호를 닫기 전의
+    # initializer/lambda 중괄호는 본문이 아니며, 끝의 세미콜론은 다음 후보로 넘긴다.
+    if not signature.strip():
+        raise ValueError('A C++ function signature is required')
+    code = _cpp_code_mask(source)
+    search_from = 0
+    while (start := source.find(signature, search_from)) != -1:
+        search_from = start + len(signature)
+        first = start + len(signature) - len(signature.lstrip())
+        if code[first].isspace():
+            continue
+        parens, brackets = 0, 0
+        saw_parameters = False
+        opening = None
+        for cursor in range(start, len(code)):
+            char = code[cursor]
+            if char == '(':
+                parens += 1
+                saw_parameters = True
+            elif char == ')':
+                parens -= 1
+                if parens < 0:
+                    break  # if/다른 호출 안에 들어간 함수 호출이다.
+            elif char == '[':
+                brackets += 1
+            elif char == ']':
+                brackets -= 1
+                if brackets < 0:
+                    break
+            elif parens == 0 and brackets == 0:
+                # 인자 목록보다 앞의 comma는 반환형 template의 일부일 수 있다.
+                if char in ';}' or (saw_parameters and char in ',=?'):
+                    break
+                if char == '{':
+                    if saw_parameters:
+                        opening = cursor
+                    break
+        if opening is None:
+            continue
+
+        # 선언부와 본문 모두 같은 mask를 소비한다. 반환 문자열은 원문에서
+        # 잘라 주므로 주석·리터럴과 공백은 소스 계약 검사의 입력에 그대로 남는다.
+        depth = 0
+        for cursor in range(opening, len(code)):
+            if code[cursor] == '{':
                 depth += 1
-            elif char == '}':
+            elif code[cursor] == '}':
                 depth -= 1
                 if depth == 0:
                     return start, opening, cursor + 1
-        elif state == 'line':
-            if char == '\n':
-                state = 'code'
-        elif state == 'block':
-            if pair == '*/':
-                state = 'code'
-                cursor += 2
-                continue
-        elif char == '\\':
-            cursor += 2
-            continue
-        elif char == state:
-            state = 'code'
-        cursor += 1
-    raise ValueError(f'Unterminated C++ function: {signature}')
+        raise ValueError(f'Unterminated C++ function: {signature}')
+    raise ValueError(f'C++ function definition not found: {signature}')
 
 
 def cpp_function_body(source, signature):

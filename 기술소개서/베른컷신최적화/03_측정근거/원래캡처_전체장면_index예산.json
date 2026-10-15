@@ -1,0 +1,334 @@
+{
+  "scope": "Actual historical first map color draws. CPU known source IDs mapped to installed placements/WModel bounds independent of capped source rows. Unknown CPU IDs and GPU surviving IDs remain unknown; no extrapolation. Material classification uses representative installed asset+mesh material name and may differ across merged variants. Necessary-only bake eligibility is not runtime Can_BakeStaticProxy. No GPU execution succeeded in this run.",
+  "geometryFrame": 88037,
+  "cueSeconds": 0.201457,
+  "mapIndices": 16828530,
+  "originalVS": 8952634,
+  "originalEngineIndices": 19670838,
+  "byPathIndices": {
+    "cpu_static_batch": 11015559,
+    "cpu_identical_merge": 1565907,
+    "gpu_indirect": 3700896,
+    "cpu_lighting_bank": 182088,
+    "native_hlod": 364080
+  },
+  "representativeFamilyIndices": {
+    "bg_base_opa_overlay": 2428185,
+    "bg-source-opaque-masked": 7710921,
+    "bg-source-foliage-masked": 3282699,
+    "bg-source-landscape-opaque": 531696,
+    "bg_base_pbr_opa": 23448,
+    "bg-source-grass-masked": 2421711,
+    "bg-source-snowice-opaque": 9426,
+    "bg-source-vertexblend-opaque": 56364,
+    "native_hlod_unclassified": 364080
+  },
+  "necessaryOnlyProxyFamilyAndFlagsIndices": {
+    "False": 10787556,
+    "True": 5676894
+  },
+  "cpuKnownSourceIndices": 2495874,
+  "cpuUnknownSourceIndices": 10267680,
+  "cpuKnownSphereNearBandsIndices": {
+    "40-80m": 715533,
+    "120-200m": 904485,
+    "80-120m": 664608,
+    "200-500m": 6996,
+    "0-10m": 69927,
+    "20-40m": 73704,
+    "10-20m": 60621
+  },
+  "knownCpuFamilyBands": [
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "40-80m",
+      "indices": 60192
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "40-80m",
+      "indices": 582249
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "120-200m",
+      "indices": 519333
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "120-200m",
+      "indices": 74514
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "80-120m",
+      "indices": 59280
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "80-120m",
+      "indices": 414069
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "200-500m",
+      "indices": 3480
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "200-500m",
+      "indices": 3516
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "80-120m",
+      "indices": 191259
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "120-200m",
+      "indices": 310638
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "40-80m",
+      "indices": 73092
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "0-10m",
+      "indices": 38703
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "0-10m",
+      "indices": 18600
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "0-10m",
+      "indices": 12360
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "20-40m",
+      "indices": 45852
+    },
+    {
+      "family": "bg-source-snowice-opaque",
+      "band": "20-40m",
+      "indices": 528
+    },
+    {
+      "family": "bg-source-opaque-masked",
+      "band": "10-20m",
+      "indices": 44445
+    },
+    {
+      "family": "bg-source-snowice-opaque",
+      "band": "0-10m",
+      "indices": 264
+    },
+    {
+      "family": "bg-source-snowice-opaque",
+      "band": "10-20m",
+      "indices": 264
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "10-20m",
+      "indices": 6156
+    },
+    {
+      "family": "bg_base_opa_overlay",
+      "band": "20-40m",
+      "indices": 9960
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "20-40m",
+      "indices": 17364
+    },
+    {
+      "family": "bg-source-foliage-masked",
+      "band": "10-20m",
+      "indices": 9756
+    }
+  ],
+  "boundsVsCaptured": {
+    "compared": 203,
+    "maximumCenterError": 3.093750001426088e-05,
+    "maximumRadiusError": 4.955444339316273e-07,
+    "mismatchesOver1mm": []
+  },
+  "missingMaterials": [],
+  "errors": {},
+  "modelsParsed": 582,
+  "placementsParsed": 50021,
+  "knownDrawSourcePlacements": 553,
+  "allPlacementCandidateBounds": {
+    "count": 50021,
+    "errors": {},
+    "distanceClassification": [
+      {
+        "thresholdMetres": 10,
+        "capturedIndexDefinitelyNear": 158013,
+        "capturedIndexDefinitelyFar": 13484496,
+        "mixedCandidateDistances": 2821941,
+        "unclassified": 364080,
+        "paths": {
+          "cpu_static_batch": {
+            "knownFar": 10756953,
+            "knownNear": 158013,
+            "mixedCandidateDistances": 100593
+          },
+          "cpu_identical_merge": {
+            "mixedCandidateDistances": 1181826,
+            "knownFar": 384081
+          },
+          "gpu_indirect": {
+            "mixedCandidateDistances": 1495302,
+            "knownFar": 2205594
+          },
+          "cpu_lighting_bank": {
+            "knownFar": 137868,
+            "mixedCandidateDistances": 44220
+          },
+          "native_hlod": {
+            "unclassified": 364080
+          }
+        }
+      },
+      {
+        "thresholdMetres": 20,
+        "capturedIndexDefinitelyNear": 387204,
+        "capturedIndexDefinitelyFar": 13012236,
+        "mixedCandidateDistances": 3065010,
+        "unclassified": 364080,
+        "paths": {
+          "cpu_static_batch": {
+            "knownFar": 10522551,
+            "knownNear": 387204,
+            "mixedCandidateDistances": 105804
+          },
+          "cpu_identical_merge": {
+            "mixedCandidateDistances": 1267626,
+            "knownFar": 298281
+          },
+          "gpu_indirect": {
+            "mixedCandidateDistances": 1647360,
+            "knownFar": 2053536
+          },
+          "cpu_lighting_bank": {
+            "knownFar": 137868,
+            "mixedCandidateDistances": 44220
+          },
+          "native_hlod": {
+            "unclassified": 364080
+          }
+        }
+      },
+      {
+        "thresholdMetres": 40,
+        "capturedIndexDefinitelyNear": 1040661,
+        "capturedIndexDefinitelyFar": 10895271,
+        "mixedCandidateDistances": 4528518,
+        "unclassified": 364080,
+        "paths": {
+          "cpu_static_batch": {
+            "knownFar": 9920385,
+            "knownNear": 1036557,
+            "mixedCandidateDistances": 58617
+          },
+          "cpu_identical_merge": {
+            "mixedCandidateDistances": 1367019,
+            "knownFar": 198888
+          },
+          "gpu_indirect": {
+            "mixedCandidateDistances": 2987868,
+            "knownFar": 708924,
+            "knownNear": 4104
+          },
+          "cpu_lighting_bank": {
+            "knownFar": 67074,
+            "mixedCandidateDistances": 115014
+          },
+          "native_hlod": {
+            "unclassified": 364080
+          }
+        }
+      },
+      {
+        "thresholdMetres": 80,
+        "capturedIndexDefinitelyNear": 3243642,
+        "capturedIndexDefinitelyFar": 8155284,
+        "mixedCandidateDistances": 5065524,
+        "unclassified": 364080,
+        "paths": {
+          "cpu_static_batch": {
+            "knownNear": 3182244,
+            "mixedCandidateDistances": 231381,
+            "knownFar": 7601934
+          },
+          "cpu_identical_merge": {
+            "mixedCandidateDistances": 1421427,
+            "knownFar": 110136,
+            "knownNear": 34344
+          },
+          "gpu_indirect": {
+            "mixedCandidateDistances": 3280548,
+            "knownFar": 416244,
+            "knownNear": 4104
+          },
+          "cpu_lighting_bank": {
+            "knownFar": 26970,
+            "mixedCandidateDistances": 132168,
+            "knownNear": 22950
+          },
+          "native_hlod": {
+            "unclassified": 364080
+          }
+        }
+      },
+      {
+        "thresholdMetres": 120,
+        "capturedIndexDefinitelyNear": 6843837,
+        "capturedIndexDefinitelyFar": 4695426,
+        "mixedCandidateDistances": 4925187,
+        "unclassified": 364080,
+        "paths": {
+          "cpu_static_batch": {
+            "knownNear": 6558627,
+            "knownFar": 4200816,
+            "mixedCandidateDistances": 256116
+          },
+          "cpu_identical_merge": {
+            "mixedCandidateDistances": 1410495,
+            "knownFar": 105648,
+            "knownNear": 49764
+          },
+          "gpu_indirect": {
+            "mixedCandidateDistances": 3104694,
+            "knownFar": 383706,
+            "knownNear": 212496
+          },
+          "cpu_lighting_bank": {
+            "mixedCandidateDistances": 153882,
+            "knownFar": 5256,
+            "knownNear": 22950
+          },
+          "native_hlod": {
+            "unclassified": 364080
+          }
+        }
+      }
+    ],
+    "scope": "Baseline historical index attribution using actual known source IDs, or all possible installed placement candidates for a representative asset/physical-model path. Mixed candidates remain unknown; no per-instance GPU survival inferred. No retained-scene GPU workload or future draw selection is asserted.",
+    "validationVsCaptured": {
+      "compared": 17739,
+      "maximumCenterError": 3.101171876096487e-05,
+      "maximumRadiusError": 3.5305175813959977e-06,
+      "mismatchesOver1mm": []
+    }
+  }
+}

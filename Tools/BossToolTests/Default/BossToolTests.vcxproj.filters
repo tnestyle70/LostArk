@@ -87,6 +87,60 @@
     <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench.cpp">
       <Filter>04.Client.Documents</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Animation.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Camera.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Clipboard.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Collider.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Document.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Helpers.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_History.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Logic.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Patterns.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Presentation.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Preview.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Publish.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Summon.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Timeline.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_WorldScene.cpp">
+      <Filter>04.Client.Documents</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_CameraLookup.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_Internal.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Client\Private\KoukuSaydonActionWorkbench_TimelineTypes.h">
+      <Filter>04.Client.Documents</Filter>
+    </ClInclude>
     <ClCompile Include="..\..\..\Client\Private\KoukuSaydonCompositionDocument.cpp">
       <Filter>04.Client.Documents</Filter>
     </ClCompile>

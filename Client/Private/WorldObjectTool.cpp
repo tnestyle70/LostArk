@@ -8,7 +8,7 @@
 #include "ActorCatalog.h"
 #include "BinaryAsset/WModelDecoder.h"
 #include "RuntimeAssetRoot.h"
-#include "Level_KakulSaydonArena.h"
+#include "Level_KoukuSaydonArena.h"
 #include "ProjectDataRoot.h"
 #include "WorldSequencePlayer.h"
 #include "KoukuSaydonCompositionDocument.h"
@@ -980,8 +980,8 @@ void CWorldObjectTool::Deactivate()
 
 bool CWorldObjectTool::Load_Source()
 {
-    const auto* level = CLevel_KakulSaydonArena::Get_Active();
-    if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KAKULSAYDON_ARENA))
+    const auto* level = CLevel_KoukuSaydonArena::Get_Active();
+    if (!level || CGameInstance::Get().Get_CurrentLevelID() != ETOUI(LEVEL::KOUKUSAYDON_ARENA))
     {
         m_SourceLoadDeferred = !m_Ready;
         m_Status = "Enter KoukuSaydon to load Object Resources, or retry with Reload Source.";
@@ -1071,7 +1071,7 @@ bool CWorldObjectTool::Save_Source(const bool publishRuntime)
         !m_Document.Is_Equivalent(verified) || !ReadSource(stagedPath, stagedBytes, m_Status) || !Matches_SourceBaseline())
     { cleanup(); return false; }
     bool linked = false, publishPatterns = false;
-    const std::array paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
+    const std::array<std::filesystem::path, 2> paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
     for (size_t index = 0; index < paths.size(); ++index)
     {
         std::error_code error;
@@ -1227,7 +1227,7 @@ void CWorldObjectTool::Render_SaveStatus() const
 void CWorldObjectTool::Render_ColliderPreview()
 {
     if (!m_PreviewActive || !m_PreviewLevel || m_ColliderPreviewFrame == ImGui::GetFrameCount()) return;
-    if (m_PreviewLevel != CLevel_KakulSaydonArena::Get_Active()) return;
+    if (m_PreviewLevel != CLevel_KoukuSaydonArena::Get_Active()) return;
     m_ColliderPreviewFrame = ImGui::GetFrameCount();
     m_PreviewLevel->Debug_DrawWorldObjectColliderPreview();
 }
@@ -1244,7 +1244,7 @@ bool CWorldObjectTool::Refresh_LinkedPublication()
         return group && std::any_of(group->motionInstanceIds.begin(), group->motionInstanceIds.end(),
             [&](const auto& member) { return m_SavedDocument.Find_Instance(member) != nullptr; });
     };
-    const std::array paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
+    const std::array<std::filesystem::path, 2> paths{CKoukuSaydonCompositionDocument::Resolve_Path(), CKoukuSaydonCompositionDocument::Resolve_SequencePath()};
     for (size_t index = 0u; index < paths.size(); ++index)
     {
         std::error_code error;
@@ -1316,7 +1316,7 @@ void CWorldObjectTool::Poll_Publish()
     ++m_SavedGeneration;
     m_RuntimePublishStatus = "WorldSequences runtime files published.";
     std::string runtimeStatus;
-    if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+    if (auto* level = CLevel_KoukuSaydonArena::Get_Active())
     {
         if (!level->Reload_WorldObjectRuntime(runtimeStatus))
         { m_Status = "Saved and runtime files applied; next-play reload pending: " + runtimeStatus; return; }
@@ -1363,7 +1363,7 @@ void CWorldObjectTool::Mark_Dirty()
 
 void CWorldObjectTool::Stop_Preview()
 {
-    if (m_PreviewActive && m_PreviewLevel && m_PreviewLevel == CLevel_KakulSaydonArena::Get_Active())
+    if (m_PreviewActive && m_PreviewLevel && m_PreviewLevel == CLevel_KoukuSaydonArena::Get_Active())
         m_PreviewLevel->Debug_StopWorldObjectPreview();
     m_PreviewLevel = nullptr; m_PreviewActive = false; m_Playing = false; m_PreviewDirty = false;
     m_EffectPreviewDocument.reset();
@@ -1545,7 +1545,7 @@ bool CWorldObjectTool::Begin_Preview()
 {
     if (m_ServerPreparationPending || CKoukuSaydonPatternAuditionService::Get().Get_Snapshot().Is_InFlight())
     { m_Status = "Stop Server Play before previewing an Object draft."; return false; }
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level) { m_Status = "World object preview requires the active KoukuSaydon arena."; return false; }
     if (const auto* group = Preview_Group())
     {
@@ -1727,7 +1727,7 @@ void CWorldObjectTool::Update(const f32_t seconds, const bool_t active)
         if (m_PhysicalScan.Commit(m_PhysicalAssets, m_PhysicalStatus)) Rebuild_PhysicalTree();
         m_PhysicalScanRunning = false;
     }
-    if (!active || !m_Open || (m_PreviewLevel && m_PreviewLevel != CLevel_KakulSaydonArena::Get_Active()))
+    if (!active || !m_Open || (m_PreviewLevel && m_PreviewLevel != CLevel_KoukuSaydonArena::Get_Active()))
     { Stop_Preview(); return; }
     if (m_PreviewPreparationPending)
     {
@@ -2059,7 +2059,7 @@ bool CWorldObjectTool::Build_State(const WORLD_SEQUENCE_OBJECT_RESOURCE& resourc
     instance.bindings.push_back({"object", WORLD_SEQUENCE_TARGET_KIND::OBJECT_RESOURCE, resource.objectId});
     if (instance.anchorKind == "WORLD")
     {
-        auto* level = CLevel_KakulSaydonArena::Get_Active();
+        auto* level = CLevel_KoukuSaydonArena::Get_Active();
         if (!level)
         { m_Status = "Map state creation requires the active KoukuSaydon arena."; return false; }
         if (!level->Try_Get_AuthoringPreviewPlacement(instance.position, m_Status))
@@ -2089,7 +2089,7 @@ void CWorldObjectTool::Change_ResourceAnchor(
     float3_t position{};
     if (anchorKind == "WORLD")
     {
-        auto* level = CLevel_KakulSaydonArena::Get_Active();
+        auto* level = CLevel_KoukuSaydonArena::Get_Active();
         if (!level || !level->Try_Get_AuthoringPreviewPlacement(position, m_Status))
         { m_Status = "Map anchor needs the current character placement: " + m_Status; return; }
     }
@@ -2114,8 +2114,8 @@ void CWorldObjectTool::Begin_WorkbenchFrame()
     m_CompositionResourceFocused = false;
     if (!m_Open) Open();
     else if (!m_Ready && !m_Dirty && m_SourceLoadDeferred &&
-        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KAKULSAYDON_ARENA) &&
-        CLevel_KakulSaydonArena::Get_Active())
+        CGameInstance::Get().Get_CurrentLevelID() == ETOUI(LEVEL::KOUKUSAYDON_ARENA) &&
+        CLevel_KoukuSaydonArena::Get_Active())
         Load_Source();
     Begin_HistoryFrame();
 }
@@ -2965,7 +2965,7 @@ bool CWorldObjectTool::Play_SelectedEffect()
 
 bool CWorldObjectTool::Begin_EffectPreview(CWorldSequenceDocument staged, const std::string& instanceId)
 {
-    auto* level = CLevel_KakulSaydonArena::Get_Active();
+    auto* level = CLevel_KoukuSaydonArena::Get_Active();
     if (!level) { m_Status = "Effect preview requires the active KoukuSaydon arena."; return false; }
     const auto* group = Preview_Group();
     if (!level->Debug_BeginWorldObjectPreview(staged, group ? group->objectId : instanceId,
@@ -3540,7 +3540,7 @@ bool CWorldObjectTool::Render_MapAnchor(const WORLD_SEQUENCE_OBJECT_RESOURCE& re
     bool edited = ImGui::DragFloat3("Parent Map Position", &position.x, .01f);
     if (ImGui::Button("Move Parent to Character"))
     {
-        if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+        if (auto* level = CLevel_KoukuSaydonArena::Get_Active())
             edited = level->Try_Get_AuthoringPreviewPlacement(position, m_Status);
         else m_Status = "Player placement requires the active KoukuSaydon arena.";
     }
@@ -3579,8 +3579,8 @@ void CWorldObjectTool::Render_ObjectDetail(WORLD_SEQUENCE_OBJECT_RESOURCE& resou
     if (resource.anchorKind == "BOSS")
     {
         static constexpr const char* actorIds[] = {
-            "BOSS_KAKULSAYDON_G1_KOUKU", "BOSS_KAKULSAYDON_G1_SAYDON",
-            "BOSS_KAKULSAYDON_G2_KOUKU", "BOSS_KAKULSAYDON_G2_BIG_SAYDON", "BOSS_KAKULSAYDON_G3_SAYDON"};
+            "BOSS_KOUKUSAYDON_G1_KOUKU", "BOSS_KOUKUSAYDON_G1_SAYDON",
+            "BOSS_KOUKUSAYDON_G2_KOUKU", "BOSS_KOUKUSAYDON_G2_BIG_SAYDON", "BOSS_KOUKUSAYDON_G3_SAYDON"};
         static constexpr const char* actorLabels[] = {
             "Kouku / Gate 1", "Saydon / Gate 1", "Kouku / Gate 2", "Big Saydon / Gate 2", "Saydon / Gate 3"};
         const char* selected = resource.anchorBossArchetypeId.empty() ? "Choose Boss" : resource.anchorBossArchetypeId.c_str();
@@ -3932,7 +3932,7 @@ void CWorldObjectTool::Render_Detail()
         if (ImGui::Button("Use Current Character Position"))
         {
             if (instance->anchorKind == "PLAYER" || instance->anchorKind == "BOSS") { instance->position = {}; changed = true; }
-            else if (auto* level = CLevel_KakulSaydonArena::Get_Active())
+            else if (auto* level = CLevel_KoukuSaydonArena::Get_Active())
             {
                 if (level->Try_Get_AuthoringPreviewPlacement(editedPosition, m_Status))
                 {

@@ -8,6 +8,8 @@ NS_BEGIN(Engine)
 
 class CModel;
 class CShader;
+struct MESH_SCREEN_LOD_DESC;
+struct MAP_VISIBILITY_SETTINGS;
 
 NS_END
 
@@ -115,6 +117,20 @@ public:
 	static void Begin_FrustumDiagnostics(
 		const std::string& areaId,
 		const MAP_FRUSTUM_CULLING_POLICY& policy);
+
+    // Stage/Initialize가 실제 재질 전체를 분류한다. fallback/Deploy도 같은 정책을 소비한다.
+    static MAP_SCENE_VISIBILITY_KIND Classify_SceneVisibility(const Engine::CModel& model,
+        const MAP_ASSET_RENDER_PROFILE& profile, const std::string& groupId = {});
+    static bool Get_SceneDistancePolicy(MAP_SCENE_VISIBILITY_KIND kind, float radius,
+        const Engine::MAP_VISIBILITY_SETTINGS& settings, float& distance, float& maximumPixels);
+    // 최종 카메라의 구 투영과 거리 조건을 모두 만족해야 숨긴다. 잘못된 입력은 표시를 보존한다.
+    static bool Is_SceneDistanceHidden(const float3_t& center, float radius, const float4_t& cameraPosition,
+        const MAP_CAMERA_CULL_SNAPSHOT& camera, const float2_t& viewport, float distance,
+        float maximumPixels, float margin, bool wasHidden);
+    // 일반 CModel::Render 소비자도 instanced 경로와 같은 1px 베른 오차 한계를 사용한다.
+    static bool Build_ObjectScreenLod(const MAP_CAMERA_CULL_SNAPSHOT& camera,
+        const float3_t& center, float radius, const float4x4_t& world,
+        const float2_t& viewport, float maximumPixelError, Engine::MESH_SCREEN_LOD_DESC& result);
 
 	static uint32_t Select_Pass(
 		const MAP_ASSET_RENDER_PROFILE& profile,

@@ -272,9 +272,9 @@
       "note": "retail cm; client X = x/100, client Z = -y/100; image right = +y, image up = +x"
     },
     {
-      "level": "KAKULSAYDON_ARENA",
+      "level": "KOUKUSAYDON_ARENA",
       "areaName": "쿠크세이튼 레이드",
-      "image": "UI/Minimap/Maps/KakulSaydonArena.png",
+      "image": "UI/Minimap/Maps/KoukuSaydonArena.png",
       "imageSize": [
         512,
         512

@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests.h"
 #include "ServerGameplayContractTests_PlayerSkillFixtures.h"
 #include "PlayerSkillSystem.h"
@@ -1616,7 +1616,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		/* Effect Tool names the already-spawned private-room boss and pattern by
 		stable ID. The request resets only that boss, then CValtanBrain starts the
 		exact product pattern on the following fixed tick. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::CHARACTER_SELECT_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID TOOL_SESSION = 4343u;
@@ -1723,7 +1723,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		/* A shared Valtan room can receive commands from two sessions in one
 		   command-drain tick. The first stable-ID request owns its pending/active
 		   occurrence; the second verdict is consumed but cannot reset it away. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FIRST_SESSION = 4344u;
@@ -1974,7 +1974,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		constexpr SESSION_ID HANDLER_SESSION = 43460u;
 		constexpr PLAYER_ID HANDLER_PLAYER = 43461u;
 		constexpr NET_ENTITY_ID HANDLER_PLAYER_ENTITY = 43462u;
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		auto session = std::make_shared<CClientSession>(
@@ -2218,7 +2218,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		constexpr SESSION_ID RECEIPT_SESSION = 43470u;
 		constexpr PLAYER_ID RECEIPT_PLAYER = 43471u;
 		constexpr NET_ENTITY_ID RECEIPT_PLAYER_ENTITY = 43472u;
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		auto session = std::make_shared<CClientSession>(
@@ -2361,7 +2361,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 	{
 		/* Exercise the 130-bar floor wipe through the same stable-ID command and
 		   fixed room tick path the Effect Tool uses. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FLOOR_SESSION = 4346u;
@@ -3134,7 +3134,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		   through the Product ordered-sequence brain. The test starts from slot two,
 		   retries its stable cursor after a targetless IDLE wait, repeats the pattern
 		   under the next stable slot ID, and verifies stop-after-current on a fresh run. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID FLOW_SESSION = 4350u;
@@ -3580,7 +3580,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 
 
 	{
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		const bool activated =
@@ -3618,7 +3618,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 	{
 		/* Four pillars is retained as an explicit audition; the automatic health
 		flow no longer owns the historical 100-bar trigger. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4319u;
@@ -3700,7 +3700,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_ValtanResetlessNext(TES
 		/* The 100-bar cinematic is still Server movement even while the Client
 		camera looks away. Drive the product room path so clip root motion cannot
 		quietly add a second planar step after the leap arc has written its pose. */
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto roomStorage = std::make_unique<CGameRoom>(WORLD_ID::VALTAN_ARENA);
 		CGameRoom& room = *roomStorage;
 		constexpr SESSION_ID SESSION = 4320u;

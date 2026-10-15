@@ -273,7 +273,7 @@ actor·owner identity와 안내 저작 ID·대사·박스 설정은 이 이동�
 
 Data/Guide가 저작 정본이다. guideId → triggerId/boxId → promptId → segments를 연결한다.
 GUIDE_STARTED는 안내 시작, SPACE_ENTER는 Bern owner의 박스 진입, RAID_RETURNED는
-VALTAN_ARENA/KAKULSAYDON_ARENA, WORLD_RETURNED는 MAHARAKA/COLOSSEUM의 실제 귀환을 소비한다.
+VALTAN_ARENA/KOUKUSAYDON_ARENA, WORLD_RETURNED는 MAHARAKA/COLOSSEUM의 실제 귀환을 소비한다.
 귀환 event는 Bern category에만 둘 수 있다. 과거 PARTY_JOINED는 reader 호환만 유지한다.
 SPACE_ENTER는 안내 시작·월드 귀환 시 현재 접촉을 초기화한 뒤 실제 밖→안 전이에만 발생한다.
 Guide만 재배치·부활하면 owner의 기존 접촉을 유지하고, owner의 실제 지역 이동은 새 진입을 감지한다.
@@ -343,6 +343,13 @@ Client의 gameplay 키보드·마우스와 raw 입력은 실제 Client 창이 fo
 사운드는 foreground 창이 같은 프로세스일 때만 FMOD master 출력을 열어 여러 Client EXE의
 소리가 겹치지 않게 한다. 같은 프로세스의 분리 도구 창은 소리를 유지하며, mute는 채널별
 볼륨·명시 pause·시퀀스 재생 시각을 바꾸지 않는다.
+
+공통 UI 효과음은 `Client/Public/UISoundPlayer.h`의 `Play_UISound(UI_SOUND_CUE)`로 요청한다.
+버튼 클릭·창 열기·창 닫기·팝업 요청 네 cue의 준비는 MainApp 초기화가 `Prepare_UISounds()`로 한 번 요청한다.
+실제 장치·Sound cache·channel은 기존 Engine Sound Manager가 소유한다. `CGameInstance::Prepare_Sound(path, loop)`는
+재생 없이 기존 cache를 준비하며 실패 HRESULT를 반환한다. `Play_Sound(path, volume, category)`는 명시한 group으로
+재생하고 UI는 `SOUND_CATEGORY::INTERFACE`를 사용한다. 기존 두 인자 호출의 경로 기반 분류는 유지한다.
+UI 음원 누락은 로그로 남기고 버튼·창 동작은 계속한다. 캐릭터·보스·Sequence 음원 선택을 이 네 cue에 합치지 않는다.
 
 현재 제품 입력은 다음과 같다.
 
@@ -417,6 +424,15 @@ walkable nav cell 경계와 별개로, 투사체·지연 장판·보스 이동 �
 `MapBatchVisibleRenders`와 mesh draw counter는 병합 뒤 실제 제출 단위이며 authored 배치 수가 아니다.
 
 ### Profiler 읽기 계약
+
+Debug/Release F7의 베른 컷신 거리 기록·자동 저장과 노란 FPS 옆 Vtx(VS)/Idx는
+CLAUDE의 Profiler 계약을 따른다. `bernCutsceneGeometry`의 source 거리/CPU LOD 진단과
+실제 mapDraws 제출·GPU bin args 결과를 분리해서 읽는다. Vtx(VS)는 전체 GPU 프레임의
+shader 실행 수이고 Idx는 계측된 Engine indexed 제출량이므로 범위가 다르다. query 지연,
+손실·pending·범위 필터·cap 종료를 확인하고 컷신 FPS 개선의 증거로 계측 구현 성공을 대신하지 않는다.
+
+
+Bern F7의 거리 컬링 기본값·실효 지름은 CLAUDE의 세션 계약을 따른다. `MapLod2Draws`는 확장 LOD의2단계 이상을 합친 `LOD2+`이며 `MapLodSourceIndices`와 `MapLodSubmittedIndices`는 해당 LOD 입력이 있는 draw에서 기록한다. 이를 모든 맵 draw의 분모로 해석하지 않는다. 설치 geometry에서 생성되는 단계와 실제 카메라에서 선택된 단계, GPU 제출량과 FPS는 별도로 확인한다.
 
 Debug F7의 한국어 Profiler와 JSON은 `Engine::CProfiler`의 동일 snapshot을 소비한다.
 `FProfilerGpuScopeSample::Draw`와 aggregate의 Draw는 원래 GPU 프레임에서 제출한
@@ -497,7 +513,7 @@ GPU Gems는 자료 모음이고 Lumen·DXR·Nanite·DLSS 같은 외부 renderer/
 
 ### 4.0 F1 Level Navigation
 
-Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7은 Profiler 창을 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 창에서 실행한다. 창을 숨겨도 수집은 계속되며 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. Release의 노란 FPS는 좌측 상단에 항상 표시하되 cinematic HUD 숨김을 따르며 개인 표시 모드 저장값은 바꾸지 않는다. F6와 제품 UI는 유지한다. F1의 `Bern Entrance Camera`는 베른 입장 컷신 FOV의 process-session override만 typed Level API로 전달한다. F7 컬링 탭의 비용·작업량·A/B 비교와 사용 범위는 CLAUDE를 따른다.
+Release는 F1 Developer Tools 허브를 명시적으로 열 수 있다. F7은 Profiler 창을 열고 닫으며 Capture 수집과 이름 있는 JSON 저장은 창에서 실행한다. 창을 숨겨도 수집은 계속되며 기존 Debug 전용 저작 도구는 비활성 상태를 유지한다. Release의 노란 FPS는 좌측 상단에 항상 표시하되 cinematic HUD 숨김을 따르며 개인 표시 모드 저장값은 바꾸지 않는다. F6와 제품 UI는 유지한다. F1의 `Bern Entrance Camera`는 베른 입장 컷신 FOV의 process-session override와 `Start Bern Cutscene` 재생 요청을 typed Level API로 전달한다. F7 컬링 탭의 비용·작업량·A/B 비교와 사용 범위는 CLAUDE를 따른다.
 
 Debug/Release F1의 Level Navigation은 Lobby, Character Select, Bern, Valtan,
 KoukuSaydon, Entrance PvP Arena, Maharaka 일곱 버튼을 제공한다. Lobby 복귀는 기존
@@ -561,7 +577,7 @@ player·오래된 request sequence는 실행하지 않는다. 표시 이름은 �
 F1의 카메라 profile 수치 편집 패널 대신 `Open Balance Test`를 제공한다.
 버튼은 기존 공용 `Balance Test` 독립 창을 열며 Debug/Release에서 함께 사용한다.
 별도 `Camera` 패널은 자유 이동 속도를 조절한다. F6 follow/free 전환과 맵별 카메라 profile 소비는 유지한다.
-Debug Bern에서는 같은 속도 조절 아래 `Start Bern Cutscene`이 기존 입장 카메라를 반복 재생한다.
+Debug/Release Bern에서는 F1 → `Bern Entrance Camera`의 `Start Bern Cutscene`이 기존 입장 카메라를 반복 재생한다.
 ImGui는 Level에 재생 요청만 보내고 다음 Level Update가 같은 sampler·FOV·시간으로 실행한다.
 종료/ESC 뒤 시작 전 follow/free 상태를 복원하며 최초 자동 재생 latch와 정본 JSON은 유지한다.
 재생 중·다른 카메라 owner·편집·레벨 전환 충돌은 기존 상태를 유지한 채 거절한다.
@@ -1130,7 +1146,7 @@ rotation, unknown command, 겹침 시 topmost 선택, resolution/letterbox 보�
 factory와 router가 생기기 전까지는 authoring tool의 save 성공만으로 제품 UI 전환 완료를
 선언하지 않는다.
 
-Git 관리 대상 데이터는 Visual Studio Client 프로젝트의 `96.DataFiles` 필터에서 원본을 바로 연다. 이 항목들은 `None` 링크이며 복사본이나 runtime 배포본이 아니다. 일반 수치의 Server-owned 즉시 반영과 별도 패턴 저작 reload 범위는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
+Git 관리 대상 데이터는 Visual Studio 솔루션 직속 `Data` 트리에서 원본을 바로 연다. 이 항목들은 `SolutionItems` 상대 링크이며 복사본이나 runtime 배포본이 아니다. 파일 목록은 `Tools/Build/data_solution.py`로 갱신하고 Client `None` 필터에 중복 등록하지 않는다. 일반 수치의 Server-owned 즉시 반영과 별도 패턴 저작 reload 범위는 `BALANCE_TUNING_AND_HOT_RELOAD_CONTRACT.md`를 따른다.
 
 ## 7. Valtan Boss
 
@@ -1416,7 +1432,7 @@ Success 후속 패턴이 연결된 솔로 마리오 회차는 Server가 참가�
 미진입 또는 복귀 완료 상태에서는 지정 완료 개수를 채운 직후 이어지며, 사망·퇴장은 성공으로
 대신 처리하지 않는다. 현재 P33은 감금 판정이 없다.
 숫자열 0키는 마리오 조작 중 typed MARIO_RETURN 요청을 보낸다. Server가 해당 회차의 마지막
-movePlayer 트리거와 3관문 stage.kakul.sl05 목적지의 navigation/collision을 검증하고 기존
+movePlayer 트리거와 3관문 stage.kouku.sl05 목적지의 navigation/collision을 검증하고 기존
 스크립트 이동을 실행한다. 마지막 출구와 0키 모두 실제 착지 뒤 복귀를 완료한다. Client는
 직접 좌표를 보내거나 이동하지 않으며 UI·free camera·텍스트 입력 중에는 요청하지 않는다.
 F1 단독 Test의 Mario stage0은 현재 Server 횟수,1..4는 해당 요청 한 번의 재현 시작값이다.
@@ -1479,7 +1495,7 @@ BOSS_SPAWN World Object는 Product의 `worldEmissionAnchors`와 bossMotion을 �
 F1 Action Workbench 바로 아래 `Open Sequencer Benchmark`는 동일한 Timeline/Resources/Box Detail ImGui와
 기본 배치를 사용하는 독립 Sequence 세션이다. Patterns 목록 창 이름은 `Composition Sequencer`로 표시한다.
 저장 정본은 `Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json`, compositionId는
-`boss.composition.kakulsaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
+`boss.composition.koukusaydon.sequencer`이며 기존 Action 문서와 교차 Save/Reload를 거부한다.
 같은 Preview backend의 재생 소유자를 입력 focus와 분리하여 다른 창을 열거나 닫아도 활성 미리보기를
 덮지 않는다. 연출 Save는 Action/Server Product를 변경하지 않는다.
 Sequence 전용 `TRIGGER / ROOM_PLAYER_ARRIVAL`은 Logic occurrence의 optional
@@ -1518,7 +1534,7 @@ F6 free camera에서는 camera track override를 해제하고 현재 pose/FOV를
 
 Kouku `Publish All Patterns`는 Product, 쿠크 범위 World, Gameplay balance를 같은 게시 작업으로 처리한다.
 F1 Boss Tuning의 Save가 기록한 `Gameplay.world.json` 위치·방향도 Server worldbootstrap에 포함한다.
-기존 World publisher의 `-WorldId KAKULSAYDON_ARENA` 범위를 쓰며 다른 World 출력은 변경하지 않는다.
+기존 World publisher의 `-WorldId KOUKUSAYDON_ARENA` 범위를 쓰며 다른 World 출력은 변경하지 않는다.
 중간 실패는 이전 세 domain 출력과 receipt를 함께 복구한다. 실행 중 Server의 world 상태는 바뀌지 않으므로
 게시 후 Server를 재시작해야 Complete Play가 새 위치를 사용한다.
 
@@ -1665,7 +1681,7 @@ optional `followSpeedScale > 0`이면 대상의 실효 이동속도에 배율을
 남은 시간 보간을 유지한다. Saydon의 설치 BODY 모델 정면은 +X이므로 목표 body yaw는 방향각-90도,
 전진 방향은 body yaw+90도다. Preview와 Server가 같은 tick 순서로 회전 후 이동한다.
 플레이어 접촉으로 패턴을 조기 완료하는 대상은 사용자 지정 `플레이어 1초 추적`의 stable ID
-`KAKULSAYDON_G1_PATTERN_104` 하나다. `BOSS_TRACK_TARGET` 사용이나 패턴 구조로 대상을
+`KOUKUSAYDON_G1_PATTERN_104` 하나다. `BOSS_TRACK_TARGET` 사용이나 패턴 구조로 대상을
 추측하지 않는다. P101을 포함한 다른 패턴은 접촉 중 이동만 멈추며 나머지 카운터·피해·착지 시계를
 유지하고, 플레이어가 떨어지면 창이 끝나기 전까지 다시 추적한다.
 
@@ -1992,7 +2008,7 @@ combat body와 공격 footprint는 `Shared/Public/Gameplay/CombatCollisionContra
 
 `Data`만 사람이 편집하거나 재추출 결과를 반영하는 정본이다. Client/Server `Bin/DataFiles`는
 publisher 출력이며 source로 다시 읽어 authoring을 갱신하지 않는다. Visual Studio의
-`96.DataFiles` 필터도 `Data` 원본만 연결한다.
+솔루션 직속 `Data` 트리도 저장소 `Data` 파일만 연결하며 Client/Server `Bin/DataFiles`를 섞지 않는다.
 
 Debug Map Editor 사용 절차는 다음과 같다.
 
@@ -2299,7 +2315,7 @@ Presentation Player의 읽기 전용 활성 자막 목록을 MainApp이 기존 �
 
 ### 빙고 Parent와 서버 주기 기믹
 
-BINGO는 기존 saved Flow의 Pattern/Bundle 경로로 실행하며 새 별도 시퀀서나 보스 런타임을 만들지 않는다. BINGO Parent가 G3 MN_RPCT_05 Pattern을 재사용할 때만 `boss.kakulsaydon.g3.saydon` → `boss.kakulsaydon.bingo.saydon` child 참조를 허용한다. 그 외 관문/owner 불일치는 계속 거부한다. `DURATION / BINGO_BOARD`는 결과·collider를 소유하지 않는 1~600,000ms 서버 주기 기믹이다. 해당 행이 끝나면 신규 발생을 멈추며 기존 폭탄 표식·fuse는 완료한다. 같은 Complete Play run의 반복 Parent는 보드와 다음 bomb/hammer/madness deadline을 유지한다. run restart/exit/아레나 시작점 복귀는 모두 초기화한다.
+BINGO는 기존 saved Flow의 Pattern/Bundle 경로로 실행하며 새 별도 시퀀서나 보스 런타임을 만들지 않는다. BINGO Parent가 G3 MN_RPCT_05 Pattern을 재사용할 때만 `boss.koukusaydon.g3.saydon` → `boss.koukusaydon.bingo.saydon` child 참조를 허용한다. 그 외 관문/owner 불일치는 계속 거부한다. `DURATION / BINGO_BOARD`는 결과·collider를 소유하지 않는 1~600,000ms 서버 주기 기믹이다. 해당 행이 끝나면 신규 발생을 멈추며 기존 폭탄 표식·fuse는 완료한다. 같은 Complete Play run의 반복 Parent는 보드와 다음 bomb/hammer/madness deadline을 유지한다. run restart/exit/아레나 시작점 복귀는 모두 초기화한다.
 
 BINGO 직접 시작 Flow는 Action/Sequence revision을 pin하고 준비와 목적지 admission을 마친 서버 전투를 소비한다. Parent의 선택적 `loopStartPatternOccurrenceId`는 자기 자식 occurrence ID를 참조한다. Server는 자식을 실제 완료 순서로 실행하고 마지막 자식 뒤 해당 기점으로 돌아간다. 최초 구간 24개와 반복 구간 14개가 같은 P96 안에 있으며, BINGO_BOARD의 소유권과 주기 deadline은 Parent를 다시 시작하지 않고 유지한다. Stop·사망·관문 종료는 기존 실행 정리 경로를 사용한다.
 
@@ -2538,7 +2554,7 @@ Engine·SDK·Client를 같은 변경으로 빌드한다.
 전달한다. 노란 피격은 양수 outgoing NORMAL/CRITICAL/ABSORB만 사용하고, heal·miss·
 invincible·카드 문양 획득은 제외한다. 호버는 최신 HP/action과 Server archetype admission을
 읽는 표시 전용 상태이며 gameplay command나 Client 피해 판정을 만들지 않는다.
-`BOSS_KAKULSAYDON_G2_BIG_SAYDON`은 Server의 player-hit 최종 처리와 스킬·투사체 후보에서
+`BOSS_KOUKUSAYDON_G2_BIG_SAYDON`은 Server의 player-hit 최종 처리와 스킬·투사체 후보에서
 제외하며 Client의 공격 가능 호버도 동일한 Shared predicate를 사용한다.
 
 공·괴기스러운 인형처럼 owned WORLD cue로 표시하는 Server WORLD_OBJECT는 기존
@@ -2585,7 +2601,7 @@ maps만 인계한다. READY 이후 입력 변경은 기존 cache를 보존하며
 
 ### Kouku 앵콜의 각 Client 플레이어 시점
 
-Server CINEMATIC의 Sequence `boss.composition.kakulsaydon.sequencer`/P10 앵콜은 각 Client의
+Server CINEMATIC의 Sequence `boss.composition.koukusaydon.sequencer`/P10 앵콜은 각 Client의
 진입 eye/look/up/FOV를 고정하고 WORLD encore.saydon의 연출만 그 view로 재배치한다.
 원본 CameraTrack은 화면상 동작·크기 보존의 읽기 전용 기준이며 Server actor 위치를 바꾸지 않는다.
 카메라 행 종료가 전체 컷씬 종료보다 빨라도 Server gate commit까지 hold를 유지하고 정상 종료에

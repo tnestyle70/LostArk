@@ -5483,7 +5483,7 @@
   "sourceModelPreview": {
     "gateId": "GATE3",
     "actorProfileId": "MN_RPCT_05",
-    "targetBossPlacementId": "boss.kakulsaydon.g3.saydon",
+    "targetBossPlacementId": "boss.koukusaydon.g3.saydon",
     "animations": [
       {
         "runtimeClip": "rpct00_att_battle_27_01",

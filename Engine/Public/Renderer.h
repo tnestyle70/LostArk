@@ -9,9 +9,13 @@
 
 NS_BEGIN(Engine)
 
+class CGpuSceneVisibility;
+class CGpuVisibilityHiZ;
 struct PRESENTATION_SCREEN_POST_DESC;
 struct PRESENTATION_SCREEN_OVERLAY_DESC;
 
+// 프레임 동안 제출된 GameObject를 렌더 그룹별로 보관하고 그림자·표면·조명·합성·후처리 순서로 그린다.
+// CGameInstance가 이 객체를 소유하며, 내부 GPU 자원과 프레임 큐의 참조는 각각 ComPtr·shared_ptr가 유지한다.
 class CRenderer final 
 {
 private:	
@@ -36,36 +40,31 @@ public:
 	HRESULT Initialize();
 	HRESULT Add_RenderObject(RENDERGROUP eRenderGroupID, shared_ptr<CGameObject> pRenderObject);
 	HRESULT Draw(bool staticOcclusionAllowed = false);
+    // Level 소유 장면을 weak 참조하므로 등록 자체가 언로드를 막지 않는다.
+    void Register_GpuSceneVisibility(const shared_ptr<CGpuSceneVisibility>& scene);
+    void Unregister_GpuSceneVisibility(const CGpuSceneVisibility* scene);
     MAP_VISIBILITY_SETTINGS Get_MapVisibilitySettings() const { return m_MapVisibility; }
     HRESULT Apply_MapVisibilitySettings(const MAP_VISIBILITY_SETTINGS& settings);
     RENDER_OPTIMIZATION_SETTINGS Get_RenderOptimizationSettings() const { return m_RenderOptimization; }
     HRESULT Apply_RenderOptimizationSettings(const RENDER_OPTIMIZATION_SETTINGS& settings);
 
-	/* One off-screen portrait to draw through the deferred path before the world fills the
-	G-buffer this frame. The caller owns the destination texture and the draw itself: Engine
-	never learns what a character is, it only binds the portrait camera, runs the callback
-	against the same G-buffer the world uses and resolves the same lighting, so a portrait
-	cannot drift away from the field look when a material program is added. */
+	/* world보다 먼저 같은 G-buffer·조명 경로로 portrait를 그린다. 호출자가 대상 texture·draw callback을 소유하고 Engine은 카메라·pass·resolve를 맡는다. */
 	struct PORTRAIT_REQUEST final
 	{
-		/* Receives the tone-mapped colour. Render_Final resolves the scene into it through a
-		full-screen quad, so the portrait is a resample of the scene rather than a crop and the
-		destination may be any size. Must outlive Draw. */
+		/* tone mapping 결과를 목적 크기로 resample하는 target이다. caller가 Draw가 끝날 때까지 수명을 유지해야 한다. */
 		ComPtr<ID3D11RenderTargetView>		pDestination = { nullptr };
 		uint32_t							iWidth = 0u;
 		uint32_t							iHeight = 0u;
 		/* The portrait camera, already built by the caller. */
 		float4x4_t							ViewMatrix{};
 		float4x4_t							ProjMatrix{};
-		/* Draws the subject with the G-buffer bound. A failure skips only this request. */
+		/* G-buffer가 바인딩된 상태에서 대상을 그린다. 실패하면 이 요청만 건너뛴다. */
 		function<HRESULT()>					DrawSubject;
-		/* Reuses subject forward passes after combine. The optional blend state
-		changes only coverage accumulation for the offscreen UI texture. */
+		/* combine 뒤 대상의 forward pass를 재사용한다. 선택적 blend state는 offscreen UI의 coverage 누적만 바꾼다. */
 		function<HRESULT(RENDERGROUP, ID3D11BlendState*)> DrawForward;
 	};
 
-	/* Queued for the next Draw and cleared by it, so a window that stops asking stops being
-	drawn with no teardown of its own. */
+	/* 다음 Draw가 소비·비우는 요청이다. 창이 요청을 멈추면 별도 teardown 없이 그리지 않는다. */
 	HRESULT Request_Portrait(PORTRAIT_REQUEST Request);
 	// A visible refractive occurrence requests the pre-translucency colour once.
 	void Request_SceneColorSnapshot() { m_bSceneColorSnapshotRequested = true; }
@@ -79,13 +78,14 @@ public:
 	const HEIGHT_FOG_SETTINGS& Get_HeightFogSettings() const { return m_HeightFogSettings; }
 	HRESULT Apply_HeightFog(const HEIGHT_FOG_SETTINGS& Settings);
 	HRESULT Bind_HeightFog(class CShader* shader) const;
+	// 최종 합성과 같은 현재 tone/LUT를 차용하며 저장 설정이나 LUT 수명을 바꾸지 않는다.
+	HRESULT Bind_ActiveSceneColorTransform(class CShader* shader) const;
 	HRESULT Stage_RenderEnvironment(const wstring_t& cubePath, const float4_t& color,
 		const float4_t& rotationIntensity, RENDER_ENVIRONMENT_STATE& outState, bool_t forceReload = false) const;
 	void Commit_RenderEnvironment(const RENDER_ENVIRONMENT_STATE& state);
 	RENDER_ENVIRONMENT_STATE Get_RenderEnvironment() const;
 
-	/* The renderer owns the clock the deferred fog drifts on so no caller
-	   has to feed a time value into every screen pass. */
+	/* deferred fog의 시계는 Renderer가 소유해 각 화면 pass가 같은 시간을 사용한다. */
 	void Advance_PresentationClock(f32_t fTimeDelta);
 
 	HRESULT Add_DebugComponent(shared_ptr<CComponent> pDebugComponent);
@@ -96,7 +96,7 @@ private:
 	ComPtr<ID3D11Texture2D>				m_pShadowDepthTexture = { nullptr };
 	ComPtr<ID3D11DepthStencilView>			m_pShadowDSV = { nullptr };
 	ComPtr<ID3D11ShaderResourceView>		m_pShadowSRV = { nullptr };
-	/* Frame queue, not a lookup: filled by Request_Portrait and emptied by Draw. */
+	/* Request_Portrait가 채우고 Draw가 비우는 프레임 queue다. */
 	vector<PORTRAIT_REQUEST>				m_PortraitRequests;
 	ComPtr<ID3D11BlendState> m_pPortraitBlendState;
     struct STATIC_SHADOW_CASTER final
@@ -105,7 +105,7 @@ private:
         const CGameObject* Identity = nullptr;
         uint64_t Revision = 0u;
     };
-    // Weak ownership prevents a cached map from retaining an unloaded Level.
+    // weak 참조로 cache가 언로드된 Level의 수명을 늘리지 않게 한다.
     ComPtr<ID3D11Texture2D> m_pStaticShadowDepthTexture;
     ComPtr<ID3D11ShaderResourceView> m_pStaticShadowSRV;
     vector<STATIC_SHADOW_CASTER> m_StaticShadowCasters;
@@ -119,7 +119,7 @@ private:
 	ComPtr<ID3D11DepthStencilView> m_pSourceLightMaskDSV;
 	uint32_t m_iSourceLightMaskWidth = 0u, m_iSourceLightMaskHeight = 0u;
 	uint32_t m_iSourceLightMaskFailedWidth = 0u, m_iSourceLightMaskFailedHeight = 0u;
-	// An opt-in late pass updates the picking target without clearing opaque picks.
+	// 명시적으로 선택한 후반 pass가 opaque pick을 지우지 않고 picking target을 갱신한다.
 	ComPtr<ID3D11Texture2D> m_pPickingTexture;
 	ComPtr<ID3D11RenderTargetView> m_pPickingRTV;
 	ComPtr<ID3D11Texture2D> m_pPickingDepthTexture;
@@ -129,6 +129,10 @@ private:
 	bool_t m_bPickingDepthCaptured = false;
 	vector<shared_ptr<CGameObject>>		m_RenderObjects[ETOUI(RENDERGROUP::END)];
 
+    std::vector<weak_ptr<CGpuSceneVisibility>> m_GpuScenes;
+    std::unique_ptr<CGpuVisibilityHiZ> m_GpuHiZ;
+    uint64_t m_GpuVisibilityFrame = 0u;
+    bool m_GpuHiZUnavailable = false;
     MAP_VISIBILITY_SETTINGS m_MapVisibility{};
     RENDER_OPTIMIZATION_SETTINGS m_RenderOptimization{};
     std::unique_ptr<class COcclusionCuller> m_OcclusionCuller;
@@ -201,6 +205,7 @@ private:
 	HRESULT Render_Shadow();
 	HRESULT Render_NonBlend(bool staticOcclusionAllowed);
     void Cull_StaticOcclusion();
+    bool Prepare_GpuSceneVisibility(bool staticOcclusionAllowed);
 	HRESULT Render_SSAO();
 	HRESULT Render_SSAOPass(const wstring_t& strMRTTag, DEFERRED ePass);
 	HRESULT Render_Lights();

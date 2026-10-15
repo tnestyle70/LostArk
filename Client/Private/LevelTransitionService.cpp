@@ -1,14 +1,21 @@
+// 전환 요청과 복구 진단의 공개 계약을 구현한다.
 #include "LevelTransitionService.h"
 
+// 등록된 Level만 전환 대상으로 허용한다.
 #include "LevelRegistry.h"
+// Server 승인 응답과 연결 종료 snapshot을 소비하고 전환 실패 시 연결을 닫는다.
 #include "NetworkManager.h"
 
+// 연결 진단에 종료 시각이 없을 때 Unix ms 시각을 만든다.
 #include <chrono>
+// 프로세스 공용 요청·진단·표시 자료의 조회와 교체를 동기화한다.
 #include <mutex>
+// 대기 요청과 복구 진단, 매치 자료의 존재 여부를 값과 함께 보관한다.
 #include <optional>
 
 namespace
 {
+	// 아래 상태는 이 번역 단위가 소유한다. 외부에는 복사본이나 COM 참조만 반환하며 모든 접근을 같은 mutex로 보호한다.
 	std::mutex g_TransitionMutex;
 	std::optional<Client::LEVEL_TRANSITION_REQUEST> g_PendingRequest;
 	std::optional<Client::CLIENT_RECOVERY_DIAGNOSTIC> g_RecoveryDiagnostic;
@@ -17,6 +24,7 @@ namespace
 	ComPtr<ID3D11ShaderResourceView> g_TransferPortraitSRV;
 	std::optional<LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND> g_ColosseumMatch;
 
+	// 복구 진단에 기록할 벽시계 시각이다. 게임 진행 시간이나 timeout 측정에는 사용하지 않는다.
 	std::uint64_t Get_UnixMilliseconds() noexcept
 	{
 		using namespace std::chrono;
@@ -25,6 +33,7 @@ namespace
 	}
 }
 
+// Level·메뉴 요청을 LOAD 단계로 전달한다. 유효성 검사와 중복 예약 거부는 Request에 모은다.
 bool_t Client::CLevelTransitionService::Request_Load(
 	const LEVEL eTargetLevel,
 	const char_t* pSource,
@@ -37,6 +46,7 @@ bool_t Client::CLevelTransitionService::Request_Load(
 		lobbyCommandToken);
 }
 
+// Loading이 준비 성공을 알리는 ACTIVATE 단계다. 현재 프레임의 Level 객체를 여기서 교체하지 않는다.
 bool_t Client::CLevelTransitionService::Request_Activation(
 	const LEVEL eTargetLevel,
 	const char_t* pSource,
@@ -49,6 +59,7 @@ bool_t Client::CLevelTransitionService::Request_Activation(
 		lobbyCommandToken);
 }
 
+// MainApp이 프레임 경계에서 한 요청을 이동해 받는다. 요청이 없으면 출력 인자를 보존한다.
 bool_t Client::CLevelTransitionService::Try_Consume(
 	LEVEL_TRANSITION_REQUEST& outRequest)
 {
@@ -62,12 +73,14 @@ bool_t Client::CLevelTransitionService::Try_Consume(
 	return true;
 }
 
+// 전환 중 입력을 제한하는 소비자를 위한 읽기 전용 조회다. 반환 후 상태가 바뀔 수 있으므로 요청 시에도 검사한다.
 bool_t Client::CLevelTransitionService::Is_Pending()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	return g_PendingRequest.has_value();
 }
 
+// 전환 직전 초상화 등 표시 준비를 위해 요청을 복사한다. 이후 MainApp의 소비를 위해 원본은 남긴다.
 bool_t Client::CLevelTransitionService::Peek_Pending(
 	LEVEL_TRANSITION_REQUEST& outRequest)
 {
@@ -78,6 +91,7 @@ bool_t Client::CLevelTransitionService::Peek_Pending(
 	return true;
 }
 
+// 직전 프레임의 초상화 COM 참조를 보관해 기존 Level 정리 이후에도 Loading이 사용할 수 있게 한다.
 void Client::CLevelTransitionService::Set_TransferPortraitSRV(
 	ComPtr<ID3D11ShaderResourceView> pSRV)
 {
@@ -85,12 +99,14 @@ void Client::CLevelTransitionService::Set_TransferPortraitSRV(
 	g_TransferPortraitSRV = std::move(pSRV);
 }
 
+// 보관한 COM 참조를 복사해 반환하므로 mutex 해제 이후에도 호출자가 이미지 수명을 유지한다.
 ComPtr<ID3D11ShaderResourceView> Client::CLevelTransitionService::Get_TransferPortraitSRV()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	return g_TransferPortraitSRV;
 }
 
+// Server 확정 참가 목록을 복사한다. 전달한 패킷 객체의 수명과 Loading 표시 상태를 분리한다.
 void Client::CLevelTransitionService::Set_ColosseumMatch(
 	const LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& match)
 {
@@ -98,6 +114,7 @@ void Client::CLevelTransitionService::Set_ColosseumMatch(
 	g_ColosseumMatch = match;
 }
 
+// Loading 카드 구성에 필요한 매치 값을 복사한다. 자료가 없으면 출력을 바꾸지 않는다.
 bool_t Client::CLevelTransitionService::Try_Get_ColosseumMatch(
 	LostArk::Shared::S2C_COLOSSEUM_MATCH_FOUND& outMatch)
 {
@@ -108,18 +125,21 @@ bool_t Client::CLevelTransitionService::Try_Get_ColosseumMatch(
 	return true;
 }
 
+// 아레나 퇴장 경로가 보관한 참가 목록을 비운다. 초상화 수명은 별도 함수로 관리한다.
 void Client::CLevelTransitionService::Clear_ColosseumMatch()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	g_ColosseumMatch.reset();
 }
 
+// 도구·오류 표시가 사용할 현재 전환 설명을 복사한다. 내부 문자열 참조를 노출하지 않는다.
 std::string Client::CLevelTransitionService::Get_Status()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	return g_Status;
 }
 
+// Loader·활성화 실패를 공통 복구 진단으로 연결한다. 상태 문자열을 실제 로비 화면에서 소비할 수 있게 한다.
 void Client::CLevelTransitionService::Report_LoadFailure(
 	const HRESULT result,
 	const std::string_view detail)
@@ -131,6 +151,8 @@ void Client::CLevelTransitionService::Report_LoadFailure(
 		result);
 }
 
+// 연결 진단 기록과 로비 표시용 최초 원인을 함께 갱신한다.
+// 외부 NetworkManager 호출은 전환 mutex를 얻기 전에 끝내어 두 상태의 잠금을 겹치지 않는다.
 void Client::CLevelTransitionService::Report_Recovery(
 	const LostArk::Shared::SESSION_DIAGNOSTIC_REASON reason,
 	const std::string_view source,
@@ -154,23 +176,20 @@ void Client::CLevelTransitionService::Report_Recovery(
 		terminalDetail);
 	CLIENT_SESSION_DIAGNOSTIC_SNAPSHOT session =
 		network.Get_SessionDiagnosticSnapshot();
-	// The process trace keeps every typed recovery edge even when the Lobby UI
-	// already owns an earlier first-recovery snapshot for this generation.
+	// 로비에 같은 연결 세대의 최초 진단이 있어도 프로세스 기록에는 이후의 모든 복구 보고를 남긴다.
 	network.Record_SessionRecovery(reason, source,
 		"hresult=" + std::to_string(static_cast<std::uint32_t>(result)) +
 		" detail=" + std::string(detail));
 
 	{
 		std::scoped_lock lock{ g_TransitionMutex };
-		// The earliest terminal producer owns the root cause. Generic activation
-		// cleanup may report later, but cannot erase a loader/transport detail.
+		// 최초 종료 보고를 근본 원인으로 유지한다. 이후의 일반 활성화 정리가 로드·전송 오류의 상세를 덮지 않는다.
 		if (g_RecoveryDiagnostic.has_value())
 			return;
 
 		CLIENT_RECOVERY_DIAGNOSTIC recovery{};
-		/* A validated ROOM_FULL frame is stronger than the flush-close FIN that may
-		   race ahead on the receive worker. Keep the transport terminal in Session,
-		   but expose the validated semantic result as the Lobby recovery reason. */
+		// 검증한 ROOM_FULL 응답은 수신 worker에서 먼저 관측할 수도 있는 종료 FIN보다 구체적인 원인이다.
+		// Session에는 전송 종료 기록을 유지하고 로비에는 검증된 방 정원 초과 사유를 보여 준다.
 		recovery.eReason =
 			LostArk::Shared::SESSION_DIAGNOSTIC_REASON::CLIENT_EXPECTED_ROOM_FULL ==
 				reason ? reason :
@@ -187,6 +206,7 @@ void Client::CLevelTransitionService::Report_Recovery(
 	}
 }
 
+// 현재 연결 snapshot에서 원인을 선택해 공통 보고 경로로 전달한다. 이 함수 자체가 연결을 닫지는 않는다.
 void Client::CLevelTransitionService::Report_NetworkRecovery(
 	const std::string_view source,
 	const std::string_view detail)
@@ -200,6 +220,7 @@ void Client::CLevelTransitionService::Report_NetworkRecovery(
 	Report_Recovery(reason, source, detail);
 }
 
+// 로비가 최초 복구 원인을 한 번 가져간다. 최신 snapshot은 같은 연결 세대일 때만 합친다.
 bool_t Client::CLevelTransitionService::Try_ConsumeRecovery(
 	CLIENT_RECOVERY_DIAGNOSTIC& outDiagnostic)
 {
@@ -218,6 +239,7 @@ bool_t Client::CLevelTransitionService::Try_ConsumeRecovery(
 	return true;
 }
 
+// 호출자가 실패 HRESULT와 detail만 요구하는 호환 경로다. 성공 HRESULT 진단은 소비하지 않는다.
 bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 	HRESULT& outResult,
 	std::string& outDetail)
@@ -233,12 +255,15 @@ bool_t Client::CLevelTransitionService::Try_ConsumeLoadFailure(
 	return true;
 }
 
+// Loading이 이전 월드의 종류에 맞는 표시를 선택할 때 출발 Level을 복사해 받는다.
 LEVEL Client::CLevelTransitionService::Get_LastWorldTransferOrigin()
 {
 	std::scoped_lock lock{ g_TransitionMutex };
 	return g_LastWorldTransferOrigin;
 }
 
+// 현재 Level의 갱신이 승인 응답을 확인한다. 응답 없음은 무변경, 유효한 다른 월드는 LOAD 예약으로 이어진다.
+// 이미 소비한 승인으로 전환을 예약할 수 없으면 진단을 보존하고 연결을 닫은 뒤 로비 복구를 요청한다.
 Client::SERVER_WORLD_TRANSFER_PUMP_RESULT
 Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 	const LEVEL currentLevel)
@@ -249,6 +274,7 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 	if (!networkManager.Try_Consume_EnterAccepted(accepted))
 		return SERVER_WORLD_TRANSFER_PUMP_RESULT::NONE;
 
+	// 프로토콜·플레이어·entity 식별자를 확인한 응답만 지원 월드에 매핑한다. 미지원 값은 END로 남긴다.
 	LEVEL targetLevel = LEVEL::END;
 	if (NETWORK_PROTOCOL_VERSION == accepted.iProtocolVersion &&
 		INVALID_PLAYER_ID != accepted.iPlayerId &&
@@ -262,8 +288,8 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 		case WORLD_ID::VALTAN_ARENA:
 			targetLevel = LEVEL::VALTAN_ARENA;
 			break;
-		case WORLD_ID::KAKULSAYDON_ARENA:
-			targetLevel = LEVEL::KAKULSAYDON_ARENA;
+		case WORLD_ID::KOUKUSAYDON_ARENA:
+			targetLevel = LEVEL::KOUKUSAYDON_ARENA;
 			break;
 		case WORLD_ID::MAHARAKA:
 			targetLevel = LEVEL::MAHARAKA;
@@ -293,6 +319,8 @@ Client::CLevelTransitionService::Pump_ServerApprovedWorldTransfer(
 	return SERVER_WORLD_TRANSFER_PUMP_RESULT::RECOVERY_REQUESTED;
 }
 
+// 등록 대상과 source·로비 토큰을 검증하고 빈 예약 슬롯에만 요청을 넣는다.
+// 거부하면 기존 요청·복구 진단을 유지하고 g_Status만 거부 이유로 바꾼다.
 bool_t Client::CLevelTransitionService::Request(
 	const LEVEL_TRANSITION_PHASE ePhase,
 	const LEVEL eTargetLevel,
@@ -324,14 +352,11 @@ bool_t Client::CLevelTransitionService::Request(
 		pSource,
 		lobbyCommandToken
 	};
-	// Every newer request forgets the previous transfer origin; the world-transfer pump
-	// sets it again right after its own request is staged.
+	// 새 요청은 이전 전환의 출발지를 지운다. Server 전환 pump는 자기 요청 예약 성공 직후 다시 설정한다.
 	g_LastWorldTransferOrigin = LEVEL::END;
-	/* A target-level failure is reported before the recovery load back to the
-	   Lobby is staged.  Clearing the report for that recovery request erased
-	   the only actionable reason before CLevel_Lobby could consume it.  A new
-	   non-Lobby load starts a fresh attempt and may clear the previous report;
-	   the Lobby recovery itself must preserve it. */
+	// 대상 Level 실패 보고는 로비 복구 요청보다 먼저 들어온다.
+	// 로비 요청에서 진단을 비우면 CLevel_Lobby가 원인을 읽지 못하므로 유지한다.
+	// 로비 외 새 LOAD만 독립된 재시도로 보고 이전 진단을 비운다.
 	if (LEVEL_TRANSITION_PHASE::LOAD == ePhase &&
 		LEVEL::LOBBY != eTargetLevel)
 	{

@@ -41,7 +41,7 @@ def bone_scale(bone, clip, seconds):
     from Tools.KoukuSaydonPipeline import project_kouku_saydon_composition as composition
     pose = composition.wmodel_pose
     catalog = json.loads((ROOT / 'Data/Actors/BossCatalog.json').read_text(encoding='utf8'))
-    boss = next(b for b in catalog['bosses'] if b['archetypeId'] == 'BOSS_KAKULSAYDON_G1_SAYDON')
+    boss = next(b for b in catalog['bosses'] if b['archetypeId'] == 'BOSS_KOUKUSAYDON_G1_SAYDON')
     model = pose.read_wmodel(RESOURCES / boss['bodyModel'], include_geometry=False, animation_names={clip})
     actor = dict(body=model, bodyPre=pose.affine_matrix((boss['bodyModelPreScale'],)*3, (0,0,0,1), (0,0,0)),
         poses={}, validatedClips=set())
@@ -96,9 +96,9 @@ def apply(install=False):
     offset = [d-c for d,c in zip(desired, rotated_center)]
     orbit = [-c for c in rotated_center]
     roll.update(objectId=roll_id, displayName='세이튼_공굴리기카운터_공', anchorKind='BOSS',
-        anchorBossArchetypeId='BOSS_KAKULSAYDON_G1_SAYDON', anchorBone='b_root', scale=[scale]*3,
+        anchorBossArchetypeId='BOSS_KOUKUSAYDON_G1_SAYDON', anchorBone='b_root', scale=[scale]*3,
         defaultMotionInstanceId='world.object.instance.kouku.saydon.rolling.ball')
-    roll_pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_81')
+    roll_pattern = next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_81')
     roll_duration = sum(s['durationMs'] for s in roll_pattern['stages']) - 1696
     roll_motion, roll_instance = make_motion('rolling.ball', '공굴리기카운터_원작 회전', roll_id,
         roll_duration, offset, rotation, angular, orbit)
@@ -106,7 +106,7 @@ def apply(install=False):
     eat_rig = bone_scale('b_wp_2', 'rpct00_att_battle_17_01', 1.172)
     eat_scale = .800000011920929 * sum(eat_rig['basisScale']) / 3
     eat.update(objectId=eat_id, displayName='세이튼_작은공먹기', anchorKind='BOSS',
-        anchorBossArchetypeId='BOSS_KAKULSAYDON_G1_SAYDON', anchorBone='b_wp_2', scale=[eat_scale]*3,
+        anchorBossArchetypeId='BOSS_KOUKUSAYDON_G1_SAYDON', anchorBone='b_wp_2', scale=[eat_scale]*3,
         defaultMotionInstanceId='world.object.instance.kouku.saydon.eaten.ball')
     eat_motion, eat_instance = make_motion('eaten.ball', '작은공먹기_손 따라가기', eat_id,
         1000, [0,0,0], [0,0,0,1], [0,0,0], [0,0,0])
@@ -118,9 +118,9 @@ def apply(install=False):
     world_ordinal = composition['nextWorldOrdinal']
     for index, (pattern, obj, instance, start, duration) in enumerate([
             (roll_pattern, roll, roll_instance, 1696, roll_duration),
-            (next(p for p in composition['patterns'] if p['patternId'] == 'KAKULSAYDON_G1_PATTERN_79'),
+            (next(p for p in composition['patterns'] if p['patternId'] == 'KOUKUSAYDON_G1_PATTERN_79'),
              eat, eat_instance, 1172, 1000)]):
-        identity = 'kakulsaydon.g1.world.' + str(world_ordinal + index)
+        identity = 'koukusaydon.g1.world.' + str(world_ordinal + index)
         definition = dict(worldId=identity, displayName=obj['displayName'],
             objectResourceId=obj['objectId'], sequenceInstanceId=instance['instanceId'],
             positionOffset=[0,0,0], anchorKind='NONE', anchorPosition=[0,0,0], companionEffectResourceId='')

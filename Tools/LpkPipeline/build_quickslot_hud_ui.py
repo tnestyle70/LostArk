@@ -1,53 +1,29 @@
 #!/usr/bin/env python3
-"""Quick-slot HUD pieces the base HUD layout did not carry yet, from the retail quickslot /
-components / shareimage data.
-
-Outputs
--------
-  Client/Bin/Resources/UI/HUD/Buff/*.png
-      Shared_BuffSlot_Common pieces (components.gfx): the 64x64 FCSlotBg slot plate
-      (shareimage_i7 858,330), the 28x28 buff / debuff / party borders (components_i8
-      453,300 / 483,300 / 363,300) and the status icons the project can actually show
-      (EFTable_SkillBuff Buff_0 page: 침묵 1015 -> Buff_0, 속박 1022 -> Buff_37, 공포 13010
-      -> Buff_38, plus the Warlord defence stance skill icon for the stance buff).
-  Client/Bin/Resources/UI/HUD/Common/SkillType_{Combo,Holding,PerfectCombo}.png
-      Shared_SkillSlotType_Icon marks (shareimagev2: SlotSkillIcon_Combo i6 66,1004 16x15,
-      SlotSkillIcon_Holding ib 869,1005, SlotSkillIcon_PerfectCombo ib 887,1005).
-  Client/Bin/Resources/UI/Skill/<Class>/<skillId>_Space.png
-      the class move skills' icons (EFTable_Skill Icon/IconIndex -> IconInfo.loa) for the
-      special slot above the emblem.
-  Data/UI/HUD/SkillSlotMarks.json
-      skillId -> mark for every Data/Balance/PlayerSkills.json skill whose EFTable_Skill Type
-      is CHARGE(3)/HORDING(4) -> holding, COMBO(5)/CHAIN(6) -> combo, PERFECT_COMBO(13) ->
-      perfectCombo (ARKNewSlot.set skillType / SkillSlotTypeMark.set frame).
-  Data/UI/HUD/HudBuffSources.json
-      which replicated player state feeds the buff / debuff bar and with which icon.
-  Data/UI/HUD/HUD_Layout.json (append only, idempotent)
-      Special_Space{,_Icon,_Cooldown,_Frame}: QuickSlotSpecialSkillBar slot0 -- BattleSlot art
-        scaled 0.9 (43.2 px) centred on the emblem, top 105 retail px above the Q row.
-      Buff_{0..3}_{Border,Bg,Icon,Cooldown} / Debuff_{0..3}_*: buffList (830,914) and
-        deBuffList (1064,914) of QuickSlotFrame, perItemWidth 29, Shared_BuffSlot_Common
-        (border 28 at -1, plate 24 at +1).
-      Skill_<X>_TypeMark: skillTypeMc at (3,4) in the 48 px BattleSlot.
-      Skill_<X>_Chain: chainSkillTimeEffectMc, 56 px pie at (-3,-2), black a180.
-      Retail px -> reference: x through the emblem centre (retail 960 <-> HUD 673.5), y through
-      the Q row top (retail 974 <-> HUD 644.7), 2/3 scale.
-
-Sources: D:/ClaudeWork/Extracted/HudGfx_quickslot (quickslot.xml + ffdec scripts),
-Components_Extracted, ShareImageGfx_Extracted, Vehicle/icons (icon atlas pages), LpkTables.
+"""원본 quickslot·components·shareimage에서 버프, 스킬 종류, Space 아이콘을 추출한다.
+PlayerSkills의 skillKind를 우선해 SkillSlotMarks.json/HudBuffSources.json을 만들고
+HUD_Layout.json에 없는 slot만 추가한다. PNG와 JSON은 단계별로 저장된다.
 """
 
 from __future__ import annotations
 
+# 저장소 경로 --repo를 받는다.
 import argparse
+# 추출된 atlas와 스킬 DB를 찾는다.
 import glob
+# PlayerSkills와 기존 HUD를 읽고 표시용 JSON을 저장한다.
 import json
+# 현재 본문에서는 사용하지 않는 기존 import다.
 import re
+# 원본 Skill·SkillBuff의 아이콘과 종류를 조회한다.
 import sqlite3
+# IconInfo.loa의 길이와 crop 좌표를 리틀엔디언 정수로 읽는다.
 import struct
+# main의 반환값을 프로세스 종료 코드로 전달한다.
 import sys
+# 추출 원본과 Resources·Data 출력 경로를 연결한다.
 from pathlib import Path
 
+# atlas crop과 PNG 저장을 수행한다.
 from PIL import Image
 
 EXTRACTED = Path(r"D:/ClaudeWork/Extracted")
@@ -58,7 +34,7 @@ ICON_PAGES = EXTRACTED / "Vehicle/icons"
 COMPONENTS_I8 = EXTRACTED / "Components_Extracted/tex/EFUI_COMPONENTS/Texture2D/components_i8.tga"
 SHARE_V1 = EXTRACTED / "ShareImageGfx_Extracted/tex_v2/EFUI_SHAREIMAGE/Texture2D"
 
-# --- retail geometry (1920x1080 stage) -> HUD reference (1280x720) ---------------------------
+# 원본 1920×1080 좌표를 문양 중심과 Q 행에 맞춘 HUD 1280×720 좌표로 변환한다.
 HUD_EMBLEM_CENTER_X = 673.5          # Vehicle_Hud_Emblem / Kouku_Emblem / WarL_Id_Base centre
 HUD_Q_ROW_TOP = 644.702026           # Skill_Q rect y
 RETAIL_CENTER_X = 960.0
@@ -94,17 +70,16 @@ SLOT_FRAME = "UI/HUD/Common/Empty Slot.png"
 # the project skills: 4 = charge 풀배럴 캐넌, 5 = holding 적룡포/적룡질풍격, 6 = chain 선풍참혼/공의연무/
 # 대쉬 어퍼 파이어/필법 콩콩이 and the basic attacks), so: 4/5 -> holding, 6/7 -> combo, 14 -> perfect.
 TYPE_TO_MARK = {4: "holding", 5: "holding", 6: "combo", 7: "combo", 14: "perfectCombo"}
-# Project skillKind (PlayerSkills.json) -> mark; takes precedence over the retail Type.
+# PlayerSkills의 skillKind를 원본 Type보다 우선해 실제 조작 방식에 맞는 표식을 선택한다.
 KIND_TO_MARK = {"HOLD": "holding", "COMBO": "combo"}
 
-# Status icons the project replicates today: SkillBuff row -> (icon name, buff/debuff, source).
+# 복제 상태의 침묵·속박·공포에 대응할 SkillBuff 행과 표시 종류를 연결한다.
 STATUS_ICONS = [
     ("silence", 1015, "debuff"),        # iSilenceEndTick
     ("fetter", 1022, "debuff"),         # isPatternBound / iPatternBindEndTick
     ("fear", 13010, "debuff"),          # iFearEndTick
 ]
-# Warlord Z (17810 = 방어 태세 전환) icon stands for the WARLORD_DEFENSE stance buff;
-# Guardian Knight Z (49040 = 화신화) for GUARDIANKNIGHT_DRAGON.
+# 방어 태세 전환(17810)·화신화(49040) 아이콘을 각 직업의 stance 버프로 사용한다.
 STANCE_BUFFS = [("WARLORD_DEFENSE", 17810, "Warlord"), ("GUARDIANKNIGHT_DRAGON", 49040, "GuardianKnight")]
 
 CLASS_DIR = {"LANCE_MASTER": "LanceMaster", "WARLORD": "Warlord", "ARTIST": "Artist",
@@ -112,6 +87,7 @@ CLASS_DIR = {"LANCE_MASTER": "LanceMaster", "WARLORD": "Warlord", "ARTIST": "Art
              "GUARDIANKNIGHT": "GuardianKnight"}
 
 
+# IconInfo에서 이름을 찾아 atlas 이름과 crop 범위를 읽는다. 찾지 못하면 None을 반환한다.
 def iconinfo_lookup(data: bytes, name: str):
     needle = (name + ".png").encode()
     i = data.lower().find(needle.lower())
@@ -141,6 +117,7 @@ def crop_icon(icon_data: bytes, name: str) -> Image.Image:
     return open_page(page.lower()).crop((x, y, x + w, y + h))
 
 
+# runtime이 ID로 찾을 HUD 영역과 Resources 상대 이미지를 묶는다.
 def slot(slot_id, x, y, w, h, path, tint=(1, 1, 1, 1)):
     return {
         "id": slot_id, "ownerClass": None, "type": 0,
@@ -155,8 +132,7 @@ def slot(slot_id, x, y, w, h, path, tint=(1, 1, 1, 1)):
 def build_slots(layout):
     rects = {s["id"]: s["rect"] for s in layout["slots"]}
     out = []
-    # Special (Space) slot: slot0 centred on the emblem (QuickSlotSpecialSlotManager
-    # playingCoolDownLength case 1 puts the single drawn slot on the screen centre).
+    # 단일 Space 슬롯은 문양 중심에 맞추고 배경·아이콘·쿨다운·테두리를 같은 rect로 만든다.
     sx = HUD_EMBLEM_CENTER_X - SPECIAL_SIZE * 0.5
     sy = ref_y(SPECIAL_BAR_Y - 1.0 * SPECIAL_SLOT_SCALE)
     out += [
@@ -165,7 +141,7 @@ def build_slots(layout):
         slot("Special_Space_Cooldown", sx, sy, SPECIAL_SIZE, SPECIAL_SIZE, WHITE, (0, 0, 0, 150 / 255)),
         slot("Special_Space_Frame", sx, sy, SPECIAL_SIZE, SPECIAL_SIZE, SLOT_FRAME),
     ]
-    # Buff / debuff bars.
+    # 버프와 디버프의 배경·아이콘·쿨다운·테두리를 각각 배치한다.
     for prefix, list_x in (("Buff", BUFF_LIST_X), ("Debuff", DEBUFF_LIST_X)):
         border_path = "UI/HUD/Buff/HUD_Buff_Border_%s.png" % ("Buff" if prefix == "Buff" else "Debuff")
         for i in range(BUFF_COUNT):
@@ -181,7 +157,7 @@ def build_slots(layout):
                 slot("%s_%d_Cooldown" % (prefix, i), px, py, pw, pw, WHITE, (0, 0, 0, 127 / 255)),
                 slot("%s_%d_Border" % (prefix, i), bx, by, bw, bw, border_path),
             ]
-    # Per skill slot: type mark and chain time pie.
+    # 기존 스킬 slot의 rect를 기준으로 종류 표식과 chain 시간 표시를 붙인다.
     k = 34.5 / SLOT_ART                                    # HUD slot 34.5 ref px == 48 retail px
     for key in SKILL_SLOT_KEYS:
         r = rects.get("Skill_" + key)
@@ -204,7 +180,7 @@ def main() -> int:
     sconn = sqlite3.connect(skill_db)
     bconn = sqlite3.connect(str(SKILLBUFF))
 
-    # --- buff slot art -------------------------------------------------------------------
+    # 버프 이미지를 저장하고 복제 상태에 대응하는 HudBuffSources를 작성한다.
     buff_dir = res / "UI/HUD/Buff"
     buff_dir.mkdir(parents=True, exist_ok=True)
     Image.open(SHARE_V1 / "shareimage_i7.png").convert("RGBA").crop((858, 330, 922, 394)).save(buff_dir / "HUD_Buff_SlotBg.png")
@@ -232,7 +208,7 @@ def main() -> int:
                    "colors": {"buffText": "#9BD979", "debuffText": "#E2C87A", "buffStack": "#66FF99", "debuffStack": "#FF6600"}},
         "sources": sources}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
-    # --- skill type marks ------------------------------------------------------------------
+    # 스킬 표식 이미지를 만들고 PlayerSkills의 ID·slot과 연결한다.
     common = res / "UI/HUD/Common"
     ib = Image.open(SHARE_V1 / "shareimagev2_ib.png").convert("RGBA")
     i6 = Image.open(SHARE_V1 / "shareimagev2_i6.png").convert("RGBA")
@@ -246,9 +222,7 @@ def main() -> int:
         row = sconn.execute("select distinct Type from Skill where PrimaryKey=?", (s["skillId"],)).fetchone()
         if row is None:
             continue
-        # The project's skillKind is how the skill actually plays here (Server contract), so a
-        # HOLD skill gets the holding mark even where the retail row says COMBO (34590), and a
-        # COMBO skill the chain mark; only ACTIVE skills fall back to the retail Type.
+        # HOLD/COMBO는 프로젝트의 조작 계약을 우선하고, 매핑이 없는 종류만 원본 Type을 사용한다.
         mark = KIND_TO_MARK.get(s["skillKind"]) or TYPE_TO_MARK.get(int(row[0]))
         if mark:
             marks.append({"skillId": s["skillId"], "characterClass": s["characterClass"], "inputSlot": s["inputSlot"],
@@ -261,7 +235,7 @@ def main() -> int:
         "marks": marks}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print("marks:", [(m["skillId"], m["mark"]) for m in marks])
 
-    # --- move (Space) skill icons -----------------------------------------------------------
+    # ACTIVE Space 스킬만 골라 직업별 아이콘을 저장한다.
     space_icons = []
     for s in skills:
         if s["inputSlot"] != "SPACE" or s["skillKind"] != "ACTIVE":
@@ -274,7 +248,7 @@ def main() -> int:
         space_icons.append((s["skillId"], asset))
     print("space icons:", space_icons)
 
-    # --- HUD layout append (idempotent) -----------------------------------------------------
+    # 기존 HUD에 없는 ID만 추가하고 원래 행끝을 유지한다.
     layout_path = repo / "Data/UI/HUD/HUD_Layout.json"
     raw = layout_path.read_bytes()
     crlf = b"\r\n" in raw
@@ -283,7 +257,7 @@ def main() -> int:
     new_slots = [s for s in build_slots(layout) if s["id"] not in existing]
     if new_slots:
         text = raw.decode("utf-8").replace("\r\n", "\n")
-        # Append before the closing of the "slots" array, matching the file's 2-space formatting.
+        # slots 배열의 닫는 위치 앞에 새 행을 넣고 기존 2칸 들여쓰기를 유지한다.
         tail = "\n  ]\n}"
         assert text.rstrip("\n").endswith(tail.strip("\n").replace("\n", "\n")) or text.rstrip().endswith("]\n}"), "unexpected layout tail"
         body = ",\n".join("    " + json.dumps(s, indent=2, ensure_ascii=False).replace("\n", "\n    ") for s in new_slots)

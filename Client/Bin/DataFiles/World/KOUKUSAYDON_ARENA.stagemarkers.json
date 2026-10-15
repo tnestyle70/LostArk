@@ -1,0 +1,40 @@
+{
+    "schema":  "lostark.kouku-stage-markers-runtime",
+    "formatVersion":  1,
+    "worldId":  "KOUKUSAYDON_ARENA",
+    "areaId":  "LV_LUT_MIDNIGHTC_ED",
+    "revision":  1,
+    "semanticStatus":  "SOURCE_LEVEL_ID_ONLY",
+    "stages":  [
+                   {
+                       "stageId":  "stage.kouku.sl01",
+                       "placementId":  "stage.kouku.sl01",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL01 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL01"
+                   },
+                   {
+                       "stageId":  "stage.kouku.sl02",
+                       "placementId":  "stage.kouku.sl02",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL02 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL02"
+                   },
+                   {
+                       "stageId":  "stage.kouku.sl03",
+                       "placementId":  "stage.kouku.sl03",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL03 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL03"
+                   },
+                   {
+                       "stageId":  "stage.kouku.sl04",
+                       "placementId":  "stage.kouku.sl04",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL04 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL04"
+                   },
+                   {
+                       "stageId":  "stage.kouku.sl05",
+                       "placementId":  "stage.kouku.sl05",
+                       "displayNameKo":  "LV_LUT_MIDNIGHTC_ED_SL05 복구 스테이지",
+                       "sourceLevelId":  "LV_LUT_MIDNIGHTC_ED_SL05"
+                   }
+               ]
+}

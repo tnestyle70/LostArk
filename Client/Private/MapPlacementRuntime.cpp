@@ -1,9 +1,12 @@
 #include "MapPlacementRuntime.h"
+#include "MapGpuScene.h"
+#include "MapStaticProxyBaker.h"
 
 #include "GameInstance.h"
 #include "MapAssetObject.h"
 #include "MapAssetRenderUtils.h"
 #include "Model.h"
+#include "MeshLod.h"
 #include "Profiler.h"
 #include "DataJson.h"
 #include "ProjectDataRoot.h"
@@ -137,7 +140,9 @@ bool_t CMapPlacementRuntime::Load_Area(
             std::vector<std::shared_ptr<CMapStaticBatchObject>> batches;
             batches.reserve(stagedBatches.size());
             for (const auto& entry : stagedBatches) batches.push_back(entry.object);
-            CMapStaticChunkObject::Stage_Proxy(levelIndex, batches, loadScope.frustumCulling,
+            // 베른은 원거리 축약 geometry를 실제 생성한다. atlas 후보는 원본 index를
+            // 유지하므로 이 HLOD 경로와 섞어 같은 mesh의 claim을 덮어쓰지 않는다.
+            CMapStaticChunkObject::Stage(levelIndex, batches, loadScope.frustumCulling,
                 stagedPolicy, stagedChunks, stagedChunkStats);
         }
         catch (const std::exception&)
@@ -147,13 +152,82 @@ bool_t CMapPlacementRuntime::Load_Area(
             OutputDebugStringA("[MapChunk] Preparation failed; original batches retained.\n");
         }
     }
+    // 파생 저폴리는 기존 CModel 배치를 확장한다. 준비 실패가 정상 맵 로드를 막거나
+    // 원본 표시를 먼저 끄지 않으며, atlas는 같은 baker 준비 세션에서 공유한다.
+    std::vector<std::weak_ptr<CMapStaticBatchObject>> stagedColorProxies;
+    std::shared_ptr<MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS> stagedColorProxyPreparation;
+    if (levelIndex == ETOUI(LEVEL::BERN) && !stagedBatches.empty())
+    {
+        try
+        {
+            const auto& first = stagedBatches.front().object;
+            CMapStaticProxyBaker baker(first->m_pDevice, first->m_pContext);
+            // 로드 시 한 번 만든 결과는 commit 뒤 불변이다. 프레임마다 실패 문자열을 다시 만들지 않는다.
+            try { stagedColorProxyPreparation = std::make_shared<MAP_COLOR_PROXY_PREPARATION_DIAGNOSTICS>(); }
+            catch (...) { } // 진단 할당 실패는 기존 optional 준비를 중단하지 않는다.
+            if (stagedColorProxyPreparation)
+            {
+                stagedColorProxyPreparation->totalBatches = stagedBatches.size();
+                (void)baker.Has_Replacement(first->m_AssetId, &stagedColorProxyPreparation->indexError);
+            }
+            stagedColorProxies.reserve(stagedBatches.size());
+            for (const auto& entry : stagedBatches)
+            {
+                if (!entry.object) continue;
+                if (!baker.Has_Replacement(entry.object->m_AssetId))
+                {
+                    if (stagedColorProxyPreparation && stagedColorProxyPreparation->indexError.empty())
+                        ++stagedColorProxyPreparation->unsupportedBatches;
+                    continue;
+                }
+                if (stagedColorProxyPreparation) ++stagedColorProxyPreparation->supportedBatches;
+                const auto* asset = stagedCatalog.Find(entry.object->m_AssetId);
+                std::string error;
+                const HRESULT result = asset ? entry.object->Prepare_ColorProxy(baker, *asset, error) : E_UNEXPECTED;
+                if (result == S_OK)
+                {
+                    stagedColorProxies.push_back(entry.object);
+                    if (stagedColorProxyPreparation) ++stagedColorProxyPreparation->preparedBatches;
+                }
+                else if (stagedColorProxyPreparation)
+                {
+                    if (result == S_FALSE) ++stagedColorProxyPreparation->rejectedBatches;
+                    else ++stagedColorProxyPreparation->failedBatches;
+                    if (!asset) error = "replacement.catalog_asset_missing";
+                    stagedColorProxyPreparation->RecordFailure(entry.object->m_AssetId, result, error);
+                }
+            }
+        }
+        catch (const std::exception& exception)
+        {
+            if (stagedColorProxyPreparation)
+            {
+                try { stagedColorProxyPreparation->stagingError = exception.what(); }
+                catch (...) { ++stagedColorProxyPreparation->droppedFailures; }
+            }
+            // staged batch의 기존 표시 flag는 아직 바뀌지 않았다.
+            OutputDebugStringA("[MapProxy] Optional low geometry staging failed; originals retained.\n");
+        }
+    }
+    std::shared_ptr<CMapGpuScene> stagedGpuScene;
+    if (levelIndex == ETOUI(LEVEL::BERN))
+    {
+        std::vector<std::shared_ptr<CMapStaticBatchObject>> batches;
+        batches.reserve(stagedBatches.size());
+        for (const auto& entry : stagedBatches) batches.push_back(entry.object);
+        stagedGpuScene = CMapGpuScene::Create(batches, stagedFrame);
+        // GPU off/실패 A/B에서 기존 HLOD로 돌아갈 수 있도록 chunk를 영구 prune하지 않는다.
+    }
 	Clear();
 	m_iLevelIndex = levelIndex;
 	m_FrustumCulling = loadScope.frustumCulling;
 	m_Catalog = std::move(stagedCatalog);
 	m_Placements = std::move(stagedPlacements);
 	m_StaticBatches = std::move(stagedBatches);
+    m_ColorProxyBatches = std::move(stagedColorProxies);
+    m_ColorProxyPreparation = std::move(stagedColorProxyPreparation);
 	m_StaticBatchFrame = std::move(stagedFrame);
+    m_GpuScene = std::move(stagedGpuScene);
 	m_bStaticBatchCountersDirty = true;
     m_StaticChunks = std::move(stagedChunks);
     m_ChunkPolicy = std::move(stagedPolicy);
@@ -362,12 +436,34 @@ bool_t CMapPlacementRuntime::Try_PickInspectionSurface(const float3_t& rayOrigin
 }
 #endif
 
+void CMapPlacementRuntime::Set_CutsceneGeometryEnabled(bool enabled)
+{
+    if (!m_StaticBatchFrame) return;
+    // Update 도중 시작/종료한 lease도 같은 프레임의 마지막 값으로 남긴다.
+    if (auto* profiler = CGameInstance::Get().Get_Profiler())
+        profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryLeaseActive, enabled ? 1u : 0u);
+    if (m_StaticBatchFrame->colorProxyEnabled == enabled) return;
+    m_StaticBatchFrame->colorProxyEnabled = enabled;
+    if (!enabled)
+    {
+        for (const auto& weak : m_ColorProxyBatches)
+            if (auto batch = weak.lock()) batch->Reset_ColorProxySelection();
+        m_StaticBatchFrame->colorProxySelectionCounters.fill(0u);
+        ++m_StaticBatchFrame->colorProxyDiagnosticEpoch;
+        if (auto* profiler = CGameInstance::Get().Get_Profiler())
+            for (size_t i = 0u; i < MAP_STATIC_BATCH_FRAME_STATE::ColorProxySelectionCount; ++i)
+                profiler->Set_Counter(static_cast<Engine::EProfilerCounter>(MAP_STATIC_BATCH_FRAME_STATE::ColorProxySelectionFirst + i), 0u);
+    }
+}
+
 void CMapPlacementRuntime::Advance_StaticBatchFrame(const f32_t fTimeDelta)
 {
 	if (!m_StaticBatchFrame)
 		return;
 	m_StaticBatchFrame->elapsedTime += fTimeDelta;
 	++m_StaticBatchFrame->frameNumber;
+    ++m_StaticBatchFrame->colorProxyDiagnosticEpoch;
+    m_StaticBatchFrame->colorProxySelectionCounters.fill(0u);
 
 	if (m_bStaticBatchCountersDirty)
 	{
@@ -387,11 +483,155 @@ void CMapPlacementRuntime::Advance_StaticBatchFrame(const f32_t fTimeDelta)
 	{
 		profiler->Add_Counter(Engine::EProfilerCounter::MapPlacements, m_iSharedStaticPlacementCount);
 		profiler->Add_Counter(Engine::EProfilerCounter::MapBatchCount, m_iSharedStaticBatchCount);
+        // 보유량은 숫자만 읽는다. 기본 카메라의 batch/instance 순회나 할당을 추가하지 않는다.
+        if (m_ColorProxyPreparation)
+        {
+            const auto& prepared = *m_ColorProxyPreparation;
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryLeaseActive, m_StaticBatchFrame->colorProxyEnabled ? 1u : 0u);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryUnsupportedBatches, prepared.unsupportedBatches);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometrySupportedBatches, prepared.supportedBatches);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryPreparedBatches, prepared.preparedBatches);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryPreparationRejectedBatches, prepared.rejectedBatches);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryPreparationFailedBatches, prepared.failedBatches);
+            profiler->Set_Counter(Engine::EProfilerCounter::MapLowGeometryPreparationReportFailures,
+                (!prepared.indexError.empty() ? 1u : 0u) + (!prepared.stagingError.empty() ? 1u : 0u) + prepared.droppedFailures);
+        }
 	}
+}
+
+// 표본 render만 계측한다. 선택/가림 cache에는 손대지 않고 진단 포인터만 공개한다.
+void CMapPlacementRuntime::Begin_GeometryDiagnosticFrame() noexcept
+{
+    if (!m_StaticBatchFrame) return;
+    m_StaticBatchFrame->geometryDiagnostics.reset();
+    try { m_StaticBatchFrame->geometryDiagnostics = std::make_shared<MAP_GEOMETRY_DIAGNOSTIC_FRAME>(); }
+    catch (...) { }
+}
+
+void CMapPlacementRuntime::Cancel_GeometryDiagnosticFrame() noexcept
+{
+    if (m_StaticBatchFrame) m_StaticBatchFrame->geometryDiagnostics.reset();
+}
+
+// Profiler controller가 render 종료 후 호출한다. 거리 필터는 model sphere 중심(m)의
+// camera 거리이며 source 목록만 제한한다. draw 목록은 실제 전체 static-map 명령이다.
+// source의 CPU LOD/가시성은 기존 commit 상태 진단이며 GPU 실제 생존을 추정하지 않는다.
+MAP_GEOMETRY_DIAGNOSTIC_SNAPSHOT CMapPlacementRuntime::End_GeometryDiagnosticFrame(
+    float minDistance, float maxDistance)
+{
+    MAP_GEOMETRY_DIAGNOSTIC_SNAPSHOT snapshot;
+    if (!m_StaticBatchFrame || !m_StaticBatchFrame->geometryDiagnostics) return snapshot;
+    auto diagnostics = std::move(m_StaticBatchFrame->geometryDiagnostics);
+    snapshot.captured = true;
+    snapshot.draws = std::move(diagnostics->draws);
+    snapshot.droppedDraws = diagnostics->droppedDraws;
+    try
+    {
+    snapshot.frameNumber = m_StaticBatchFrame->frameNumber;
+    snapshot.levelId = m_iLevelIndex;
+    snapshot.areaId = m_Catalog.Get_AreaId();
+    snapshot.minDistance = minDistance; snapshot.maxDistance = maxDistance;
+    snapshot.distanceRangeValid = std::isfinite(minDistance) && std::isfinite(maxDistance) &&
+        minDistance >= 0.f && maxDistance >= minDistance;
+    for (const auto& entry : m_Placements)
+        snapshot.fallbackPlacementCount += entry.object != nullptr;
+    auto& game = CGameInstance::Get();
+    const auto* camera = CMapAssetRenderUtils::Capture_CameraCullSnapshotView();
+    const auto* position = game.Get_CamPosition();
+    const auto viewport = game.Get_ViewportSize();
+    snapshot.viewport = {viewport.x, viewport.y};
+    snapshot.cameraValid = camera && position && std::isfinite(position->x) &&
+        std::isfinite(position->y) && std::isfinite(position->z);
+    if (!snapshot.cameraValid || !snapshot.distanceRangeValid) return snapshot;
+    snapshot.cameraRevision = camera->revision;
+    snapshot.cameraPosition = {position->x, position->y, position->z};
+    std::copy_n(&camera->view._11, 16u, snapshot.view.begin());
+    std::copy_n(&camera->projection._11, 16u, snapshot.projection.begin());
+    // End 결과가 여러 표본 동안 보관되므로 상한 전체 capacity를 매번 예약하지 않는다.
+    snapshot.sources.reserve(256u);
+    for (const auto& entry : m_StaticBatches)
+    {
+        const auto& batch = entry.object;
+        if (!batch || !batch->m_pModelCom) continue;
+        ++snapshot.staticBatchCount;
+        snapshot.staticPlacementCount += batch->m_Instances.size();
+        const bool prepared = batch->Is_FinalCameraPrepared() && batch->m_bVisibleInstancesUsedCamera &&
+            batch->m_iVisibleCameraRevision == camera->revision;
+        const bool indexedVisibility = prepared &&
+            batch->m_VisibleInstanceIndices.size() == batch->m_VisibleInstances.size();
+        std::vector<uint8_t> visible;
+        if (indexedVisibility)
+        {
+            visible.assign(batch->m_Instances.size(), 0u);
+            for (const uint32_t index : batch->m_VisibleInstanceIndices)
+                if (index < visible.size()) visible[index] = 1u;
+        }
+        const bool gpuSubmitted = batch->m_iGpuSubmittedFrame == m_StaticBatchFrame->frameNumber;
+        const bool gpuReady = batch->Is_GpuVisibilityReady();
+        Engine::MESH_SCREEN_LOD_DESC lod{};
+        const bool hasLod = prepared && batch->m_RenderProfile.opacity >= 1.f &&
+            batch->Build_ScreenLodView(*camera, lod);
+        for (uint32_t mesh = 0u; mesh < batch->m_pModelCom->Get_NumMeshes(); ++mesh)
+        {
+            bool claimed = false;
+            if (mesh < batch->m_ChunkClaims.size() && mesh < batch->m_ChunkClaimMemberIndices.size())
+            {
+                const auto& claim = batch->m_ChunkClaims[mesh];
+                const uint32_t member = batch->m_ChunkClaimMemberIndices[mesh];
+                // Is_Active는 lazy selection을 실행하므로 관측에서는 직접 commit 상태만 읽는다.
+                claimed = claim && claim->valid && claim->frameActive &&
+                    member < claim->activeMembers.size() && claim->activeMembers[member] != 0u;
+            }
+            const auto* view = batch->Uses_MeshScreenLod(mesh, hasLod) ? &lod : nullptr;
+            const uint32_t diagnosticLod = prepared ? batch->m_pModelCom->Get_StaticMeshLodLevel(mesh, view) : 0u;
+            const uint32_t diagnosticIndices = prepared ? batch->m_pModelCom->Get_StaticMeshSelectedIndexCount(mesh, view) : 0u;
+            for (size_t i = 0u; i < batch->m_Instances.size(); ++i)
+            {
+                ++snapshot.consideredSources;
+                const auto& instance = batch->m_Instances[i];
+                const auto& center = instance.WorldBoundsCenter;
+                const double dx = double(center.x) - position->x, dy = double(center.y) - position->y,
+                    dz = double(center.z) - position->z;
+                const double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+                if (!std::isfinite(distance) || !std::isfinite(instance.WorldBoundsRadius) || instance.WorldBoundsRadius < 0.f)
+                { ++snapshot.invalidBoundsSources; continue; }
+                if (distance < minDistance || distance > maxDistance)
+                { ++snapshot.distanceFilteredSources; continue; }
+                if (snapshot.sources.size() >= MAP_GEOMETRY_DIAGNOSTIC_FRAME::MaximumSources)
+                { ++snapshot.droppedSources; continue; }
+                MAP_GEOMETRY_DIAGNOSTIC_SOURCE source;
+                source.placementId = instance.PlacementId; source.assetId = batch->m_AssetId; source.meshIndex = mesh;
+                source.gpuCohortId = batch->m_iGpuCohort;
+                source.boundsCenter = {center.x, center.y, center.z}; source.radius = instance.WorldBoundsRadius;
+                source.centerDistance = distance; source.nearDistance = (std::max)(0., distance - source.radius);
+                source.authoredVisible = instance.Visible; source.suppressed = instance.Suppressed;
+                source.cameraPreviewSuppressed = instance.CameraPreviewSuppressed;
+                source.cpuVisibilityPrepared = prepared; source.cpuVisibleKnown = indexedVisibility;
+                source.cpuVisible = indexedVisibility && visible[i] != 0u;
+                source.gpuSubmitted = gpuSubmitted; source.hlodClaimed = claimed;
+                source.route = instance.ColorProxySuppressed ? "low_geometry_replaced_source" : claimed ? "native_hlod_source" : gpuReady && gpuSubmitted ? "gpu_indirect_candidate" :
+                    prepared ? "cpu_prepared_source" : "static_unobserved_source";
+                source.lodDiagnosticKnown = prepared; source.lodDiagnostic = diagnosticLod;
+                source.diagnosticIndexCount = diagnosticIndices;
+                source.baseIndexCount = batch->m_pModelCom->Get_MeshIndexCount(mesh);
+                source.vertexBufferCount = batch->m_pModelCom->Get_MeshVertexCount(mesh);
+                snapshot.sources.push_back(std::move(source));
+            }
+        }
+    }
+    snapshot.complete = true;
+    }
+    catch (...) { snapshot.complete = false; }
+    return snapshot;
 }
 
 void CMapPlacementRuntime::Clear()
 {
+    Set_CutsceneGeometryEnabled(false);
+    m_ColorProxyBatches.clear();
+    m_ColorProxyPreparation.reset();
+    Cancel_GeometryDiagnosticFrame();
+    m_GpuScene.reset();
     CMapStaticChunkObject::Remove(m_iLevelIndex, m_StaticChunks);
     m_ChunkPolicy.reset();
     m_ChunkBuildStats = {};

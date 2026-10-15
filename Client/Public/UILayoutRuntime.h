@@ -1,157 +1,96 @@
-#pragma once
+﻿#pragma once
 
+// Client의 LEVEL·이름 공간과 Engine의 수치·COM 타입을 사용한다.
 #include "Client_Defines.h"
 #include "Engine_AnimationTypes.h"
 #include "Engine_Defines.h"
 
+// slot은 vector로 순서를 보존하고 map은 문서·label, unordered_map은 ID별 index를 찾는다.
 #include <map>
 #include <string>
 #include <vector>
 #include <unordered_map>
 
 NS_BEGIN(Client)
+// smart pointer 멤버의 실제 생성·파괴는 CPP에서 정의하므로 여기서는 이름만 선언한다.
 class CUI_Sprite;
 class CUITextureCache;
 
-/* Real CUIObject-based runtime consumer of a lostark.ui-layout JSON document (the same
-schema CHUDRuntimeView already parses for its own ImGui foreground-drawlist path), for
-screens migrated off that ImGui interim rendering. Reads id, rect, rotation, ownerClass,
-every layers[] entry (path/tint/additive/flipX), "animation.frames" flipbooks, and
-"keyframeAnimationPath" documents (the extracted Scaleform identity-HUD assets -- multi-layer
-per-frame asset/position/scale/rotation/alpha tracks with labels). shine/stages stay unread --
-no migrated document uses them.
-
-Each slot layer becomes a real CUI_Sprite GameObject added to the caller's layer, instead of
-an ImGui AddImage call -- it renders through the normal CRenderer/RENDERGROUP::UI pipeline in
-document order (slot by slot, layer by layer). A keyframe slot gets one sprite per document
-layer, driven per frame by Update(). */
+// Data 루트의 UI JSON 슬롯을 CUI_Sprite로 만들어 지정 Level/Layer에 등록한다.
+// 화면별 소유자가 이 객체를 보유하고, Renderer는 등록된 sprite를 UI 그룹에서 그린다.
 class CUILayoutRuntime final
 {
 public:
+	// view 소유자가 생성한다. 장치 COM 참조와 문서 경로를 보관한 뒤 Load를 호출한다.
 	CUILayoutRuntime(ComPtr<ID3D11Device> pDevice, ComPtr<ID3D11DeviceContext> pContext,
 		uint32_t iGameObjectLevelIndex, const wstring_t& strLayerTag,
 		const wstring_t& strDocumentPath);
+	// 멤버 참조는 해제하지만 Layer의 sprite까지 자동 제거하지 않는다. 필요하면 Release_Sprites를 먼저 호출한다.
 	~CUILayoutRuntime();
-	/* Explicit owner teardown: hide and remove only this view's sprites. Safe after the
-	Level already cleared its layers and on repeated calls; shared texture prototypes stay. */
+	// 화면 소유자가 sprite를 숨기고 Layer에서 제거할 때 호출한다. 공용 Texture 원형은 남긴다.
 	void Release_Sprites();
 
 public:
-	/* Reference-resolution rect of the authored slot with this JSON "id", or false if no such
-	slot exists (unknown id, or its texture failed to load and the slot was skipped). */
+	// ID의 문서 기준 사각형을 돌려준다. 이미지가 없어도 위치용 슬롯은 조회할 수 있다.
 	bool_t Get_SlotRect(const string& strId, f32_t& fX, f32_t& fY, f32_t& fWidth, f32_t& fHeight) const;
-	/* Real show/hide (a hidden sprite is skipped entirely, no transparent-quad draw call) --
-	tint/alpha/texture state is untouched, so showing again restores exactly what was set
-	before. For a keyframe slot this gates whether Update() drives its layer sprites at all. */
-	/* Draw order of this whole document inside RENDERGROUP::UI, from the Client's UI layer
-	table (UI_TEXT_LAYER in UITextOcclusion.h -- sprites and text share it so a window's
-	panel and its labels always agree on what they are above). Applies to the sprites that
-	exist now and to any created afterwards. */
+	// 문서 전체의 UI 정렬 layer를 지정한다. 현재 sprite와 이후 만드는 sprite에 함께 적용한다.
 	void Set_UISortLayer(int32_t iLayer);
+	// 표시 변경은 색·텍스처를 보존한다. keyframe의 실제 표시 여부는 Update가 다시 결정한다.
 	void Set_SlotVisible(const string& strId, bool_t bVisible);
+	// 컷신 중 표시 허용 여부와 렌더 그룹을 해당 슬롯의 sprite 전체에 전달한다.
 	void Set_SlotCinematicOverlay(const string& strId, bool_t overlay);
 	void Set_SlotScenePresentation(const string& strId, bool_t enabled);
+	// 외부 연출 시계의 label·초 위치를 즉시 샘플링한다. 잘못된 시간·label이면 false다.
 	bool_t Sample_KeyframeAnimation(const string& strId, const string& label, f32_t seconds);
+    // 이미지가 없는 위치 슬롯에 caption sprite를 만든다. 이미 sprite가 있거나 글꼴 측정 실패면 false다.
     bool_t Set_SlotCaption(const string& strId, const wstring_t& caption, const wstring_t& font);
-	/* Runtime tint override (0..1 RGBA) on every authored static layer sprite. */
+	// 기본·추가 정적 이미지의 RGBA를 바꾼다. keyframe의 원래 색은 별도로 갱신된다.
 	void Set_SlotTint(const string& strId, const float4_t& vTint);
-	/* Multiplies every static and keyframe layer's own tint without replacing authored RGB or
-	key alpha. White restores the unmodified appearance. */
+	// 정적·keyframe 이미지의 원래 색에 곱한다. 흰색이면 원래 색을 유지한다.
 	void Set_SlotTintMultiplier(const string& strId, const float4_t& vTintMultiplier);
-	/* Alpha-only override (0..1, RGB stays white) -- for a fade-in/out reveal timeline
-	   (RaidClear's celebration layers) that isn't a hard on/off like Set_SlotVisible. */
+	// 정적 이미지의 RGB를 흰색으로 지정하면서 alpha를 바꾼다.
 	void Set_SlotAlpha(const string& strId, f32_t fAlpha);
-	/* Resources-relative path -- loads (or reuses a cached) SRV directly, bypassing the
-	Prototype/Component texture lookup this slot's own authored layer used, for content that
-	changes after this view is built (a button's hover texture). Applies to the slot's BASE
-	(first) layer only. Empty path reverts to the slot's authored texture. */
+	// Resources 상대 경로를 캐시에서 읽어 기본 이미지에 덮어쓴다. 빈 경로는 원래 Component 텍스처로 복귀한다.
 	void Set_SlotTexture(const string& strId, const string& strAssetPath);
-	/* Same base-layer override with an already-created SRV (a render target the caller owns and
-	refreshes every frame -- the character info window's live portrait). nullptr reverts to the
-	slot's authored texture. */
+	// 초상화 Render Target 등 호출자가 만든 SRV를 기본 이미지에 보유한다. nullptr는 원래 이미지로 복귀한다.
 	void Set_SlotTextureSRV(const string& strId, ComPtr<ID3D11ShaderResourceView> pSRV);
-	/* Every authored/runtime slot id in document order -- for a window that moves or hides all
-	of its own slots without keeping a parallel id list by hand. */
+	// 추가된 순서의 슬롯 ID 복사본이다. 창 전체 이동·숨김 목록으로 사용한다.
 	vector<string> Get_SlotIds() const;
-	/* Overrides a slot's authored top-left position at runtime (size unchanged) -- for a menu
-	that has to appear wherever the player clicked, keyed off its own authored relative offset
-	from some anchor slot, rather than always drawing at its authored position (the Party
-	context menu's own reason). Get_SlotRect reflects the override afterward. No-op if the slot
-	doesn't exist. */
+	// ID의 좌상단 위치를 바꾸고 정적 이미지 중심을 다시 계산한다. 알 수 없는 ID는 무시한다.
 	void Set_SlotPosition(const string& strId, f32_t fX, f32_t fY);
-	/* Overrides both a slot's authored top-left position AND size at runtime in one call --
-	for an effect that grows/shrinks around a moving center point (a hit-flash glow's radius)
-	instead of only ever repositioning at a fixed authored size. Get_SlotRect reflects the
-	override afterward. No-op if the slot doesn't exist. */
+	// 문서 기준 좌상단과 크기를 함께 바꾼다. Get_SlotRect에도 변경값이 반영된다.
 	void Set_SlotRect(const string& strId, f32_t fX, f32_t fY, f32_t fWidth, f32_t fHeight);
-	/* 1.f (default) draws the whole slot; a value in [0,1) clips it to that fraction of its own
-	authored width (post-FlipX), for a gauge/health-bar drain that reveals the bar art's own left
-	portion at native scale instead of a stretched/squished resize (CUI_Sprite::Set_FillRatio). */
+	// 기본 이미지의 가로 표시 비율이다. 크기 변경 없이 셰이더에서 잘라낸다.
 	void Set_SlotFillRatio(const string& strId, f32_t fFillRatio);
-	/* 1.f (default) draws the whole slot; a value in [0,1) keeps only the pie sector spanning
-	that fraction of a full turn clockwise from 12 o'clock -- the skill-cooldown sweep overlay
-	(CUI_Sprite::Set_ArcRatio). */
+	// 기본 이미지의 12시부터 시계 방향 부채꼴 표시 비율이다.
 	void Set_SlotArcRatio(const string& strId, f32_t fArcRatio);
-	/* Texture window sampled by the slot's base sprite (CUI_Sprite::Set_UVWindow) -- the
-	minimap's map slot scrolls/zooms across its area image this way. */
+	// 기본 이미지에서 읽을 UV 영역을 바꿔 미니맵을 이동·확대한다.
 	void Set_SlotUVWindow(const string& strId, f32_t fOffsetU, f32_t fOffsetV,
 		f32_t fScaleU, f32_t fScaleV);
-	/* Turn of that window about its center (CUI_Sprite::Set_UVRotation): the map views draw the
-	area image with the camera's forward direction up, as retail does. */
+	// 기본 이미지의 UV 영역을 중심 기준으로 회전한다. 단위는 radian이다.
 	void Set_SlotUVRotation(const string& strId, f32_t fRadians, f32_t fAspect);
-	/* Overrides a slot's authored "rotation" (screen-space clockwise degrees about its own rect
-	center) at runtime -- for continuous data-driven rotation (DimensionMaster's clock hands and
-	gear ornaments). Applies to every layer sprite of the slot. */
+	// 기본·추가 정적 이미지를 중심 기준 시계 방향 degree로 회전한다.
 	void Set_SlotRotation(const string& strId, f32_t fDegrees);
-	/* Show/hide every class-owned slot in one pass: a slot whose authored ownerClass is
-	non-empty becomes visible only when it equals strOwnerClass. ownerClass-less slots are
-	untouched -- the same per-frame filter CHUDRuntimeView::Render(strOwnerClass, ...) applied
-	implicitly. Callers layer their own dynamic Set_SlotVisible overrides after this. */
+	// ownerClass가 있는 슬롯만 선택 class와 일치할 때 표시한다. 공용 슬롯은 건드리지 않는다.
 	void Set_ActiveOwnerClass(const string& strOwnerClass);
-	/* Every slot at once -- the whole-screen hide for a view whose owning system stops running
-	(level gate fails), since these sprites keep their last state instead of simply not being
-	drawn the way an ImGui pass did. */
+	// 화면 소유자가 중지될 때 남아 있는 모든 sprite를 함께 숨기거나 다시 표시한다.
 	void Set_AllSlotsVisible(bool_t bVisible);
-	/* Creates a slot (with one sprite showing strTexturePath at the given reference-resolution
-	rect) at runtime if no slot with this id exists -- the Lobby's atomic fallback path, which
-	must still show all four command buttons when an old/corrupt external Data checkout ships a
-	partial document. No-op if the id already exists (the authored slot wins). */
+	// 없는 ID만 문서 기준 사각형과 이미지로 보충한다. 이미 등록된 슬롯은 유지한다.
+	// 같은 UI 정렬 layer에서는 제출 순서가 앞뒤를 결정하므로, 덮을 이미지는 뒤에 생성해야 한다.
 	void Ensure_RuntimeSlot(const string& strId, f32_t fX, f32_t fY,
 		f32_t fWidth, f32_t fHeight, const string& strTexturePath);
-	/* Draw order is NOT the slot list's order: every slot's sprite is a CUI_Sprite added
-	to a layer, and RENDERGROUP::UI draws them in the order they were created. A slot made
-	at runtime therefore always draws on top, whatever its list position. Art that has to
-	cover it -- the MVP page's frame gradient over the winner's legs -- needs the covered
-	slot authored in the layout document, ahead of the covering one. */
-	/* Jumps a keyframe slot's document to the frame labelled strLabel and plays forward until
-	the next authored label (or the document's end), then holds on that last frame -- mirrors
-	the original asset's own gotoAndPlay(label) trigger, same contract as CHUDRuntimeView's
-	version. Calling again (any label) restarts the window. False if the slot has no keyframe
-	document or the label is unknown. */
+	// label부터 다음 label 전까지 재생한다. 반복 문서는 구간을 돌고 단발 문서는 끝 프레임을 유지한다.
 	bool_t Play_KeyframeAnimation(const string& strId, const string& strLabel);
-	/* Drives "animation.frames" flipbook slots and keyframe-animation slots forward by
-	fTimeDelta -- flipbooks swap their sprite's texture on frame-boundary crossings; keyframe
-	slots re-evaluate every document layer's active key into that layer's own sprite
-	(texture/position/scale/rotation/alpha/additive/flip). Callers add this to their owning
-	system's per-frame update. */
+	// 화면 소유자가 초 단위 delta를 전달한다. flipbook 텍스처와 keyframe별 이미지 상태를 갱신한다.
 	void Update(f32_t fTimeDelta);
-	/* Restarts a slot's "animation.frames" flipbook from frame 0 right now -- for a one-shot
-	effect (loop=false) a caller wants to fire on a real event (a gauge reaching 100%), since
-	Update() otherwise only ever advances the clock it already has. No-op if the slot doesn't
-	exist or has no animation frames. */
+	// 이벤트 발생 시 flipbook의 시간과 이미지를 0번으로 되감는다.
 	void Restart_Animation(const string& strId);
-	/* Pins a slot's "animation.frames" flipbook to an exact frame index right now, for a caller
-	driving it from a real data value (a gauge percent) instead of letting it free-run off its
-	own elapsed-time clock -- two flipbooks meant to read as "the same percent" would otherwise
-	drift out of phase. iFrame is clamped to the slot's real frame count. No-op if the slot
-	doesn't exist or has no animation frames. */
+	// flipbook의 현재 프레임을 범위 안으로 맞춘다. 이후 Update를 호출하면 다시 진행한다.
 	void Set_Animation_Frame(const string& strId, int32_t iFrame);
-	/* Swaps a slot's "animation.frames" flipbook list at runtime and rewinds it to frame 0 --
-	the raid-entry popup switches the boss-portrait commander movie per tab this way. An empty
-	Frames list clears the flipbook so the slot falls back to its static Set_SlotTexture art.
-	fFps <= 0 keeps the slot's current fps. No-op if the slot doesn't exist. */
+	// flipbook 목록과 재생 상태를 교체한다. 빈 목록이면 현재 텍스처를 그대로 두고 재생만 멈춘다.
 	void Set_SlotAnimation(const string& strId, const vector<string>& Frames,
 		f32_t fFps, bool_t bLoop);
+	// 이미 로드한 SRV를 경로별 캐시에 보관해 연출 재생 때 재사용한다.
 	void Adopt_Texture(const string& strPath, ComPtr<ID3D11ShaderResourceView> pSRV);
 
 	f32_t Get_ResolutionWidth() const { return m_fResolutionWidth; }
@@ -161,16 +100,13 @@ private:
 	struct KEYFRAME_ANIM_KEY
 	{
 		int32_t	iFrame = 0;
-		/* Empty = hidden from this frame onward (the source SWF depth was removed here). */
+		// 빈 asset은 이 프레임부터 해당 레이어를 숨기라는 뜻이다.
 		string	strAsset;
 		f32_t	fX = 0.f, fY = 0.f;
 		f32_t	fScaleX = 1.f, fScaleY = 1.f;
 		f32_t	fRotationDeg = 0.f;
 		f32_t	fAlpha = 1.f;
-		/* The source PlaceObject carries a full colorTransform, not just alpha. The raid
-		clear screen is the case that needs it: its light layers are authored white and
-		each raid's Set tints them (Kouku pulls blue to 0 to make them gold). Default 1
-		leaves every existing document untouched. */
+		// 원본 colorTransform의 RGB 배율이다. alpha와 함께 sprite tint에 전달한다.
 		f32_t	fTintR = 1.f, fTintG = 1.f, fTintB = 1.f;
 		bool_t	bAdditive = false;
 		bool_t	bFlipX = false;
@@ -181,6 +117,7 @@ private:
 		vector<KEYFRAME_ANIM_KEY> Keys;
 	};
 
+	// 문서별 frame rate·label 시작 frame·레이어 key 목록을 캐시에 보관한다.
 	struct KEYFRAME_ANIM_DOCUMENT
 	{
 		bool_t				isLoaded = false;
@@ -191,6 +128,7 @@ private:
 		vector<KEYFRAME_ANIM_LAYER>		Layers;
 	};
 
+	// JSON의 ID·문서 좌표와 실행 중 표시·애니메이션 상태를 소유한다. sprite는 Layer와 함께 참조한다.
 	struct RUNTIME_SLOT
 	{
 		string				strId;
@@ -198,8 +136,7 @@ private:
 		f32_t				fX = 0.f, fY = 0.f, fSizeX = 0.f, fSizeY = 0.f;
 		bool_t				bVisible = true;
 		shared_ptr<CUI_Sprite>	pSprite;
-		/* layers[1..] of a multi-layer slot, same rect as pSprite, drawn on top of it in
-		authored order (a skill slot's background + frame pair). */
+		// 같은 사각형 위에 생성 순서대로 겹치는 추가 이미지들이다.
 		vector<shared_ptr<CUI_Sprite>>	ExtraLayerSprites;
 
 		vector<string>		AnimationFramePaths;
@@ -208,9 +145,7 @@ private:
 		f32_t				fAnimationElapsed = 0.f;
 		int32_t				iAnimationFrame = -1;
 
-		/* Keyframe-animation slot state: one sprite per document layer, driven by Update()
-		once Play_KeyframeAnimation starts a window. fKeyframeElapsedSeconds < 0 = never
-		played (draws nothing, matching CHUDRuntimeView). */
+		// keyframe 문서의 재생 구간과 경과 시간이다. 음수 시간은 아직 재생하지 않은 상태다.
 		string				strKeyframeAnimationPath;
 		f32_t				fKeyframeAnimationScale = 1.f;
 		int32_t				iKeyframeWindowStart = 0;
@@ -220,26 +155,29 @@ private:
 	};
 
 private:
+	// 중복 ID 후보 중 일반 슬롯·flipbook·keyframe에 맞는 항목을 고르는 조건이다.
 	enum class SLOT_REQUIREMENT { ANY, FLIPBOOK, KEYFRAME };
+	// slot 값을 순서대로 보관하고 ID 검색용 index 목록을 함께 갱신한다.
 	void Append_Slot(RUNTIME_SLOT Slot);
 	RUNTIME_SLOT* Find_Slot(const string& strId,
 		SLOT_REQUIREMENT eRequirement = SLOT_REQUIREMENT::ANY);
 	const RUNTIME_SLOT* Find_Slot(const string& strId,
 		SLOT_REQUIREMENT eRequirement = SLOT_REQUIREMENT::ANY) const;
+	// Data 루트의 JSON을 읽으며 유효한 슬롯을 바로 추가한다. 파일·파싱 실패도 S_OK를 반환한다.
 	HRESULT Load();
-	/* Registers strPath as a Texture prototype under LEVEL::STATIC (keyed by that same
-	Resources-relative path) the first time this factory sees it, generalizing
-	CMainApp::Ready_Prototype_For_LoadingChrome's one-document-only version. No-op (not an
-	error) if already registered -- CGameInstance::Add_Prototype itself fails safely on a
-	duplicate tag. */
+	// 이미지 경로를 STATIC Texture 원형 tag로 등록한다. 이 인스턴스는 같은 경로를 다시 시도하지 않는다.
 	void Ensure_TexturePrototype(const wstring_t& strPath);
+	// UI 원형을 복제해 지정 Layer에 넣고 같은 sprite의 shared_ptr를 반환한다.
 	shared_ptr<CUI_Sprite> Create_Sprite(
 		f32_t fRectX, f32_t fRectY, f32_t fRectWidth, f32_t fRectHeight,
 		const string& strTexturePath);
+	// Data 상대 경로의 애니메이션 문서를 캐시한다. 실패도 캐시해 같은 인스턴스에서 재로드하지 않는다.
 	const KEYFRAME_ANIM_DOCUMENT* Get_Or_Load_KeyframeAnimation(const string& strPath);
+	// 재생 frame의 key를 골라 이미지·위치·색을 적용한다. 숨긴 슬롯도 경과 시간은 증가한다.
 	void Update_KeyframeSlot(RUNTIME_SLOT& Slot, f32_t fTimeDelta);
 
 private:
+	// 장치 COM 참조와 sprite를 등록할 대상 Level/Layer를 보관한다.
 	ComPtr<ID3D11Device>			m_pDevice;
 	ComPtr<ID3D11DeviceContext>		m_pContext;
 	uint32_t						m_iGameObjectLevelIndex = 0;
@@ -250,15 +188,11 @@ private:
 
 	int32_t							m_iUISortLayer = 0;
 	vector<RUNTIME_SLOT>			m_Slots;
-	/* Runtime lookup only; document order and sprite ownership stay in m_Slots. Duplicate
-	IDs retain their ordered candidates because animation calls skip ineligible slots. */
+	// 슬롯은 m_Slots가 소유하고 이 map은 ID별 index만 보관한다. 중복 ID는 조건에 맞는 첫 슬롯을 찾는다.
 	std::unordered_map<string, vector<size_t>> m_SlotIndices;
 	vector<wstring_t>				m_RegisteredTexturePrototypes;
 	map<string, KEYFRAME_ANIM_DOCUMENT>	m_KeyframeAnimationCache;
-	/* For Set_SlotTexture's runtime swap path and every keyframe/flipbook frame texture -- the
-	authored-layer path goes through the Prototype/CUI_Sprite path above instead. Shared utility
-	(CUITextureCache) so this isn't a third copy of CHUDRuntimeView's own duplicate of the same
-	DDS/WIC-load logic. */
+	// 실행 중 이미지 교체와 애니메이션 frame의 SRV 캐시를 단독 소유한다.
 	unique_ptr<CUITextureCache>	m_pTextureCache;
 };
 

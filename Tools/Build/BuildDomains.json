@@ -145,7 +145,7 @@
       }
     },
     {
-      "id": "map.kakulsaydon",
+      "id": "map.koukusaydon",
       "kind": "publisher",
       "profiles": ["Core", "FullDiagnostic"],
       "inputs": [
@@ -252,11 +252,11 @@
         "Server/Bin/DataFiles/World/BERN.worldbootstrap",
         "Server/Bin/DataFiles/World/COLOSSEUM.worldbootstrap",
         "Server/Bin/DataFiles/World/CHARACTER_SELECT_ARENA.worldbootstrap",
-        "Server/Bin/DataFiles/World/KAKULSAYDON_ARENA.worldbootstrap",
+        "Server/Bin/DataFiles/World/KOUKUSAYDON_ARENA.worldbootstrap",
         "Server/Bin/DataFiles/World/MAHARAKA.worldbootstrap",
         "Server/Bin/DataFiles/World/TRAINING_GROUND.worldbootstrap",
         "Server/Bin/DataFiles/World/VALTAN_ARENA.worldbootstrap",
-        "Client/Bin/DataFiles/World/KAKULSAYDON_ARENA.stagemarkers.json"
+        "Client/Bin/DataFiles/World/KOUKUSAYDON_ARENA.stagemarkers.json"
       ],
       "action": {
         "executable": "powershell.exe",
@@ -585,6 +585,9 @@
       "Engine/Bin/{configuration}/Shader_Cell.cso",
       "Engine/Bin/{configuration}/Shader_Deferred.cso",
       "Engine/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
+      "Engine/Bin/{configuration}/Shader_GpuSceneVisibility.cso",
+      "Engine/Bin/{configuration}/Shader_GpuHiZCopy.cso",
+      "Engine/Bin/{configuration}/Shader_GpuHiZReduce.cso",
       "Shared/Bin/{configuration}/Shared.lib",
       "Shared/Bin/{configuration}/Shared.pdb",
       "Server/Bin/{configuration}/Server.exe",
@@ -596,6 +599,9 @@
       "Client/Bin/{configuration}/Shader_Cell.cso",
       "Client/Bin/{configuration}/Shader_Deferred.cso",
       "Client/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
+      "Client/Bin/{configuration}/Shader_GpuSceneVisibility.cso",
+      "Client/Bin/{configuration}/Shader_GpuHiZCopy.cso",
+      "Client/Bin/{configuration}/Shader_GpuHiZReduce.cso",
       "Client/Bin/{configuration}/fmod.dll",
       "Client/Bin/{configuration}/{assimpRuntimeName}",
       "Client/Bin/{configuration}/PhysX_64.dll",
@@ -627,6 +633,18 @@
       {
         "source": "Engine/Bin/{configuration}/Shader_ScreenSpaceLighting.cso",
         "destination": "Client/Bin/{configuration}/Shader_ScreenSpaceLighting.cso"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_GpuSceneVisibility.cso",
+        "destination": "Client/Bin/{configuration}/Shader_GpuSceneVisibility.cso"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_GpuHiZCopy.cso",
+        "destination": "Client/Bin/{configuration}/Shader_GpuHiZCopy.cso"
+      },
+      {
+        "source": "Engine/Bin/{configuration}/Shader_GpuHiZReduce.cso",
+        "destination": "Client/Bin/{configuration}/Shader_GpuHiZReduce.cso"
       },
       {
         "source": "Engine/ThirdPartyLib/FMOD/Bin/fmod.dll",

@@ -41,8 +41,8 @@ class PortableCheckTests(unittest.TestCase):
             'Data/Animation/Authored/KoukuSaydon/KoukuSaydon.patternbindings.json': b'{"sourceRevision":7}',
             'Data/Compositions/Sequences/KoukuSaydonSequenceComposition.json': b'{"revision":8}',
             'Server/Bin/DataFiles/Gameplay/Gameplay.bootstrap': (
-                'KOUKUSAYDONPRODUCTREVISION\tENCOUNTER_KAKULSAYDON_G1\tBOSS\t7\n' +
-                ''.join('RAIDGATE\tENCOUNTER_KAKULSAYDON_G1\t%s\tx\tx\t8\n' % g for g in ('GATE1','GATE2','GATE3','BINGO'))).encode(),
+                'KOUKUSAYDONPRODUCTREVISION\tENCOUNTER_KOUKUSAYDON_G1\tBOSS\t7\n' +
+                ''.join('RAIDGATE\tENCOUNTER_KOUKUSAYDON_G1\t%s\tx\tx\t8\n' % g for g in ('GATE1','GATE2','GATE3','BINGO'))).encode(),
         }
         rows = []
         for relative, content in files.items():

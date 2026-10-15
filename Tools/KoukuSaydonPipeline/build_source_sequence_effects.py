@@ -147,7 +147,7 @@ def main():
             assert len(reuse)==18 and len({e['sourceTransformTrack']['sourceOccurrenceId']for e in reuse})==6
             reused_mesh += [dict(elementId=e['id'],sourceNode=e['sourceNode'],
                 sourceOccurrenceId=e['sourceTransformTrack']['sourceOccurrenceId'],
-                carrier='Map/KakulSaydon/Gate2Intro/CardEruption/CardEruption.wmodel')for e in reuse]
+                carrier='Map/KoukuSaydon/Gate2Intro/CardEruption/CardEruption.wmodel')for e in reuse]
             document['elements']=[e for e in document['elements'] if e not in reuse]
         by_occurrence=collections.defaultdict(list)
         for element in document['elements']:

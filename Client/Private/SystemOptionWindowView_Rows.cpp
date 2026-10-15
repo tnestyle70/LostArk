@@ -6,7 +6,7 @@ Chrome, tab column, scrolling and buttons live in SystemOptionWindowView.cpp. */
 #include "SystemOptionWindowView_Internal.h"
 
 #include "GameInstance.h"
-#include "MainApp.h"
+#include "UISoundPlayer.h"
 #include "UIInputRouter.h"
 #include "UILayoutRuntime.h"
 
@@ -308,7 +308,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 				bHovered ? (Router.Is_LeftDown() ? BUTTON_STATE::DOWN : BUTTON_STATE::OVER) : BUTTON_STATE::NORMAL);
 			if (bHovered && Clicked(fX, fY, BUTTON_W, HEIGHT_BUTTON))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				/* reset resets the screen; auto settings has nothing to measure here. */
 				if (nullptr != pTab && R.strTitle == Find_String("button.reset"))
 					Reset_Screen(*pTab);
@@ -339,7 +339,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 				(bOpen ? ART_COMBOARROW_OPEN : (bHovered ? ART_COMBOARROW_OVER : ART_COMBOARROW_NORMAL)));
 			if (bHovered && Clicked(fBoxX, fY + 1.f, fBoxW, COMBO_H))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				m_iComboOpenKey = R.iPrimaryKey;
 				m_iComboHover = -1;
 			}
@@ -438,7 +438,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 			m_pView->Set_SlotTexture(strBox, bOn ? ART_CHECK_SELECTED : (bHovered ? ART_CHECK_OVER : ART_CHECK_NORMAL));
 			if (bHovered && Clicked(fBoxX, fBoxY, CHECK_W, CHECK_H))
 			{
-				CMainApp::Play_UIButtonClickSound();
+				Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 				Write_Value(R, bOn ? 0.f : 1.f);
 				Commit_Draft(R);
 			}
@@ -465,7 +465,7 @@ void Client::CSystemOptionWindowView::Update_Rows()
 					(bHovered ? ART_RADIO_OVER : ART_RADIO_NORMAL));
 				if (bHovered && Clicked(fCellX, fCellY, RADIO_PITCH_X, RADIO_PITCH_Y - 4.f) && i != iSelected)
 				{
-					CMainApp::Play_UIButtonClickSound();
+					Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 					Write_Value(R, static_cast<f32_t>(i));
 					Commit_Draft(R);
 				}
@@ -542,7 +542,7 @@ void Client::CSystemOptionWindowView::Update_ComboPopup()
 			(bHovered ? ART_LISTROW_OVER : ART_LISTROW_NORMAL));
 		if (bHovered && Is_Clicked(fBoxX, fRowY, fBoxW, COMBO_ROW_H))
 		{
-			CMainApp::Play_UIButtonClickSound();
+			Client::Play_UISound(Client::UI_SOUND_CUE::BUTTON_CLICK);
 			if (i != iSelected)
 			{
 				Write_Value(R, static_cast<f32_t>(i));

@@ -1,7 +1,7 @@
 {
   "schema": "lostark.effect-authoring",
   "version": 13,
-  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.kakulsaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_31_01", "startOffsetMs": 0, "sourceStartMs": 1989, "playMs": 4279, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
+  "sourceModelPreview": {"gateId": "GATE3", "actorProfileId": "MN_RPCT_05", "targetBossPlacementId": "boss.koukusaydon.g3.saydon", "animations": [{"runtimeClip": "rpct00_att_battle_31_01", "startOffsetMs": 0, "sourceStartMs": 1989, "playMs": 4279, "playRate": 1, "endPolicy": "HOLD_LAST_POSE"}]},
   "effectAssetId": "effect.kouku.gate3.clone.breath",
   "displayName": "분신소환_기분나빠_브레스",
   "bloomIntensity": 1.29999995,

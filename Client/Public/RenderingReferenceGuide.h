@@ -1,14 +1,18 @@
 #pragma once
 
+// 설명 표·검색·선택 버튼을 매 프레임 그리는 ImGui API다.
 #include "imgui.h"
+// 비교 표의 원소 수를 std::size로 구한다.
 #include <iterator>
+// RecipeFor가 항목 ID를 복사 없이 비교한다.
 #include <string_view>
 
-// Shared read-only comparison with commercial rendering/profiling concepts.
-// Workbench may consume explicit stable recipe requests; the Profiler stays read-only.
+// Benchmark와 Profiler가 공유하는 비교 안내다. 계측기·렌더 자원·Level을 소유하지 않는다.
+// Profiler는 설명만 읽고, Benchmark는 반환된 recipe ID를 받아 세션 실험을 준비한다.
 namespace Client::RenderingReferenceGuide
 {
     enum class Support { Partial, Missing };
+    // 현재 범위·부족한 입력·수치 의미·검증 기준을 묶은 한 행이다. 문자열 포인터는 정적 표를 차용한다.
     struct Entry final
     {
         const char* Id; const char* Name; const char* Category; Support Status;
@@ -16,6 +20,7 @@ namespace Client::RenderingReferenceGuide
         const char* MetricMeaning; const char* Boundary; const char* Validation;
         const char* Experiment; const char* Source;
     };
+    // 저장 데이터나 GPU 결과가 아닌 설명 표다. 실제 구현과 계측 근거는 각 소비 코드에서 확인한다.
     inline constexpr Entry Entries[] = {
         {"frame-budget", "프레임 예산·CPU/GPU 병목", "시간", Support::Partial,
          "Unreal의 프레임 분석은 게임·렌더 제출·GPU와 프레임 간격을 나누어 느린 경로를 찾습니다.",
@@ -147,6 +152,8 @@ namespace Client::RenderingReferenceGuide
          "같은 asset cold/warm 로드와 취소·실패에서 단계별 합계와 누락을 검증해야 합니다.",
          "F7 Loader 긴 작업과 해당 frame p99를 연결해 원인 후보를 찾습니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/reporting-texture-streaming-metrics-in-unreal-engine"},
+        // MapPBR은 mapmaterials → CMaterial SRV → MapAssetRenderUtils 상수 → 표면/Deferred 순서로 읽는다.
+        // native 간접광은 재질 sourceIndirect와 scene useSourcePBRIndirect가 함께 허용해야 선택된다.
         {"shader", "Shader/PSO·재질 복잡도", "화면·장면", Support::Partial,
          "Material Analyzer와 shader 통계는 재질의 instruction·sample·permutation 부담을 조사합니다.",
          "재질 family/debug view·PBR 기여 실험과 일부 Shader 준비 CPU scope가 있습니다.",
@@ -169,13 +176,13 @@ namespace Client::RenderingReferenceGuide
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/viewport-modes-in-unreal-engine"},
         {"culling", "Scene proxy·가시성·LOD", "화면·장면", Support::Partial,
          "상용 엔진은 장면 primitive 표현과 view별 가시성·occlusion·LOD 선택을 별도 단계로 관리합니다.",
-         "기존 CModel·맵 batch의 CPU bounds/culling·LOD·instancing 계수와 선택 index가 있습니다.",
-         "UE scene proxy/GPU Scene·HZB occlusion·Nanite cluster streaming은 없습니다.",
+         "맵의 CPU 컬링·LOD와 호환 batch의 compute visibility·indirect 제출이 있습니다. HiZ는 옵션·최소 규모·정적 depth 준비가 충족될 때 사용합니다.",
+         "프로젝트의 GPU scene은 호환 정적 맵 범위입니다. UE scene proxy 전체 계약이나 Nanite cluster streaming은 없습니다.",
          "stable placement/primitive ID, view ID, bounds, cull reason, LOD, 제출과 결과 연결.",
          "후보·통과·제출은 서로 다른 모집단입니다. 고유 CMesh는 가시 object 수가 아닙니다.",
          "CPU 컬링 성공만으로 최종 GPU 가시성이 입증되지 않습니다.",
          "카메라 경계·가림·공유메시·다중뷰에서 instance별 제외 이유와 실제 제출을 대조해야 합니다.",
-         "F7 MapCulling/LOD/index 및 CPU Map.Batch.Visibility를 같은 frame에서 비교합니다.",
+         "F7의 MapCulling/LOD/index와 Map.GpuScene·Render.GpuScene scope를 같은 frame 기준으로 비교합니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/visibility-and-occlusion-culling-in-unreal-engine"},
         {"light", "Light Complexity·직접광 범위", "화면·장면", Support::Partial,
          "광원 중첩·수광체·화면 coverage를 나누면 개수보다 실제 shading 범위의 영향을 볼 수 있습니다.",
@@ -197,6 +204,8 @@ namespace Client::RenderingReferenceGuide
          "기본3×3 parity와 동일 caster/coverage에서 sample sweep GPU·화질을 비교합니다.",
          "WB shadow ON/OFF·PCF·strength recipe, Render.Shadow/Render.Lights/Render.Combined.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/virtual-shadow-maps-in-unreal-engine"},
+        // native BRDF 표의 R/G는 Fresnel/base 계수다. 화면 RGB를 바꾸는 color-grading LUT와 입력 좌표가 다르다.
+        // Renderer는 native 간접광 모드에서 추가 project cubeDiffuse를 억제해 두 근사를 중복하지 않는다.
         {"gi", "GI·Lumen·반사", "화면·장면", Support::Partial,
          "GI는 간접광 문제이며 Lumen은 scene 표현·추적·cache·필터를 묶은 UE의 특정 구현입니다.",
          "map family RNM·IBL과 source marker3 MapPBR에 가산하는 공간 SSGI/SSR 실험 패스·sample/step 세션변수가 있습니다.",
@@ -258,9 +267,11 @@ namespace Client::RenderingReferenceGuide
          "WB 원인별 recipe로 한 변수만 선택하고 실패 원인·변경 필드와 함께 결과를 저장합니다.",
          "https://dev.epicgames.com/documentation/en-us/unreal-engine/performance-and-profiling-overview"},
     };
+    // Support 분류에 맞는 정적 표시 문자열을 반환한다.
     inline const char* StatusLabel(Support value)
     { return value == Support::Partial ? "일부 관측 / 계약 차이 있음" : "현재 미구현"; }
 
+    // 연결된 다섯 항목만 정적 recipe ID를 반환한다. 없는 항목은 nullptr이며 설정은 적용하지 않는다.
     inline const char* RecipeFor(std::string_view id)
     {
         if (id == "light") return "pbr.directDiffuse";
@@ -271,6 +282,8 @@ namespace Client::RenderingReferenceGuide
         return nullptr;
     }
 
+    // Profiler는 기본 인자로 설명만 표시하고 Benchmark만 allowExperiments를 켜서 요청을 받는다.
+    // 검색·선택 상태는 static으로 유지하며 버튼 요청이 없는 프레임은 nullptr를 반환한다.
     inline const char* Render(bool allowExperiments = false, bool experimentActive = false, bool capturing = false)
     {
         ImGui::PushID("CommercialRenderingReference");

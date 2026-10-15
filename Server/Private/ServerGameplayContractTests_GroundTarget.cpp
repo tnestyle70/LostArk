@@ -1,4 +1,4 @@
-#include "ServerGameplayContractTests_Runner.h"
+﻿#include "ServerGameplayContractTests_Runner.h"
 #include "ServerGameplayContractTests_PlayerSkillFixtures.h"
 #include "ServerGameplayContractTests.h"
 #include "ClientSession.h"
@@ -258,7 +258,7 @@ void LostArk::Server::CServerGameplayContractRunner::Run_GroundTarget(TESTS& tes
 		tests.Require_GroundTarget(approvedTargetPreserved && duplicateRejected,
 			"Commit approved T target/cost once and reject duplicate sequence without mutation");
 
-		/* Heap-allocated: the contract frame already sits near the 1 MiB production stack. */
+		/* 큰 테스트 room 상태를 호출 stack에 쌓지 않도록 unique_ptr로 heap에 둔다. */
 		auto snapshotRoomStorage = std::make_unique<CGameRoom>(WORLD_ID::TRAINING_GROUND);
 		CGameRoom& snapshotRoom = *snapshotRoomStorage;
 		constexpr SESSION_ID SNAPSHOT_SESSION = 91001u;

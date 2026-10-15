@@ -1,9 +1,9 @@
 {
   "schema": "lostark.boss-composition-product",
   "formatVersion": 1,
-  "compositionId": "boss.composition.kakulsaydon",
+  "compositionId": "boss.composition.koukusaydon",
   "sourceRevision": 2,
-  "compositionRevision": "1c54df08b6a3da8aa85a7445b3e3bcf397f996a961ac28729599a49b609291d6",
+  "compositionRevision": "9d4cfbe058f324d08af0edb80b114271c1e45a523d28ea21eb609ea5aee05d89",
   "status": "REFERENCE_ONLY",
   "runtimeEligible": false,
   "displayName": "KoukuSaydon Gate 1 Boss Composition",
@@ -13,7 +13,7 @@
   "sourceManifest": {
     "schema": "lostark.composition-source-manifest",
     "formatVersion": 1,
-    "sourceManifestId": "1c54df08b6a3da8aa85a7445b3e3bcf397f996a961ac28729599a49b609291d6",
+    "sourceManifestId": "9d4cfbe058f324d08af0edb80b114271c1e45a523d28ea21eb609ea5aee05d89",
     "files": [
       {
         "path": "Data/Animation/Authored/KoukuSaydon/MN_RPCT_05.actionbindings.json",
@@ -77,7 +77,7 @@
       },
       {
         "path": "Data/Compositions/Bosses/KoukuSaydonGate1.bosscomposition.json",
-        "sha256": "a2f9f586470836d0f4494959718e773c7e854caf4545e78663d45f5270415811",
+        "sha256": "ccafc45b2f121de3a92d39e067031ef88f7954f25a4762609db2d3cd15fae3a0",
         "bytes": 4371
       }
     ]

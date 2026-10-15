@@ -9,9 +9,11 @@ namespace
 {
 	using namespace LostArk::Server;
 
+	// 부호 있는 tick 차로 기한을 비교할 수 있도록 저작 breaking 기간을 INT32_MAX 이하로 제한한다.
 	constexpr std::uint32_t MAX_ORDERED_TICK_DISTANCE =
 		(static_cast<std::uint32_t>((std::numeric_limits<std::int32_t>::max)()));
 
+	// graph의 저장 ID는 1~128바이트 ASCII 영숫자/점/밑줄/하이픈으로 제한한다. 존재 참조는 별도 map 검사다.
 	bool Is_StableId(const std::string& value)
 	{
 		if (value.empty() || value.size() > 128u)
@@ -28,11 +30,13 @@ namespace
 		});
 	}
 
+	// 선택적 충돌/navigation ID는 빈 값 또는 같은 stable ID 형식만 허용한다.
 	bool Is_OptionalStableId(const std::string& value)
 	{
 		return value.empty() || Is_StableId(value);
 	}
 
+	// 초기 상태로 저장 가능한 지속 상태다. 중간 상태 BREAKING으로 초기화하지 않는다.
 	bool Is_PersistentState(const WORLD_DESTRUCTION_STATE state)
 	{
 		return WORLD_DESTRUCTION_STATE::INTACT == state ||
@@ -40,12 +44,15 @@ namespace
 			WORLD_DESTRUCTION_STATE::DESPAWNED == state;
 	}
 
+	// mutation의 도착점은 파괴 또는 제거 상태다. 일반 trigger로 INTACT에 복구하지 않는다.
 	bool Is_FinalMutationState(const WORLD_DESTRUCTION_STATE state)
 	{
 		return WORLD_DESTRUCTION_STATE::FRACTURED == state ||
 			WORLD_DESTRUCTION_STATE::DESPAWNED == state;
 	}
 
+	// 1~UINT32_MAX를 순환하는 tick에 기간을 더한다. 0은 예약 없음이므로 wrap 때 건너뛴다.
+	// startTick이 0이 아니라는 전제는 요청 검사에서 확보한다.
 	std::uint32_t Add_ServerTicksSkippingReservedZero(
 		const std::uint32_t startTick,
 		const std::uint32_t elapsedTicks)
@@ -58,6 +65,7 @@ namespace
 				SERVER_TICK_CARDINALITY) + 1u);
 	}
 
+	// 같은 tick 또는 부호 있는 차가 양수이면 기한 도달이다. 무제한으로 오래된 tick의 순서를 판정하는 함수는 아니다.
 	bool Has_ReachedTick(
 		const std::uint32_t currentTick,
 		const std::uint32_t targetTick)
@@ -66,6 +74,7 @@ namespace
 			static_cast<std::int32_t>(currentTick - targetTick) > 0;
 	}
 
+	// stage/impact 연결은 이름 세 개와 stage index를 전부 비교하여 다른 단계의 동명 동작과 섞지 않는다.
 	bool Is_ExactActionTuple(
 		const WORLD_DESTRUCTION_BINDING_DESCRIPTOR& binding,
 		const WORLD_DESTRUCTION_ACTION_TUPLE& action)
@@ -76,11 +85,14 @@ namespace
 			binding.iStageIndex == action.iStageIndex;
 	}
 
+	// 이전 후보의 상태와 메모리를 출력에서 제거한다. Runtime의 실제 그룹 상태는 건드리지 않는다.
 	void Clear_Transaction(WORLD_DESTRUCTION_TRANSACTION& transaction)
 	{
 		transaction = {};
 	}
 
+	// 검증한 그룹/정의에서 다음 version과 적용 ID를 값으로 복사한다. 호출자는 version 소진을 먼저 검사한다.
+	// applyPersistentMutation은 GameRoom이 충돌/navigation flag를 바꿀 시점을 구분한다.
 	WORLD_DESTRUCTION_STATE_TRANSITION Make_Transition(
 		const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& groupDescriptor,
 		const WORLD_DESTRUCTION_STATE groupState,
@@ -107,6 +119,8 @@ namespace
 	}
 }
 
+// GameRoom 초기화가 bootstrap graph를 넘긴다. 정의 형식/중복/내부 참조를 임시 컨테이너에 검증한 뒤 swap한다.
+// 실제 충돌 box와 navigation condition 존재 검사는 GameRoom의 후속 검증 책임이다.
 bool LostArk::Server::CWorldDestructionRuntime::Initialize(
 	const WORLD_DESTRUCTION_DESCRIPTOR_GRAPH& descriptorGraph,
 	std::string& status,
@@ -126,6 +140,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Initialize(
 	}
 
 	std::map<std::string, GROUP_RUNTIME> stagedGroups;
+	// 한 placement가 서로 다른 파괴 그룹에 중복 소유되지 않도록 graph 전체에 걸쳐 기록한다.
 	std::set<std::string> ownedPlacementIds;
 	for (const WORLD_DESTRUCTION_GROUP_DESCRIPTOR& descriptor :
 		descriptorGraph.Groups)
@@ -183,6 +198,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Initialize(
 		}
 	}
 
+	// 벡터는 저작 순서의 평가, map은 commit 때 ID 조회를 맡는다. 동일한 target tuple도 중복 등록하지 않는다.
 	std::vector<WORLD_DESTRUCTION_BINDING_DESCRIPTOR> stagedBindings;
 	std::map<std::string, WORLD_DESTRUCTION_BINDING_DESCRIPTOR>
 		stagedBindingById;
@@ -242,6 +258,8 @@ bool LostArk::Server::CWorldDestructionRuntime::Initialize(
 	return true;
 }
 
+// 방 초기화/audition이 호출한다. epoch 소진과 입력을 먼저 검사하고 그룹 복사본을 초기 상태로 되돌린다.
+// 교체 후 중복 적용 기록을 비워 새 epoch에서 같은 패턴 sequence도 다시 사용할 수 있게 한다.
 bool LostArk::Server::CWorldDestructionRuntime::Reset(
 	std::string& status,
 	const std::uint32_t resetServerTick)
@@ -273,6 +291,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Reset(
 	return true;
 }
 
+// GameRoom의 stage 진입을 공용 trigger 준비로 전달한다. receiver는 없는 종류다.
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_StageTrigger(
 	const WORLD_DESTRUCTION_ACTION_TUPLE& action,
@@ -287,6 +306,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_StageTrigger(
 		transaction, status);
 }
 
+// GameRoom이 확인한 돌진 receiver와 action tuple을 함께 전달한다.
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_ImpactTrigger(
 	const WORLD_DESTRUCTION_ACTION_TUPLE& action,
@@ -302,6 +322,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_ImpactTrigger(
 		transaction, status);
 }
 
+// GameRoom이 몸체/공격 도형으로 확인한 벽 접촉을 전달한다. sequence는 중복 키이며 단조 증가를 검증하지 않는다.
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_ContactTrigger(
 	const std::string& contactCollisionId,
@@ -316,6 +337,8 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_ContactTrigger(
 		transaction, status);
 }
 
+// 실제 상태는 읽기만 하고 출력 후보를 새로 만든다. 하나의 요청에서 같은 그룹을 두 번 전이시키면 거부한다.
+// 성공한 전이가 있으면 READY이며 중복/무변경 binding은 함께 있어도 건너뛸 수 있다.
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 	const WORLD_DESTRUCTION_TRIGGER_KIND triggerKind,
@@ -328,9 +351,8 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 	std::string& status) const
 {
 	Clear_Transaction(transaction);
-	/* A contact break can happen while the boss is idle, between patterns and
-	   during any animation, so it is the one trigger that carries no action
-	   tuple to validate or to match. */
+	// contact 파괴는 보스 대기나 패턴 사이에도 들어올 수 있으므로 action tuple을 검사하지 않는다.
+	// 정확한 receiver ID와 binding 종류가 일치하는지 아래에서 확인한다.
 	const bool isContactTrigger =
 		WORLD_DESTRUCTION_TRIGGER_KIND::COLLIDER_CONTACT == triggerKind;
 	if (!m_bInitialized || 0u == sourceNetEntityId ||
@@ -362,6 +384,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 			continue;
 		}
 		foundExactBinding = true;
+		// 현재 epoch에서 commit된 같은 binding/sequence/source가 있으면 다시 적용하지 않는다.
 		const auto applicationKey = std::make_tuple(
 			binding.strBindingId, patternSequence, sourceNetEntityId);
 		if (m_AppliedBindingSequences.contains(applicationKey))
@@ -395,6 +418,7 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 			return WORLD_DESTRUCTION_PREPARE_RESULT::REJECTED;
 		}
 
+		// 기간 0은 즉시 최종 상태와 외부 flag를 적용하고, 양수 기간은 BREAKING 예약만 먼저 만든다.
 		const bool immediate = 0u == mutation.iBreakingDurationTicks;
 		const std::uint32_t commitTick = immediate ? serverTick :
 			Add_ServerTicksSkippingReservedZero(
@@ -431,6 +455,8 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_Trigger(
 		WORLD_DESTRUCTION_PREPARE_RESULT::NO_CHANGE;
 }
 
+// GameRoom의 Commit_DueWorldDestruction이 현재 tick을 넘긴다. 기한이 된 BREAKING 그룹만 최종 전이 후보로 모은다.
+// 이 후보에는 새 binding 적용 기록이 없고, 실제 외부 flag 적용은 GameRoom의 commit 경로가 담당한다.
 LostArk::Server::WORLD_DESTRUCTION_PREPARE_RESULT
 LostArk::Server::CWorldDestructionRuntime::Prepare_DueStateCommits(
 	const std::uint32_t serverTick,
@@ -484,6 +510,8 @@ LostArk::Server::CWorldDestructionRuntime::Prepare_DueStateCommits(
 	return WORLD_DESTRUCTION_PREPARE_RESULT::READY;
 }
 
+// GameRoom이 충돌/navigation 후보 준비를 끝낸 뒤 호출한다. 그룹과 중복 기록 복사본을 검증/변경해 끝에서 함께 교체한다.
+// 검사 중 false가 나오면 원래 두 컨테이너는 유지되며 외부 충돌/navigation/패킷을 여기서 처리하지 않는다.
 bool LostArk::Server::CWorldDestructionRuntime::Commit(
 	const WORLD_DESTRUCTION_TRANSACTION& transaction,
 	std::string& status)
@@ -533,6 +561,8 @@ bool LostArk::Server::CWorldDestructionRuntime::Commit(
 			return false;
 		}
 
+		// INTACT→BREAKING, BREAKING→최종, 기간 0의 INTACT→최종 중 한 상태 전이만 허용한다.
+		// 예약 시작/완료 tick과 persistent flag도 해당 경로의 값이어야 한다.
 		const bool startsBreaking =
 			WORLD_DESTRUCTION_STATE::INTACT == transition.ePreviousState &&
 			WORLD_DESTRUCTION_STATE::BREAKING == transition.eNextState &&
@@ -559,6 +589,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Commit(
 			return false;
 		}
 
+		// trigger 시작에는 같은 index의 binding 적용 기록이 필요하다. 예약 완료에는 새 적용 기록을 추가하지 않는다.
 		if (!transaction.BindingApplications.empty())
 		{
 			const WORLD_DESTRUCTION_BINDING_APPLICATION& application =
@@ -607,6 +638,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Commit(
 	return true;
 }
 
+// 복제와 벽/pickup 조회가 읽을 상태 복사본을 작성한다. 없는 ID이면 출력 변경 없이 false다.
 bool LostArk::Server::CWorldDestructionRuntime::Find_GroupState(
 	const std::string& groupId,
 	WORLD_DESTRUCTION_GROUP_STATE& state) const
@@ -624,6 +656,7 @@ bool LostArk::Server::CWorldDestructionRuntime::Find_GroupState(
 	return true;
 }
 
+// 전체 동기화가 사용하는 독립 값 목록이다. map의 group ID 순서를 유지하며 내부 요소 참조를 노출하지 않는다.
 std::vector<LostArk::Server::WORLD_DESTRUCTION_GROUP_STATE>
 LostArk::Server::CWorldDestructionRuntime::Get_GroupStates() const
 {

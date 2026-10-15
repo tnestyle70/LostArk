@@ -1,3 +1,5 @@
+﻿// timeline 드래그의 Pattern 전체 시각을 소유 Stage의 local 시각으로 변환해 typed draft setter에 보낸다.
+// 눈금·box를 그리는 본체 Render_Timeline과 달리 이 파일은 변경할 시간 구간의 검증과 적용을 담당한다.
 #include "CompositionTimeline.h"
 #include "ValtanActionWorkbench.h"
 #include "BalanceTool.h"
@@ -6,10 +8,14 @@
 #include <limits>
 #include <string_view>
 
+// Stage 누적 clock과 경계 탐색은 이 CPP의 적용 알고리즘에서만 쓰므로 익명 이름 공간에 둔다.
+// 아래 차용 포인터는 호출 안에서 만든 fresh Pattern과 clocks vector가 살아 있는 동안만 사용한다.
 namespace
 {
     using namespace Client;
 
+    // stage는 입력 Pattern 안의 주소이고 startMs/endMs는 선택 preview 경로 시작을 0으로 한 누적 ms다.
+    // Stage-local clock과 Pattern-global clock을 같이 보관해 이동 때 올바른 원점을 사용할 수 있게 한다.
     struct STAGE_CLOCK final
     {
         const VALTAN_STAGE_VIEW* stage = nullptr;
@@ -17,6 +23,8 @@ namespace
         uint32_t endMs = 0u;
     };
 
+    // 선택 경로의 Stage 길이를 64bit로 누적하며 0 길이·null·32bit 결과 범위 초과를 거절한다.
+    // 현재 호출자는 빈 vector를 넘기고 false이면 폐기한다. 함수 내부 실패가 이미 push한 앞쪽 clock을 되돌리지는 않는다.
     bool BuildStageClocks(const VALTAN_PATTERN_VIEW& pattern,
         VALTAN_PATTERN_PREVIEW_PATH path, std::vector<STAGE_CLOCK>& clocks,
         std::string& status)
@@ -59,6 +67,8 @@ namespace
         uint32_t timeMs = 0u;
     };
 
+    // 각 Stage의 ENTER/EXIT까지 ms 거리를 비교한다. 같은 거리면 기존 trigger와 Stage 선호 점수로 결정한다.
+    // 모든 경계를 한 번씩 보므로 별도 검색 cache 없이 현재 preview 경로의 결과를 얻는다.
     ACTION_BOUNDARY NearestBoundary(const std::vector<STAGE_CLOCK>& clocks,
         uint32_t requestedMs, const std::string& preferredTrigger,
         const std::string& preferredStage, bool preserveTrigger)
@@ -97,6 +107,8 @@ namespace
             left.strTargetId == right.strTargetId;
     }
 
+    // 환경 occurrence의 원본/목적지 행을 값으로 복사해 준비한다. 같은 Stage면 한 setter만 호출한다.
+    // 다른 Stage로 옮길 때는 두 setter를 BalanceTool transaction으로 묶어 앞쪽 삭제만 남는 부분 적용을 막는다.
     template<typename T, typename Setter>
     bool MoveEnvironmentOccurrence(CBalanceTool& balance,
         const VALTAN_PATTERN_VIEW& pattern, const STAGE_CLOCK& source,
@@ -142,6 +154,8 @@ namespace
     }
 }
 
+// Render_Timeline이 놓기·trim을 확정할 때 호출한다. frame 표시 행의 ID는 재조회 key로만 사용하고 최신 Balance draft를 읽는다.
+// 입력 newStartMs/newEndMs는 Pattern 전체의 ms다. 대상 Stage를 정한 뒤 local offset·duration으로 바꿔 해당 소유 도구에 전달한다.
 bool_t Client::CValtanActionWorkbench::Apply_AuxiliaryTimelineTiming(
     const VALTAN_PATTERN_VIEW& pattern, const TIMELINE_ITEM& item,
     uint32_t newStartMs, uint32_t newEndMs, bool trim, std::string& status)
@@ -152,8 +166,8 @@ bool_t Client::CValtanActionWorkbench::Apply_AuxiliaryTimelineTiming(
         status = "The selected timeline owner or proposed timing is unavailable.";
         return false;
     }
-    // Use the shared draft again at release: the displayed row may predate a
-    // Details edit, and its cached absolute bounds are not the source clock.
+    // 드래그를 놓는 시점에는 공용 draft를 다시 읽는다. 표시 행은 Details 편집보다 오래됐을 수 있고
+    // cache의 절대 시각은 현재 원본 clock을 대신할 수 없다.
     VALTAN_PATTERN_VIEW fresh;
     if (!m_pBalanceTool->Get_ValtanPatternDraft(pattern.strPatternId, fresh, status))
         return false;

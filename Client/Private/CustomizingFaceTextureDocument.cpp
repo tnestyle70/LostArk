@@ -1,12 +1,18 @@
-#include "CustomizingFaceTextureDocument.h"
+﻿#include "CustomizingFaceTextureDocument.h"
 
+// JSON의 object/array/number/string을 검사하고 값으로 읽는다.
 #include "DataJson.h"
+// 저작 정본 Data 아래 문서 경로를 구한다.
 #include "ProjectDataRoot.h"
 
+// 문서 파일 경로를 조합·전달한다.
 #include <filesystem>
+// 문서 파일의 바이트를 입력 stream으로 읽는다.
 #include <fstream>
+// 파일 전체를 모아 JSON parser에 전달한다.
 #include <sstream>
 
+// CustomizingView가 목록을 준비할 때 호출한다. schema/version·행 구조를 확인하고 texture 파일 자체는 열지 않는다.
 bool_t Client::CCustomizingFaceTextureDocument::Load()
 {
 	const std::filesystem::path path =
@@ -40,8 +46,7 @@ bool_t Client::CCustomizingFaceTextureDocument::Load()
 		return false;
 	}
 
-	/* Staged, so a bad entry late in the document cannot leave half of the previous contents
-	replaced. */
+	// 행 하나가 잘못되어도 이전 class 목록이 부분 교체되지 않도록 임시 map에서 읽는다.
 	std::unordered_map<std::string,
 		std::unordered_map<std::string, std::vector<std::string>>> staged;
 	for (const auto& [assetId, classValue] : pClasses->Get_Object())
@@ -72,16 +77,11 @@ bool_t Client::CCustomizingFaceTextureDocument::Load()
 						"): an entry is missing its index";
 					return false;
 				}
-				/* A null textureAssetId is the cooker's hole marker: the retail list has an
-				entry there but this client ships no texture for it. That is a gap in the art,
-				not a broken document, so the position is kept and left empty -- rejecting the
-				file over one took every other class's textures down with it. */
+				// textureAssetId가 비어 있지 않은 문자열일 때만 해당 index에 기록한다. 아니면 같은 index의 기존 값도 지우지 않는다.
 				const DATA_JSON_VALUE* pTexture = entry.Find("textureAssetId");
 				const bool_t hasTexture = nullptr != pTexture &&
 					pTexture->Is_String() && !pTexture->Get_String().empty();
-				/* The cooker leaves a hole where the retail list names a texture this client
-				does not ship, so index is the icon position and is *not* the array position.
-				Padding keeps a click on icon N reaching texture N instead of sliding. */
+				// index를 icon 위치로 사용해 빈 칸을 채운다. 배열 순서와 index의 일치·정수 범위를 이 코드가 별도로 검사하지는 않는다.
 				const size_t iIndex = static_cast<size_t>(pIndex->Get_Number());
 				if (iIndex >= textures.size())
 					textures.resize(iIndex + 1u);
@@ -93,6 +93,7 @@ bool_t Client::CCustomizingFaceTextureDocument::Load()
 		staged.emplace(assetId, std::move(categories));
 	}
 
+	// 모든 명시적 검사를 통과한 뒤 이전 목록을 교체한다. 이전 Find 결과 포인터는 다시 조회해야 한다.
 	m_Classes = std::move(staged);
 	m_strStatus = "loaded " + std::to_string(m_Classes.size()) + " classes";
 	return true;

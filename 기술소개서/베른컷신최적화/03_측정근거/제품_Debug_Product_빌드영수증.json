@@ -1,0 +1,615 @@
+{
+    "schema":  "lostark.compile-result",
+    "formatVersion":  1,
+    "configuration":  "Debug",
+    "profile":  "Product",
+    "result":  "PASS",
+    "failure":  "",
+    "skippedBuild":  false,
+    "startedUtc":  "2026-10-14T14:06:53.1674706Z",
+    "elapsedMs":  16175,
+    "toolchain":  {
+                      "selection":  "MSBuildPath parameter",
+                      "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                      "msbuildFileVersion":  "18.11.0.42713",
+                      "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                      "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                      "preferredToolArchitecture":  "x64",
+                      "windowsSdkToolArchitecture":  "Native64Bit",
+                      "targetPlatform":  "x64"
+                  },
+    "steps":  [
+                  {
+                      "name":  "product:output-lock-preflight",
+                      "result":  "PASS",
+                      "elapsedMs":  72
+                  },
+                  {
+                      "name":  "build:toolchain",
+                      "result":  "PASS",
+                      "elapsedMs":  0,
+                      "details":  {
+                                      "selection":  "MSBuildPath parameter",
+                                      "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                                      "msbuildFileVersion":  "18.11.0.42713",
+                                      "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                                      "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                                      "preferredToolArchitecture":  "x64",
+                                      "windowsSdkToolArchitecture":  "Native64Bit",
+                                      "targetPlatform":  "x64"
+                                  }
+                  },
+                  {
+                      "name":  "msbuild:Engine\\Default\\Engine.vcxproj",
+                      "result":  "PASS",
+                      "elapsedMs":  738,
+                      "details":  {
+                                      "startedUtc":  "2026-10-14T14:06:53.3824999Z",
+                                      "completedUtc":  "2026-10-14T14:06:54.5352306Z",
+                                      "toolchain":  {
+                                                        "selection":  "MSBuildPath parameter",
+                                                        "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                                                        "msbuildFileVersion":  "18.11.0.42713",
+                                                        "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                                                        "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                                                        "preferredToolArchitecture":  "x64",
+                                                        "windowsSdkToolArchitecture":  "Native64Bit",
+                                                        "targetPlatform":  "x64"
+                                                    },
+                                      "logs":  {
+                                                   "binaryLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140653301Z-Engine-Debug.binlog",
+                                                   "diagnosticLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140653301Z-Engine-Debug.log"
+                                               },
+                                      "maxProjectNodes":  1,
+                                      "compilerProcessOverride":  1,
+                                      "projectStateBefore":  [
+                                                                 {
+                                                                     "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\x64\\Debug\\Engine.tlog\\Engine.lastbuildstate",
+                                                                     "lastWriteUtc":  "2026-10-14T13:54:19.7911741Z",
+                                                                     "state":  [
+                                                                                   "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                   "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\|"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                      "projectStateAfter":  [
+                                                                {
+                                                                    "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\x64\\Debug\\Engine.tlog\\Engine.lastbuildstate",
+                                                                    "lastWriteUtc":  "2026-10-14T14:06:54.0873009Z",
+                                                                    "state":  [
+                                                                                  "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                  "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\|"
+                                                                              ]
+                                                                }
+                                                            ],
+                                      "trackingStateChanged":  false,
+                                      "outputChanges":  {
+                                                            "measurement":  "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+                                                            "directories":  [
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Default\\x64\\Debug",
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Engine\\Bin\\Debug"
+                                                                            ],
+                                                            "objectWrites":  0,
+                                                            "precompiledHeaderWrites":  0,
+                                                            "shaderWrites":  0,
+                                                            "binaryWrites":  0,
+                                                            "changedPaths":  [
+
+                                                                             ],
+                                                            "removedPaths":  [
+
+                                                                             ]
+                                                        },
+                                      "rebuildReasonSamples":  [
+
+                                                               ],
+                                      "diagnosticError":  ""
+                                  }
+                  },
+                  {
+                      "name":  "msbuild:Shared\\Default\\Shared.vcxproj",
+                      "result":  "PASS",
+                      "elapsedMs":  449,
+                      "details":  {
+                                      "startedUtc":  "2026-10-14T14:06:54.5486155Z",
+                                      "completedUtc":  "2026-10-14T14:06:55.0450307Z",
+                                      "toolchain":  {
+                                                        "selection":  "MSBuildPath parameter",
+                                                        "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                                                        "msbuildFileVersion":  "18.11.0.42713",
+                                                        "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                                                        "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                                                        "preferredToolArchitecture":  "x64",
+                                                        "windowsSdkToolArchitecture":  "Native64Bit",
+                                                        "targetPlatform":  "x64"
+                                                    },
+                                      "logs":  {
+                                                   "binaryLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140654542Z-Shared-Debug.binlog",
+                                                   "diagnosticLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140654542Z-Shared-Debug.log"
+                                               },
+                                      "maxProjectNodes":  1,
+                                      "compilerProcessOverride":  1,
+                                      "projectStateBefore":  [
+                                                                 {
+                                                                     "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Intermediate\\x64\\Debug\\Shared.tlog\\Shared.lastbuildstate",
+                                                                     "lastWriteUtc":  "2026-10-14T13:54:20.7501625Z",
+                                                                     "state":  [
+                                                                                   "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                   "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Default\\|"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                      "projectStateAfter":  [
+                                                                {
+                                                                    "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Intermediate\\x64\\Debug\\Shared.tlog\\Shared.lastbuildstate",
+                                                                    "lastWriteUtc":  "2026-10-14T14:06:54.9649677Z",
+                                                                    "state":  [
+                                                                                  "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                  "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Default\\|"
+                                                                              ]
+                                                                }
+                                                            ],
+                                      "trackingStateChanged":  false,
+                                      "outputChanges":  {
+                                                            "measurement":  "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+                                                            "directories":  [
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Intermediate\\x64\\Debug",
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Shared\\Bin\\Debug"
+                                                                            ],
+                                                            "objectWrites":  0,
+                                                            "precompiledHeaderWrites":  0,
+                                                            "shaderWrites":  0,
+                                                            "binaryWrites":  0,
+                                                            "changedPaths":  [
+
+                                                                             ],
+                                                            "removedPaths":  [
+
+                                                                             ]
+                                                        },
+                                      "rebuildReasonSamples":  [
+
+                                                               ],
+                                      "diagnosticError":  ""
+                                  }
+                  },
+                  {
+                      "name":  "msbuild:Server\\Default\\Server.vcxproj",
+                      "result":  "PASS",
+                      "elapsedMs":  9461,
+                      "details":  {
+                                      "startedUtc":  "2026-10-14T14:06:55.0833052Z",
+                                      "completedUtc":  "2026-10-14T14:07:04.9669094Z",
+                                      "toolchain":  {
+                                                        "selection":  "MSBuildPath parameter",
+                                                        "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                                                        "msbuildFileVersion":  "18.11.0.42713",
+                                                        "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                                                        "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                                                        "preferredToolArchitecture":  "x64",
+                                                        "windowsSdkToolArchitecture":  "Native64Bit",
+                                                        "targetPlatform":  "x64"
+                                                    },
+                                      "logs":  {
+                                                   "binaryLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140655060Z-Server-Debug.binlog",
+                                                   "diagnosticLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140655060Z-Server-Debug.log"
+                                               },
+                                      "maxProjectNodes":  1,
+                                      "compilerProcessOverride":  1,
+                                      "projectStateBefore":  [
+                                                                 {
+                                                                     "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug\\Server.tlog\\Server.lastbuildstate",
+                                                                     "lastWriteUtc":  "2026-10-14T13:54:28.4954903Z",
+                                                                     "state":  [
+                                                                                   "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                   "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Default\\|"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                      "projectStateAfter":  [
+                                                                {
+                                                                    "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug\\Server.tlog\\Server.lastbuildstate",
+                                                                    "lastWriteUtc":  "2026-10-14T14:07:04.5148997Z",
+                                                                    "state":  [
+                                                                                  "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                  "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Default\\|"
+                                                                              ]
+                                                                }
+                                                            ],
+                                      "trackingStateChanged":  false,
+                                      "outputChanges":  {
+                                                            "measurement":  "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+                                                            "directories":  [
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug",
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug"
+                                                                            ],
+                                                            "objectWrites":  1,
+                                                            "precompiledHeaderWrites":  0,
+                                                            "shaderWrites":  0,
+                                                            "binaryWrites":  1,
+                                                            "changedPaths":  [
+                                                                                 "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\Debug\\Server.exe",
+                                                                                 "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Intermediate\\x64\\Debug\\ServerGameplayContractTests_KoukuSupportSurface.obj"
+                                                                             ],
+                                                            "removedPaths":  [
+
+                                                                             ]
+                                                        },
+                                      "rebuildReasonSamples":  [
+                                                                   "C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Private\\ServerGameplayContractTests_KoukuSupportSurface.cpp이(가) 2026-10-14 오후 11:05:49에서 수정되었으므로 ..\\Private\\ServerGameplayContractTests_KoukuSupportSurface.cpp이(가) 컴파일됩니다.(작업 ID:51)",
+                                                                   "소스를 컴파일해야 합니다. 입력 내용 C:\\USERS\\TNEST\\DESKTOP\\LOSTARK\\SERVER\\INTERMEDIATE\\X64\\DEBUG\\SERVERGAMEPLAYCONTRACTTESTS_KOUKUSUPPORTSURFACE.OBJ이(가) 출력 내용 C:\\USERS\\TNEST\\DESKTOP\\LOSTARK\\SERVER\\BIN\\DEBUG\\SERVER.PDB보다 최신입니다.(작업 ID:59)"
+                                                               ],
+                                      "diagnosticError":  ""
+                                  }
+                  },
+                  {
+                      "name":  "msbuild:Client\\Default\\Client.vcxproj",
+                      "result":  "PASS",
+                      "elapsedMs":  1860,
+                      "details":  {
+                                      "startedUtc":  "2026-10-14T14:07:04.9934453Z",
+                                      "completedUtc":  "2026-10-14T14:07:08.3029643Z",
+                                      "toolchain":  {
+                                                        "selection":  "MSBuildPath parameter",
+                                                        "msbuildPath":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe",
+                                                        "msbuildFileVersion":  "18.11.0.42713",
+                                                        "msbuildProductVersion":  "18.11.0-1.26427.13+9353559c2c450f8b10cc8d531c7828d38c7063c1",
+                                                        "visualStudioInstallation":  "C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders",
+                                                        "preferredToolArchitecture":  "x64",
+                                                        "windowsSdkToolArchitecture":  "Native64Bit",
+                                                        "targetPlatform":  "x64"
+                                                    },
+                                      "logs":  {
+                                                   "binaryLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140704968Z-Client-Debug.binlog",
+                                                   "diagnosticLog":  "C:\\Users\\tnest\\Desktop\\LostArk\\out\\BernGeometryProxy20261014\\product-integration-applied\\verified-debug\\20261014T140704968Z-Client-Debug.log"
+                                               },
+                                      "maxProjectNodes":  1,
+                                      "compilerProcessOverride":  1,
+                                      "projectStateBefore":  [
+                                                                 {
+                                                                     "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\x64\\Debug\\Client.tlog\\Client.lastbuildstate",
+                                                                     "lastWriteUtc":  "2026-10-14T14:05:05.6122826Z",
+                                                                     "state":  [
+                                                                                   "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                   "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\|"
+                                                                               ]
+                                                                 }
+                                                             ],
+                                      "projectStateAfter":  [
+                                                                {
+                                                                    "path":  "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\x64\\Debug\\Client.tlog\\Client.lastbuildstate",
+                                                                    "lastWriteUtc":  "2026-10-14T14:07:06.8070274Z",
+                                                                    "state":  [
+                                                                                  "PlatformToolSet=v143:VCToolArchitecture=Native64Bit:VCToolsVersion=14.44.35207:TargetPlatformVersion=10.0.26100.0:",
+                                                                                  "Debug|x64|C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\|"
+                                                                              ]
+                                                                }
+                                                            ],
+                                      "trackingStateChanged":  false,
+                                      "outputChanges":  {
+                                                            "measurement":  "Changed output size or modification time; successful output writes, not failed compiler attempts.",
+                                                            "directories":  [
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Default\\x64\\Debug",
+                                                                                "C:\\Users\\tnest\\Desktop\\LostArk\\Client\\Bin\\Debug"
+                                                                            ],
+                                                            "objectWrites":  0,
+                                                            "precompiledHeaderWrites":  0,
+                                                            "shaderWrites":  0,
+                                                            "binaryWrites":  0,
+                                                            "changedPaths":  [
+
+                                                                             ],
+                                                            "removedPaths":  [
+
+                                                                             ]
+                                                        },
+                                      "rebuildReasonSamples":  [
+
+                                                               ],
+                                      "diagnosticError":  ""
+                                  }
+                  }
+              ],
+    "missingRuntimeInputs":  [
+
+                             ],
+    "invalidRuntimeInputs":  [
+
+                             ],
+    "runtimeDataChecks":  [
+                              {
+                                  "path":  "Server/Bin/DataFiles/Items/Items.bootstrap",
+                                  "publisher":  "Tools\\GameplayPipeline\\Publish-ItemCatalog.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  546,
+                                  "details":  "Item catalog CheckPublished succeeded: unchanged -\u003e C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\DataFiles\\Items\\Items.bootstrap"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Valtan/ClearRewards.bootstrap",
+                                  "publisher":  "Tools\\ValtanPipeline\\Publish-ValtanClearRewards.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  71,
+                                  "details":  "Valtan clear rewards CheckPublished succeeded: unchanged -\u003e C:\\Users\\tnest\\Desktop\\LostArk\\Server\\Bin\\DataFiles\\Valtan\\ClearRewards.bootstrap"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  62,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_DEV_TRAINING_GROUND.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LOBBY_CLASSSELECT_SL00.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_PVP_COLOSSEUM.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_HEARTRB_ED.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  3,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern2.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  3,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern3.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.BernSea.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  3,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LOBBY_CLASSSELECT_SL00.Character_Select.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario3.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario2.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  8,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario4.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.CardMiro.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.StartFine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate1Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate2Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate3Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Server/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.WaterpangEntry.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern2.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.Bern3.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_BER_BERNCASTLE.BernSea.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LOBBY_CLASSSELECT_SL00.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  3,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LOBBY_CLASSSELECT_SL00.Character_Select.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario3.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario2.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Mario4.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.CardMiro.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.StartFine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  10,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate1Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate2Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  1,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_LUT_MIDNIGHTC_ED.Gate3Fine.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              },
+                              {
+                                  "path":  "Client/Bin/DataFiles/Navigation/LV_OCN_EVENTIS_MHP.WaterpangEntry.navgrid",
+                                  "publisher":  "Tools/NavigationPipeline/Publish-ServerNavigation.ps1",
+                                  "result":  "PASS",
+                                  "elapsedMs":  2,
+                                  "details":  "Published grid byte length and required sidecar headers are complete"
+                              }
+                          ]
+}

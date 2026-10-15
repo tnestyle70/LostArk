@@ -31291,7 +31291,7 @@
   "sourceModelPreview": {
     "gateId": "ENCORE",
     "actorProfileId": "MN_RPCT_05",
-    "targetBossPlacementId": "boss.kakulsaydon.bingo.saydon",
+    "targetBossPlacementId": "boss.koukusaydon.bingo.saydon",
     "animations": [
       {
         "runtimeClip": "rpct00_att_battle_32_02",
