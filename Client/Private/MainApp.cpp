@@ -2871,6 +2871,26 @@ void CMainApp::Update(const f32_t fTimeDelta)
 					return m_pKoukuPresentationPlayer &&
 						   m_pKoukuPresentationPlayer->Resolve_PatternModelTarget(pattern, target, view);
 				});
+			// 본 선택은 패턴 재생 전에도 가능해야 한다. 명시적 요청에서만 공용 Preview에 모델을
+			// stage하고, 다른 도구의 미저장 세션 잠금이나 로드 실패는 기존 target을 보존한다.
+			route.workbench->Set_PresentationModelLoader(
+				[this](const KOUKU_SAYDON_COMPOSITION_PATTERN& pattern, std::string& status)
+				{
+					if (FAILED(EnsureAnimationPreviewBackend()) || !m_pCharacterPreviewPanel)
+					{
+						status = "Cannot prepare the shared animation preview for bone selection.";
+						return false;
+					}
+					const std::string asset(CKoukuSaydonCompositionDocument::Resolve_ActorProfileId(pattern.strActorProfileId));
+					if (asset.empty() || !m_pCharacterPreviewPanel->Select_TargetAsset(asset))
+					{
+						status = asset.empty() ? "This Pattern has no supported animation model."
+							: m_pCharacterPreviewPanel->Get_Status();
+						return false;
+					}
+					status = "Loaded " + asset + ". Choose BODY or WEAPON and the actual anchor bone.";
+					return true;
+				});
 			koukuResourceRefresh |= route.workbench->Consume_ResourceRefreshRequest();
 			presentationResourceRefresh |= route.workbench->Consume_PresentationResourceRefreshRequest();
 		}
@@ -3022,6 +3042,16 @@ void CMainApp::Update(const f32_t fTimeDelta)
 				COMPOSITION_ANIMATION_RESOURCE resource;
 				if (shell->Consume_AnimationPreviewRequest(resource))
 				{
+                    // World Motion은 native clip 재생기가 아니라 기존 Object 편집 owner로 전달한다.
+                    if (resource.Is_WorldMotion())
+                    {
+                        if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT)) && m_pWorldObjectTool)
+                            (void)m_pWorldObjectTool->Open_ObjectMotion(resource.strWorldObjectId,
+                                resource.strWorldMotionId, m_strToolStatus);
+                        else m_strToolStatus = "Object Tool is unavailable; existing drafts are preserved.";
+                        shell->Set_AnimationPreviewStatus(m_strToolStatus);
+                        continue;
+                    }
 					workbench->Cancel_CompleteSequencePlay();
 					if (SUCCEEDED(EnsureAnimationPreviewBackend()) && nullptr != m_pAnimationTool)
 					{
@@ -4577,6 +4607,18 @@ HRESULT CMainApp::Render()
 				}
 				workbench->Notify_WorldObjectEditResult(std::move(status));
 			}
+            // Effect V1/V2도 같은 World Object Motion을 값 identity로 연다. Effect 문서를 저장/교체하지 않는다.
+            const auto openEffectWorldMotion = [&](auto* tool)
+            {
+                COMPOSITION_ANIMATION_RESOURCE resource;
+                if (!tool || !tool->Consume_WorldMotionRequest(resource)) return;
+                if (SUCCEEDED(EnsureDebugTool(DEBUG_TOOL::WORLD_OBJECT)) && m_pWorldObjectTool)
+                    (void)m_pWorldObjectTool->Open_ObjectMotion(resource.strWorldObjectId,
+                        resource.strWorldMotionId, m_strToolStatus);
+                else m_strToolStatus = "Object Tool is unavailable; existing Effect and Object drafts are preserved.";
+            };
+            openEffectWorldMotion(m_pEffectTool.get());
+            openEffectWorldMotion(m_pEffectToolV2.get());
 			RenderMapEffectPlacementMarker();
 			if (IsDebugToolVisible(DEBUG_TOOL::ANIMATION) && nullptr != m_pAnimationTool)
 			{

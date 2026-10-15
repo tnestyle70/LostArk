@@ -33,6 +33,11 @@ struct COMPOSITION_ANIMATION_RESOURCE final
 	float fTicksPerSecond = 0.f;
 	// 화면에 보이는 이름이다. 삽입할 clip의 식별은 원본 clip과 패키지 정보가 담당한다.
 	std::string strDisplayName;
+    // World 목록의 identity다. native clip과 물리/Transform Motion은 서로 다른 소비자가 처리한다.
+    std::string strWorldObjectId, strWorldMotionId, strAnimationSetAssetId;
+    std::vector<std::string> CategoryPath;
+    float fModelPreScale = 0.01f;
+    bool Is_WorldMotion() const { return !strWorldObjectId.empty() && strRuntimeClip.empty(); }
 };
 
 // 한 Sequence의 clip을 순서대로 소유한다. vector는 순회·직렬화와 맞지만 삽입/교체 뒤 예전 원소 포인터를 보관하면 안 된다.
@@ -69,6 +74,10 @@ inline constexpr std::array<const char*, 28u>
 std::unordered_map<std::string, std::string> Read_CompositionAnimationDisplayNames(
     const std::string& assetName);
 
+// 설치 모델의 전체 clip과 저장 World Object Motion을 읽는다. 실패한 source는 이전 snapshot을 유지한다.
+bool Read_CompositionAnimationResources(std::vector<COMPOSITION_ANIMATION_RESOURCE>& resources,
+    std::string& status);
+
 // 목록 UI가 사용할 category 경로를 값으로 반환한다. 몇 단계의 작은 경로이며 문서나 자원의 소유권은 변경하지 않는다.
 inline std::vector<std::string> CompositionAnimationCategory(const std::string& assetName)
 {
@@ -86,9 +95,15 @@ inline std::vector<std::string> CompositionAnimationCategory(const std::string& 
     return {"Other models", assetName};
 }
 
+inline std::vector<std::string> CompositionAnimationCategory(const COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    return resource.CategoryPath.empty() ? CompositionAnimationCategory(resource.strTargetAssetName) : resource.CategoryPath;
+}
+
 // 28개 고정 항목을 선형 대조한다. 추가 hash 저장소가 없지만 조회량이 커져도 최적이라는 측정은 아니다.
 inline bool Is_CompositionAnimationTargetAsset(const std::string_view name)
 {
+    if (name.starts_with("WorldObject:")) return true; // 실제 model은 preview panel이 저장 inventory로 검증한다.
 	for (const char* candidate : COMPOSITION_ANIMATION_TARGET_ASSET_NAMES)
 	{
 		if (name == candidate)

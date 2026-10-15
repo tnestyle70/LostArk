@@ -41,6 +41,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 #include "Transform.h"
 #include "CharacterPreviewPanel.h"
 #include "EffectAuthoringSequencer.h"
@@ -789,6 +790,109 @@ void Client::CEffect_Tool::Rebuild_ResourceBrowserView(
     m_strResourceViewKindCategory = strKindCategory;
 }
 
+// Model View가 공유 preview의 실제 골격만 나열한다. 선택은 anchor 입력만 바꾸며 재생 시계는 유지한다.
+void Client::CEffect_Tool::Render_AnchorBoneSelector(
+    const std::shared_ptr<Engine::CModel>& model)
+{
+    ImGui::Text("Anchor model: %s", CAnimationTargetService::Resolve_AssetName().c_str());
+    ImGui::InputTextWithHint("##ElementAnchorBoneFilter", "Search bone / socket (hand, weapon...)",
+        m_AnchorBoneFilter.data(), m_AnchorBoneFilter.size());
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Clear##ElementAnchorBoneFilter"))
+        m_AnchorBoneFilter[0u] = '\0';
+
+    const std::vector<std::string> bones = model ? model->Get_BoneNames() : std::vector<std::string>{};
+    ImGui::BeginDisabled(bones.empty());
+    if (ImGui::BeginCombo("Skeleton bone / socket",
+        m_strPreviewAnchorSlotId.empty() ? "Select bone" : m_strPreviewAnchorSlotId.c_str()))
+    {
+        size_t visibleCount = 0u;
+        for (const std::string& bone : bones)
+        {
+            if (!Contains_NoCase(bone, m_AnchorBoneFilter.data()))
+                continue;
+            ++visibleCount;
+            if (ImGui::Selectable(bone.c_str(), bone == m_strPreviewAnchorSlotId))
+            {
+                m_strPreviewAnchorSlotId = bone;
+                Copy_Buffer(m_PreviewAnchorBuffer.data(), m_PreviewAnchorBuffer.size(), bone);
+            }
+        }
+        if (visibleCount == 0u)
+            ImGui::TextDisabled("No matching bones on this model.");
+        ImGui::EndCombo();
+    }
+    ImGui::EndDisabled();
+    if (!model)
+        ImGui::TextWrapped("Load an Animation model to select its bones. The current attachment remains unchanged.");
+
+    if (const CHARACTER_SPEC* spec = Resolve_CurrentTargetSpec(); model && spec && spec->pWeapons)
+    {
+        // 장창/단창이 같은 소켓을 쓰면 한 번만 표시한다. 실제 모델에 없는 소켓은 제출하지 않는다.
+        std::unordered_set<std::string> shownSockets;
+        for (uint32_t index = 0u; index < spec->iNumWeapons; ++index)
+        {
+            const char* socket = spec->pWeapons[index].pSocketBone;
+            if (!socket || !model->Has_Bone(socket) || !shownSockets.insert(socket).second)
+                continue;
+            const std::string label = std::string("Weapon socket: ") + socket;
+            if (ImGui::SmallButton(label.c_str()))
+            {
+                m_strPreviewAnchorSlotId = socket;
+                Copy_Buffer(m_PreviewAnchorBuffer.data(), m_PreviewAnchorBuffer.size(), socket);
+            }
+        }
+    }
+    if (ImGui::InputText("Socket / Bone", m_PreviewAnchorBuffer.data(), m_PreviewAnchorBuffer.size()))
+        m_strPreviewAnchorSlotId = m_PreviewAnchorBuffer.data();
+    if (model && !m_strPreviewAnchorSlotId.empty() && !model->Has_Bone(m_strPreviewAnchorSlotId.c_str()))
+        ImGui::TextWrapped("The selected bone is not present on this model. Choose a bone from its skeleton before attaching.");
+}
+
+// 문서 Element의 stable ID에만 부착을 저장한다. 발생 단위 anchor는 Sequencer가 계속 소유한다.
+void Client::CEffect_Tool::Render_SelectedElementFollowControls()
+{
+    ImGui::SeparatorText("Selected Element attachment (saved in Effect)");
+    const EFFECT_ELEMENT_DESC* element = Find_SelectedElement();
+    if (!element)
+    {
+        ImGui::TextWrapped("Select an Element to attach it to the loaded model. For a whole Effect, edit its occurrence bone/socket.");
+        return;
+    }
+    ImGui::TextWrapped("Element: %s [%s]", element->strDisplayName.c_str(), element->strElementId.c_str());
+    if (!Can_EditElementFollowAttachment(*element))
+    {
+        ImGui::TextWrapped("This Element keeps its source/carrier attachment. Direct bone attachment is available for editable Trails and native Sprite Particles. Use the Effect occurrence Bone / socket for a whole Effect.");
+        return;
+    }
+    const EFFECT_ACTION_CUE_ATTACHMENT_DESC& attachment = element->ActionCueAttachment;
+    const bool_t hasFollow = attachment.bEnabled && attachment.bFollow;
+    if (hasFollow)
+        ImGui::TextWrapped("Saved Element bone: %s", attachment.strRuntimeBoneName.c_str());
+    else
+        ImGui::TextWrapped("No Element-local bone attachment.");
+    ImGui::TextWrapped("Attach changes only this Element. Save Changes stores the bone in the Effect document; Detail > Element Follow Attachment edits orientation and local offset.");
+    const bool_t editable = EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
+        EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource;
+    const std::shared_ptr<Engine::CModel> model = CAnimationTargetService::Resolve_Model();
+    const bool_t validBone = model && !m_strPreviewAnchorSlotId.empty() &&
+        model->Has_Bone(m_strPreviewAnchorSlotId.c_str());
+    const bool_t pendingDetail = Has_UnappliedDetailDraft();
+    ImGui::BeginDisabled(!editable || pendingDetail || !validBone);
+    if (ImGui::Button("Attach Selected Element to Bone"))
+        Try_SetSelectedElementFollowAnchor(m_strPreviewAnchorSlotId);
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!editable || pendingDetail || !hasFollow);
+    if (ImGui::Button("Clear Selected Element Follow"))
+        Try_ClearSelectedElementFollowAnchor();
+    ImGui::EndDisabled();
+    if (!editable)
+        ImGui::TextWrapped("Open or create an authored Effect before changing its attachment.");
+    else if (pendingDetail)
+        ImGui::TextWrapped("Apply or Revert the pending Detail edits before changing the attachment.");
+}
+
 void Client::CEffect_Tool::Render_ModelViewWindow()
 {
     ImGui::SetNextWindowPos(ImVec2(450.f, 35.f), ImGuiCond_FirstUseEver);
@@ -815,6 +919,13 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
             Render_AnimationControls(CAnimationTargetService::Resolve_Model());
             ImGui::EndDisabled();
         }
+        // 전체 Effect의 occurrence anchor와 문서 안 Element 부착은 서로 다른 저장 대상이다.
+        ImGui::SeparatorText("Element bone anchor");
+        ImGui::TextWrapped("Whole Effect: use New occurrence bone/socket above, or select its timeline box and edit Bone / socket. Save the sequence to keep those occurrence settings.");
+        Render_AnchorBoneSelector(CAnimationTargetService::Resolve_Model());
+        Render_SelectedElementFollowControls();
+        if (!m_strPreviewStatus.empty())
+            ImGui::TextWrapped("%s", m_strPreviewStatus.c_str());
         ImGui::End();
         return;
     }
@@ -982,32 +1093,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
 		ImGui::TextDisabled(
 			"Valtan Product Play locks pivot, transform, and source-local timing to this occurrence.");
 	}
-    if (const CHARACTER_SPEC* pSpec = Resolve_CurrentTargetSpec())
-    {
-        if (nullptr != pSpec && nullptr != pSpec->pWeapons)
-        {
-            for (uint32_t iWeapon = 0u;
-                iWeapon < pSpec->iNumWeapons; ++iWeapon)
-            {
-                const char* pSocket = pSpec->pWeapons[iWeapon].pSocketBone;
-                if (nullptr == pSocket)
-                    continue;
-                if (ImGui::Selectable(pSocket,
-                    m_strPreviewAnchorSlotId == pSocket))
-                {
-                    m_strPreviewAnchorSlotId = pSocket;
-                    Copy_Buffer(m_PreviewAnchorBuffer.data(),
-                        m_PreviewAnchorBuffer.size(),
-                        m_strPreviewAnchorSlotId);
-                }
-            }
-        }
-    }
-    if (ImGui::InputText("Socket / Bone", m_PreviewAnchorBuffer.data(),
-        m_PreviewAnchorBuffer.size()))
-    {
-        m_strPreviewAnchorSlotId = m_PreviewAnchorBuffer.data();
-    }
+    Render_AnchorBoneSelector(pModel);
     ImGui::BeginDisabled(Has_ProductCuePreview());
     if (ImGui::Button("Set Effect Pivot Player"))
     {
@@ -1055,47 +1141,7 @@ void Client::CEffect_Tool::Render_ModelViewWindow()
     }
     ImGui::EndDisabled();
 
-	const EFFECT_ELEMENT_DESC* pSelectedFollowElement = Find_SelectedElement();
-	if (nullptr != pSelectedFollowElement &&
-		Can_EditElementFollowAttachment(*pSelectedFollowElement))
-	{
-		ImGui::SeparatorText("Selected Element Follow");
-		const EFFECT_ACTION_CUE_ATTACHMENT_DESC& Attachment =
-			pSelectedFollowElement->ActionCueAttachment;
-		const bool_t bHasElementFollow =
-			Attachment.bEnabled && Attachment.bFollow;
-		if (bHasElementFollow)
-		{
-			ImGui::TextWrapped("Element-local follow: %s -> %s",
-				Attachment.strRuntimeAnchorSlotId.c_str(),
-				Attachment.strRuntimeBoneName.c_str());
-		}
-		else
-		{
-			ImGui::TextWrapped(
-				"No element-local follow. Select a Socket / Bone above and attach this Element.");
-		}
-		ImGui::TextDisabled(
-			"This edits only the selected Element. Detail > Element Follow Attachment changes orientation through Apply.");
-		const bool_t bAttachmentEditable =
-			EFFECT_DOCUMENT_SOURCE::NEW_DOCUMENT == m_eActiveDocumentSource ||
-			EFFECT_DOCUMENT_SOURCE::AUTHORED == m_eActiveDocumentSource;
-		const bool_t bCanSetElementFollow =
-			bAttachmentEditable &&
-			!Has_UnappliedDetailDraft() &&
-			!m_strPreviewAnchorSlotId.empty();
-		ImGui::BeginDisabled(!bCanSetElementFollow);
-		if (ImGui::Button("Attach Selected Element to Bone"))
-			Try_SetSelectedElementFollowAnchor(m_strPreviewAnchorSlotId);
-		ImGui::EndDisabled();
-		ImGui::SameLine();
-		ImGui::BeginDisabled(!bAttachmentEditable ||
-			Has_UnappliedDetailDraft() ||
-			!bHasElementFollow);
-		if (ImGui::Button("Clear Selected Element Follow"))
-			Try_ClearSelectedElementFollowAnchor();
-		ImGui::EndDisabled();
-	}
+    Render_SelectedElementFollowControls();
 
     ImGui::SeparatorText("Animation Cue Transfer");
     InputFloat3("Cue Local Position", m_CueTransferLocalTransform.vPosition);

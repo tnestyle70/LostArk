@@ -17,6 +17,7 @@ NS_END
 NS_BEGIN(Client)
 
 struct ANIMATION_PREVIEW_ASSET;
+struct COMPOSITION_ANIMATION_RESOURCE;
 
 enum class CHARACTER_PREVIEW_LOCK_OWNER : uint8_t
 {
@@ -69,8 +70,12 @@ public:
 	// Selects one admitted authoring model by its stable animation asset name.
 	// Effect Tool uses this to replace a retained preview-only prop (for example
 	// Dimension Core) with the playable class body that owns the loaded skill.
-	bool_t Select_TargetAsset(const string& strAnimationAssetName);
-	bool_t Select_TargetVehicle(uint32_t vehicleId);
+	bool_t Select_TargetAsset(const string& strAnimationAssetName, const char* requiredClip = nullptr);
+	bool_t Select_TargetVehicle(uint32_t vehicleId, const char* requiredClip = nullptr);
+    // 설치 library에서 고른 World Object의 실제 animated CModel을 기존 preview 수명에 넣는다.
+    bool_t Select_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource);
+    // 실제 Select의 재사용 기준을 읽기 전용으로 공유해 같은 Object ID의 모델 교체도 사전에 보호한다.
+    bool_t Matches_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource) const;
 	// Changes only this panel's selected generic preview root. The multiplier
 	// always starts from the selected/recentered baseline, never the last scale.
 	bool_t Set_PreviewScaleMultiplier(
@@ -96,7 +101,7 @@ public:
 	}
 
 private:
-	bool_t Select_Asset(const ANIMATION_PREVIEW_ASSET& asset);
+	bool_t Select_Asset(const ANIMATION_PREVIEW_ASSET& asset, const char* requiredClip = nullptr);
 	/* True when the asset declares a complete socketed weapon. A partially
 	   declared one is a data error, so it is reported instead of previewed. */
 	static bool_t Declares_Weapon(const ANIMATION_PREVIEW_ASSET& asset);

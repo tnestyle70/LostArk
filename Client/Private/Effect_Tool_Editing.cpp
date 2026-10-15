@@ -3173,7 +3173,10 @@ bool_t Client::CEffect_Tool::Try_SetSelectedElementFollowAnchor(
 	Selected->ActionCueAttachment = std::move(Attachment);
 
 	if (!Try_CommitDocument(std::move(Staged)))
+	{
+		m_strPreviewStatus = m_strElementStatus;
 		return false;
+	}
 	if (!m_bDetailDraftDirty && m_DetailDraft.has_value() &&
 		m_strDetailDraftElementId == m_strSelectedElementId)
 	{
@@ -3183,7 +3186,7 @@ bool_t Client::CEffect_Tool::Try_SetSelectedElementFollowAnchor(
 			Refresh_DetailDraftAdmission(*pCommitted);
 		}
 	}
-	Start_WorldPreviewFromBeginning();
+	// Try_CommitDocument가 현재 cursor에서 preview를 교체하므로 재생을 처음부터 시작하지 않는다.
 	m_strPreviewStatus = "Selected Element now follows model bone '" +
 		strBoneName + "'. Save Changes to persist the attachment.";
 	return true;
@@ -3224,7 +3227,10 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedElementFollowAnchor()
 	Selected->ActionCueAttachment = {};
 
 	if (!Try_CommitDocument(std::move(Staged)))
+	{
+		m_strPreviewStatus = m_strElementStatus;
 		return false;
+	}
 	if (!m_bDetailDraftDirty && m_DetailDraft.has_value() &&
 		m_strDetailDraftElementId == m_strSelectedElementId)
 	{
@@ -3234,7 +3240,7 @@ bool_t Client::CEffect_Tool::Try_ClearSelectedElementFollowAnchor()
 			Refresh_DetailDraftAdmission(*pCommitted);
 		}
 	}
-	Start_WorldPreviewFromBeginning();
+	// Try_CommitDocument가 현재 cursor에서 preview를 교체하므로 재생을 처음부터 시작하지 않는다.
 	m_strPreviewStatus =
 		"Cleared the selected Element follow. Save Changes to persist the attachment change.";
 	return true;

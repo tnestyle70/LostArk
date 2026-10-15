@@ -1,5 +1,22 @@
 # LostArk merge 회귀 방지 정본
 
+## Effect 모델 목록과 본 선택 UI의 실제 진입 경로
+
+- Effect Tool의 공용 sequencer 분기에서 반환하기 전에 animation library와 Element 본 부착 UI를
+  모두 연결한다. 이전 단독 Model View에 함수가 남아 있다는 사실만으로 사용 가능한 것으로 판단하지 않는다.
+- 설치 clip inventory는 현재 로드된 모델에 종속시키지 않는다. World Object의 native clip과
+  Transform/물리 Motion은 실제 소비자를 구분하며, 정적 분열 공에 가짜 skeletal clip을 만들지 않는다.
+- 전체 inventory와 함께 현재 CModel의 사용자 작성·탈것 clip도 중복 없이 보충하고 target generation과
+  명시적인 Refresh 요청을 반영한다. 같은 World object ID도 model/donor/preScale가 바뀌면 모델 교체이므로
+  기존 animation·named anchor 보호 검사를 통과하기 전에 이전 preview를 해제하지 않는다.
+  prototype cache key의 preScale는 float bit를 보존한다. 소수 여섯 자리 문자열로 축약하면 다른 스케일이
+  같은 prototype의 옛 preTransform을 재사용할 수 있다.
+- 보스 Collider 본 목록은 Pattern의 실제 BODY/WEAPON 제공자를 사용한다. 아직 Play하지 않아
+  모델이 없을 때도 명시적인 모델 로드 진입점을 제공하고, 실패하면 기존 bone과 preview를 보존한다.
+- 본 이름뿐 아니라 boneRotation, World occurrence/emission/Effect frame 변경도 즉시 preview의
+  변경 검사에 포함한다. Effect Element 부착 변경은 기존 stage/commit의 cursor 보존 경로를 사용한다.
+  근거와 사용자 확인 경계는 [애니메이션·본 앵커 결과](10-15/2026-10-15_EFFECT_ANIMATION_BONE_ANCHOR_RESULT.md)에 둔다.
+
 ## 하이브리드 GPU의 실제 실행 장치를 먼저 확인한다
 
 - RTX 4050 Laptop GPU가 장착된 이 노트북의 제품 Debug/Release Client는 반드시 RTX 4050으로 렌더링하는지 확인한다. 시작 로그의 `Graphics.Adapter` 이름이 `NVIDIA GeForce RTX 4050 Laptop GPU`인지 확인하며, AMD Radeon 840M이면 성능 검증을 진행하지 않고 GPU 선택 경로부터 바로잡는다. GPU 이름이나 LUID를 공용 코드에 하드코딩하지 않는다. 데스크탑 등 다른 PC에서는 그 PC의 고성능 하드웨어 GPU를 선택하고 실제 adapter 로그를 확인한다.

@@ -3,6 +3,32 @@
 이 문서는 Animation 담당자가 오늘 바로 작업할 범위와 Character Preview, Effect Tool, Server gameplay
 사이의 금지 경계를 고정한다. 세부 구현 전체 코드는 날짜별 PLAN에 두고, 이 문서는 담당 인터페이스만 소유한다.
 
+## Effect 모델·애니메이션과 본 선택
+
+Effect Tool V1/V2의 `Model View → Animation Library`와 Action Workbench의
+`Composition Resources → Animation`은 같은 설치 모델 목록을 사용한다. Character는 직업별,
+Boss는 보스별, World는 저장된 오브젝트 이름과 모델 ID별로 표시한다. 검색은 표시 이름과 원본
+clip ID를 함께 사용한다. `Load Model`로 모델만 준비하고 `Add Animation` 또는 `Add & Play`로
+선택 clip을 기존 Effect sequencer에 추가한다. 같은 timeline에서 Effect를 추가하고 시간을 편집한다.
+현재 편집 중인 다른 모델의 animation·named anchor는 자동 삭제하지 않는다.
+현재 모델의 사용자 작성 clip과 탈것 clip은 전체 목록에 중복 없이 보충되며 모델 전환·Refresh에 갱신된다.
+
+World의 `Native clips`는 실제 skeletal clip이다. 괴기스러운 인형의 native clip은 같은 preview에서
+선택하며, 분열 공처럼 Transform/Physics로 움직이는 항목의 `Object Motions`는
+`Open Object Motion`으로 기존 World Object 편집 owner를 연다. 이 목록에서 서버용 애니메이션을 합성하지 않는다.
+
+전체 Effect 부착은 `New occurrence bone/socket` 또는 해당 timeline box의 `Bone / socket`에서
+선택하고 sequence에 저장한다. V1 `Element bone anchor`는 실제 골격 검색과 무기 socket 빠른
+선택을 제공한다. 지원 Element의 `Attach Selected Element to Bone`/`Clear Selected Element Follow`는
+기존 Effect 문서의 attachment만 바꾸며 `Save Changes`로 저장한다. 원본 carrier의 내부 부착과
+sequence occurrence의 부착은 별개다. Attach/Clear는 현재 preview cursor를 유지한다.
+
+Kouku 보스 `Collider → Box Detail → Bone Anchor → Load anchor model`은 해당 Pattern의 실제
+BODY/WEAPON을 공용 preview로 준비한다. `Find bone`으로 검색한 `Anchor bone` 이름과
+`Rotate with this bone`을 기존 box에 저장한다. 대형세이튼 잡기의 왼손은 `BODY / bip001-l-hand`다.
+Save/Publish는 기존 boss owner를 사용하며 Server는 게시된 실제 본 궤적을 소비한다.
+저장·게시 성공과 실행 중 Server의 활성화, 사용자 화면 확인은 각각 구분한다.
+
 ## Action Workbench의 공통 창과 저장 owner
 
 발탄 `Composition Actions → Create New Pattern`은 이름을 입력하고 `Create Pattern`을 누르면

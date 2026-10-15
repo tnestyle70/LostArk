@@ -27,6 +27,7 @@
 #include "ValtanPatternTree.h"
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -149,6 +150,38 @@ void CEffectAuthoringSequencer::Set_V1AnchorProvider(V1_ANCHOR_PROVIDER provider
 }
 void CEffectAuthoringSequencer::Set_V2SnapshotProvider(V2_SNAPSHOT_PROVIDER provider) { m_V2Provider = std::move(provider); }
 bool CEffectAuthoringSequencer::Consume_InteractionRequest() { const bool result = m_Interaction; m_Interaction = false; return result; }
+
+bool CEffectAuthoringSequencer::Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    if (!m_WorldMotionRequest) return false;
+    resource = std::move(*m_WorldMotionRequest); m_WorldMotionRequest.reset(); return true;
+}
+
+// Load는 모델 선택만 수행한다. 편집 중인 다른 골격의 Animation/본 anchor는 명시적으로 비우기 전까지 보존한다.
+bool CEffectAuthoringSequencer::Load_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    if (!m_Panel || resource.Is_WorldMotion() || resource.strRuntimeClip.empty())
+    { m_Status = "This resource opens through Object Motion, not native Animation playback."; return false; }
+    const bool changesModel = !m_Panel->Matches_AnimationResource(resource);
+    if (Has_PendingBoxEdit() || (changesModel && (Has_ModelSequence() ||
+        std::any_of(m_Effects.begin(), m_Effects.end(), [](const auto& row) { return !row.worldAnchor && row.anchorSlotId != "root"; }) ||
+        std::any_of(m_Colliders.begin(), m_Colliders.end(), [](const auto& row) { return row.anchorSlotId != "root"; }))))
+    { m_Status = "Apply/Revert Box Detail and clear the previous model sequence or named anchors before changing its model. Existing rows are preserved."; return false; }
+    if (!m_Panel->Select_AnimationResource(resource))
+    { m_Status = m_Panel->Get_Status(); return false; }
+    const auto model = CAnimationTargetService::Resolve_Model();
+    std::uint32_t index = 0u; float ticks = 0.f, rate = 0.f;
+    if (!Clip_Metadata(model, resource.strRuntimeClip, index, ticks, rate))
+    { m_Status = "The installed model does not expose this exact native clip: " + resource.strRuntimeClip; return false; }
+    Stop(); m_UseKouku = false; m_ModelRoot = true;
+    m_AssetName = resource.strTargetAssetName;
+    m_InventoryGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+    if (changesModel) { m_Sequences.clear(); m_SelectedSequence.clear(); m_DefaultAnchorSlotId = "root"; }
+    model->Set_AnimPaused(true);
+    m_Status = "Loaded " + m_AssetName + ". Add Animation, then choose the occurrence bone/socket and append Effects.";
+    return true;
+}
+
 const CEffectAuthoringSequencer::MODEL_SEQUENCE* CEffectAuthoringSequencer::Selected_Sequence() const
 {
     const auto found = std::find_if(m_Sequences.begin(), m_Sequences.end(), [&](const auto& value) { return value.id == m_SelectedSequence; });
@@ -1438,12 +1471,16 @@ bool CEffectAuthoringSequencer::Render_AnchorChoice(const char* label, std::stri
     bool changed = false;
     if (ImGui::BeginCombo(label, anchor.c_str()))
     {
+        ImGui::InputTextWithHint("##BoneSearch", "Search hand / weapon / bone...", m_AnchorSearch.data(), m_AnchorSearch.size());
         if (ImGui::Selectable("root", anchor == "root")) { anchor = "root"; changed = true; }
         const auto model = CAnimationTargetService::Resolve_Model();
         if (m_ModelRoot && !m_UseKouku && m_Panel && m_Panel->Is_PreviewActive() && model)
             for (const auto& bone : model->Get_BoneNames())
             {
                 if (bone == "root") continue;
+                const std::string query = m_AnchorSearch.data();
+                if (!query.empty() && std::search(bone.begin(), bone.end(), query.begin(), query.end(),
+                    [](unsigned char a, unsigned char b) { return std::tolower(a) == std::tolower(b); }) == bone.end()) continue;
                 if (ImGui::Selectable(bone.c_str(), anchor == bone)) { anchor = bone; changed = true; }
             }
         ImGui::EndCombo();
@@ -2475,6 +2512,7 @@ void CEffectAuthoringSequencer::Render_ModelView()
 {
     ImGui::PushID("EffectAuthoringModel");
     Render_PreviewPlacementControls();
+    Render_AnimationLibrary();
     ImGui::SeparatorText("Animation sequence");
     if (ImGui::SmallButton("No model sequence")) { Stop(); m_SelectedSequence.clear(); m_AnimationRows.clear(); m_CustomAnimation = false; m_UseKouku = false; m_Dirty = true; }
     int source = m_UseKouku ? 1 : 0;

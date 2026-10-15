@@ -25,13 +25,33 @@
 #include "ValtanPresentationAssetService.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <string_view>
 #include <utility>
 
 namespace
 {
+    bool Has_RequiredPreviewClip(const std::shared_ptr<Engine::CModel>& model, const char* clip)
+    {
+        if (!clip || !*clip) return true;
+        if (!model) return false;
+        std::uint32_t matches = 0u;
+        for (std::uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+        {
+            const auto* name = model->Get_AnimationName(index);
+            if (!name || std::string_view(name) != clip) continue;
+            float position = 0.f, duration = 0.f;
+            const float rate = model->Get_AnimationTickPerSecond(index);
+            if (!model->Get_AnimationProgress(index, position, duration) || !std::isfinite(duration) || duration <= 0.f ||
+                !std::isfinite(rate) || rate <= 0.f || duration / rate > 600.f) return false;
+            ++matches;
+        }
+        return matches == 1u;
+    }
+
 	const char* Resolve_KoukuPreviewArchetype(const std::string_view asset)
 	{
 #ifdef _DEBUG
@@ -92,17 +112,72 @@ namespace
 struct Client::CCharacterPreviewPanel::OWNED_PREVIEW_ASSET final
 {
     ANIMATION_PREVIEW_ASSET value;
-    std::string id, label, asset, model;
+    std::string id, label, asset, model, donor;
     std::wstring tag;
 };
 
-bool_t Client::CCharacterPreviewPanel::Select_TargetVehicle(uint32_t vehicleId)
+
+bool_t Client::CCharacterPreviewPanel::Matches_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource) const
+{
+    if (resource.Is_WorldMotion() || !m_pPreviewAsset || m_pPreviewObject.expired() ||
+        m_iPreviewLevelIndex != CGameInstance::Get().Get_CurrentLevelID() ||
+        resource.strTargetAssetName != m_pPreviewAsset->pAssetName ||
+        resource.strTargetAssetName != CAnimationTargetService::Resolve_AssetName()) return false;
+    if (resource.strWorldObjectId.empty()) return true;
+    return resource.strModelAssetId == m_pPreviewAsset->pModelAssetId &&
+        resource.fModelPreScale == m_pPreviewAsset->fPreviewScale &&
+        resource.strAnimationSetAssetId == (m_pPreviewAsset->pAnimationSetAssetId ? m_pPreviewAsset->pAnimationSetAssetId : "");
+}
+
+bool_t Client::CCharacterPreviewPanel::Select_AnimationResource(const COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    if (resource.strWorldObjectId.empty()) return Select_TargetAsset(resource.strTargetAssetName, resource.strRuntimeClip.c_str());
+    if (resource.Is_WorldMotion() || resource.strModelAssetId.empty() ||
+        resource.strTargetAssetName != "WorldObject:" + resource.strWorldObjectId ||
+        CRuntimeAssetRoot::Resolve(resource.strModelAssetId).empty() ||
+        !std::isfinite(resource.fModelPreScale) || resource.fModelPreScale <= 0.f)
+    { m_Status = "Select a native animated World Object clip; Motion rows belong to Object Tool."; return false; }
+    if (Matches_AnimationResource(resource))
+    {
+        const bool valid = Has_RequiredPreviewClip(CAnimationTargetService::Resolve_Model(), resource.strRuntimeClip.c_str());
+        if (!valid) m_Status = "The selected native clip is unavailable; previous target preserved.";
+        return valid;
+    }
+    for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
+        if (m_SessionLocks[i]) { m_Status = m_SessionLockReasons[i]; return false; }
+    auto candidate = std::make_shared<OWNED_PREVIEW_ASSET>();
+    // preScale의 부동소수점 비트를 key로 보존해 소수점 문자열 반올림으로 다른 배율의 prototype을 재사용하지 않는다.
+    const auto scaleBits = std::bit_cast<std::uint32_t>(resource.fModelPreScale);
+    candidate->id = resource.strTargetAssetName + ":" + resource.strModelAssetId + ":" + resource.strAnimationSetAssetId + ":" + std::to_string(scaleBits);
+    candidate->asset = resource.strTargetAssetName;
+    candidate->label = resource.CategoryPath.size() > 1u ? resource.CategoryPath[1u] : resource.strWorldObjectId;
+    candidate->model = resource.strModelAssetId; candidate->donor = resource.strAnimationSetAssetId;
+    // Prototype tag는 실행 중 cache key이며 JSON 저장 identity를 대체하지 않는다.
+    candidate->tag = L"Prototype_Component_Model_AnimationPreview_World_" +
+        std::to_wstring(std::hash<std::string>{}(candidate->id));
+    candidate->value.pId = candidate->id.c_str(); candidate->value.pAssetName = candidate->asset.c_str();
+    candidate->value.pLabel = candidate->label.c_str(); candidate->value.pModelAssetId = candidate->model.c_str();
+    candidate->value.pPrototypeTag = candidate->tag.c_str(); candidate->value.fPreviewScale = resource.fModelPreScale;
+    candidate->value.fPreviewYawDegrees = 0.f; candidate->value.bPlaybackOnly = true;
+    candidate->value.pAnimationSetAssetId = candidate->donor.empty() ? nullptr : candidate->donor.c_str();
+    if (!Select_Asset(candidate->value, resource.strRuntimeClip.c_str())) return false;
+    m_DynamicPreviewAsset = std::move(candidate);
+    return true;
+}
+
+bool_t Client::CCharacterPreviewPanel::Select_TargetVehicle(uint32_t vehicleId, const char* requiredClip)
 {
     const auto* vehicle = CActorCatalog::Find_Vehicle(vehicleId);
     if (!vehicle || vehicle->runtimeStatus != "supported")
     { m_Status = "The selected vehicle is not admitted in VehicleCatalog"; return false; }
     const auto assetName = "Vehicle_" + std::to_string(vehicleId);
-    if (m_pPreviewAsset && assetName == m_pPreviewAsset->pAssetName && !m_pPreviewObject.expired()) return true;
+    if (m_pPreviewAsset && assetName == m_pPreviewAsset->pAssetName && !m_pPreviewObject.expired() &&
+        m_iPreviewLevelIndex == CGameInstance::Get().Get_CurrentLevelID())
+    {
+        const bool valid = Has_RequiredPreviewClip(CAnimationTargetService::Resolve_Model(), requiredClip);
+        if (!valid) m_Status = "The selected vehicle clip is unavailable; previous target preserved.";
+        return valid;
+    }
     for (size_t i = 0u; i < m_SessionLocks.size(); ++i)
         if (m_SessionLocks[i]) { m_Status = m_SessionLockReasons[i]; return false; }
     auto candidate = std::make_shared<OWNED_PREVIEW_ASSET>();
@@ -113,7 +188,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetVehicle(uint32_t vehicleId)
     candidate->value.pLabel = candidate->label.c_str(); candidate->value.pModelAssetId = candidate->model.c_str();
     candidate->value.pPrototypeTag = candidate->tag.c_str(); candidate->value.fPreviewScale = vehicle->modelPreScale;
     candidate->value.bPlaybackOnly = true;
-    if (!Select_Asset(candidate->value)) return false;
+    if (!Select_Asset(candidate->value, requiredClip)) return false;
     m_DynamicPreviewAsset = std::move(candidate); return true;
 }
 
@@ -182,8 +257,20 @@ void Client::CCharacterPreviewPanel::Set_SessionLock(
 }
 
 bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
-	const string& strAnimationAssetName)
+	const string& strAnimationAssetName, const char* requiredClip)
 {
+    // 저장 sequence에는 stable target ID만 남는다. 재열 때 최신 World 정본의 model/donor/단위를 다시 해석한다.
+    if (strAnimationAssetName.starts_with("WorldObject:"))
+    {
+        std::vector<COMPOSITION_ANIMATION_RESOURCE> library; std::string status;
+        (void)Read_CompositionAnimationResources(library, status);
+        const auto found = std::find_if(library.begin(), library.end(), [&](const auto& row) {
+            return row.strTargetAssetName == strAnimationAssetName && !row.strRuntimeClip.empty() &&
+                (!requiredClip || row.strRuntimeClip == requiredClip); });
+        if (found == library.end()) { m_Status = "World Object native model is unavailable: " + status; return false; }
+        return Select_AnimationResource(*found);
+    }
+
 	if (strAnimationAssetName.starts_with("Vehicle_"))
 	{
 		try
@@ -191,7 +278,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
             const auto suffix = strAnimationAssetName.substr(8u); size_t consumed = 0u;
             const auto id = std::stoul(suffix, &consumed);
             if (consumed != suffix.size() || id == 0u || id > UINT32_MAX) return false;
-            return Select_TargetVehicle(static_cast<uint32_t>(id));
+            return Select_TargetVehicle(static_cast<uint32_t>(id), requiredClip);
         }
 		catch (...) { m_Status = "Invalid vehicle target identity"; return false; }
 	}
@@ -216,6 +303,8 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 		strAnimationAssetName == m_pPreviewAsset->pAssetName &&
 		!m_pPreviewObject.expired() && m_iPreviewLevelIndex == currentLevel)
 	{
+        if (!Has_RequiredPreviewClip(CAnimationTargetService::Resolve_Model(), requiredClip))
+        { m_Status = "The selected native clip is unavailable; previous target preserved."; return false; }
 		const bool_t raidCompositionPreview =
 			(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 			 currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) &&
@@ -291,7 +380,7 @@ bool_t Client::CCharacterPreviewPanel::Select_TargetAsset(
 			m_SessionLockReasons[i];
 		return false;
 	}
-	return Select_Asset(*asset);
+	return Select_Asset(*asset, requiredClip);
 }
 
 bool_t Client::CCharacterPreviewPanel::Set_PreviewScaleMultiplier(
@@ -454,7 +543,7 @@ void Client::CCharacterPreviewPanel::Release(const bool_t removeFromLayer)
 }
 
 bool_t Client::CCharacterPreviewPanel::Select_Asset(
-	const ANIMATION_PREVIEW_ASSET& asset)
+	const ANIMATION_PREVIEW_ASSET& asset, const char* requiredClip)
 {
 	const uint32_t currentLevel =
 		CGameInstance::Get().Get_CurrentLevelID();
@@ -462,7 +551,8 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 		(currentLevel == ETOUI(LEVEL::VALTAN_ARENA) ||
 		 currentLevel == ETOUI(LEVEL::KOUKUSAYDON_ARENA)) &&
 		nullptr != asset.pAssetName && (Is_CompositionAnimationTargetAsset(asset.pAssetName) ||
-		std::string_view(asset.pAssetName).starts_with("Vehicle_"));
+		std::string_view(asset.pAssetName).starts_with("Vehicle_") ||
+        std::string_view(asset.pAssetName).starts_with("WorldObject:"));
 	if (currentLevel != ETOUI(LEVEL::CHARACTER_SELECT) &&
 		currentLevel != ETOUI(LEVEL::DEVELOPMENT) && !bRaidCompositionPreview)
 	{
@@ -920,11 +1010,20 @@ bool_t Client::CCharacterPreviewPanel::Select_Asset(
 
     const auto authoredModel = stagedCharacter ? stagedCharacter->Get_BodyModel() :
         stagedValtan ? stagedValtan->Get_BodyModel() : stagedBody ? stagedBody->Get_Model() : nullptr;
-    if (authoredModel)
+    if (authoredModel && !std::string_view(asset.pAssetName).starts_with("WorldObject:"))
     {
         std::string authoredStatus;
         if (!CBoneAnimationDocument::Load_IntoModel(*authoredModel, asset.pAssetName, authoredStatus))
             OutputDebugStringA(("[AuthoredAnimation] " + authoredStatus + "\n").c_str());
+    }
+
+    // 설치 catalog를 읽은 뒤 파일이 바뀌어도 실제 Clone의 clip을 확인한 다음에만 기존 target을 교체한다.
+    if (!Has_RequiredPreviewClip(authoredModel, requiredClip))
+    {
+        if (stagedWeapon) CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedWeapon);
+        CGameInstance::Get().Remove_GameObject_from_Layer(currentLevel, TEXT("Layer_AnimationPreview"), stagedObject);
+        m_Status = "The staged model does not expose the requested clip; previous preview preserved.";
+        return false;
     }
 
 	/* The new body is staged before the old one is dropped, so a failure above

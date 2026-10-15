@@ -43,6 +43,7 @@ NS_END
 NS_BEGIN(Client)
 
 struct KOUKU_SAYDON_COMPOSITION_DOCUMENT;
+struct COMPOSITION_ANIMATION_RESOURCE;
 struct EFFECT_TOOL_KOUKU_PATTERN_PREVIEW final
 {
     EFFECT_SOURCE_MODEL_PREVIEW SourceModelPreview;
@@ -553,6 +554,7 @@ public:
     void Set_ClassMovieResources(std::vector<CLASS_MOVIE_RESOURCE_ROW> movies)
     { m_ClassMovieResources = std::move(movies); }
     bool Consume_ClassMovieEditorRequest(std::string& classId);
+    bool Consume_WorldMotionRequest(COMPOSITION_ANIMATION_RESOURCE& resource);
     struct CLASS_MOVIE_STATE final
     {
         bool available = false, active = false, paused = false, loop = false;
@@ -613,6 +615,8 @@ private:
     bool Stage_ClassMovieEffect(const EFFECT_DOCUMENT_DESC& document);
     void Render_EffectToolWindow();
     void Render_ModelViewWindow();
+    void Render_AnchorBoneSelector(const std::shared_ptr<Engine::CModel>& model);
+    void Render_SelectedElementFollowControls();
     void Render_EffectDetailWindow();
     bool_t Try_SetDocumentBloomIntensity(f32_t value);
     void Render_AuthoringSessionBar();
@@ -1515,6 +1519,7 @@ private:
     array<char_t, 129> m_DataFilesSearch{};
     array<char_t, 129> m_AnimationClipFilter{};
     array<char_t, 129> m_PreviewAnchorBuffer{};
+    std::array<char_t, 129> m_AnchorBoneFilter{};
 	array<char_t, 257> m_ModelCueAssetIdDraft{};
 	array<char_t, 129> m_ModelCueClipNameDraft{};
 

@@ -1354,7 +1354,8 @@ namespace
         return left.strTargetAssetName == right.strTargetAssetName &&
             left.strModelAssetId == right.strModelAssetId &&
             left.strSourceAssetId == right.strSourceAssetId &&
-            left.strRuntimeClip == right.strRuntimeClip;
+            left.strRuntimeClip == right.strRuntimeClip && left.strWorldObjectId == right.strWorldObjectId &&
+            left.strWorldMotionId == right.strWorldMotionId;
     }
 
     bool ResourceTextMatches(const std::string_view text, const std::string_view query)
@@ -1661,8 +1662,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
     if (ImGui::Button("Refresh Animation Resources##CompositionPhysicalAnimation"))
         m_bResourceRefreshRequested = true;
     ImGui::SameLine();
-    ImGui::TextDisabled("%zu models / %zu clips",
-        COMPOSITION_ANIMATION_TARGET_ASSET_NAMES.size(), m_AnimationResources.size());
+    ImGui::TextDisabled("%zu native / Object Motion resources", m_AnimationResources.size());
     ImGui::SetNextItemWidth(-1.f);
     if (ImGui::InputTextWithHint("##CompositionPhysicalAnimationSearch", "Search character, designer name or clip...",
         m_AnimationResourceSearch.data(), m_AnimationResourceSearch.size())) m_bAnimationResourceTreeDirty = true;
@@ -1673,7 +1673,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
         for (std::size_t index = 0u; index < m_AnimationResources.size(); ++index)
         {
             const auto& resource = m_AnimationResources[index];
-            const auto category = CompositionAnimationCategory(resource.strTargetAssetName);
+            const auto category = CompositionAnimationCategory(resource);
             const auto& query = m_AnimationResourceQuery;
             if (!ResourceTextMatches(resource.strTargetAssetName, query) &&
                 !ResourceTextMatches(resource.strRuntimeClip, query) &&
@@ -1693,7 +1693,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
             const auto& resource = m_AnimationResources[index];
             ImGui::PushID(resource.strTargetAssetName.c_str());
             ImGui::PushID(resource.strSourceAssetId.c_str());
-            ImGui::PushID(resource.strRuntimeClip.c_str());
+            ImGui::PushID((resource.strRuntimeClip + "|" + resource.strWorldMotionId).c_str());
             const bool selected = m_bHasSelectedAnimationResource &&
                 SameAnimationResource(resource, m_SelectedAnimationResource);
             const auto& label = resource.strDisplayName.empty() ? resource.strRuntimeClip : resource.strDisplayName;
@@ -1709,7 +1709,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
                     resource.strSourceAssetId.c_str(), resource.iDurationMs);
                 if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) Queue_AnimationPreview(resource);
             }
-            Offer_CompositionResourceDrag(label.c_str(), [&resource, &label]() -> COMPOSITION_TRANSFER
+            if (!resource.Is_WorldMotion()) Offer_CompositionResourceDrag(label.c_str(), [&resource, &label]() -> COMPOSITION_TRANSFER
             {
                 auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
                 transfer->resource = resource; transfer->label = label;
@@ -1718,7 +1718,7 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
             ImGui::PopID(); ImGui::PopID(); ImGui::PopID();
         });
         if (m_AnimationResourceTree.iRecursiveLeafCount == 0u)
-            ImGui::TextDisabled("No clips match. Refresh reads every installed Character and Boss model.");
+            ImGui::TextDisabled("No resources match. Refresh reads installed Character/Boss clips and saved World Objects.");
     }
     ImGui::EndChild();
     if (m_bHasSelectedAnimationResource)
@@ -1726,10 +1726,10 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
         const auto& resource = m_SelectedAnimationResource;
         ImGui::TextWrapped("%s / %s | %u ms", resource.strTargetAssetName.c_str(),
             resource.strRuntimeClip.c_str(), resource.iDurationMs);
-        if (ImGui::Button("Play Preview##CompositionPhysicalAnimation"))
+        if (ImGui::Button(resource.Is_WorldMotion() ? "Open Object Motion##CompositionPhysicalAnimation" : "Play Preview##CompositionPhysicalAnimation"))
             Queue_AnimationPreview(resource);
         ImGui::SameLine();
-        if (ImGui::Button("Copy Resource##CompositionPhysicalAnimation"))
+        if (!resource.Is_WorldMotion() && ImGui::Button("Copy Resource##CompositionPhysicalAnimation"))
         {
             auto transfer = std::make_shared<COMPOSITION_ANIMATION_TRANSFER>();
             transfer->resource = resource;
@@ -1761,8 +1761,9 @@ void Client::CSequencerTool::Render_PhysicalAnimationBrowser(ICompositionWorkben
         const auto& resource = m_SelectedAnimationResource;
         std::string stageStatus;
         std::string rowStatus;
-        const bool canStage = session.Can_AppendCompositionAnimationResource(resource, true, stageStatus);
-        const bool canRow = session.Can_AppendCompositionAnimationResource(resource, false, rowStatus);
+        const bool canStage = !resource.Is_WorldMotion() && session.Can_AppendCompositionAnimationResource(resource, true, stageStatus);
+        const bool canRow = !resource.Is_WorldMotion() && session.Can_AppendCompositionAnimationResource(resource, false, rowStatus);
+        if (resource.Is_WorldMotion()) stageStatus = "Open Object Motion to edit its existing Transform / Physics / Effect tracks.";
         const bool characterAction = m_eSelectedTarget == TARGET::CHARACTER;
         const bool valtanPattern = &session == m_pValtanSession;
         const char* stageLabel = characterAction ? "Replace selected Animation" :

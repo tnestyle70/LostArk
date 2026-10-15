@@ -47,33 +47,6 @@ std::vector<std::string> ResourceSegments(const std::string& category)
     return result;
 }
 
-template<class Rows, class Kind>
-void ReadAnimationRows(Rows& rows, const Kind animationKind)
-{
-    const auto model = CAnimationTargetService::Resolve_Model();
-    if (!model) return;
-    const auto asset = CAnimationTargetService::Resolve_AssetName();
-    const auto displayNames = Read_CompositionAnimationDisplayNames(asset);
-    std::set<std::string> names;
-    for (std::uint32_t i = 0; i < model->Get_NumAnimations(); ++i)
-    {
-        const auto* name = model->Get_AnimationName(i);
-        if (!name || !*name) continue;
-        typename Rows::value_type row; row.kind = animationKind; row.id = name;
-        const auto display = displayNames.find(name);
-        row.label = display == displayNames.end() ? name : display->second + " | " + name;
-        for (const auto& segment : CompositionAnimationCategory(asset))
-        { if (!row.category.empty()) row.category += '/'; row.category += segment; }
-        float position = 0.f, duration = 0.f;
-        const float rate = model->Get_AnimationTickPerSecond(i);
-        if (!names.insert(row.id).second) row.status = "The model contains an ambiguous clip name.";
-        if (!model->Get_AnimationProgress(i, position, duration) || !std::isfinite(duration) || duration <= 0.f ||
-            !std::isfinite(rate) || rate <= 0.f || duration / rate > MAX_RESOURCE_MS * .001f)
-            row.status = "The model clip has invalid duration metadata.";
-        else row.durationMs = static_cast<std::uint32_t>(std::ceil(duration / rate * 1000.f));
-        rows.push_back(std::move(row));
-    }
-}
 
 std::string SavedEffectCategory(const CEffectAuthoringResourceTree::RESOURCE& source)
 {
@@ -166,8 +139,16 @@ bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
         for (const auto& previous : m_CompositionResources)
             if (previous.kind == kind) staged.push_back(previous);
     };
-    ReadAnimationRows(staged, TRACK_KIND::ANIMATION);
-    m_ResourceModelGeneration = CAnimationTargetService::Resolve_TargetGeneration();
+    if (!Client::Read_CompositionAnimationResources(m_AnimationLibrary, problems)) complete = false;
+    for (const auto& source : m_AnimationLibrary)
+    {
+        RESOURCE_ENTRY row; row.kind = TRACK_KIND::ANIMATION; row.animation = source;
+        row.id = source.strTargetAssetName + "|" + source.strSourceAssetId + "|" + source.strRuntimeClip + "|" + source.strWorldMotionId;
+        row.label = source.strDisplayName.empty() ? source.strRuntimeClip : source.strDisplayName;
+        for (const auto& segment : CompositionAnimationCategory(source))
+        { if (!row.category.empty()) row.category += '/'; row.category += segment; }
+        row.durationMs = source.iDurationMs; staged.push_back(std::move(row));
+    }
 
     std::vector<CEffectAuthoringResourceTree::RESOURCE> authored;
     std::string error;
@@ -279,8 +260,69 @@ bool CEffectAuthoringSequencer::Refresh_CompositionResourceInventory()
     });
     m_CompositionResources = std::move(staged); m_ResourcesLoaded = true;
     m_ResourceStatus = std::move(problems);
-    Rebuild_CompositionResourceTrees();
+    m_ResourceModelGeneration = ~std::uint64_t{0u};
+    Refresh_LoadedModelAnimationResources();
     return complete;
+}
+
+
+// 고정 설치 library에 없는 Vehicle/authored clip을 현재 CModel에서 보충한다. 목록용 가짜 경로나 clip을 만들지 않는다.
+// target generation이나 명시 Refresh sentinel이 바뀌면 이전 모델의 보충분만 제거해 전체 library를 보존한다.
+void CEffectAuthoringSequencer::Refresh_LoadedModelAnimationResources()
+{
+    const auto generation = CAnimationTargetService::Resolve_TargetGeneration();
+    if (m_ResourceModelGeneration == generation) return;
+    std::erase_if(m_CompositionResources, [](const auto& row) { return row.loadedModelSupplement; });
+    const auto model = CAnimationTargetService::Resolve_Model();
+    const auto asset = CAnimationTargetService::Resolve_AssetName();
+    if (model && !asset.empty())
+    {
+        const auto displayNames = Read_CompositionAnimationDisplayNames(asset);
+        const auto libraryTarget = std::find_if(m_AnimationLibrary.begin(), m_AnimationLibrary.end(), [&](const auto& row) {
+            return row.strTargetAssetName == asset && !row.Is_WorldMotion(); });
+        COMPOSITION_ANIMATION_RESOURCE target;
+        if (libraryTarget != m_AnimationLibrary.end()) target = *libraryTarget;
+        else
+        {
+            target.strTargetAssetName = target.strProfileId = asset;
+            if (asset.starts_with("Vehicle_")) target.CategoryPath = {"Character Transform", "Mounts", asset};
+        }
+        // 보충 clip은 현재 모델에서만 확인했으므로 다른 native package의 source ID를 물려주지 않는다.
+        target.strSourceAssetId.clear(); target.strWorldMotionId.clear();
+        std::set<std::string> seen;
+        for (std::uint32_t index = 0u; index < model->Get_NumAnimations(); ++index)
+        {
+            const char* name = model->Get_AnimationName(index);
+            if (!name || !*name || !seen.insert(name).second) continue;
+            if (std::any_of(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row) {
+                return row.kind == TRACK_KIND::ANIMATION && row.animation.strTargetAssetName == asset &&
+                    row.animation.strRuntimeClip == name; })) continue;
+            RESOURCE_ENTRY row; row.kind = TRACK_KIND::ANIMATION; row.loadedModelSupplement = true;
+            row.animation = target; row.animation.strRuntimeClip = name;
+            const auto display = displayNames.find(name);
+            row.label = row.animation.strDisplayName = display == displayNames.end() ? name : display->second + " | " + name;
+            row.id = asset + "|loaded-model|" + name;
+            for (const auto& segment : CompositionAnimationCategory(row.animation))
+            { if (!row.category.empty()) row.category += '/'; row.category += segment; }
+            float position = 0.f, duration = 0.f;
+            const float rate = model->Get_AnimationTickPerSecond(index);
+            if (!model->Get_AnimationProgress(index, position, duration) || !std::isfinite(duration) || duration <= 0.f ||
+                !std::isfinite(rate) || rate <= 0.f || duration / rate > MAX_RESOURCE_MS * .001f)
+                row.status = "The loaded model clip has invalid duration metadata.";
+            else
+            {
+                row.durationMs = row.animation.iDurationMs = static_cast<std::uint32_t>(std::ceil(double(duration) / rate * 1000.));
+                row.animation.fDurationTicks = duration; row.animation.fTicksPerSecond = rate;
+            }
+            m_CompositionResources.push_back(std::move(row));
+        }
+    }
+    m_ResourceModelGeneration = generation;
+    const auto& selected = m_SelectedResourceIds[static_cast<std::size_t>(TRACK_KIND::ANIMATION)];
+    if (!selected.empty() && std::none_of(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row) {
+        return row.kind == TRACK_KIND::ANIMATION && row.id == selected; }))
+        m_SelectedResourceIds[static_cast<std::size_t>(TRACK_KIND::ANIMATION)].clear();
+    Rebuild_CompositionResourceTrees();
 }
 
 void CEffectAuthoringSequencer::Rebuild_CompositionResourceTrees()
@@ -323,6 +365,60 @@ void CEffectAuthoringSequencer::Rebuild_CompositionResourceTrees()
     }
 }
 
+
+// V1/V2 Model View와 Composition Resources가 같은 설치 inventory와 명령을 공유한다.
+void CEffectAuthoringSequencer::Render_AnimationResourceActions(const COMPOSITION_ANIMATION_RESOURCE& resource)
+{
+    ImGui::TextWrapped("%s", resource.strDisplayName.empty() ? resource.strRuntimeClip.c_str() : resource.strDisplayName.c_str());
+    if (resource.Is_WorldMotion())
+    {
+        ImGui::TextWrapped("World Object: %s", resource.strWorldObjectId.c_str());
+        ImGui::TextDisabled("Object Motion uses its saved Transform / Physics / Effect tracks.");
+        if (ImGui::Button("Open Object Motion")) m_WorldMotionRequest = resource;
+        return;
+    }
+    if (ImGui::Button("Load Model")) Load_AnimationResource(resource);
+    ImGui::SameLine();
+    if (ImGui::Button("Add Animation"))
+        if (Load_AnimationResource(resource)) Append_Animation(resource.strRuntimeClip, true);
+    ImGui::SameLine();
+    if (ImGui::Button("Add & Play"))
+        if (Load_AnimationResource(resource) && Append_Animation(resource.strRuntimeClip, true)) Play();
+    ImGui::TextWrapped("%s / %u ms", resource.strModelAssetId.c_str(), resource.iDurationMs);
+    if (!resource.strWorldObjectId.empty() && ImGui::SmallButton("Open Object Motions"))
+    { auto request = resource; request.strRuntimeClip.clear(); request.strWorldMotionId.clear(); m_WorldMotionRequest = std::move(request); }
+}
+
+void CEffectAuthoringSequencer::Render_AnimationLibrary()
+{
+    if (!ImGui::CollapsingHeader("Animation Library", ImGuiTreeNodeFlags_DefaultOpen)) return;
+    if (!m_ResourcesLoaded) Refresh_CompositionResourceInventory();
+    Refresh_LoadedModelAnimationResources();
+    if (ImGui::SmallButton("Refresh Animation Library")) Refresh_CompositionResourceInventory();
+    ImGui::SetNextItemWidth(-1.f);
+    if (ImGui::InputTextWithHint("##AnimationLibrarySearch", "Search Character, Boss, World, model or clip...",
+        m_ResourceSearch[0].data(), m_ResourceSearch[0].size())) Rebuild_CompositionResourceTrees();
+    if (ImGui::BeginChild("##EffectAnimationLibrary", {0.f, 230.f}, ImGuiChildFlags_Borders))
+        RenderResourceTree(m_ResourceTrees[0], [&](std::size_t index)
+        {
+            const auto& row = m_CompositionResources[index];
+            ImGui::PushID(row.id.c_str());
+            if (ImGui::Selectable(row.label.c_str(), m_SelectedResourceIds[0] == row.id)) m_SelectedResourceIds[0] = row.id;
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s\n%s", row.animation.strTargetAssetName.c_str(), row.animation.strSourceAssetId.c_str());
+            ImGui::PopID();
+        });
+    ImGui::EndChild();
+    const auto selected = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row)
+        { return row.kind == TRACK_KIND::ANIMATION && row.id == m_SelectedResourceIds[0]; });
+    if (selected != m_CompositionResources.end())
+    {
+        ImGui::BeginDisabled(!selected->status.empty()); Render_AnimationResourceActions(selected->animation); ImGui::EndDisabled();
+        if (!selected->status.empty()) ImGui::TextWrapped("%s", selected->status.c_str());
+    }
+    if (!m_ResourceStatus.empty() && ImGui::TreeNode("Animation / resource status"))
+    { ImGui::TextWrapped("%s", m_ResourceStatus.c_str()); ImGui::TreePop(); }
+}
+
 void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
 {
     if (!embedded && !m_ResourcesOpen) return;
@@ -334,17 +430,9 @@ void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
     }
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)) m_Interaction = true;
     if (!m_ResourcesLoaded) Refresh_CompositionResourceInventory();
+    Refresh_LoadedModelAnimationResources();
     if (ImGui::Button("Refresh Resources")) Refresh_CompositionResourceInventory();
     ImGui::SameLine(); ImGui::TextDisabled("Append at %u ms", ClockMs());
-    if (m_ResourceModelGeneration != CAnimationTargetService::Resolve_TargetGeneration())
-    {
-        // A new rig only changes native clips; the saved catalogs keep their cache.
-        std::erase_if(m_CompositionResources, [](const auto& row) { return row.kind == TRACK_KIND::ANIMATION; });
-        ReadAnimationRows(m_CompositionResources, TRACK_KIND::ANIMATION);
-        m_ResourceModelGeneration = CAnimationTargetService::Resolve_TargetGeneration();
-        m_SelectedResourceIds[static_cast<std::size_t>(TRACK_KIND::ANIMATION)].clear();
-        Rebuild_CompositionResourceTrees();
-    }
     if (ImGui::BeginTabBar("CompositionResourceTabs"))
     {
         for (std::size_t family = 0; family < m_ResourceTrees.size(); ++family)
@@ -376,6 +464,15 @@ void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
             ImGui::EndChild();
             const auto selected = std::find_if(m_CompositionResources.begin(), m_CompositionResources.end(), [&](const auto& row)
                 { return static_cast<std::size_t>(row.kind) == family && row.id == m_SelectedResourceIds[family]; });
+            if (family == static_cast<std::size_t>(TRACK_KIND::ANIMATION))
+            {
+                if (selected != m_CompositionResources.end())
+                {
+                    ImGui::BeginDisabled(!selected->status.empty()); Render_AnimationResourceActions(selected->animation); ImGui::EndDisabled();
+                    if (!selected->status.empty()) ImGui::TextWrapped("%s", selected->status.c_str());
+                }
+                ImGui::EndTabItem(); continue;
+            }
             ImGui::BeginDisabled(selected == m_CompositionResources.end() || !selected->status.empty());
             if (selected != m_CompositionResources.end() &&
                 (selected->kind == TRACK_KIND::EFFECT || selected->kind == TRACK_KIND::SCREEN_POST))
@@ -389,7 +486,7 @@ void CEffectAuthoringSequencer::Render_CompositionResources(const bool embedded)
                 bool added = false;
                 switch (selected->kind)
                 {
-                case TRACK_KIND::ANIMATION: added = Append_Animation(selected->id); break;
+                case TRACK_KIND::ANIMATION: break; // 위의 native / World Motion 분기에서 처리한다.
                 case TRACK_KIND::EFFECT:
                     added = Append(selected->key, selected->key.eOwnerKind == EFFECT_RESOURCE_OWNER_KIND::V1_DOCUMENT ? 0u : selected->durationMs);
                     break;
